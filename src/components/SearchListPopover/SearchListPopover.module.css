@@ -62,6 +62,8 @@
   transition: background 0.12s;
 }
 .row:hover { background: var(--neutral-50); }
+.rowSelected { background: var(--primary-50); }
+.rowSelected .label { color: var(--primary-300); font-weight: 500; }
 .rowDisabled { cursor: not-allowed; }
 .rowDisabled .label { color: var(--neutral-200); }
 .rowDisabled:hover { background: transparent; }

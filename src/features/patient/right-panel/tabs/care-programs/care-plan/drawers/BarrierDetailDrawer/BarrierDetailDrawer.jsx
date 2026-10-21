@@ -30,10 +30,8 @@ import styles from './BarrierDetailDrawer.module.css';
 const NO_ITEMS = [];
 import goalStyles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
 
-// Match the plan-level Barriers table exactly — same option list and
-// same tone map, so status pills read identically in the drawer and
-// the row.
-const STATUS_OPTIONS = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+import { BARRIER_STATUSES, gbiStatusMeta } from '../../lib/gbiStatus';
+import { isCompletedStatus } from '../../tables/carePlanTableModel';
 
 function fmtDate(iso) {
   if (!iso) return null;
@@ -60,7 +58,11 @@ function fmtDate(iso) {
  */
 
 
-export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOpenGoal, consolidated = false, signedView = false, focusSection = null }) {
+export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOpenGoal, consolidated = false, signedView = false, focusSection = null, readOnly = false, snapshot = null }) {
+  // `readOnly` + `snapshot`: opened from a past version or an earlier
+  // template run; items come from that copy, nothing can be changed and
+  // empty sections are hidden.
+  const ro = consolidated || readOnly;
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   // `signedView`: opened from a surface that shows the plan as last signed
   // (Comprehensive Care Plan, Monitoring). The item is read from that copy
@@ -68,7 +70,9 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   // documentation, so those stay open.
   const liveSlice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const signedSlice = useSignedCarePlan(signedView ? key : null);
-  const slice = signedView ? signedSlice : liveSlice;
+  const slice = useMemo(() => (snapshot
+    ? { ...liveSlice, goals: snapshot.goals || [], interventions: snapshot.interventions || [], barriers: snapshot.barriers || [] }
+    : (signedView ? signedSlice : liveSlice)), [snapshot, signedView, signedSlice, liveSlice]);
   const auditAll = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
   const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
   const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
@@ -166,12 +170,14 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
     }
     return rows;
   }, [title, libraryBarriers]);
-  // Terminal state: once a barrier is Met or Not Met the record locks —
-  // no rename, no link / unlink, no note edits. Users flip status back to
-  // In Progress / On Hold to reopen the drawer for editing.
-  // Only a Met barrier is resolved; Not Met is still an open blocker, so it
-  // stays editable (same rule as the plan's Resolved Barriers group).
-  const isTerminal = status === 'Met';
+  // Terminal state: a closed barrier's record locks (no rename, no link /
+  // unlink, no note edits). Users flip status back to In Progress / On Hold
+  // to reopen the drawer for editing.
+  // A closed barrier (Met / Resolved, or Discontinued / Not Applicable) opens
+  // read-only; Not Met is still an open blocker, so it stays editable (same
+  // rule as the plan's Closed Barriers group). Keyed to the saved status so
+  // picking a closing status still shows Update, and reopening one does too.
+  const isTerminal = isCompletedStatus(liveBarrier.status || 'Not Started');
   const [linkDrawerOpen, setLinkDrawerOpen] = useState(false);
   const [unlinkConfirm, setUnlinkConfirm] = useState(null);
   const [confirmDeleteBarrier, setConfirmDeleteBarrier] = useState(false);
@@ -325,8 +331,8 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
         title="Barriers"
         onClose={onClose}
         width={640}
-        noCloseDivider={isTerminal}
-        headerRight={isTerminal || consolidated ? null : (
+        noCloseDivider={isTerminal && !barrierDirty}
+        headerRight={ro || (isTerminal && !barrierDirty) ? null : (
           <Button
             variant="primary"
             size="M"
@@ -343,14 +349,15 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
               row so all three drawers read as the same primitive. */}
           <div className={styles.statusBar}>
             <Select
-              options={STATUS_OPTIONS.map(s => ({ value: s, label: s }))}
+              options={BARRIER_STATUSES.map(s => ({ value: s, label: s, icon: gbiStatusMeta(s).icon }))}
               value={status}
               onChange={setStatus}
+              disabled={readOnly}
               portal
               className={styles.statusSelect}
               style={{ width: 'fit-content' }}
             />
-            {!consolidated && (
+            {!ro && (
               <ActionButton
                 icon="solar:trash-bin-trash-linear"
                 size="S"
@@ -361,14 +368,14 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
           </div>
 
           {/* Barrier title — editable Input while active, or a read-only
-              summary card once the barrier is Met / Not Met. The card
+              summary card once the barrier is closed. The card
               carries the barrier glyph, the plan-scoped meta line, and a
               small linked-goals chip so users still see the link count
               without the affordances that let them mutate it. The
-              consolidated (Comprehensive Care Plan) tab forces this
+              ro (Comprehensive Care Plan) tab forces this
               read-only branch too so nothing about the barrier's title
               can be mutated from that surface. */}
-          {isTerminal || consolidated ? (
+          {isTerminal || ro ? (
             <div className={styles.field}>
               <div className={styles.terminalCard}>
                 <div className={styles.terminalHead}>
@@ -459,6 +466,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
           )}
 
           {/* Linked Goals. */}
+          {(!readOnly || linkedGoals.length > 0) && (
           <section className={styles.section}>
             <div className={styles.sectionHead}>
               <button
@@ -474,7 +482,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                   className={`${styles.sectionChevron} ${open.goals ? styles.sectionChevronOpen : ''}`}
                 />
               </button>
-              {!isTerminal && !consolidated && (
+              {!isTerminal && !ro && (
                 <ActionButton
                   icon="solar:add-linear"
                   size="S"
@@ -517,7 +525,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                             tooltip="Open goal"
                             onClick={() => onOpenGoal?.(goal)}
                           />
-                          {!isTerminal && !consolidated && (
+                          {!isTerminal && !ro && (
                             <>
                               <span className={styles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                               <ActionButton
@@ -536,11 +544,13 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
               )
             )}
           </section>
+          )}
 
           {/* Linked Templates — derived transitively from the linked
               goals' chronic-condition bindings. A goal authored under a
               plan template (e.g. Hypertension, Diabetes) drags that
               template into the barrier's linked set; deduped by label. */}
+          {(!readOnly || linkedTemplates.length > 0) && (
           <section className={styles.section}>
             <div className={styles.sectionHead}>
               <button
@@ -591,8 +601,9 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
               )
             )}
           </section>
+          )}
 
-          <CarePlanItemNote
+          {!readOnly && <CarePlanItemNote
             ref={noteSectionRef}
             entityType="barrier"
             itemId={barrier.id}
@@ -601,7 +612,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
             audit={auditAll}
             patientId={patientId}
             program={program}
-          />
+          />}
 
           {/* Activity Log — shared block with TabStrip (All / Since
               Last Visit) + Filter chip, matches the Goal preview

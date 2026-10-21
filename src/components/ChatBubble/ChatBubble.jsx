@@ -39,6 +39,9 @@ function formatBytes(n) {
  * @param {Array}   [props.menuItems]     – MenuPopover items for the ••• menu
  * @param {(key: string) => void} [props.onMenuSelect]
  * @param {React.ReactNode} [props.footer] – extra line under the time (e.g. an error)
+ * @param {React.ReactNode} [props.children] – extra content at the end of the bubble (e.g. a card)
+ * @param {boolean} [props.flush]          – no padding: `children` lay out the bubble's sections themselves
+ * @param {'patient'|'provider'} [props.avatarVariant='patient'] – the sender's avatar colour (provider: an outside org)
  */
 export function ChatBubble({
   side = 'left',
@@ -54,6 +57,9 @@ export function ChatBubble({
   menuItems,
   onMenuSelect,
   footer,
+  children,
+  flush = false,
+  avatarVariant = 'patient',
 }) {
   const menuRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -126,6 +132,7 @@ export function ChatBubble({
         </span>
       )}
       {bodyText && <span className={styles.text}>{bodyText}</span>}
+      {children}
     </>
   );
 
@@ -161,7 +168,7 @@ export function ChatBubble({
     <div className={[styles.wrap, right ? styles.wrapRight : ''].join(' ')}>
       {!right && (
         <span className={styles.avatarCol}>
-          {!compact && <Avatar variant="patient" size="XS" initials={initials} />}
+          {!compact && <Avatar variant={avatarVariant} size="XS" initials={initials} />}
         </span>
       )}
       <div className={styles.col}>
@@ -171,7 +178,7 @@ export function ChatBubble({
             {menu}
           </div>
         )}
-        <div className={[styles.bubble, right ? styles.bubbleRight : styles.bubbleLeft, call ? styles.bubbleCall : ''].join(' ')}>
+        <div className={[styles.bubble, right ? styles.bubbleRight : styles.bubbleLeft, call ? styles.bubbleCall : '', flush ? styles.bubbleFlush : ''].join(' ')}>
           {inner}
         </div>
         {timeRow}

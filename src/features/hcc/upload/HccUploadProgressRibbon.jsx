@@ -64,7 +64,7 @@ export function HccUploadProgressRibbon() {
           className={styles.ribbonCta}
           onClick={() => openSftpReview?.()}
         >
-          <Icon name="solar:magic-stick-3-linear" size={13} color="#fff" />
+          <Icon name="custom:ai-mono" size={13} color="#fff" />
           Ready to Review
         </button>
         <CloseButton size={14} onClick={() => dismissAll()} className={styles.ribbonClose} label="Dismiss" />
@@ -75,7 +75,7 @@ export function HccUploadProgressRibbon() {
   // Pending state — show running progress.
   return (
     <div className={styles.ribbon}>
-      <Icon name="solar:magic-stick-3-linear" size={14} color="var(--primary-300)" />
+      <Icon name="custom:ai" size={14} color="var(--primary-300)" />
       <span className={styles.ribbonLabel}>
         <strong>{done} of {total}</strong>&nbsp; Processing Documents
       </span>
@@ -90,7 +90,7 @@ export function HccUploadProgressRibbon() {
         className={styles.ribbonView}
         onClick={() => openSftpReview?.()}
       >
-        <Icon name="solar:magic-stick-3-linear" size={12} color="var(--primary-300)" />
+        <Icon name="custom:ai" size={12} color="var(--primary-300)" />
         View
       </button>
       <CloseButton size={14} onClick={() => dismissAll()} className={styles.ribbonClose} label="Dismiss" />

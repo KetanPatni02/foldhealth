@@ -26,11 +26,26 @@
 
 /* ── Calendar header (chevrons + month labels) ───────────────────────── */
 
+/* Each month's own header row: the title centered over its calendar, the
+   prev/next arrow on the outer edge (a spacer balances the other side). */
 .calHeader {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.navSpacer {
+  width: 28px;
+}
+.monthTitle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  justify-content: center;
+  gap: var(--space-1);
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-400);
+  letter-spacing: 0.2px;
 }
 
 .navBtn {
@@ -46,20 +61,6 @@
   transition: background 0.12s;
 }
 .navBtn:hover { background: var(--neutral-50); }
-
-.monthLabels {
-  display: flex;
-  gap: 28px;
-  flex: 1;
-  justify-content: center;
-}
-
-.monthLabels span {
-  font-size: var(--font-md);
-  font-weight: 600;
-  color: var(--neutral-400);
-  letter-spacing: 0.2px;
-}
 
 /* ── Calendar grid ───────────────────────────────────────────────────── */
 
@@ -155,4 +156,24 @@
   margin-top: 12px;
   padding-top: 8px;
   border-top: 0.5px solid var(--neutral-150);
+}
+
+/* ── Years | Custom Dates (the `years` prop) ─────────────────────────── */
+.modeTabs {
+  align-self: flex-start;
+  margin-bottom: var(--space-3);
+}
+.yearRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+/* Plain button carrying the popover semantics; the Badge inside is the pill. */
+.yearTrigger {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
 }

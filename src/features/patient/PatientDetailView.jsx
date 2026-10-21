@@ -1,6 +1,8 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { PanelStack } from '../../components/PanelStack/PanelStack';
 import { PatientP360Banner } from './shell/PatientP360Banner/PatientP360Banner';
 import { PatientProfileTabs } from './left-panel/PatientProfileTabs/PatientProfileTabs';
 import { ProfileTabBar } from './shell/ProfileTabBar/ProfileTabBar';
@@ -14,8 +16,25 @@ import { ProfileTab } from './left-panel/tabs/profile/ProfileTab/ProfileTab';
 import { TasksTab } from './left-panel/tabs/tasks/TasksTab/TasksTab';
 import { CcmTimerWidget } from './shell/CcmTimerWidget/CcmTimerWidget';
 import { CcmTimerDockProvider } from './shell/CcmTimerWidget/CcmTimerDockContext';
+import { PatientBreadcrumb } from './shell/PatientBreadcrumb/PatientBreadcrumb';
+import { ProgramPanel } from './right-panel/tabs/care-programs/program-detail/ProgramPanel/ProgramPanel';
+import { useProgramPanelSplitTarget, CARE_PLAN_PANEL_ID } from './hooks/useProgramPanelSplitActive';
+
+// Diagnosis Gaps Details as the split's main panel ("Open in Side Panel" on
+// the HCC drawer). Lazy, like the drawer, so the HCC panel stays its own chunk.
+const DiagPanel = lazy(() => import('../hcc/DiagPanel/DiagPanel').then(m => ({ default: m.DiagPanel })));
+import { PatientCarePlanPane } from './right-panel/tabs/care-management/PatientCarePlanPane/PatientCarePlanPane';
+import { programUrlKey } from './right-panel/tabs/care-programs/CareProgramsTab/CareProgramsTab.utils';
 import { CARE_GAP_TABS } from './data/careGapsMock';
+import { usePatientPanelLayout } from './hooks/usePatientPanelLayout';
+import { visibleTabs } from './left-panel/patientPanelLayout';
+import { PROFILE_TABS } from './data/programActivityMock';
 import styles from './PatientDetailView.module.css';
+
+// Split layout: the right card belongs to the care program, so the right
+// panel's other tabs join the patient card's tab strip. Care Management is
+// left out because the program card already is that view.
+const SPLIT_EXTRA_TABS = PROFILE_TABS.filter(tab => tab !== 'Care Management');
 
 // Left-panel collapse is remembered per user (keyed by profile id) in
 // localStorage so it survives reloads. A `:last` mirror holds the most recent
@@ -109,7 +128,31 @@ export function PatientDetailView() {
   const activeTab = useAppStore(s => s.patientProfileTab);
   const setActiveTab = useAppStore(s => s.setPatientProfileTab);
   const currentUserId = useAppStore(s => s.currentUserProfile?.id);
+  // 'diag' | 'program' | 'patient-plan' | null: what the split's main panel shows.
+  const splitTarget = useProgramPanelSplitTarget();
+  const programSplit = splitTarget !== null;
+  // Split layout's panel stack, right of the patient card: the main panel
+  // (program or patient-level plan) plus any right-panel tabs opened as
+  // panels, in display order, and the panel in view. Keyed to the main panel
+  // it was built over, so opening another program (or re-entering the split)
+  // starts from that panel alone.
+  const programKey = useAppStore(s => s.selectedCareProgramKey);
+  // The main panel the stack was built over: the open program, or the
+  // patient-level care plan.
+  const primaryKey = splitTarget === 'diag' ? 'diag'
+    : splitTarget === 'patient-plan' ? 'patient-plan' : programKey;
+  const careProgramsByPatient = useAppStore(s => s.careProgramsByPatient);
+  // In the store so the care plan header can open its plan as a panel.
+  const stackState = useAppStore(s => s.programPanelStack); // { programKey, ids, activeId } | null
+  const setStackState = useAppStore(s => s.setProgramPanelStack);
+  const stack = stackState && stackState.programKey === primaryKey
+    ? stackState
+    : { programKey: primaryKey, ids: ['program'], activeId: 'program' };
   const [leftWidth, setLeftWidth] = useState(496);
+  // The HCC side panel opens at 30 / 35 / 35 (patient card / documents /
+  // ICDs); null holds the card at 30% until it's dragged.
+  const [diagLeftWidth, setDiagLeftWidth] = useState(null);
+  const splitCardRef = useRef(null);
   // Seed from the device's most recent choice so the first paint matches;
   // the per-user value is reconciled once the profile id resolves (below).
   const [leftCollapsed, setLeftCollapsed] = useState(() => readCollapse('last') === 'true');
@@ -117,7 +160,14 @@ export function PatientDetailView() {
   // collapsed its tabs flow into the right-panel tab bar and its content
   // renders in the right panel. `showingLeftContent` is only meaningful while
   // collapsed — true means a flowed-in left tab is the active view.
-  const [leftTab, setLeftTab] = useState(CARE_GAP_TABS[0]);
+  const [leftTabRaw, setLeftTab] = useState(CARE_GAP_TABS[0]);
+  // The left tabs in the user's order, without the ones they switched off
+  // (More > Customize).
+  const { layout: panelLayout } = usePatientPanelLayout();
+  const leftTabs = useMemo(() => visibleTabs(panelLayout, CARE_GAP_TABS), [panelLayout]);
+  // The split hosts the right panel's tabs here too; outside it, a hosted
+  // tab has no home in this panel, so fall back to the first tab.
+  const leftTab = programSplit || leftTabs.includes(leftTabRaw) ? leftTabRaw : leftTabs[0];
   const [showingLeftContent, setShowingLeftContent] = useState(false);
   const dragging = useRef(false);
   const bodyRef = useRef(null);
@@ -125,14 +175,14 @@ export function PatientDetailView() {
   // Collapsed: the tab bar is the merged [right tabs, …left tabs]. Route a
   // click to the correct side and record which content the right panel shows.
   const handleRightTabChange = useCallback((key) => {
-    if (leftCollapsed && CARE_GAP_TABS.includes(key)) {
+    if (leftCollapsed && leftTabs.includes(key)) {
       setLeftTab(key);
       setShowingLeftContent(true);
     } else {
       setActiveTab(key);
       setShowingLeftContent(false);
     }
-  }, [leftCollapsed, setActiveTab]);
+  }, [leftCollapsed, leftTabs, setActiveTab]);
 
   // Once the signed-in user is known, load their saved collapse state (only if
   // they have one — a new user keeps the device default until they toggle).
@@ -166,7 +216,7 @@ export function PatientDetailView() {
     return () => clearTimeout(t);
   }, [leftCollapsed]);
 
-  const handleMouseDown = useCallback((e) => {
+  const handleMouseDown = useCallback((e, setWidth = setLeftWidth) => {
     e.preventDefault();
     dragging.current = true;
     document.body.style.cursor = 'col-resize';
@@ -176,7 +226,7 @@ export function PatientDetailView() {
       if (!dragging.current || !bodyRef.current) return;
       const rect = bodyRef.current.getBoundingClientRect();
       const newWidth = Math.max(300, Math.min(700, e.clientX - rect.left));
-      setLeftWidth(newWidth);
+      setWidth(newWidth);
     };
 
     const handleMouseUp = () => {
@@ -276,6 +326,182 @@ export function PatientDetailView() {
 
   if (!patientWithAppStatus) return null;
 
+  // Floating shell, program opened "in right panel": the patient's context
+  // (trail, compact banner, care-gap tabs) is one card and the program is a
+  // full-height card beside it. The P360 banner and the profile tab bar step
+  // aside; closing the program or "Open Inline" brings them back.
+  // One renderer for the right panel's tabs, shared by the standard layout
+  // and the split (where they render in the patient card or the side panel).
+  const renderRightTab = (tab) => (
+    tab === 'Overview' ? <OverviewTab patient={patientWithAppStatus} leftPanelOpen={!leftCollapsed} />
+      : tab === 'Monitoring' ? <MonitoringTab patient={patientWithAppStatus} />
+        : tab === 'Notes' ? <PatientNotesTab patient={patientWithAppStatus} />
+          : tab === 'Care Management' ? <CareManagementView />
+            : tab === 'Profile' ? <ProfileTab patient={patientWithAppStatus} />
+              : tab === 'Tasks' ? <TasksTab />
+                : <TabPlaceholder tabName={tab} />
+  );
+
+  if (programSplit) {
+    // A hosted tab opens in the patient card by default. "Open in panel" (its
+    // row in the More dropdown, or the hosted view's header) adds it to the
+    // stack right after the patient card, ahead of the panel that was in
+    // view, which stays peeking at the edge.
+    const TAB_PREFIX = 'tab:';
+    const panelIdFor = (tab) => `${TAB_PREFIX}${tab}`;
+    // Functional so back-to-back updates (reorder, then focus the moved
+    // panel) build on each other instead of on this render's snapshot.
+    const setStack = (patch) => setStackState((prev) => {
+      const base = prev && prev.programKey === primaryKey ? prev : stack;
+      return { ...base, ...(typeof patch === 'function' ? patch(base) : patch) };
+    });
+    const openInPanel = (tab) => {
+      const id = panelIdFor(tab);
+      setStack(base => ({ ids: base.ids.includes(id) ? base.ids : [id, ...base.ids], activeId: id }));
+      if (leftTab === tab) setLeftTab(leftTabs[0]);
+    };
+    const removePanel = (id) => setStack((base) => {
+      const idx = base.ids.indexOf(id);
+      const ids = base.ids.filter(x => x !== id);
+      return { ids, activeId: base.activeId === id ? ids[Math.min(idx, ids.length - 1)] : base.activeId };
+    });
+    const moveToLeftPanel = (id) => {
+      removePanel(id);
+      setLeftTab(id.slice(TAB_PREFIX.length));
+    };
+    // A tab that's already a panel focuses that panel rather than opening a
+    // second copy in the patient card.
+    const handleLeftTabChange = (tab) => {
+      if (stack.ids.includes(panelIdFor(tab))) setStack({ activeId: panelIdFor(tab) });
+      else setLeftTab(tab);
+    };
+    const panelAction = {
+      icon: 'solar:sidebar-minimalistic-linear',
+      label: (item) => `Open ${item.label} in a panel`,
+      onSelect: openInPanel,
+    };
+    const renderHostedTab = (tab) => (
+      <div className={styles.hostedTab}>
+        <div className={styles.hostedTabHeader}>
+          <span className={styles.hostedTabTitle}>{tab}</span>
+          <ActionButton
+            icon="solar:sidebar-minimalistic-linear"
+            size="S"
+            tooltip="Open in panel"
+            onClick={() => openInPanel(tab)}
+          />
+        </div>
+        <div className={styles.hostedTabBody}>{renderRightTab(tab)}</div>
+      </div>
+    );
+    const openProgram = (careProgramsByPatient[selectedPatientId] || [])
+      .find(p => programUrlKey(p) === programKey) || null;
+    const programName = openProgram?.name || 'Care Program';
+    const panels = stack.ids.map((id) => {
+      if (id === 'program') {
+        if (splitTarget === 'diag') {
+          return {
+            id,
+            title: 'Diagnosis Gaps',
+            content: <Suspense fallback={null}><DiagPanel embedded /></Suspense>,
+          };
+        }
+        return splitTarget === 'patient-plan'
+          ? { id, title: 'Care Plan', content: <PatientCarePlanPane patientId={selectedPatientId} /> }
+          : { id, title: programName, content: <ProgramPanel /> };
+      }
+      // The program's care plan on its own; closing it returns the plan to
+      // the program's Care Plan step.
+      if (id === CARE_PLAN_PANEL_ID) {
+        return {
+          id,
+          title: 'Care Plan',
+          onClose: () => removePanel(id),
+          content: openProgram
+            ? <PatientCarePlanPane patientId={selectedPatientId} program={openProgram} inPanel />
+            : null,
+        };
+      }
+      const tab = id.slice(TAB_PREFIX.length);
+      return {
+        id,
+        title: tab,
+        actions: (
+          <ActionButton
+            icon="solar:sidebar-minimalistic-linear"
+            size="S"
+            tooltip="Move to patient panel"
+            onClick={() => moveToLeftPanel(id)}
+          />
+        ),
+        onClose: () => removePanel(id),
+        content: <div className={styles.hostedTabBody}>{renderRightTab(tab)}</div>,
+      };
+    });
+    const isDiag = splitTarget === 'diag';
+    const setCardWidth = isDiag ? setDiagLeftWidth : setLeftWidth;
+    const cardWidth = isDiag ? diagLeftWidth : leftWidth;
+    return (
+      <CcmTimerDockProvider>
+      <div className={styles.split} ref={bodyRef}>
+        <section
+          ref={splitCardRef}
+          className={styles.splitPatientCard}
+          style={{ width: cardWidth ?? '30%' }}
+          aria-label="Patient"
+        >
+          <PatientBreadcrumb patientName={patientWithAppStatus.name} />
+          <PatientP360Banner patient={patientWithAppStatus} variant="drawer" />
+          <div className={styles.splitPatientTabs}>
+            <PatientProfileTabs
+              patientId={selectedPatientId}
+              patient={patientWithAppStatus}
+              activeTab={leftTab}
+              onTabChange={handleLeftTabChange}
+              extraTabs={SPLIT_EXTRA_TABS}
+              renderExtraTab={renderHostedTab}
+              extraTabAction={panelAction}
+            />
+          </div>
+        </section>
+        {/* A resize separator: pointer drag, or arrow keys step the width
+            within the same 300–700px range the drag clamps to. */}
+        <div
+          className={styles.splitHandle}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize patient panel"
+          aria-valuenow={cardWidth ?? undefined}
+          aria-valuetext={cardWidth == null ? '30%' : undefined}
+          aria-valuemin={300}
+          aria-valuemax={700}
+          tabIndex={0}
+          onMouseDown={(e) => handleMouseDown(e, setCardWidth)}
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            e.preventDefault();
+            const step = e.key === 'ArrowLeft' ? -16 : 16;
+            const from = cardWidth ?? splitCardRef.current?.offsetWidth ?? 496;
+            setCardWidth(Math.max(300, Math.min(700, from + step)));
+          }}
+        >
+          <div className={styles.dragHandleLine} />
+        </div>
+        <PanelStack
+          className={styles.splitStack}
+          panels={panels}
+          activeId={stack.activeId}
+          onActiveChange={(activeId) => setStack({ activeId })}
+          onReorder={(ids) => setStack({ ids })}
+          ariaLabel="Open panels"
+        />
+      </div>
+      <CcmTimerWidget patient={patient} />
+      <P360NotePreviewMount />
+      </CcmTimerDockProvider>
+    );
+  }
+
   return (
     <CcmTimerDockProvider>
     <div className={styles.wrapper}>
@@ -315,7 +541,7 @@ export function PatientDetailView() {
             onTabChange={handleRightTabChange}
             leftCollapsed={leftCollapsed}
             onToggleLeft={toggleLeft}
-            extraTabs={leftCollapsed ? CARE_GAP_TABS : undefined}
+            extraTabs={leftCollapsed ? leftTabs : undefined}
           />
           <div className={styles.tabContent}>
             {leftCollapsed && showingLeftContent ? (
@@ -331,21 +557,7 @@ export function PatientDetailView() {
                   showTabBar={false}
                 />
               </div>
-            ) : activeTab === 'Overview' ? (
-              <OverviewTab />
-            ) : activeTab === 'Monitoring' ? (
-              <MonitoringTab patient={patientWithAppStatus} />
-            ) : activeTab === 'Notes' ? (
-              <PatientNotesTab patient={patientWithAppStatus} />
-            ) : activeTab === 'Care Management' ? (
-              <CareManagementView />
-            ) : activeTab === 'Profile' ? (
-              <ProfileTab patient={patientWithAppStatus} />
-            ) : activeTab === 'Tasks' ? (
-              <TasksTab />
-            ) : (
-              <TabPlaceholder tabName={activeTab} />
-            )}
+            ) : renderRightTab(activeTab)}
           </div>
         </div>
       </div>

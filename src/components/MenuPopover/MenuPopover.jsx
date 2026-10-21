@@ -28,7 +28,7 @@ import styles from './MenuPopover.module.css';
  * @param {function} props.onSelect       – (key, item) => void
  * @param {function} props.onClose
  * @param {string}   [props.ariaLabel='Menu']
- * @param {number}   [props.width=200]    – Pixel width of the menu
+ * @param {number|'auto'} [props.width=200] – Pixel width of the menu; 'auto' fits the longest label
  * @param {boolean} [props.searchable=false] – Sticky search box at the top for long
  *                                          lists. Filters items by label / hint; a
  *                                          section whose title matches keeps all its items.

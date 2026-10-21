@@ -1,0 +1,37 @@
+/* "Verify ID to access links in this mail" card. */
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  cursor: pointer;
+}
+/* Padding, not margin, so the space folds away with the Collapse. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+}
+.row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+.rowLabel {
+  font-size: var(--font-base);
+  line-height: 1.3;
+  color: var(--neutral-400);
+}
+.rowControl { min-width: 0; }

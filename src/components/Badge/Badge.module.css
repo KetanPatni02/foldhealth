@@ -28,6 +28,7 @@
    (8px) — the token system's 4px grid has no 6px stop, so M's horizontal
    padding lands at 8px (closest token) and L uses --space-2 all round.
    box-sizing: border-box so the 0.5px border sits inside the target height. */
+.sizeXS { height: 18px; padding: 0 var(--space-1);          font-size: var(--font-xs);   box-sizing: border-box; gap: calc(var(--space-1) / 2); }
 .sizeS { height: 20px; padding: var(--space-1);                font-size: var(--font-sm);   box-sizing: border-box; }
 .sizeM { height: 24px; padding: var(--space-1) var(--space-2); font-size: var(--font-base); box-sizing: border-box; }
 .sizeL { height: 28px; padding: var(--space-2);                font-size: var(--font-lg);   box-sizing: border-box; border-radius: 6px; }
@@ -47,6 +48,14 @@
 .tone-error     { background: var(--status-error-light);  color: var(--status-error);   border-color: color-mix(in srgb, var(--status-error) 20%, transparent); }
 .tone-info      { background: var(--status-info-light);   color: var(--status-info);    border-color: color-mix(in srgb, var(--status-info) 20%, transparent); }
 .tone-disabled  { background: var(--neutral-50);          color: var(--neutral-200);    border-color: var(--neutral-100); }
+/* Figma "Accent Dark / AI Color": gradient text on primary-50. */
+.tone-unity     { background: var(--primary-50);          color: var(--unity-gradient-mid); border-color: var(--unity-gradient-from); }
+.unityText {
+  background: linear-gradient(160deg, var(--unity-gradient-from) 2%, var(--unity-gradient-mid) 52%, var(--unity-gradient-to) 94%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 
 .tone-white.hover,     .interactive.tone-white:hover     { background: var(--neutral-50); }
 .tone-grey.hover,      .interactive.tone-grey:hover      { background: var(--neutral-100); }

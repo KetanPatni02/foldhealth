@@ -11,8 +11,18 @@ const MORE_RESERVE_PX = 72;
  * TabStrip with responsive overflow — tabs that don't fit collapse into a
  * "More ▾" dropdown. Active tab is always kept visible by swapping it into
  * the last visible slot when needed. Same behavior as SectionTitleBar tabs.
+ *
+ * `itemAction` (optional) adds a trailing icon button to dropdown rows:
+ * `{ icon, label: (tab) => string, onSelect: (key) => void, appliesTo?: (key) => boolean }`.
+ * It sits beside the row's own button (never nested in it) so both stay
+ * keyboard reachable.
+ *
+ * `moreActions` (optional) adds commands under the overflow tabs, after a
+ * divider: `[{ key, label, icon, onSelect }]` (e.g. "Customize"). With
+ * actions, More always shows, even when every tab fits.
  */
-export function OverflowTabStrip({ items, activeKey, onChange }) {
+export function OverflowTabStrip({ items, activeKey, onChange, itemAction, moreActions }) {
+  const alwaysMore = !!moreActions?.length;
   const rowRef = useRef(null);
   const measurerRef = useRef(null);
   const moreBtnRef = useRef(null);
@@ -37,7 +47,7 @@ export function OverflowTabStrip({ items, activeKey, onChange }) {
       total += w;
     }
 
-    if (total <= available) {
+    if (total <= available - (alwaysMore ? MORE_RESERVE_PX : 0)) {
       setVisibleCount(items.length);
       return;
     }
@@ -50,7 +60,7 @@ export function OverflowTabStrip({ items, activeKey, onChange }) {
       count += 1;
     }
     setVisibleCount(Math.max(1, count));
-  }, [items.length]);
+  }, [items.length, alwaysMore]);
 
   useEffect(() => {
     measure();
@@ -125,7 +135,7 @@ export function OverflowTabStrip({ items, activeKey, onChange }) {
         fullWidth={false}
       />
 
-      {overflow.length > 0 && (
+      {(overflow.length > 0 || alwaysMore) && (
         <div className={styles.moreWrap} ref={moreBtnRef}>
           <div
             className={[tabStripStyles.tabItem, styles.tabMore, overflowHasActive ? tabStripStyles.active : ''].filter(Boolean).join(' ')}
@@ -134,7 +144,7 @@ export function OverflowTabStrip({ items, activeKey, onChange }) {
             tabIndex={0}
             aria-haspopup="menu"
             aria-expanded={moreOpen}
-            aria-label={`Show ${overflow.length} more tab${overflow.length === 1 ? '' : 's'}`}
+            aria-label={overflow.length ? `Show ${overflow.length} more tab${overflow.length === 1 ? '' : 's'}` : 'More options'}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -159,15 +169,46 @@ export function OverflowTabStrip({ items, activeKey, onChange }) {
                 visibility: menuPos ? 'visible' : 'hidden',
               }}
             >
-              {overflow.map(tab => (
+              {overflow.map(tab => {
+                const item = (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="menuitem"
+                    className={[styles.moreItem, activeKey === tab.key ? styles.moreItemActive : ''].filter(Boolean).join(' ')}
+                    onClick={() => { onChange?.(tab.key); setMoreOpen(false); }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+                if (!itemAction || (itemAction.appliesTo && !itemAction.appliesTo(tab.key))) return item;
+                return (
+                  <div key={tab.key} role="none" className={styles.moreRow}>
+                    {item}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={styles.moreItemAction}
+                      aria-label={itemAction.label(tab)}
+                      title={itemAction.label(tab)}
+                      onClick={() => { itemAction.onSelect(tab.key); setMoreOpen(false); }}
+                    >
+                      <Icon name={itemAction.icon} size={16} color="currentColor" />
+                    </button>
+                  </div>
+                );
+              })}
+              {alwaysMore && overflow.length > 0 && <hr className={styles.moreDivider} />}
+              {moreActions?.map(action => (
                 <button
-                  key={tab.key}
+                  key={action.key}
                   type="button"
                   role="menuitem"
-                  className={[styles.moreItem, activeKey === tab.key ? styles.moreItemActive : ''].filter(Boolean).join(' ')}
-                  onClick={() => { onChange?.(tab.key); setMoreOpen(false); }}
+                  className={styles.moreItem}
+                  onClick={() => { action.onSelect(); setMoreOpen(false); }}
                 >
-                  {tab.label}
+                  {action.icon && <Icon name={action.icon} size={16} color="var(--neutral-300)" />}
+                  {action.label}
                 </button>
               ))}
             </div>,

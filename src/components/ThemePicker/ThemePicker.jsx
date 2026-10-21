@@ -36,6 +36,10 @@ export function ThemePicker() {
   const setTheme = useAppStore(s => s.setTheme);
   const navStyle = useAppStore(s => s.navStyle);
   const setNavStyle = useAppStore(s => s.setNavStyle);
+  const sidebarShape = useAppStore(s => s.sidebarShape);
+  const setSidebarShape = useAppStore(s => s.setSidebarShape);
+  const floatingDensity = useAppStore(s => s.floatingDensity);
+  const setFloatingDensity = useAppStore(s => s.setFloatingDensity);
   const contrast = useAppStore(s => s.contrast);
   const setContrast = useAppStore(s => s.setContrast);
   const fontScale = useAppStore(s => s.fontScale);
@@ -118,6 +122,30 @@ export function ThemePicker() {
             ariaLabel="Toggle light navigation"
           />
         </div>
+        <div className={styles.toggleRow}>
+          <span className={styles.toggleCopy}>
+            <span className={styles.toggleTitle}>Floating sidebar</span>
+            <span className={styles.toggleHint}>Compact icon rail paired with an inline sub-nav as one floating card.</span>
+          </span>
+          <Switch
+            checked={sidebarShape === 'floating'}
+            onChange={(next) => setSidebarShape(next ? 'floating' : 'standard')}
+            ariaLabel="Toggle floating sidebar"
+          />
+        </div>
+        {sidebarShape === 'floating' && (
+          <div className={styles.toggleRow}>
+            <span className={styles.toggleCopy}>
+              <span className={styles.toggleTitle}>Compact rail</span>
+              <span className={styles.toggleHint}>Smaller icons and tighter tile corners for a quieter chrome.</span>
+            </span>
+            <Switch
+              checked={floatingDensity === 'compact'}
+              onChange={(next) => setFloatingDensity(next ? 'compact' : 'comfortable')}
+              ariaLabel="Toggle compact rail"
+            />
+          </div>
+        )}
       </div>
       <div className={styles.section}>
         <div className={styles.label}>Accessibility</div>

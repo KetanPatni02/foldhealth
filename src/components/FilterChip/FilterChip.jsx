@@ -44,6 +44,9 @@ export function FilterChip({
   // Passthrough to CheckboxListPopover — enables the in-popover search box for
   // long option lists (e.g. Assignee, IPA, HP Code).
   searchable = false,
+  // Passthrough to CheckboxListPopover — (option) => node drawn before each
+  // option's label, e.g. a person's avatar in an "Activity By" filter.
+  renderOptionLeading,
   // Extended API for filters whose popover isn't a plain list — the caller
   // decides when the chip counts as "active", what to summarize on the
   // pill, how to clear, and renders the popover body itself. When set, the
@@ -193,6 +196,7 @@ export function FilterChip({
             onChange={onChange}
             onClose={() => setRect(null)}
             searchable={searchable}
+            renderOptionLeading={renderOptionLeading}
           />
         ))}
     </>

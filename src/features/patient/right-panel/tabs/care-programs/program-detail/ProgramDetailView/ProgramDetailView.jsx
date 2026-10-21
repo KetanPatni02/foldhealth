@@ -33,7 +33,8 @@ import { PharmacyGapClosureStep } from '../../../../../../pharmacy-worklist/prog
 import { PharmacyActivityLogStep } from '../../../../../../pharmacy-worklist/program/PharmacyActivityLog';
 import { PharmacySnapshotStep } from '../../../../../../pharmacy-worklist/program/PharmacySnapshotStep';
 import { useProgramDetailView } from './useProgramDetailView';
-import { StepItem, SectionHeader, StepPlaceholder } from './ProgramDetailViewParts';
+import { StepItem, SectionHeader, StepPlaceholder, CarePlanInPanelNotice } from './ProgramDetailViewParts';
+import { useCarePlanPanelOpen } from '../../../../../hooks/useProgramPanelSplitActive';
 import { ProgramDetailViewHeader } from './ProgramDetailViewHeader';
 import { ProgramDetailViewContentHeader } from './ProgramDetailViewContentHeader';
 import { ProgramDetailViewLetters } from './ProgramDetailViewLetters';
@@ -46,6 +47,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
   const v = useProgramDetailView({ program, onSwitchProgram });
   const { stepFlags } = v;
   const isPharmacy = program.code === 'PHARM';
+  const carePlanInPanel = useCarePlanPanelOpen();
   const platformUsers = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
@@ -112,7 +114,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
       );
     }
     if (stepFlags.isPreVisitStep) return <PreVisitStep programCode={program.code} />;
-    if (stepFlags.isCarePlanStep) return <CarePlanView patientId={v.patientId} program={program} />;
+    if (stepFlags.isCarePlanStep) {
+      return carePlanInPanel ? <CarePlanInPanelNotice /> : <CarePlanView patientId={v.patientId} program={program} />;
+    }
     if (stepFlags.isAppointmentStep) return <AppointmentStep patientId={v.currentPatient?.id} programCode={program.code} stepName={v.stepName} />;
     if (stepFlags.isOpenCareGapsStep) return <OpenCareGaps />;
     if (stepFlags.isMedReconStep) return <MedicationReconciliation programCode={program.code} />;
@@ -211,6 +215,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
         <div className={styles.content}>
           <ProgramDetailViewContentHeader
             program={program}
+            carePlanInPanel={carePlanInPanel}
             onSignMedRecon={(name, role) => {
               v.updateCareProgram(v.patientId, program.id, {
                 medReconSignedBy: name,

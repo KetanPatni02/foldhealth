@@ -53,7 +53,7 @@ export function AiAnalyticsView({ showToast, editing = false, resetTick = 0 }) {
     />
   ) : (
     <InsightBanner
-      icon="solar:star-shine-linear"
+      icon="custom:ai"
       title="AI-Generated Narrative"
       text="Fold Unity detected <strong>3 anomalies</strong> this week: (1) CHF IP admissions <strong>+18%</strong> vs 4-week avg at Riverside Hospital. (2) RAF recapture velocity <strong>-12%</strong> since V28 transition. (3) TCM enrollment <strong>-24%</strong> from coordinator capacity gap."
       buttons={[

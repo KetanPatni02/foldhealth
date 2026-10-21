@@ -53,6 +53,14 @@
   background: var(--neutral-0);
   flex-shrink: 0;
 }
+/* 48px bar (incl. the top border above). The shared Pagination brings
+   14px vertical padding and its own top border, so both are dropped here. */
+.paginationBar > * {
+  box-sizing: border-box;
+  height: 47.5px;
+  padding: 0 var(--space-3);
+  border-top: 0;
+}
 
 /* ── Empty / no-results ── */
 .empty {

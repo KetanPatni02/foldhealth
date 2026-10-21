@@ -140,7 +140,7 @@ export function GoalLinkedInterventionsList({
                 icon="solar:menu-dots-linear"
                 size="S"
                 tooltip="More"
-                disabled={!canEdit && !onOpen}
+                disabled={!onRowMenu}
                 onClick={(e) => onRowMenu?.({ item: i, rect: e.currentTarget.getBoundingClientRect() })}
               />
             </div>

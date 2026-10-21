@@ -21,7 +21,7 @@ import styles from './FilePreview.module.css';
  * Storage URLs (which embed the original filename) type correctly even
  * when the doc record predates the `ext` field.
  */
-export function FilePreview({ src, file, name, ext, className }) {
+export function FilePreview({ src, file, name, ext, className, hideScrollbar = false }) {
   const [blobUrl, setBlobUrl] = useState(null);
   const kind = resolveFileKind({ src: src || blobUrl, name, ext });
   const [docxHtml, setDocxHtml] = useState(null);
@@ -62,7 +62,21 @@ export function FilePreview({ src, file, name, ext, className }) {
 
   const wrapClass = [styles.wrap, className || ''].filter(Boolean).join(' ');
 
-  if (!resolvedSrc) return null;
+  // A document row whose bytes never reached Storage (failed upload) has
+  // nothing to show; say so instead of rendering a blank pane.
+  if (!resolvedSrc) {
+    return (
+      <div className={`${wrapClass} ${styles.center}`}>
+        <div className={styles.fallbackCard}>
+          <Icon name="solar:file-corrupted-linear" size={36} color="var(--neutral-200)" />
+          <div className={styles.fallbackName}>{name || 'Document'}</div>
+          <div className={styles.fallbackHint}>
+            The file wasn&rsquo;t uploaded, so there&rsquo;s nothing to preview. Upload it again.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (kind === 'image') {
     return (
@@ -73,6 +87,16 @@ export function FilePreview({ src, file, name, ext, className }) {
   }
 
   if (kind === 'pdf') {
+    // The browser's PDF viewer draws its own scrollbar, which CSS can't
+    // style, so `hideScrollbar` clips it off the right edge instead.
+    // Scrolling by wheel or trackpad still works.
+    if (hideScrollbar) {
+      return (
+        <div className={`${wrapClass} ${styles.pdfClip}`}>
+          <iframe src={resolvedSrc} title={name || 'Document'} className={styles.pdfClipFrame} />
+        </div>
+      );
+    }
     return <iframe src={resolvedSrc} title={name || 'Document'} className={wrapClass} />;
   }
 

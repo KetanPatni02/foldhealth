@@ -5,6 +5,7 @@ import { CareGapDetailDrawer } from './CareGapDetailDrawer';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../components/Icon/Icon';
+import { Badge } from '../../components/Badge/Badge';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
@@ -35,6 +36,7 @@ import {
   memberMatchesFilters as hedisMemberMatchesFilters,
   countActiveFilters as countActiveHedisFilters,
 } from './hedisFilters';
+import { CIS_CODE } from './cis/cisRules';
 import styles from './HedisWorklistTable.module.css';
 import rowStyles from './HedisWorklistRow.module.css';
 
@@ -103,6 +105,7 @@ export function HedisWorklistTable() {
     }
     return result.filter(m => hedisMemberMatchesFilters(m, hedisFilters));
   }, [searchQuery, hedisFilters, hedisMembers]);
+  const isFiltered = !!searchQuery.trim() || Object.values(hedisFilters || {}).some(v => v?.length);
 
   // Data-derived option pools passed to the FilterChipBar so `dynamic` chips
   // (Assignee, State, City, IPA, HP Code) enumerate only what the loaded
@@ -162,6 +165,16 @@ export function HedisWorklistTable() {
   const paginated = sorted.slice(startIdx, startIdx + perPage);
 
   const allIds = paginated.map(m => m.id);
+
+  // CIS-CMB10 rows show a dose countdown under Start Date, evaluated from
+  // the child's immunizations.
+  const fetchImmunizationsForPatients = useAppStore(s => s.fetchImmunizationsForPatients);
+  const cisPageIds = paginated
+    .filter(m => (m.gaps || []).some(g => g.code === CIS_CODE))
+    .map(m => m.id).join(',');
+  useEffect(() => {
+    if (cisPageIds) fetchImmunizationsForPatients(cisPageIds.split(','));
+  }, [cisPageIds, fetchImmunizationsForPatients]);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedSet.has(id));
   const someSelected = selectedIds.length > 0 && !allSelected;
@@ -329,6 +342,8 @@ export function HedisWorklistTable() {
           perPage={perPage}
           onPageChange={setCurrentPage}
           onPerPageChange={setPerPage}
+          totalCount={(hedisMembers || []).length}
+          filtered={isFiltered}
         />
       </div>
     </div>

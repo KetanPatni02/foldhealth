@@ -9,18 +9,27 @@ import { ActiveAutomationsWidget } from '../../../../shared/widgets/ActiveAutoma
 import { InsuranceWidget } from '../../../../shared/widgets/InsuranceWidget/InsuranceWidget.jsx';
 import styles from './SummaryTab.module.css';
 
-export function SummaryTab() {
+const WIDGETS = {
+  'health-map': HealthMapWidget,
+  synopsis: PatientSynopsisWidget,
+  utilization: CareUtilizationWidget,
+  'prior-auth': PriorAuthWidget,
+  'population-groups': PopulationGroupsWidget,
+  'care-journeys': CareJourneysWidget,
+  subscription: SubscriptionWidget,
+  automations: ActiveAutomationsWidget,
+  insurance: InsuranceWidget,
+};
+const ALL_WIDGETS = Object.keys(WIDGETS);
+
+/** `widgets`: the keys to show, in order (More > Customize); all by default. */
+export function SummaryTab({ widgets = ALL_WIDGETS }) {
   return (
     <div className={styles.wrapper}>
-      <HealthMapWidget />
-      <PatientSynopsisWidget />
-      <CareUtilizationWidget />
-      <PriorAuthWidget />
-      <PopulationGroupsWidget />
-      <CareJourneysWidget />
-      <SubscriptionWidget />
-      <ActiveAutomationsWidget />
-      <InsuranceWidget />
+      {widgets.map((key) => {
+        const Widget = WIDGETS[key];
+        return Widget ? <Widget key={key} /> : null;
+      })}
     </div>
   );
 }

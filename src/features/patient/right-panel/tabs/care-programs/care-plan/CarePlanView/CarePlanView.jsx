@@ -1,15 +1,24 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../../../../../store/useAppStore';
+import { uniqueById } from '../lib/carePlanDraft';
 import { Icon } from '@/components/Icon/Icon';
 import { AddIconMinimalist } from '@/components/Icon/AddIconMinimalist';
 import { ActionButton } from '@/components/ActionButton/ActionButton';
 import { Button } from '@/components/Button/Button';
+import { Alert } from '@/components/Alert/Alert';
+import { PauseCarePlanDialog } from '../drawers/PauseCarePlanDialog/PauseCarePlanDialog';
+import { CarePlanPausedContext } from '../lib/carePlanPausedContext';
+import { fmtCarePlanDate } from '../tables/carePlanTableModel';
+import { isCarePlanPaused, pauseSummary } from '../lib/carePlanPause';
+import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
+import { IndividualizedPlanCard } from '../ai/IndividualizedPlanCard';
+import { AiReviewContext } from '../ai/aiReviewContext';
 import { MenuPopover } from '@/components/MenuPopover/MenuPopover';
 import { goalCascade, barrierGoalIdsOf } from '../lib/carePlanGoalCascade';
 import { Select } from '@/components/Select/Select';
 import { FilterChip } from '@/components/FilterChip/FilterChip';
+import { ALL_GBI_STATUSES } from '../lib/gbiStatus';
 import {
-  GBI_STATUSES,
   PRIORITY_LABELS,
   GbiSectionHead,
   SectionEmptyState,
@@ -31,6 +40,9 @@ import { deriveGoalTableFields } from '../lib/goalMetrics';
 import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
+import { SdohSection } from '../sdoh/SdohSection';
+import { SdohReferralDialog } from '../sdoh/SdohReferralDialog';
+import { isSdohBarrier, referralInterventionFields, sdohBarrierFields } from '../lib/sdohTaxonomy';
 import { RingEmptyState } from '@/components/RingEmptyState/RingEmptyState';
 import { SimpleTableSkeleton } from '@/components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { BulkBar } from '@/components/BulkBar/BulkBar';
@@ -228,7 +240,24 @@ export function CarePlanView({ patientId, program }) {
       },
     };
   }, [templateFilterId, live?.templateInstances, live?.retired, data, runsByTemplate]);
-  const viewData = viewedRun ? viewedRun.data : data;
+  // A past version picked in Version History: its snapshot, read only.
+  const carePlanKey = patientId && program?.id ? `${patientId}::${program.id}` : null;
+  const viewedVersion = useAppStore(s => (carePlanKey ? s.viewedCarePlanVersion[carePlanKey] : null));
+  const setViewedCarePlanVersion = useAppStore(s => s.setViewedCarePlanVersion);
+  // Leaving the plan returns it to the live version.
+  useEffect(() => () => { if (carePlanKey) setViewedCarePlanVersion(carePlanKey, null); }, [carePlanKey, setViewedCarePlanVersion]);
+  const versionData = useMemo(() => {
+    if (!viewedVersion) return null;
+    const s = viewedVersion.snapshot || {};
+    return {
+      conditions: (s.conditions || []).map(c => (typeof c === 'string' ? { label: c } : c)),
+      conditionTotal: (s.conditions || []).length,
+      goals: uniqueById(s.goals).map(g => ({ ...g, ...deriveGoalTableFields(g, []) })),
+      interventions: uniqueById(s.interventions),
+      barriers: uniqueById(s.barriers),
+    };
+  }, [viewedVersion]);
+  const viewData = versionData || (viewedRun ? viewedRun.data : data);
   const {
     noteOpen,
     noteText,
@@ -255,14 +284,17 @@ export function CarePlanView({ patientId, program }) {
     planStats,
   } = useCarePlanViewFilters({
     data: viewData,
-    templateFilterId: viewedRun ? null : templateFilterId,
+    templateFilterId: viewedRun || versionData ? null : templateFilterId,
     carePlanTemplates,
     libraryGoals,
     patientName,
   });
+  // SDOH needs get their own section; the Barriers table lists the rest.
+  const sdohBarriers = useMemo(() => filteredBarriers.filter(isSdohBarrier), [filteredBarriers]);
+  const plainBarriers = useMemo(() => filteredBarriers.filter(b => !isSdohBarrier(b)), [filteredBarriers]);
 
   // An earlier run is history: shown, not edited.
-  const canEdit = !!(patientId && program) && !viewedRun;
+  const canEdit = !!(patientId && program) && !viewedRun && !versionData;
   const {
     selected,
     bulkMenu,
@@ -306,13 +338,50 @@ export function CarePlanView({ patientId, program }) {
   // Saved from a patient's plan, so it defaults to that patient.
   const [templateScope, setTemplateScope] = useState('patient');
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind, id, name }
+  // SDOH (lib/sdohTaxonomy): needs are barriers with a domain, shown in their
+  // own section; a referral is an 'sdoh-referral' intervention on the need.
+  const [referralFor, setReferralFor] = useState(null); // { barrier, partner }
+  const savePatientCarePlanBarrierSdoh = useAppStore(s => s.savePatientCarePlanBarrier);
+  const savePatientCarePlanInterventionSdoh = useAppStore(s => s.savePatientCarePlanIntervention);
+  const addSdohNeed = async (needKey) => {
+    const fields = sdohBarrierFields(needKey);
+    if (!fields) return;
+    const saved = await savePatientCarePlanBarrierSdoh(patientId, program, { ...fields, status: 'Not Started', priority: 'medium', goalIds: [] });
+    if (saved) showToast(`Added "${fields.title}"`);
+  };
+  const saveReferral = async ({ partner, program: programName, note, status }) => {
+    const { barrier } = referralFor;
+    setReferralFor(null);
+    const saved = await savePatientCarePlanInterventionSdoh(patientId, program, referralInterventionFields({ partner, barrier, program: programName, note, status }));
+    if (saved) showToast('Referral recorded');
+  };
+  const setReferralStatus = (referral, referralStatus) => savePatientCarePlanInterventionSdoh(
+    patientId, program,
+    // A completed or declined referral closes the intervention; the need's own
+    // status is the care manager's call.
+    { config: { referralStatus }, status: referralStatus === 'Completed' ? 'Met' : referralStatus === 'Declined' ? 'Not Met' : 'In Progress' },
+    referral.id,
+  );
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Pause (lib/carePlanPause): the live plan only, never an older version.
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const pauseCarePlan = useAppStore(s => s.pauseCarePlan);
+  const resumeCarePlan = useAppStore(s => s.resumeCarePlan);
+  const planPaused = !viewedVersion && isCarePlanPaused(live?.plan);
+  const submitPause = async (form) => {
+    setPauseOpen(false);
+    if (await pauseCarePlan(patientId, program, form)) showToast('Care plan paused');
+  };
+  const resumePlan = async () => {
+    if (await resumeCarePlan(patientId, program)) showToast('Care plan resumed');
+  };
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   const [signNote, setSignNote] = useState('');
 
-  const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
-  const appliedTemplatePriorities = live?.plan?.appliedTemplatePriorities || {};
+  // A past version shows the templates it had.
+  const appliedTemplateIds = (viewedVersion ? viewedVersion.snapshot?.appliedTemplateIds : live?.plan?.appliedTemplateIds) || [];
+  const appliedTemplatePriorities = (viewedVersion ? viewedVersion.snapshot?.appliedTemplatePriorities : live?.plan?.appliedTemplatePriorities) || {};
   const appliedTemplates = useMemo(() => {
     const rank = { high: 0, medium: 1, low: 2 };
     return appliedTemplateIds
@@ -559,6 +628,9 @@ export function CarePlanView({ patientId, program }) {
       setSignNote,
       setSignOpen,
       scanForDuplicates,
+      runIndividualizedPlan,
+      setPauseOpen,
+      resumePlan,
     };
   });
   useCarePlanViewPanelRequest(carePlanPanelRequest, clearCarePlanPanelRequest, panelActionsRef);
@@ -583,7 +655,7 @@ export function CarePlanView({ patientId, program }) {
   const renderDuplicateBadge = (kind) => {
     const flags = flagsForKind(kind);
     // An earlier run is history; duplicates are about the live plan.
-    if (!flags.length || viewedRun) return null;
+    if (!flags.length || viewedRun || versionData) return null;
     const expanded = duplicatesOpen?.kind === kind;
     return (
       <button
@@ -634,6 +706,61 @@ export function CarePlanView({ patientId, program }) {
 
   const handleNewProblems = () => { setProblemText(''); setProblemOpen(true); };
   const handleTemplates = () => setTemplatesDrawerOpen(true);
+
+  // Individualized Plan AI (lib/individualizedPlan): draft a tailored GBI set
+  // from the record; each item stays flagged with its evidence until reviewed.
+  const [aiDrafting, setAiDrafting] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiDiscardOpen, setAiDiscardOpen] = useState(false);
+  const draftIndividualizedPlan = useAppStore(s => s.draftIndividualizedPlan);
+  const reviewAiSuggestions = useAppStore(s => s.reviewAiSuggestions);
+  const aiPending = useMemo(() => (viewedVersion || !live ? [] : [
+    ...live.goals.map(item => ({ kind: 'goal', item })),
+    ...live.interventions.map(item => ({ kind: 'intervention', item })),
+    ...(live.barriers || []).map(item => ({ kind: 'barrier', item })),
+  ].filter(x => x.item.aiSuggested && !x.item.aiReviewedAt)), [live, viewedVersion]);
+  const planIsEmpty = !live || (live.goals.length + live.interventions.length + (live.barriers || []).length) === 0;
+  const runIndividualizedPlan = async () => {
+    if (!canEdit || viewedVersion || aiDrafting) return;
+    setAiDrafting(true);
+    setAiError('');
+    try {
+      const r = await draftIndividualizedPlan(patientId, program);
+      showToast(`UnityAI drafted ${r.counts} for review`);
+    } catch (err) {
+      setAiError(err.message || 'Could not draft the plan.');
+      showToast(err.message || 'Could not draft the plan.');
+    } finally {
+      setAiDrafting(false);
+    }
+  };
+  const aiReview = useMemo(() => (canEdit ? {
+    onReview: (kind, item) => reviewAiSuggestions(patientId, program, [{ kind, item }]),
+  } : null), [canEdit, reviewAiSuggestions, patientId, program]);
+  const reviewAllAi = async () => {
+    setAiBusy(true);
+    try {
+      const n = await reviewAiSuggestions(patientId, program, aiPending);
+      if (n) showToast(`Marked ${n} AI-drafted ${n === 1 ? 'item' : 'items'} reviewed`);
+    } finally {
+      setAiBusy(false);
+    }
+  };
+  const discardAi = async () => {
+    setAiDiscardOpen(false);
+    setAiBusy(true);
+    try {
+      await Promise.all(aiPending.map(({ kind, item }) => (
+        kind === 'goal' ? deletePatientCarePlanGoal(patientId, program.id, item.id, { cascade: false })
+          : kind === 'intervention' ? deletePatientCarePlanIntervention(patientId, program.id, item.id)
+            : deletePatientCarePlanBarrier(patientId, program.id, item.id)
+      )));
+      showToast('Removed the AI-drafted items awaiting review');
+    } finally {
+      setAiBusy(false);
+    }
+  };
   const handleApplyTemplates = async (ids, priorities) => {
     setTemplatesDrawerOpen(false);
     if (!canEdit) return;
@@ -765,6 +892,8 @@ export function CarePlanView({ patientId, program }) {
   const drawerProps = {
     addGoalsDrawerOpen, setAddGoalsDrawerOpen, handleAddGoalsFromPicker, data, patientProblems,
     previewGoal, setPreviewGoal, patientId, program, previewBarrier, setPreviewBarrier,
+    // Past version / earlier template run: item drawers open read-only on that copy.
+    itemSnapshot: versionData || viewedRun ? viewData : null,
     previewIntervention, setPreviewIntervention, intvDrawer, setIntvDrawer, handleAddIntervention,
     notesFocus, setNotesFocus,
     intvSpecialDrawer, setIntvSpecialDrawer, auditAll, saveInterventionFromConfig,
@@ -785,6 +914,8 @@ export function CarePlanView({ patientId, program }) {
   };
 
   return (
+    <AiReviewContext.Provider value={aiReview}>
+    <CarePlanPausedContext.Provider value={planPaused}>
     <div className={styles.container}>
       <div className={styles.stickyTop}>
         {/* pinned templates + problems bar */}
@@ -795,7 +926,8 @@ export function CarePlanView({ patientId, program }) {
           canRemove={canEdit && !live?.plan?.signedAt}
           onSelect={(id) => setTemplateFilterId(prev => (prev === id ? null : id))}
           onRemove={handleRemoveTemplate}
-          runsByTemplate={runsByTemplate}
+          runsByTemplate={viewedVersion ? {} : runsByTemplate}
+          readOnly={!!viewedVersion}
           trailing={(
             <span className={styles.stripActions}>
               <span className={styles.stripDivider} aria-hidden="true" />
@@ -818,7 +950,7 @@ export function CarePlanView({ patientId, program }) {
             while the plan scrolls. */}
         {filtersOpen && (
           <div className={styles.filterBar}>
-            <FilterChip label="Status" options={GBI_STATUSES} selected={filters.status} onChange={v => setFilter('status', v)} />
+            <FilterChip label="Status" options={ALL_GBI_STATUSES} selected={filters.status} onChange={v => setFilter('status', v)} />
             <FilterChip label="Priority" options={PRIORITY_LABELS} selected={filters.priority} onChange={v => setFilter('priority', v)} />
             {filtersActive ? (
               <button type="button" className={styles.clearAll} onClick={clearFilters}>
@@ -832,7 +964,21 @@ export function CarePlanView({ patientId, program }) {
 
       <div className={styles.scrollArea}>
       <div className={styles.contentBody}>
-      {viewedRun && (
+      {viewedVersion && (
+        <div className={styles.runBanner} role="status">
+          <Icon name="solar:history-linear" size={16} color="var(--neutral-300)" />
+          <span className={styles.runBannerText}>
+            <strong>Version {viewedVersion.versionNumber}</strong>
+            {viewedVersion.createdBy ? ` · ${viewedVersion.reason === 'restore' ? 'Restored' : viewedVersion.reason === 'signed' ? 'Signed' : 'Saved'} by ${viewedVersion.createdBy}` : ''}
+            {viewedVersion.createdAt ? ` ${new Date(viewedVersion.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+            {' · Read only'}
+          </span>
+          <button type="button" className={styles.runBannerBack} onClick={() => setViewedCarePlanVersion(carePlanKey, null)}>
+            Back to current plan
+          </button>
+        </div>
+      )}
+      {viewedRun && !viewedVersion && (
         <div className={styles.runBanner} role="status">
           <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
           <span className={styles.runBannerText}>
@@ -847,6 +993,33 @@ export function CarePlanView({ patientId, program }) {
           </button>
         </div>
       )}
+      {planPaused && (
+        <div className={styles.pausedBanner}>
+          <Alert
+            tone="info"
+            icon="solar:pause-circle-linear"
+            message={<><strong>Care plan paused</strong> · {pauseSummary(live.plan.pause)}. No cadence, overdue flags or automated outreach until it resumes.</>}
+          />
+          {canEdit && (
+            <Button variant="secondary" size="S" leadingIcon="solar:play-circle-linear" onClick={resumePlan}>
+              Resume Now
+            </Button>
+          )}
+        </div>
+      )}
+      {aiDrafting ? (
+        <IndividualizedPlanCard state="drafting" />
+      ) : aiPending.length > 0 && canEdit ? (
+        <IndividualizedPlanCard
+          state="review"
+          pending={aiPending.length}
+          busy={aiBusy}
+          onReviewAll={reviewAllAi}
+          onDiscard={() => setAiDiscardOpen(true)}
+        />
+      ) : !carePlanLoading && planIsEmpty && canEdit && !viewedVersion ? (
+        <IndividualizedPlanCard state="start" error={aiError} onDraft={runIndividualizedPlan} onUseTemplate={handleTemplates} />
+      ) : null}
       {!carePlanLoading && (viewData.goals.length + viewData.interventions.length + (viewData.barriers || []).length) > 0 && (
         <div className={styles.summaryStrip}>
           <span className={styles.summaryMetric}><strong>{planStats.goals}</strong> goals</span>
@@ -856,6 +1029,12 @@ export function CarePlanView({ patientId, program }) {
           <span className={styles.summaryMetric}><strong>{planStats.br}</strong> barriers</span>
           <span className={styles.summaryDot} aria-hidden="true" />
           <span className={styles.summaryMetric}><strong>{planStats.avgProgress}%</strong> avg progress</span>
+          {!planPaused && live?.plan?.nextTouchpoint && (
+            <>
+              <span className={styles.summaryDot} aria-hidden="true" />
+              <span className={styles.summaryMetric}>Next touchpoint <strong>{fmtCarePlanDate(live.plan.nextTouchpoint)}</strong></span>
+            </>
+          )}
           {planStats.statuses.length > 0 && (
             <span className={styles.summaryStatuses}>
               {planStats.statuses.map(({ status, count, tone }) => (
@@ -926,7 +1105,9 @@ export function CarePlanView({ patientId, program }) {
             // the viewport bottom).
             onClick: () => {
               const el = document.querySelector('.js-careplan-bulkbar');
-              setBulkMenu({ rect: el ? el.getBoundingClientRect() : null, type: 'status' });
+              // Resolved is barrier-only, so it's offered when only barriers are selected.
+              const barriersOnly = selected.barrier.size > 0 && !selected.goal.size && !selected.intv.size;
+              setBulkMenu({ rect: el ? el.getBoundingClientRect() : null, type: 'status', barriersOnly });
             },
           }, {
             label: 'Set priority',
@@ -1095,7 +1276,7 @@ export function CarePlanView({ patientId, program }) {
       <div className={styles.section}>
         <GbiSectionHead
           title="Barriers"
-          count={filteredBarriers.length}
+          count={plainBarriers.length}
           open={openSections.barriers}
           onToggle={() => toggleSection('barriers')}
           rightAccessory={renderDuplicateBadge('barrier')}
@@ -1107,7 +1288,7 @@ export function CarePlanView({ patientId, program }) {
         />
         {openSections.barriers && (carePlanLoading ? (
           <SimpleTableSkeleton rows={3} cols={3} />
-        ) : filteredBarriers.length === 0 && (viewData.barriers || []).length === 0 ? (
+        ) : plainBarriers.length === 0 && (viewData.barriers || []).filter(b => !isSdohBarrier(b)).length === 0 ? (
           <SectionEmptyState
             icon="solar:signpost-2-linear"
             label="No Barriers Created for Selected Problem"
@@ -1115,11 +1296,11 @@ export function CarePlanView({ patientId, program }) {
           />
         ) : (
           <CarePlanBarriersTable
-            rows={filteredBarriers}
+            rows={plainBarriers}
             canEdit={canEdit}
             bulkMode={bulkMode}
             selectedIds={[...selected.barrier]}
-            onSelectAll={(checked) => selectAllKind('barrier', filteredBarriers, checked)}
+            onSelectAll={(checked) => selectAllKind('barrier', plainBarriers, checked)}
             onToggleSelect={(id) => toggleSelect('barrier', id)}
             onStatusMenu={setStatusMenu}
             onPriorityMenu={setPriorityMenu}
@@ -1129,7 +1310,32 @@ export function CarePlanView({ patientId, program }) {
             onTitleChange={renameBarrier}
             hasNote={(b) => noteLookup('barrier', b.id)}
             linked={linkedForChildRow}
-            emptyState={filteredBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the search or filters.</div> : null}
+            emptyState={plainBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the search or filters.</div> : null}
+          />
+        ))}
+      </div>
+
+      {/* Social Needs (SDOH): barriers with a domain, and their referrals */}
+      <div className={styles.section}>
+        <GbiSectionHead
+          title="Social Needs (SDOH)"
+          count={sdohBarriers.length}
+          open={openSections.sdoh}
+          onToggle={() => toggleSection('sdoh')}
+        />
+        {openSections.sdoh && (carePlanLoading ? (
+          <SimpleTableSkeleton rows={3} cols={3} />
+        ) : (
+          <SdohSection
+            mode="plan"
+            barriers={sdohBarriers}
+            interventions={viewData.interventions || []}
+            onAddNeed={canEdit ? addSdohNeed : undefined}
+            onRemoveNeed={canEdit ? (b) => setDeleteTarget({ kind: 'barrier', id: b.id, name: b.title, item: b }) : undefined}
+            onStatusMenu={canEdit ? setStatusMenu : undefined}
+            onRefer={canEdit ? (barrier, partner) => setReferralFor({ barrier, partner }) : undefined}
+            onReferralStatus={canEdit ? setReferralStatus : undefined}
+            onRemoveReferral={canEdit ? (r) => setDeleteTarget({ kind: 'intv', id: r.id, name: r.title, item: r }) : undefined}
           />
         ))}
       </div>
@@ -1141,6 +1347,28 @@ export function CarePlanView({ patientId, program }) {
       <CarePlanViewOverlays {...overlayProps} />
 
       <CarePlanViewDrawers {...drawerProps} />
+
+      {referralFor && (
+        <SdohReferralDialog
+          partner={referralFor.partner}
+          barrier={referralFor.barrier}
+          onCancel={() => setReferralFor(null)}
+          onSubmit={saveReferral}
+        />
+      )}
+      {pauseOpen && <PauseCarePlanDialog onCancel={() => setPauseOpen(false)} onSubmit={submitPause} />}
+      {aiDiscardOpen && (
+        <ConfirmDialog
+          variant="destructive"
+          title="Discard AI-drafted items?"
+          description={`Removes the ${aiPending.length} AI-drafted ${aiPending.length === 1 ? 'item' : 'items'} still awaiting review. Items you've reviewed or added yourself stay.`}
+          confirmLabel="Discard"
+          onCancel={() => setAiDiscardOpen(false)}
+          onConfirm={discardAi}
+        />
+      )}
     </div>
+    </CarePlanPausedContext.Provider>
+    </AiReviewContext.Provider>
   );
 }

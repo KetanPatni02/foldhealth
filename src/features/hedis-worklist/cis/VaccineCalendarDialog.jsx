@@ -18,6 +18,8 @@ import { DoseDateField } from './DoseDateField';
 import { DoseAppointmentChip } from './DoseAppointmentChip';
 import { appointmentForDose } from './cisAppointments';
 import { CisMoreMenu } from './CisMoreMenu';
+import { CisSaveRecordButton } from './CisSaveRecordButton';
+import { SeriesDosesPicker } from './SeriesDosesPicker';
 import styles from './VaccineCalendarDialog.module.css';
 
 // Rows that need action get an accent bar down the dose column.
@@ -63,14 +65,16 @@ const fmtSaved = (iso) => {
  * @param {Array}    props.immunizations   – patient_immunizations rows
  * @param {object}   props.savedNotes      – { 'dtap:1': { note } }
  * @param {number}   props.measurementYear
+ * @param {object}   [props.seriesDoses]   – { rv: 2 | 3 } series length picks
+ * @param {function} [props.onSeriesDosesChange] – (antigenKey, doses) => void
  * @param {object}   [props.lastSaved]     – { actor, when }
  * @param {function} props.onSave          – (payload) => Promise<boolean>
  * @param {function} props.onClose
  */
-export function VaccineCalendarDialog({ member, immunizations, savedNotes, measurementYear, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence, onClose }) {
+export function VaccineCalendarDialog({ member, immunizations, savedNotes, measurementYear, seriesDoses, onSeriesDosesChange, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence, onClose }) {
   const result = useMemo(
-    () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear }),
-    [member?.dob, immunizations, measurementYear],
+    () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear, seriesDoses }),
+    [member?.dob, immunizations, measurementYear, seriesDoses],
   );
   const [statusFilter, setStatusFilter] = useState([]);
   const [view, setView] = useState('table');
@@ -146,13 +150,13 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
       width={1120}
       headerRight={(
         <>
+          <CisSaveRecordButton size="L" member={member} result={result} notes={savedNotes} onSaveEvidence={onSaveEvidence} />
+          <span className={styles.headerDivider} aria-hidden="true" />
           <CisMoreMenu
             size="L"
             member={member}
             result={result}
             notes={savedNotes}
-            onSchedule={onOpenSchedule ? () => onOpenSchedule() : undefined}
-            onSaveEvidence={onSaveEvidence}
           />
           <span className={styles.headerDivider} aria-hidden="true" />
         </>
@@ -207,7 +211,7 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
             </span>
           </div>
 
-          {view === 'timeline' && result.dob && <VaccineTimeline result={result} antigenOrder={order} statusFilter={statusFilter} />}
+          {view === 'timeline' && result.dob && <VaccineTimeline result={result} antigenOrder={order} statusFilter={statusFilter} appointments={appointments} />}
           <div className={styles.tableWrap} hidden={view === 'timeline' && !!result.dob}>
             <table className={`${styles.table} ${byAge ? styles.tableByAge : ''}`}>
               <thead>
@@ -253,9 +257,13 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                                 <>
                                   <span className={styles.vaccineName}>
                                     {antigen.label}
+                                    {/* Rotavirus series length, editable until the series is met. */}
+                                    {antigen.seriesChoice && antigen.status !== CIS_ANTIGEN_STATUS.met && onSeriesDosesChange && (
+                                      <SeriesDosesPicker choice={antigen.seriesChoice} onChange={(n) => onSeriesDosesChange(antigen.key, n)} />
+                                    )}
                                   </span>
                                   <span className={styles.vaccineMeta}>
-                                    {antigen.measureCode} · {Math.min(antigen.valid.length, antigen.required)} of {antigen.requiredLabel}
+                                    {antigen.measureCode} • {Math.min(antigen.valid.length, antigen.required)} of {antigen.requiredLabel}
                                   </span>
                                 </>
                               )}

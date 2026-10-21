@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { Sidebar } from '../components/Sidebar/Sidebar';
+import { AppSidebar } from '../components/Sidebar/AppSidebar';
 import { SubNav } from '../components/SubNav/SubNav';
 import { TopBar } from '../components/TopBar/TopBar';
 import { TabBar } from './TabBar';
 import { FilterBar } from '../components/FilterBar/FilterBar';
+import { useSavedFilterActions } from '../features/hcc/useSavedFilterActions';
 import { Pagination } from '../components/Pagination/Pagination';
 import { ActiveCallCard } from '../components/ActiveCallCard/ActiveCallCard';
 import { InvokeAgentModal } from '../components/InvokeAgentModal/InvokeAgentModal';
@@ -32,6 +33,7 @@ import { CallPopoverHost } from '../components/CallPopover/CallPopoverHost';
 import { BrowserCallCard } from '../features/messages/comms/call/BrowserCallCard';
 import { CommsDrawerHost } from '../features/messages/comms/CommsDrawerHost';
 import { ReassignmentSummaryHost } from '../features/ooo/ReassignmentSummaryHost';
+import { useProgramPanelSplitActive, useDiagPanelInSplit } from '../features/patient/hooks/useProgramPanelSplitActive';
 import { supabase } from '../lib/supabase';
 import styles from './AppLayout.module.css';
 
@@ -109,10 +111,15 @@ function PopulationView() {
   const activeTab = useAppStore(s => s.activeTab);
   const showFilterBar = useAppStore(s => s.showFilterBar);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
+  // Floating sidebar absorbs the SubNav into its own card, so the standalone
+  // page-column instance would duplicate it (and the collapse control). Hide
+  // it here when that shape is active.
+  const sidebarShape = useAppStore(s => s.sidebarShape);
 
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const pgRuleBuilder = useAppStore(s => s.pgRuleBuilder);
   const setHccFilter = useAppStore(s => s.setHccFilter);
+  const programSplit = useProgramPanelSplitActive();
 
   const isAwv = activeSubnavList === 'Annual Visit';
   const isJsa = activeSubnavList === 'JSA';
@@ -132,11 +139,14 @@ function PopulationView() {
     );
   }
 
-  // Patient detail view — full-page, no subnav
+  // Patient detail view — full-page, no subnav. With a program open "in
+  // right panel" the page is two cards (see PatientDetailView), so this
+  // wrapper drops its own card chrome and the TopBar gives way to the
+  // patient card's breadcrumb header.
   if (selectedPatientId) {
     return (
-      <div className={styles.main}>
-        <TopBar />
+      <div className={styles.main} data-floating-split={programSplit || undefined}>
+        {!programSplit && <TopBar />}
         <div className={styles.content}>
           <Suspense fallback={<LazyFallback />}>
             <PatientDetailView />
@@ -167,14 +177,14 @@ function PopulationView() {
       <TopBar />
       <DegradedBanner />
       <div className={styles.bodyRow}>
-        <SubNav collapsed={subnavCollapsed} />
+        {sidebarShape !== 'floating' && <SubNav collapsed={subnavCollapsed} />}
         <div className={styles.content}>
           {/* CCM is otherwise chromeless, but we want the same TabBar header
               TOC uses (title tab + right-side action icons) so the two
               worklists share one visual pattern. */}
           {(!chromeless || isCcm) && <TabBar />}
           {!chromeless && showFilterBar && (
-            <FilterBar leading={(isToc || (isTcm && activeTab === 'toc-queue')) ? null : undefined} />
+            <WorklistFilterBar leading={(isToc || (isTcm && activeTab === 'toc-queue')) ? null : undefined} />
           )}
           {isTcm && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isHcc
@@ -269,8 +279,11 @@ export function AppLayout() {
 
   // Keep profiles in sync with auth.users. Self-signups and OAuth logins don't
   // go through the Invite flow, so profiles would otherwise stay empty for them.
-  // First login inserts with safe defaults; later logins only refresh identity
-  // fields so admin-set role/status aren't clobbered.
+  // First login inserts with safe defaults; later logins only refresh the
+  // email, and fill in a name only when the profile has none. The profile owns
+  // the name: an admin's correction ("CHINMAY GUMGAONKAR" to "Chinmay
+  // Gumgaonkar") used to be overwritten from the sign-up metadata on the
+  // user's next login.
   useEffect(() => {
     // getSession(), not getUser(): getUser() is a network round trip that
     // re-validates the token against the auth server, and this effect used to
@@ -301,14 +314,8 @@ export function AppLayout() {
       const firstName = meta.first_name || derived.first || null;
       const lastName  = meta.last_name  || derived.last  || null;
 
-      const identity = {
-        id: user.id,
-        first_name: firstName,
-        last_name: lastName,
-        full_name: fullName,
-        email: user.email,
-        updated_at: new Date().toISOString(),
-      };
+      const names = { first_name: firstName, last_name: lastName, full_name: fullName };
+      const identity = { id: user.id, email: user.email, updated_at: new Date().toISOString() };
 
       // Write first, ask questions only if it missed. This was a
       // `select id` → then `update` or `insert`, i.e. two serialized round
@@ -326,8 +333,11 @@ export function AppLayout() {
         .from('profiles')
         .update(identity)
         .eq('id', user.id)
-        .select('id');
+        .select('id, full_name');
 
+      if (updated?.length && !updated[0].full_name?.trim() && fullName) {
+        await supabase.from('profiles').update(names).eq('id', user.id);
+      }
       if (!updated || updated.length === 0) {
         // Identity fields only. `role` / `admin_role` / `clinical_roles` are
         // authorization fields and must be owned by the database (the
@@ -335,6 +345,7 @@ export function AppLayout() {
         // client — otherwise a forged request could self-assign privileges.
         await supabase.from('profiles').insert({
           ...identity,
+          ...names,
           status: 'Active',
         });
       }
@@ -441,6 +452,8 @@ export function AppLayout() {
   const businessHoursOpen = useAppStore(s => s.businessHoursOpen);
   const componentWizardOpen = useAppStore(s => s.componentWizardOpen);
   const diagPanelOpen = useAppStore(s => s.diagPanelOpen);
+  // Opened in the side panel, it renders inside the patient split instead.
+  const diagInSplit = useDiagPanelInSplit();
   const invitePatientOpen = useAppStore(s => s.invitePatientOpen);
   const closeInvitePatient = useAppStore(s => s.closeInvitePatient);
   const patientEditSection = useAppStore(s => s.patientEditSection);
@@ -477,7 +490,7 @@ export function AppLayout() {
   if (editingCampaignId || editingComponent) {
     return (
       <div className={styles.app}>
-        <Sidebar />
+        <AppSidebar />
         <Suspense fallback={<LazyFallback />}>
           <EmailBuilder />
         </Suspense>
@@ -491,7 +504,7 @@ export function AppLayout() {
   if (campaignBuilderId) {
     return (
       <div className={styles.app}>
-        <Sidebar />
+        <AppSidebar />
         <Suspense fallback={<LazyFallback />}>
           <CampaignBuilder />
         </Suspense>
@@ -534,7 +547,7 @@ export function AppLayout() {
   if (activePage === 'builder') {
     return (
       <div className={styles.app}>
-        <Sidebar />
+        <AppSidebar />
         <Suspense fallback={<LazyFallback />}>
           <AgentCanvas />
         </Suspense>
@@ -558,7 +571,7 @@ export function AppLayout() {
 
   return (
     <div className={styles.app}>
-      <Sidebar />
+      <AppSidebar />
       <Suspense fallback={<LazyFallback />}>
         {activeView}
       </Suspense>
@@ -578,7 +591,7 @@ export function AppLayout() {
         {chatGroupDetailId && <GroupDetailDrawer />}
         {agentRulesGroupId && <AgentRulesDrawer />}
         {businessHoursOpen && <BusinessHoursDrawer />}
-        {diagPanelOpen && <DiagPanel />}
+        {diagPanelOpen && !diagInSplit && <DiagPanel />}
         <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
         <UploadDocumentDrawer />{/* mounts itself only when hccUploadSession is set */}
         <HccUploadProcessingHost />{/* floats bottom-right while the upload is minimized */}
@@ -606,5 +619,30 @@ export function AppLayout() {
       </Suspense>
       <Toaster />
     </div>
+  );
+}
+
+// The shared filter bar for TCM / TOC IP and the other generic lists, with the
+// saved-filter actions (Go Back to Filter, Save Changes, Copy Filter) for the
+// list's selected saved filter.
+function WorklistFilterBar(props) {
+  const list = useAppStore(s => s.activeSubnavList) || 'TCM';
+  const filters = useAppStore(s => s.activeFilters);
+  const clearAllFilters = useAppStore(s => s.clearAllFilters);
+  const savedActions = useSavedFilterActions(list, filters, clearAllFilters);
+  return (
+    <FilterBar
+      {...props}
+      // One line of chips; the rest sit in More Filters. TOC IP also follows
+      // the worklist filter spec (primaries in spec order, More Filters by domain).
+      autoFit
+      pinPrimary={list === 'TOC IP'}
+      onClearAll={savedActions.onClearAll}
+      clearAllLabel={savedActions.clearAllLabel}
+      saveLabel={savedActions.saveLabel}
+      saveMenuItems={savedActions.saveMenuItems}
+      onSaveMenuSelect={savedActions.onSaveMenuSelect}
+      hasActive={savedActions.edited || undefined}
+    />
   );
 }

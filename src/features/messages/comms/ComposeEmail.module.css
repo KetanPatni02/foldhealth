@@ -78,6 +78,13 @@
   gap: var(--space-3);
   font-size: var(--font-sm);
 }
+/* Icon beside its label (Figma 1:24088), not stacked above it. */
+.previewLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+}
 
 /* ── Editable email frame ─────────────────────────────────────────────── */
 .canvas {
@@ -288,4 +295,83 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
   background: var(--neutral-0);
+}
+
+/* + Add new contact: added people as chips, and the inline form. */
+.extraContacts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+.extraChip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-1);
+  padding: calc(var(--space-1) / 2) var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-1);
+  background: var(--neutral-50);
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+.extraRemove {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.extraRemove:hover { color: var(--neutral-400); }
+.newContact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+.newContactActions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Template Category · Template List side by side. */
+.templateRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+
+/* Send To (from Comms): label with Cc / Bcc on the right, then the picker. */
+.recipientField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.recipientLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.recipientLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+.recipientRequired {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
 }

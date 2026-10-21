@@ -10,11 +10,11 @@ import { DatePickerPopover } from '../../../../../../../../components/DatePicker
 import { GbiStatusButton } from '../../tables/carePlanTableShared';
 import { parseLocalDate } from '../../../../../../../../lib/localDate';
 import { formatGoalTarget } from '../../../../../../../settings/care-plan-library/lib/goalFormat';
-import { CARE_PLAN_INTERVENTION_MENU } from '../../lib/carePlanInterventionMenu';
+import { CARE_PLAN_INTERVENTION_KINDS } from '../../lib/carePlanInterventionMenu';
 import styles from './CarePlanReviewDrawer.module.css';
 
 const QUICK_TAGS = ['Patient reported', 'Education given', 'Follow-up needed', 'Barrier found'];
-const KIND_LABEL = Object.fromEntries(CARE_PLAN_INTERVENTION_MENU.filter(i => i.key).map(i => [i.key, i.label]));
+const KIND_LABEL = Object.fromEntries(CARE_PLAN_INTERVENTION_KINDS.map(i => [i.key, i.label]));
 
 function fmtDate(value) {
   const d = parseLocalDate(value) || (value ? new Date(value) : null);

@@ -22,6 +22,8 @@ import {
 } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateScope';
 import { renewalOf } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { useAppStore } from '../../../../../store/useAppStore';
+import { useTemplateSdoh } from '../../lib/useTemplateSdoh';
+import { isSdohBarrier } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/sdohTaxonomy';
 import styles from './CarePlanTemplateView.module.css';
 
 
@@ -173,12 +175,14 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
     icon: CARE_PLAN_INTERVENTION_ICONS[entry.kind] || 'solar:clipboard-list-linear',
   })), [interventions]);
 
-  const barrierRows = useMemo(() => barriers.map((entry, i) => ({
+  // SDOH needs go to their own section (lib/useTemplateSdoh).
+  const { plainBarriers, sdoh } = useTemplateSdoh({ barriers, setBarriers, interventions, setInterventions });
+  const barrierRows = useMemo(() => plainBarriers.map((entry, i) => ({
     id: entry.id || `barrier-${i}`,
     title: entry.title,
     subtitle: entry.description || '',
     status: 'Not Started',
-  })), [barriers]);
+  })), [plainBarriers]);
 
   // Reverse of a goal's links: which goals point at a given intervention or
   // barrier. Mirrors CarePlanView's linkedForChild, which shows owning goals.
@@ -303,6 +307,7 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
             goalRows={goalRows}
             interventionRows={interventionRows}
             barrierRows={barrierRows}
+            sdoh={sdoh}
             onRowMenuGoal={(m) => setRowMenu({ list: 'goals', item: m.item, rect: m.rect })}
             onRowMenuIntervention={(m) => setRowMenu({ list: 'interventions', item: m.item, rect: m.rect })}
             onRowMenuBarrier={(m) => setRowMenu({ list: 'barriers', item: m.item, rect: m.rect })}
@@ -410,12 +415,13 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
       {picker === 'barriers' && (
         <AddBarriersDrawer
           primaryLabel="Add to Template"
-          existingBarriers={barriers}
+          existingBarriers={plainBarriers}
           onClose={() => setPicker(null)}
           // Already-added rows open ticked here, so the picked set is the
           // full list the template should keep.
           onAdd={(picked) => {
-            setBarriers((picked || []).map(p => ({ id: p.id, title: p.title })));
+            // The picker manages plain barriers; SDOH needs stay as they are.
+            setBarriers(prev => [...prev.filter(isSdohBarrier), ...(picked || []).map(p => ({ id: p.id, title: p.title }))]);
             setPicker(null);
           }}
         />

@@ -267,6 +267,7 @@ const SETTINGS_BREADCRUMB = {
   account: 'Account',
   calendar: 'Calendar',
   billing: 'Billing',
+  automations: 'Automation Rules',
 };
 
 export function TopBar() {

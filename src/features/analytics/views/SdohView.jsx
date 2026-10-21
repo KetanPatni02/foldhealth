@@ -5,14 +5,16 @@ import { safeTableRows } from './shared.utils';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
 
-const STORAGE_KEY = 'analytics-sdoh-layout-v2';
+// v3 adds the UDS social-risk card (care plan SDOH needs).
+const STORAGE_KEY = 'analytics-sdoh-layout-v3';
 
 const DEFAULT_LAYOUT = [
   { i: 'insight',   x: 0, y: 0,  w: 12, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 5  },
   { i: 'kpis',      x: 0, y: 3,  w: 12, h: 3, minW: 6, minH: 3, maxW: 12, maxH: 5  },
-  { i: 'equity',    x: 0, y: 6,  w: 12, h: 8, minW: 6, minH: 5, maxW: 12, maxH: 16 },
-  { i: 'risks',     x: 0, y: 14, w: 6,  h: 8, minW: 4, minH: 5, maxW: 12, maxH: 16 },
-  { i: 'referrals', x: 6, y: 14, w: 6,  h: 8, minW: 4, minH: 5, maxW: 12, maxH: 16 },
+  { i: 'uds',       x: 0, y: 6,  w: 12, h: 9, minW: 6, minH: 6, maxW: 12, maxH: 16 },
+  { i: 'equity',    x: 0, y: 15, w: 12, h: 8, minW: 6, minH: 5, maxW: 12, maxH: 16 },
+  { i: 'risks',     x: 0, y: 23, w: 6,  h: 8, minW: 4, minH: 5, maxW: 12, maxH: 16 },
+  { i: 'referrals', x: 6, y: 23, w: 6,  h: 8, minW: 4, minH: 5, maxW: 12, maxH: 16 },
 ];
 
 export function SdohView({ showToast, editing = false, resetTick = 0 }) {
@@ -24,6 +26,9 @@ export function SdohView({ showToast, editing = false, resetTick = 0 }) {
   const [equityByRace, setEquityByRace] = useState(null);
   const [sdohRiskFactors, setSdohRiskFactors] = useState(null);
   const [communityReferrals, setCommunityReferrals] = useState(null);
+  const socialRisk = useAppStore(st => st.sdohSocialRisk);
+  const fetchSdohSocialRisk = useAppStore(st => st.fetchSdohSocialRisk);
+  useEffect(() => { fetchSdohSocialRisk(); }, [fetchSdohSocialRisk]);
 
   useEffect(() => {
     fetchViewKpis('sdoh').then(d => setKpiData(d || { kpis: [], insight: null }));
@@ -159,9 +164,67 @@ export function SdohView({ showToast, editing = false, resetTick = 0 }) {
     </Card>
   );
 
+  // Live from care plans: SDOH needs (barriers with a domain) and their
+  // community referrals, by domain (lib/sdohReport). The period and practice
+  // filters don't apply: it reads every plan's current state.
+  const renderUds = () => {
+    const { status, data } = socialRisk;
+    const t = data?.totals;
+    return (
+      <Card title="UDS Social Risk" sub="Social needs on care plans, by domain · all current plans" flush>
+        {(status === 'idle' || status === 'loading') && <TableSkeleton rows={6} cols={6} />}
+        {status === 'missing' && (
+          <div className={s.tblWrap}><table className={s.tbl}><tbody>
+            <EmptyState colSpan={6} message="Needs the care plan SDOH migration (care_plan_sdoh_migration.sql)." icon="solar:database-linear" />
+          </tbody></table></div>
+        )}
+        {status === 'error' && (
+          <div className={s.tblWrap}><table className={s.tbl}><tbody>
+            <EmptyState colSpan={6} message="Couldn't load care plan social needs." icon="solar:danger-triangle-linear" />
+          </tbody></table></div>
+        )}
+        {status === 'ready' && (
+          <div className={s.tblWrap}>
+            <table className={s.tbl}>
+              <thead>
+                <tr><th>Domain</th><th className={s.r}>Patients</th><th className={s.r}>Needs</th><th className={s.r}>Referred</th><th className={s.r}>Closed loop</th><th className={s.r}>Resolved</th></tr>
+              </thead>
+              <tbody>
+                {t.needs === 0 && (
+                  <EmptyState colSpan={6} message="No social needs recorded on care plans yet." icon="solar:hand-heart-linear" />
+                )}
+                {t.needs > 0 && data.domains.map(d => (
+                  <tr key={d.key}>
+                    <td className={s.fw600}>{d.label}</td>
+                    <td className={`${s.r} ${s.mono}`}>{d.patients}</td>
+                    <td className={`${s.r} ${s.mono}`}>{d.needs}</td>
+                    <td className={`${s.r} ${s.mono}`}>{d.needs ? `${d.referredPct}% (${d.referred})` : '—'}</td>
+                    <td className={`${s.r} ${s.mono}`}>{d.referrals ? `${d.closedLoopPct}% (${d.closedLoop}/${d.referrals})` : '—'}</td>
+                    <td className={`${s.r} ${s.mono}`}>{d.needs ? `${d.resolvedPct}% (${d.resolved})` : '—'}</td>
+                  </tr>
+                ))}
+                {t.needs > 0 && (
+                  <tr>
+                    <td className={s.fw600}>All domains</td>
+                    <td className={`${s.r} ${s.mono} ${s.fw600}`}>{t.patients}</td>
+                    <td className={`${s.r} ${s.mono} ${s.fw600}`}>{t.needs}</td>
+                    <td className={`${s.r} ${s.mono} ${s.fw600}`}>{t.referredPct}% ({t.referred})</td>
+                    <td className={`${s.r} ${s.mono} ${s.fw600}`}>{t.referrals ? `${t.closedLoopPct}% (${t.closedLoop}/${t.referrals})` : '—'}</td>
+                    <td className={`${s.r} ${s.mono} ${s.fw600}`}>{t.resolvedPct}% ({t.resolved})</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    );
+  };
+
   const RENDERERS = {
     insight: renderInsight,
     kpis: renderKpis,
+    uds: renderUds,
     equity: renderEquity,
     risks: renderRisks,
     referrals: renderReferrals,

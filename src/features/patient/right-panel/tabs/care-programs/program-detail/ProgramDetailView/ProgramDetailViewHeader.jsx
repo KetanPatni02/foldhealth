@@ -9,6 +9,7 @@ import { ProgressRing } from '../../../../../../hcc/DiagPanel/ReviewProgressPopo
 import { ProgramStatusRing } from '../shared/ProgramStatusRing/ProgramStatusRing.jsx';
 import { ProgramBadges } from '../shared/ProgramBadges/ProgramBadges.jsx';
 import { statusColorFor } from '../../../../../data/programStatus';
+import { useRightPanelMenuOption } from '../../../../../hooks/useProgramPanelSplitActive';
 import { ProgramDetailExpandPanel } from './ProgramDetailViewParts';
 import styles from './ProgramDetailView.module.css';
 
@@ -35,7 +36,10 @@ export function ProgramDetailViewHeader({
 }) {
   const [moreRect, setMoreRect] = useState(null);
   const moreRef = useRef(null);
+  // "Open in Right Panel" / "Open Inline" (floating sidebar only).
+  const rightPanel = useRightPanelMenuOption();
   const moreItems = [
+    ...rightPanel.items,
     { key: 'history', icon: 'solar:history-linear', label: 'History' },
     { key: 'report', icon: 'solar:download-minimalistic-linear', label: 'Download Report' },
     { divider: true },
@@ -106,7 +110,10 @@ export function ProgramDetailViewHeader({
               anchorRef={moreRef}
               ariaLabel="Program actions"
               items={moreItems}
-              onSelect={key => { setMoreRect(null); onMoreAction?.(key); }}
+              onSelect={key => {
+                setMoreRect(null);
+                if (!rightPanel.select(key)) onMoreAction?.(key);
+              }}
               onClose={() => setMoreRect(null)}
             />
           )}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
@@ -10,6 +10,7 @@ import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { computeDsfbDueDateISO } from './dsf/dsfScoring';
+import { CIS_CODE, cisDueIndicator, evaluateCis } from './cis/cisRules';
 import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import { MEASURE_NAMES } from './ClinicalNotePanel.utils';
 import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
@@ -27,6 +28,17 @@ const RISK_BADGE_VARIANT = {
   '4_Mod-Low':  'toc-engaged',
   '5_Low':      'compliance-pass',
 };
+
+function CisDueLabel({ member }) {
+  const immunizations = useAppStore(s => s.patientImmunizations[member.id]);
+  const dob = member.dob;
+  const due = useMemo(
+    () => (immunizations ? cisDueIndicator(evaluateCis({ dob, immunizations })) : null),
+    [dob, immunizations],
+  );
+  if (!due) return null;
+  return <span className={`${styles.startDateDue}${due.tone === 'error' ? ` ${styles.startDateOverdue}` : ''}`}>{due.label}</span>;
+}
 
 export const STATUS_BADGE_VARIANT = {
   Open:                            'ai-care',
@@ -265,6 +277,9 @@ export const HEDIS_MIDDLE_COLUMNS = [
                 const cls = `${styles.startDateDue}${overdue ? ` ${styles.startDateOverdue}` : ''}`;
                 return <span className={cls}>{label}</span>;
               })()}
+              {g.code === CIS_CODE && g.status !== 'Completed' && !String(g.status).startsWith('Closed') && (
+                <CisDueLabel member={member} />
+              )}
             </div>
           </div>
         ))}

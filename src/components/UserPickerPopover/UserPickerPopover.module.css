@@ -30,3 +30,22 @@
 .name { font-size: var(--font-base); color: var(--neutral-500); }
 .role { font-size: var(--font-sm); color: var(--neutral-300); }
 .empty { padding: var(--space-3) var(--space-2); font-size: var(--font-sm); color: var(--neutral-300); text-align: center; }
+/* Multi-select rows: checkbox, avatar, name over role (Figma 16978:128250). */
+.check { flex-shrink: 0; pointer-events: none; }
+.rowMulti { gap: var(--space-2); }
+.bulk {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.selectAll {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 0; border: none; background: none; cursor: pointer;
+  font-size: var(--font-base); color: var(--neutral-400);
+}
+.clearAll {
+  padding: 0; border: none; background: none; cursor: pointer;
+  font-size: var(--font-base); font-weight: 500; color: var(--status-error);
+}
+.clearAll:hover:not(:disabled) { text-decoration: underline; }
+.clearAll:disabled { color: var(--neutral-150); cursor: default; }

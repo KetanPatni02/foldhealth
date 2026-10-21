@@ -562,6 +562,8 @@ export function CampaignView() {
       <div className={styles.footer}>
         <Pagination
           totalItems={totalRows}
+          totalCount={baseRows.length}
+          filtered={Object.keys(filters).length > 0}
           currentPage={safePage}
           perPage={perPage}
           onPageChange={setPage}

@@ -53,14 +53,18 @@ const formatTime12 = (v) => {
  * @param {boolean}  [props.hour12=true]  – 12-hour columns with AM/PM
  * @param {string}   [props.defaultTime]  – "HH:MM" the lists open at when there's
  *   no value yet (e.g. an end time opens at its start time); 09:00 otherwise
+ * @param {string}   [props.after]        – "HH:MM"; only later times can be picked
+ *   (an end time after its start). Picking an hour moves the minute past it.
  * @param {string}   [props.className]    – Extra class on the trigger box
  * @param {string}   [props.wrapperClassName] – Extra class on the outer field
  * @param {string}   [props['aria-label']]
  */
 export function TimePicker({
   value, onChange, label, required = false, placeholder = 'Select time', errorText, disabled = false,
-  hour12 = true, defaultTime, className, wrapperClassName, 'aria-label': ariaLabel,
+  hour12 = true, defaultTime, after, className, wrapperClassName, 'aria-label': ariaLabel,
 }) {
+  const afterT = parse(after);
+  const afterMin = afterT ? afterT.hour * 60 + afterT.minute : undefined;
   const id = useId();
   const t = parse(value);
   const [open, setOpen] = useState(false);
@@ -84,7 +88,11 @@ export function TimePicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const emit = (h, m) => onChange?.(`${pad(h)}:${pad(m)}`);
+  const emit = (h, mm) => {
+    // An hour that only partly clears `after` takes its first allowed minute.
+    const m = afterMin != null && h * 60 + mm <= afterMin ? Math.min(59, afterMin - h * 60 + 1) : mm;
+    onChange?.(`${pad(h)}:${pad(m)}`);
+  };
 
   const box = (
     <div
@@ -124,6 +132,7 @@ export function TimePicker({
               minColRef={minColRef}
               onHour={(h) => emit(h, minute)}
               onMinute={(m) => emit(hour, m)}
+              after={afterMin}
               className={styles.columns}
             />
           </div>

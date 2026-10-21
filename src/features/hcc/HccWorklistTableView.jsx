@@ -29,7 +29,7 @@ export function HccWorklistTableView({
   activeSubnavList, hccDueDateFilter, setHccDueDateFilter, searchQuery, setSearchQuery,
   filterOpen, setFilterOpen, activeFilterCount, openHccHistoryDrawer, showToast,
   startHccUpload, setHccUploadPhase, saveDialogOpen, setSaveDialogOpen, renameTarget, setRenameTarget,
-  saveHccFilter, renameHccSavedFilter, combinedRows, filtered, patientsWithoutGaps, filtersActive,
+  saveHccFilter, renameHccSavedFilter, combinedRows, filtered, patientsWithoutGaps, filtersActive, totalRecordCount,
   hccMembersLoading, clearHccFilters, scrollWrapRef, someSelected, allSelected, handleSelectAll,
   setMemberSortPop, orderedColumns, hiddenSet, sortKey, sortDir, setSortPop,
   colCfgBtnRef, colCfgRect, setColCfgRect, paginated, selectedHccIds, clearHccSelected,
@@ -242,7 +242,12 @@ export function HccWorklistTableView({
 
       <StatusLegend />
 
-      <Pagination totalItems={combinedRows.length} />
+      <Pagination
+        totalItems={combinedRows.length}
+        totalCount={totalRecordCount}
+        filtered={filtersActive || !!searchQuery?.trim()}
+        filteredCount={filtered.length}
+      />
 
       <BulkBar
         selectedIds={selectedHccIds}

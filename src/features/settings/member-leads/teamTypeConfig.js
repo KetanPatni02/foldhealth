@@ -8,7 +8,7 @@ import { ASTRANA_STAFF, staffForRole, ROLE_LABEL } from '../../hcc/assignment/as
 // Team Type options per Care Team kind. Keep entries in display order.
 export const TEAM_TYPE_OPTIONS = {
   hcc: ['Coder', 'QA', 'Compliance'],
-  'care-program': ['SNP', 'AWV', 'CCM', 'TCM', 'ECM', 'CBP', 'MRP'],
+  'care-program': ['SNP', 'AWV', 'CCM', 'BHI', 'TCM', 'ECM', 'CBP', 'MRP'],
   hedis: ['Assignee'],
 };
 
@@ -23,6 +23,7 @@ export const ASSIGN_TO_DIMENSIONS = {
   SNP:          ['TIN'],
   AWV:          ['TIN'],
   CCM:          ['TIN'],
+  BHI:          ['TIN'],
   TCM:          ['TIN'],
   ECM:          ['TIN'],
   CBP:          ['TIN'],

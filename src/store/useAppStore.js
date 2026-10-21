@@ -31,6 +31,7 @@ const FALLBACK_AUDIENCE_SEGMENTS = [
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
 import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch, normalizeWorklistLabel } from '../lib/worklistDefaults';
 import { MONITORING_SEED, mapMonitoringRow } from '../features/patient/right-panel/tabs/monitoring/monitoringData';
+import { OVERVIEW_SEED, mapOverviewRow } from '../features/patient/data/overviewData';
 import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
@@ -68,6 +69,7 @@ import { extractEncountersSync } from '../features/hcc/upload/mockOcr';
 import { getChartDocs } from '../features/hcc/data/chartDocs';
 import { applyManualDecision as applyHccManualComplianceDecision } from '../features/hcc/compliance';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
+import { accountEmailHtml } from '../features/email-builder/accountEmailTemplates';
 import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
@@ -77,6 +79,12 @@ import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activity
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
+import { buildPatientFacts, buildTemplateChoices, draftCounts } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/individualizedPlan';
+import { buildTemplateCatalog } from '../features/settings/care-plan-library/lib/aiTemplateDraft';
+import { apiFetch } from '../lib/apiFetch';
+import { buildRuleInputs, evaluateRule, mapAutomationRuleRow, rulesForProgram } from '../features/settings/automation-rules/lib/automationRules';
+import { sdohSocialRisk } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/sdohReport';
+import { isDueToAutoResume, nextTouchpoint as computeNextTouchpoint, pauseAuditEntry, pauseFields, resumeAuditEntry } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanPause';
 import { INSTANCE_STATUS, formatInstanceDate, instanceOutcome, templateEndsOn } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanGoalCascade';
 import { templateContentFromApplied, templateContentFromWholePlan } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateSave';
@@ -86,6 +94,7 @@ import { resolvePatientStoreId } from '../lib/resolvePatientStoreId';
 import { resolvePatientForCall } from '../lib/patientCall';
 
 import { reportPersistFailure } from './lib/reportPersistFailure';
+import { createResyncGate, isRealUserId } from './lib/resyncGate';
 import { isPastDate, parseDuration, formatDuration } from './lib/taskDateUtils';
 import {
   campaignSendRowToJs,
@@ -107,6 +116,7 @@ import {
   mapPatientSocialHistoryRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
+  sdohToRow,
   mapCarePlanTemplateRow,
   mapTemplateInstanceRow,
   partitionRetired,
@@ -197,6 +207,7 @@ import {
 } from './lib/worklistListFilters';
 import { readSessionJson } from './lib/sessionJson';
 import { careTeamRowToJs, careTeamJsToDb } from './lib/careTeamMappers';
+import { SAMPLE_CARE_PROGRAM_TEAMS } from '../features/settings/billing/careProgramBillingData';
 import {
   contentEmailsCache,
   CONTENT_EMAILS_TTL_MS,
@@ -321,6 +332,10 @@ const CARE_PLAN_LOG_ACTIONS = [
 
 // patientId → in-flight patient_care_programs request (see fetchCareProgramsForPatient).
 const careProgramsInFlight = new Map();
+// One gate per resync query; see lib/resyncGate.js for why these exist.
+const notificationsResync = createResyncGate();
+const unreadMessagesResync = createResyncGate();
+const tabHidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
 
 export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
@@ -355,6 +370,53 @@ export const useAppStore = create((set, get) => ({
       patientMonitoring: { ...st.patientMonitoring, [key]: obj },
       patientMonitoringLoading: { ...st.patientMonitoringLoading, [key]: false },
     }));
+  },
+
+  // Patient Overview: the Overview tab's own data (Unity synopsis, health
+  // chart, highlights, suggested actions, vitals, gaps), keyed by member id.
+  // Falls back to the bundled OVERVIEW_SEED until patient_overview is
+  // migrated + seeded. `null` means "fetched, no overview row".
+  patientOverview: {},
+  patientOverviewLoading: {},
+  patientOverviewTableMissing: false,
+  fetchPatientOverview: async (memberId) => {
+    if (!memberId) return;
+    const key = String(memberId);
+    const s = get();
+    if (s.patientOverview[key] !== undefined || s.patientOverviewLoading[key]) return;
+    set((st) => ({ patientOverviewLoading: { ...st.patientOverviewLoading, [key]: true } }));
+    const { data, error } = await supabase
+      .from('patient_overview')
+      .select('*')
+      .eq('member_id', key)
+      .maybeSingle();
+    let obj;
+    if (error) {
+      console.warn('[store] patient_overview fetch failed (run supabase/patient_overview_migration.sql?):', error.message);
+      if (error.code === '42P01' || error.code === 'PGRST205') set({ patientOverviewTableMissing: true });
+      obj = OVERVIEW_SEED[key] || null;
+    } else {
+      obj = data ? mapOverviewRow(data) : (OVERVIEW_SEED[key] || null);
+    }
+    set((st) => ({
+      patientOverview: { ...st.patientOverview, [key]: obj },
+      patientOverviewLoading: { ...st.patientOverviewLoading, [key]: false },
+    }));
+  },
+  // Accept / dismiss a Unity suggested action. Optimistic; the jsonb array is
+  // written back whole since it is one ordered list on the patient's row.
+  setSuggestedActionStatus: async (memberId, actionId, status) => {
+    const key = String(memberId);
+    const current = get().patientOverview[key];
+    if (!current) return;
+    const suggestedActions = current.suggestedActions.map(a => (a.id === actionId ? { ...a, status } : a));
+    set((st) => ({ patientOverview: { ...st.patientOverview, [key]: { ...current, suggestedActions } } }));
+    if (get().patientOverviewTableMissing) return;
+    const { error } = await supabase
+      .from('patient_overview')
+      .update({ suggested_actions: suggestedActions, updated_at: new Date().toISOString() })
+      .eq('member_id', key);
+    if (error) reportPersistFailure(`setSuggestedActionStatus(${key})`, error);
   },
 
   // Pending add-task request — set by CreateNewPopover or WorklistRow "Add Task"
@@ -415,8 +477,8 @@ export const useAppStore = create((set, get) => ({
   clearPendingOpenPreferences: () => set({ pendingOpenPreferences: false }),
   // Settings → Users status filter to apply on next mount (from a notification).
   pendingUsersStatusFilter: null,
-  openPendingUsersFromNotification: () => {
-    set({ pendingUsersStatusFilter: ['Pending'] });
+  openPendingUsersFromNotification: (status = ['Pending']) => {
+    set({ pendingUsersStatusFilter: status });
     get().setActivePage('settings');
     get().setSettingsNavItem('account');
     get().setAccountTab('users');
@@ -631,6 +693,21 @@ export const useAppStore = create((set, get) => ({
       patientImmunizationsLoadedFor: { ...s.patientImmunizationsLoadedFor, [patientId]: true },
     }));
   },
+  // Worklist: one query for every patient on the page that isn't loaded yet.
+  fetchImmunizationsForPatients: async (patientIds) => {
+    const loaded = get().patientImmunizationsLoadedFor;
+    const ids = [...new Set((patientIds || []).map(String))].filter(id => !loaded[id]);
+    if (!ids.length) return;
+    const { data, error } = await supabase.from('patient_immunizations')
+      .select('*').in('patient_id', ids).order('sort_order');
+    if (error) { console.warn('fetchImmunizationsForPatients:', error.message); return; }
+    const byPatient = Object.fromEntries(ids.map(id => [id, []]));
+    for (const row of data || []) byPatient[row.patient_id]?.push(mapPatientImmunizationRow(row));
+    set(s => ({
+      patientImmunizations: { ...s.patientImmunizations, ...byPatient },
+      patientImmunizationsLoadedFor: { ...s.patientImmunizationsLoadedFor, ...Object.fromEntries(ids.map(id => [id, true])) },
+    }));
+  },
   addPatientImmunization: async (patientId, values) => {
     if (!patientId || !values?.title?.trim()) return false;
     const row = {
@@ -667,6 +744,44 @@ export const useAppStore = create((set, get) => ({
     const { error } = await supabase.from('patient_immunizations').update(row).eq('id', id);
     if (error) { console.warn('updatePatientImmunization:', error.message); get().showToast?.('Could not update immunization'); return false; }
     await get().fetchPatientImmunizations(patientId);
+    return true;
+  },
+  // ── CIS-CMB10 tracker: series length picked per vaccine (cis_series_doses) ──
+  cisSeriesDoses: {},        // { [memberId]: { rv: 2 | 3 } }
+  fetchCisSeriesDoses: async (memberId) => {
+    if (!memberId) return;
+    const { data, error } = await supabase.from('cis_series_doses')
+      .select('antigen_key, required_doses').eq('hedis_member_id', String(memberId));
+    if (error) { console.warn('fetchCisSeriesDoses:', error.message); return; }
+    const byKey = Object.fromEntries((data || []).map(r => [r.antigen_key, r.required_doses]));
+    set(s => ({ cisSeriesDoses: { ...s.cisSeriesDoses, [memberId]: byKey } }));
+  },
+  setCisSeriesDoses: async (memberId, antigenKey, requiredDoses) => {
+    if (!memberId || !antigenKey) return false;
+    const prev = get().cisSeriesDoses[memberId] || {};
+    // Optimistic: the calendar re-plans right away; rolled back on error.
+    set(s => ({ cisSeriesDoses: { ...s.cisSeriesDoses, [memberId]: { ...prev, [antigenKey]: requiredDoses } } }));
+    const me = get().currentUserProfile;
+    const { error } = await supabase.from('cis_series_doses').upsert({
+      id: `${memberId}:${antigenKey}`,
+      hedis_member_id: String(memberId),
+      antigen_key: antigenKey,
+      required_doses: requiredDoses,
+      updated_by: me?.id || null,
+      updated_by_name: get().currentActorName(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+    if (error) {
+      // Table not created yet: keep the pick for this session.
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[setCisSeriesDoses] cis_series_doses table missing — run supabase/cis_series_doses_migration.sql');
+        return true;
+      }
+      console.warn('setCisSeriesDoses:', error.message);
+      set(s => ({ cisSeriesDoses: { ...s.cisSeriesDoses, [memberId]: prev } }));
+      get().showToast?.('Could not save the dose count');
+      return false;
+    }
     return true;
   },
   // ── CIS-CMB10 tracker: per-dose notes (cis_dose_notes) + batch save ──
@@ -2006,6 +2121,8 @@ export const useAppStore = create((set, get) => ({
           statusLabel: 'New',
           statusType: 'success',
         });
+        // Auto-apply rules run on a real enrollment only (Settings > Automation Rules).
+        get().runAutoApplyRules(patientId, program).catch(err => console.warn('runAutoApplyRules:', err?.message || err));
       });
     }
   },
@@ -2193,6 +2310,198 @@ export const useAppStore = create((set, get) => ({
       patientCarePlanLoading: { ...s.patientCarePlanLoading, [key]: false },
       patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: true },
     }));
+    // Auto-resume runs when the plan is next opened on or after its resume date.
+    if (plan && isDueToAutoResume(plan)) {
+      await get().resumeCarePlan(patientId, { id: programId, code: plan.programCode }, { auto: true });
+    }
+  },
+
+  // ── Pause / resume (care_plan_pause migration) ──
+  // A paused plan has no cadence, overdue flags, next touchpoint or automated
+  // outreach (lib/carePlanPause isCarePlanPaused is the gate). Both write a
+  // care_plan_audit row; resume recomputes the next touchpoint.
+  pauseCarePlan: async (patientId, program, form) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    if (!cur?.plan?.id) return false;
+    const pause = pauseFields(form);
+    const pausedBy = get().currentUserProfile?.name || null;
+    const { error } = await supabase.from('patient_care_plans').update({
+      status: 'paused',
+      pause_reason: pause.reason,
+      pause_note: pause.note,
+      paused_on: pause.pausedOn,
+      resume_on: pause.resumeOn,
+      auto_resume: pause.autoResume,
+      paused_by: pausedBy,
+      next_touchpoint: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', cur.plan.id);
+    if (error) {
+      console.warn('pauseCarePlan:', error.message);
+      get().showToast(/status|pause|resume|touchpoint/i.test(error.message || '')
+        ? 'Pausing needs the care plan pause migration'
+        : 'Could not pause the care plan');
+      return false;
+    }
+    set(s => {
+      const c = s.patientCarePlans[key];
+      if (!c?.plan) return {};
+      return { patientCarePlans: { ...s.patientCarePlans, [key]: {
+        ...c, plan: { ...c.plan, status: 'paused', pause: { ...pause, pausedBy: pausedBy || '' }, nextTouchpoint: null },
+      } } };
+    });
+    await get().logCarePlanAudit(patientId, program, pauseAuditEntry(cur.plan.id, pause));
+    return true;
+  },
+
+  resumeCarePlan: async (patientId, program, { auto = false } = {}) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    if (!cur?.plan?.id || cur.plan.status !== 'paused') return false;
+    const tasksById = new Map((get().tasks || []).map(t => [String(t.id), t]));
+    const next = computeNextTouchpoint(
+      { plan: { ...cur.plan, status: 'active' }, goals: cur.goals, interventions: cur.interventions },
+      // Due date as the table resolves it: override, paired task, legacy config.
+      { dueDateOf: (i) => {
+        const task = tasksById.get(String(i.taskId));
+        return i.config?.dueDateOverride || task?.dueDate || task?.due_date || i.config?.dueDate;
+      } },
+    );
+    const { error } = await supabase.from('patient_care_plans').update({
+      status: 'active',
+      pause_reason: null,
+      pause_note: null,
+      paused_on: null,
+      resume_on: null,
+      auto_resume: false,
+      paused_by: null,
+      next_touchpoint: next,
+      updated_at: new Date().toISOString(),
+    }).eq('id', cur.plan.id);
+    if (error) {
+      console.warn('resumeCarePlan:', error.message);
+      if (!auto) get().showToast('Could not resume the care plan');
+      return false;
+    }
+    set(s => {
+      const c = s.patientCarePlans[key];
+      if (!c?.plan) return {};
+      return { patientCarePlans: { ...s.patientCarePlans, [key]: {
+        ...c, plan: { ...c.plan, status: 'active', pause: null, nextTouchpoint: next },
+      } } };
+    });
+    await get().logCarePlanAudit(patientId, program, resumeAuditEntry(cur.plan.id, { auto, nextTouchpoint: next }));
+    return true;
+  },
+
+  // ── Individualized Plan AI (care_plan_ai_suggestions migration) ──
+  // Reads the patient's conditions, labs, recent encounters, assessments and
+  // open barriers as numbered facts, asks /api/care-plan-individualized for the
+  // best templates and a tailored GBI set, and writes it onto this program's
+  // plan unsigned (a draft): every item flagged for review with its rationale
+  // and the facts it cites. Pipeline: care-plan/lib/individualizedPlan.js.
+  // Returns { counts, templates } or throws with a message for the caller.
+  draftIndividualizedPlan: async (patientId, program) => {
+    // Without the AI columns the drafted items can't carry their flag or
+    // evidence, so say so before calling the model or touching the plan.
+    const probe = await supabase.from('patient_care_plan_goals').select('ai_suggested').limit(1);
+    if (probe.error && /ai_suggested/i.test(probe.error.message || '')) {
+      throw new Error('Individualized plans need the care plan AI migration (care_plan_ai_suggestions_migration.sql).');
+    }
+    if (!get().carePlanTemplates.length || !get().carePlanGoals.length) await get().fetchCarePlanLibrary();
+    const s0 = get();
+    const pid = String(patientId);
+    const [problems, events, responses, forms, otherBarriers] = await Promise.all([
+      supabase.from('patient_problems').select('title, status').eq('patient_id', pid),
+      supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit, reference_low, reference_high').eq('patient_id', pid),
+      supabase.from('form_responses').select('form_id, answers, status, completed_at, created_at').eq('patient_id', pid)
+        .order('created_at', { ascending: false }).limit(50),
+      supabase.from('forms').select('id, name').limit(300),
+      supabase.from('patient_care_plans').select('program_code, patient_care_plan_barriers(title, status)').eq('patient_id', pid),
+    ]);
+    const openBarriers = (otherBarriers.data || []).flatMap(p => (p.patient_care_plan_barriers || [])
+      .filter(b => !['Met', 'Resolved', 'Not Met', 'Discontinued', 'Not Applicable'].includes(b.status))
+      .map(b => ({ title: b.title, program: p.program_code })));
+    const facts = buildPatientFacts({
+      problems: problems.data || [],
+      clinicalEvents: events.data || [],
+      // patient_id on form_responses arrives with the automation rules migration.
+      responses: responses.error ? [] : (responses.data || []),
+      formNames: new Map((forms.data || []).map(f => [String(f.id), f.name])),
+      barriers: openBarriers,
+    });
+    if (!facts.length) throw new Error('There’s nothing on this patient’s record to plan from yet: no conditions, labs, events, assessments or barriers.');
+
+    const templates = buildTemplateChoices(s0.carePlanTemplates, s0.carePlanGoals);
+    const catalog = buildTemplateCatalog({ goals: s0.carePlanGoals, interventions: s0.carePlanInterventionTemplates, barriers: s0.carePlanBarriers });
+    const res = await apiFetch('/api/care-plan-individualized', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ facts, templates, catalog, programName: program.name || program.code }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.draft) throw new Error(json?.error?.message || 'Could not draft the plan. Please try again.');
+    const draft = json.draft;
+
+    // Write it: goals first (interventions and barriers link to them).
+    const libGoals = new Map(s0.carePlanGoals.map(g => [String(g.id), g]));
+    const libIntv = new Map((s0.carePlanInterventionTemplates || []).map(i => [String(i.id), i]));
+    const libBarrier = new Map((s0.carePlanBarriers || []).map(b => [String(b.id), b]));
+    const ai = (x) => ({ aiSuggested: true, aiRationale: x.rationale, aiCitations: x.citations, aiReviewedBy: null, aiReviewedAt: null });
+    // The plan row first, so the parallel saves below all hang off one plan.
+    if (!(await get().ensurePatientCarePlan(patientId, program))) throw new Error('Could not start the care plan.');
+    const savedGoals = await Promise.all(draft.goals.map((g) => {
+      const base = g.libraryId && libGoals.has(g.libraryId)
+        ? goalPayloadFromTemplateEntry({ id: g.libraryId }, s0.carePlanGoals)
+        : { title: g.title, priority: g.priority, icon: 'solar:flag-linear', status: 'Not Started', frequency: g.frequency || '' };
+      return get().savePatientCarePlanGoal(patientId, program, { ...base, priority: g.priority || base.priority, ...ai(g) });
+    }));
+    if (savedGoals.some(x => !x)) throw new Error('Could not save every drafted goal. Check the plan and try again.');
+    const goalIdByTitle = new Map(draft.goals.map((g, k) => [g.title, savedGoals[k].id]));
+    await Promise.all([
+      ...draft.interventions.map((i) => {
+        const lib = i.libraryId ? libIntv.get(i.libraryId) : null;
+        const base = lib ? interventionPayloadFromTemplateEntry({ kind: lib.kind, title: lib.title, config: lib.config }) : interventionPayloadFromTemplateEntry({ kind: i.kind, title: i.title });
+        return get().savePatientCarePlanIntervention(patientId, program, { ...base, goalId: i.goalTitle ? goalIdByTitle.get(i.goalTitle) || null : null, ...ai(i) });
+      }),
+      ...draft.barriers.map((b) => {
+        const lib = b.libraryId ? libBarrier.get(b.libraryId) : null;
+        return get().savePatientCarePlanBarrier(patientId, program, {
+          ...barrierPayloadFromTemplateEntry({ title: lib?.title || b.title, description: lib?.description || '' }, b.goalTitles.map(t => goalIdByTitle.get(t)).filter(Boolean)),
+          ...ai(b),
+        });
+      }),
+    ]);
+
+    const counts = draftCounts(draft);
+    await get().logCarePlanAudit(patientId, program, {
+      entityType: 'plan',
+      action: 'ai_drafted',
+      summary: `UnityAI drafted ${counts} for review`,
+      detail: [
+        draft.summary,
+        draft.templates.length ? `Based on: ${draft.templates.map(t => t.name).join(', ')}` : 'No template fit; tailored from the record',
+        `${facts.length} patient inputs read`,
+      ].filter(Boolean).join(' · '),
+    });
+    return { counts, summary: draft.summary, templates: draft.templates };
+  },
+
+  // Clear the AI flag on items once a care manager has reviewed them.
+  // `items` is [{ kind: 'goal' | 'intervention' | 'barrier', item }].
+  reviewAiSuggestions: async (patientId, program, items) => {
+    const by = get().currentUserProfile?.name || null;
+    const at = new Date().toISOString();
+    const save = {
+      goal: (x) => get().savePatientCarePlanGoal(patientId, program, x, x.id),
+      intervention: (x) => get().savePatientCarePlanIntervention(patientId, program, x, x.id),
+      barrier: (x) => get().savePatientCarePlanBarrier(patientId, program, x, x.id),
+    };
+    const results = await Promise.all(items
+      .filter(({ item }) => item?.aiSuggested && !item.aiReviewedAt)
+      .map(({ kind, item }) => save[kind]?.({ ...item, aiReviewedBy: by, aiReviewedAt: at })));
+    return results.filter(Boolean).length;
   },
 
   // Lazily create the plan header row so the first goal/intervention has a
@@ -2245,7 +2554,11 @@ export const useAppStore = create((set, get) => ({
       ? supabase.from('patient_care_plan_barriers').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
       : supabase.from('patient_care_plan_barriers').insert(row);
     const { data, error } = await q.select().single();
-    if (error) { console.warn('savePatientCarePlanBarrier:', error.message); get().showToast('Could not save barrier'); return null; }
+    if (error) {
+      console.warn('savePatientCarePlanBarrier:', error.message);
+      get().showToast(/sdoh_|z_code/i.test(error.message || '') ? 'Social needs need the care plan SDOH migration' : 'Could not save barrier');
+      return null;
+    }
 
     // Diff-based join sync. Bulk status/priority changes loop over every
     // barrier without touching its goals, so most saves land here with
@@ -3672,6 +3985,12 @@ export const useAppStore = create((set, get) => ({
 
   // Cross-header panel requests (versions, template, history, filter, note, sign).
   carePlanPanelRequest: null,
+  // A past version shown read-only in place of the live plan, per
+  // `${patientId}::${programId}`: { versionNumber, reason, createdAt, createdBy, snapshot }.
+  viewedCarePlanVersion: {},
+  setViewedCarePlanVersion: (key, version) => set(s => ({
+    viewedCarePlanVersion: { ...s.viewedCarePlanVersion, [key]: version || null },
+  })),
   requestCarePlanPanel: (panel) => set({ carePlanPanelRequest: panel }),
   clearCarePlanPanelRequest: () => set({ carePlanPanelRequest: null }),
 
@@ -4316,6 +4635,10 @@ export const useAppStore = create((set, get) => ({
     const userId = await get()._resolveWorklistUser();
     const sameUser = get().carePlanFavoritesUserId === userId;
     if (!force && get().carePlanFavoritesLoaded && sameUser) return;
+    if (!isRealUserId(userId)) {
+      set({ carePlanFavorites: [], carePlanFavoritesLoaded: true, carePlanFavoritesUserId: userId });
+      return;
+    }
     const { data, error } = await supabase
       .from('care_plan_template_favorites').select('template_id').eq('user_id', userId);
     if (error) console.warn('fetchCarePlanFavorites:', error.message);
@@ -4348,6 +4671,189 @@ export const useAppStore = create((set, get) => ({
       }));
       get().showToast('Could not update favorite');
     }
+  },
+
+  // ── Automation Rules (Settings > Automation Rules; automation_rules migration) ──
+  // Account-level auto-apply rules evaluated at care program enrollment
+  // (runAutoApplyRules, from addCareProgram). The engine is pure:
+  // features/settings/automation-rules/lib/automationRules.js.
+  automationRules: [],
+  automationRulesStatus: 'idle', // 'idle' | 'loading' | 'ready' | 'missing'
+  automationRuleRuns: [],
+  fetchAutomationRules: async () => {
+    set({ automationRulesStatus: 'loading' });
+    const { data, error } = await supabase.from('automation_rules').select('*')
+      .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+    if (error) {
+      const missing = error.code === '42P01' || error.code === 'PGRST205';
+      if (!missing) console.warn('fetchAutomationRules:', error.message);
+      set({ automationRules: [], automationRulesStatus: missing ? 'missing' : 'ready' });
+      return [];
+    }
+    const rules = (data || []).map(mapAutomationRuleRow);
+    set({ automationRules: rules, automationRulesStatus: 'ready' });
+    return rules;
+  },
+  fetchAutomationRuleRuns: async () => {
+    const { data, error } = await supabase.from('automation_rule_runs').select('*')
+      .order('created_at', { ascending: false }).limit(100);
+    if (error) { set({ automationRuleRuns: [] }); return; }
+    set({ automationRuleRuns: (data || []).map(r => ({
+      id: r.id, ruleId: r.rule_id, patientId: r.patient_id, programCode: r.program_code,
+      matched: !!r.matched, reasons: Array.isArray(r.reasons) ? r.reasons : [],
+      templateIds: r.template_ids || [], taskId: r.task_id || null, createdAt: r.created_at,
+    })) });
+  },
+  saveAutomationRule: async (values, id = null) => {
+    const actor = get().currentUserProfile?.name || null;
+    const row = {
+      name: values.name.trim(),
+      description: (values.description || '').trim(),
+      enabled: values.enabled !== false,
+      program_codes: values.programCodes || [],
+      match: values.match === 'any' ? 'any' : 'all',
+      conditions: values.conditions || [],
+      template_ids: values.templateIds || [],
+      reviewer: values.reviewer?.name ? { id: values.reviewer.id || null, name: values.reviewer.name } : null,
+      updated_by: actor,
+      updated_at: new Date().toISOString(),
+    };
+    const q = id
+      ? supabase.from('automation_rules').update(row).eq('id', id)
+      : supabase.from('automation_rules').insert({ ...row, created_by: actor, sort_order: get().automationRules.length });
+    const { data, error } = await q.select().single();
+    if (error) {
+      console.warn('saveAutomationRule:', error.message);
+      get().showToast(/automation_rules/.test(error.message || '') && /exist/.test(error.message || '')
+        ? 'Automation rules need the automation rules migration'
+        : 'Could not save the rule');
+      return null;
+    }
+    const rule = mapAutomationRuleRow(data);
+    set(s => ({ automationRules: id ? s.automationRules.map(r => (r.id === id ? rule : r)) : [...s.automationRules, rule] }));
+    return rule;
+  },
+  // Forms an assessment condition can point at (id + name only).
+  fetchAssessmentFormOptions: async () => {
+    const { data, error } = await supabase.from('forms').select('id, name').order('name').limit(300);
+    if (error) { console.warn('fetchAssessmentFormOptions:', error.message); return []; }
+    return (data || []).map(f => ({ id: String(f.id), name: f.name || `Form ${f.id}` }));
+  },
+  deleteAutomationRule: async (id) => {
+    const prev = get().automationRules;
+    set({ automationRules: prev.filter(r => r.id !== id) });
+    const { error } = await supabase.from('automation_rules').delete().eq('id', id);
+    if (error) {
+      console.warn('deleteAutomationRule:', error.message);
+      set({ automationRules: prev });
+      get().showToast('Could not delete the rule');
+      return false;
+    }
+    return true;
+  },
+
+  // Evaluate the enabled rules that watch this program against the patient's
+  // conditions, labs, recent encounters and assessment answers. Each match
+  // attaches its templates to the program's care plan unsigned (a draft), and
+  // one review task goes to the care manager listing why. Every evaluation is
+  // logged in automation_rule_runs. Returns { matched: rule[], taskId }.
+  runAutoApplyRules: async (patientId, program) => {
+    if (!patientId || !program?.id) return { matched: [], taskId: null };
+    const rules = get().automationRulesStatus === 'ready' ? get().automationRules : await get().fetchAutomationRules();
+    const applicable = rulesForProgram(rules, program.code);
+    if (!applicable.length) return { matched: [], taskId: null };
+
+    const [problems, events, responses] = await Promise.all([
+      supabase.from('patient_problems').select('title, status').eq('patient_id', String(patientId)),
+      supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit').eq('patient_id', String(patientId)),
+      // patient_id on form_responses comes with the automation rules migration.
+      supabase.from('form_responses').select('form_id, answers, status, completed_at, created_at').eq('patient_id', String(patientId))
+        .order('created_at', { ascending: false }).limit(50),
+    ]);
+    const inputs = buildRuleInputs({
+      problems: problems.data || [],
+      clinicalEvents: events.data || [],
+      responses: responses.error ? [] : (responses.data || []),
+    });
+    const results = applicable.map(rule => ({ rule, ...evaluateRule(rule, inputs) }));
+    const matched = results.filter(r => r.matched);
+
+    let taskId = null;
+    let attached = [];
+    if (matched.length) {
+      if (!get().carePlanTemplates.length) await get().fetchCarePlanLibrary();
+      const templates = get().carePlanTemplates;
+      await get().fetchPatientCarePlan(patientId, program.id);
+      const key = carePlanKey(patientId, program.id);
+      const prev = get().patientCarePlans[key]?.plan?.appliedTemplateIds || [];
+      const known = new Set(templates.map(t => t.id));
+      const already = new Set(prev);
+      attached = [...new Set(matched.flatMap(r => r.rule.templateIds || []))]
+        .filter(id => known.has(id) && !already.has(id));
+      if (attached.length) await get().applyPatientCarePlanTemplates(patientId, program, [...prev, ...attached]);
+
+      const memberName = get().patients.find(p => String(p.id) === String(patientId))?.name || '';
+      const users = get().platformUsers || [];
+      const named = matched.map(r => r.rule.reviewer).find(rv => rv?.name)
+        || (program.assignee && program.assignee !== 'Unassigned' ? users.find(u => u.name === program.assignee) : null);
+      const reviewer = named ? { id: named.id || null, name: named.name } : null;
+      const templateNames = attached.map(id => templates.find(t => t.id === id)?.name).filter(Boolean);
+      const lines = matched.map(r => `• ${r.rule.name}: ${r.reasons.filter(x => x.ok).map(x => x.text).join('; ')}`);
+      const due = new Date(); due.setDate(due.getDate() + 2);
+      const task = await get().createTask({
+        name: `Review auto-applied care plan for ${memberName || 'patient'}`,
+        status: 'pending',
+        priority: 'medium',
+        due_date: `${String(due.getMonth() + 1).padStart(2, '0')}/${String(due.getDate()).padStart(2, '0')}/${due.getFullYear()}`,
+        assigned_to: reviewer?.name || null,
+        assigned_to_id: reviewer?.id || null,
+        member: memberName,
+        labels: ['Care Plan Review', 'Automation'],
+        meta: program.name || program.code || '',
+        description: [
+          `On enrollment in ${program.name || program.code}, automation rules matched and ${templateNames.length ? `attached ${templateNames.join(', ')} in draft` : 'found the templates already on the plan'}. Review, edit and sign the plan.`,
+          ...lines,
+        ].join('\n'),
+        pool: null,
+        mentions: reviewer ? [reviewer.name] : [],
+        attachments: 0,
+        comments: 0,
+        is_subtask: false,
+        parent_task: null,
+        parent_task_id: null,
+      }, { auditUserName: 'Automation Rules' });
+      taskId = task?.id != null ? String(task.id) : null;
+      if (task && program.code) get().addProgramTask?.(program.code, task);
+      get().logCarePlanAudit(patientId, program, {
+        entityType: 'plan',
+        action: 'auto_applied',
+        summary: matched.map(r => r.rule.name).join(', '),
+        detail: templateNames.length ? `Attached in draft: ${templateNames.join(', ')}` : 'Templates were already on the plan',
+      });
+      if (reviewer?.id) {
+        get().addNotification?.({
+          type: 'care_plan.review_requested',
+          title: 'Auto-applied care plan to review',
+          body: `Automation rules attached ${templateNames.join(', ') || 'templates'} for ${memberName}.`,
+          action: 'openCarePlan',
+          recipientId: reviewer.id,
+        });
+      }
+    }
+
+    // The run log: every rule evaluated, matched or not, with its reasons.
+    const runs = results.map(r => ({
+      rule_id: r.rule.id,
+      patient_id: String(patientId),
+      program_code: program.code || null,
+      matched: r.matched,
+      reasons: r.reasons.map(x => `${x.ok ? '✓' : '✗'} ${x.text}`),
+      template_ids: r.matched ? attached.filter(id => new Set(r.rule.templateIds || []).has(id)) : [],
+      task_id: r.matched ? taskId : null,
+    }));
+    const { error: runErr } = await supabase.from('automation_rule_runs').insert(runs);
+    if (runErr) console.warn('automation_rule_runs insert:', runErr.message);
+    return { matched: matched.map(r => r.rule), taskId };
   },
 
   fetchCarePlanLibrary: async () => {
@@ -4481,7 +4987,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   saveCarePlanBarrier: async (values, id = null) => {
-    const row = { title: values.title, description: values.description || '' };
+    const row = { title: values.title, description: values.description || '', ...sdohToRow(values) };
     const q = id
       ? supabase.from('care_plan_barriers').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
       : supabase.from('care_plan_barriers').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
@@ -5125,9 +5631,17 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Flipped to true when the update-checker poller sees a newer build
-  // hash than the one this tab loaded with. Drives UpdateAvailableBanner.
+  // hash than the one this tab loaded with. Drives UpdateCard, which also
+  // shows the new build's version and highlights (null/[] after a chunk
+  // error, where no /version.json was read).
   hasNewBuild: false,
-  setHasNewBuild: (v) => set({ hasNewBuild: !!v }),
+  newBuildVersion: null,
+  newBuildHighlights: [],
+  setHasNewBuild: (v, remote) => set({
+    hasNewBuild: !!v,
+    newBuildVersion: remote?.version || null,
+    newBuildHighlights: remote?.highlights || [],
+  }),
 
   // HCC role — the logged-in user's role for the HCC coding workflow (Support
   // / Coder / QA / Compliance). Drives which status vocab and per-role actions
@@ -5305,10 +5819,15 @@ export const useAppStore = create((set, get) => ({
    * while leaving ephemeral entries alone. Safe to call repeatedly — it is
    * the recovery path for anything realtime missed while the socket was
    * down, so it runs on subscribe, on reconnect, and on tab refocus.
+   * Gated to one run a minute per user (`force` skips the wait).
    */
-  fetchNotifications: async () => {
+  fetchNotifications: async ({ force = false } = {}) => {
     const me = get().currentUserProfile;
-    if (!me?.id) return;
+    if (!isRealUserId(me?.id)) return;
+    return notificationsResync(me.id, () => get()._loadNotifications(me), { force });
+  },
+
+  _loadNotifications: async (me) => {
     set({ notificationsLoading: true });
     const COLS = 'id, type, title, body, action, task_id, hcc_member_id, read, created_at, actor_name';
     const query = (cols) => supabase
@@ -5347,7 +5866,7 @@ export const useAppStore = create((set, get) => ({
    */
   subscribeNotifications: () => {
     const me = get().currentUserProfile;
-    if (!me?.id) return () => {};
+    if (!isRealUserId(me?.id)) return () => {};
     get()._notificationsChannel?.unsubscribe();
     const ch = supabase
       .channel(`notifications:${me.id}`)
@@ -5383,8 +5902,9 @@ export const useAppStore = create((set, get) => ({
           },
         });
       })
+      // A hidden tab skips this; it resyncs on refocus (useNotificationsFeed).
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') get().fetchNotifications();
+        if (status === 'SUBSCRIBED' && !tabHidden()) get().fetchNotifications();
       });
     set({ _notificationsChannel: ch });
     return () => { ch.unsubscribe(); set({ _notificationsChannel: null }); };
@@ -5740,19 +6260,21 @@ export const useAppStore = create((set, get) => ({
    * Counted server-side (head + exact) rather than by pulling rows: the badge
    * only needs a number, and the inbox can be long.
    */
-  fetchMessagesUnreadCount: async () => {
+  fetchMessagesUnreadCount: async ({ force = false } = {}) => {
     const me = get().currentUserProfile;
-    if (!me?.id) return;
-    const { count, error } = await supabase
-      .from('direct_messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('recipient_id', me.id)
-      .is('read_at', null);
-    if (error) {
-      console.warn('unread message count failed:', error.message);
-      return;
-    }
-    set({ messagesUnreadCount: count || 0 });
+    if (!isRealUserId(me?.id)) return;
+    return unreadMessagesResync(me.id, async () => {
+      const { count, error } = await supabase
+        .from('direct_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('recipient_id', me.id)
+        .is('read_at', null);
+      if (error) {
+        console.warn('unread message count failed:', error.message);
+        return;
+      }
+      set({ messagesUnreadCount: count || 0 });
+    }, { force });
   },
 
   /**
@@ -5766,9 +6288,10 @@ export const useAppStore = create((set, get) => ({
    */
   subscribeUnreadMessages: () => {
     const me = get().currentUserProfile;
-    if (!me?.id) return () => {};
+    if (!isRealUserId(me?.id)) return () => {};
     get()._unreadMessagesChannel?.unsubscribe();
-    const recount = () => get().fetchMessagesUnreadCount();
+    // A real insert/update always recounts; only the resync path is gated.
+    const recount = () => get().fetchMessagesUnreadCount({ force: true });
     const ch = supabase
       .channel(`unread-messages:${me.id}`)
       .on('postgres_changes', {
@@ -5801,8 +6324,11 @@ export const useAppStore = create((set, get) => ({
       }, recount)
       // Same reasoning as the notifications channel: a postgres_changes
       // binding delivers nothing for the window it was disconnected, so
-      // recount on every (re)subscribe rather than trusting the socket.
-      .subscribe((status) => { if (status === 'SUBSCRIBED') recount(); });
+      // recount on every (re)subscribe rather than trusting the socket,
+      // through the gate, and not from a hidden tab (it resyncs on refocus).
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED' && !tabHidden()) get().fetchMessagesUnreadCount();
+      });
     set({ _unreadMessagesChannel: ch });
     return () => { ch.unsubscribe(); set({ _unreadMessagesChannel: null }); };
   },
@@ -7279,10 +7805,10 @@ export const useAppStore = create((set, get) => ({
   snpFilters: {},
   snpVisibleFilterKeys: null,
   setSnpFilter: (k, vals) => {
+    // A selected saved filter stays selected while it's edited.
     set(s => ({
       snpFilters: { ...s.snpFilters, [k]: vals },
       currentPage: 1,
-      activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'SNP'),
     }));
   },
   clearSnpFilters: () => {
@@ -10449,14 +10975,15 @@ export const useAppStore = create((set, get) => ({
     set({ awvMembers: mappedMembers, awvMembersLoading: false });
   },
   // Multi-value filters keyed by column. Empty array on a key = no filter.
-  awvFilters: {},
+  // Hydrated from the selected saved filter, like HEDIS.
+  awvFilters: hydrateListFilters('AWV'),
   setAwvFilter: (k, vals) => set(s => {
     const next = { ...s.awvFilters };
     if (!vals || vals.length === 0) delete next[k];
     else next[k] = vals;
     return { awvFilters: next };
   }),
-  clearAwvFilters: () => set({ awvFilters: {} }),
+  clearAwvFilters: () => set(s => ({ awvFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'AWV') })),
   // Bulk-select state.
   selectedAwvIds: [],
   selectAwvMember: (id) => set(s => ({
@@ -10540,14 +11067,26 @@ export const useAppStore = create((set, get) => ({
 
     set({ jsaMembers: mappedMembers, jsaMembersLoading: false });
   },
-  jsaFilters: {},
+  jsaFilters: hydrateListFilters('JSA'),
   setJsaFilter: (k, vals) => set(s => {
     const next = { ...s.jsaFilters };
     if (!vals || vals.length === 0) delete next[k];
     else next[k] = vals;
     return { jsaFilters: next };
   }),
-  clearJsaFilters: () => set({ jsaFilters: {} }),
+  clearJsaFilters: () => set(s => ({ jsaFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'JSA') })),
+
+  // CCM worklist filters: the bucket chips (string arrays) plus the two time
+  // filters (billableMins / unloggedMins: { user, threshold }, present only
+  // while set). In the store so saved filters work for CCM too.
+  ccmFilters: hydrateListFilters('CCM'),
+  setCcmFilter: (k, v) => set(s => {
+    const next = { ...s.ccmFilters };
+    if (v == null || (Array.isArray(v) && v.length === 0)) delete next[k];
+    else next[k] = v;
+    return { ccmFilters: next };
+  }),
+  clearCcmFilters: () => set(s => ({ ccmFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'CCM') })),
   selectedJsaIds: [],
   selectJsaMember: (id) => set(s => ({
     selectedJsaIds: s.selectedJsaIds.includes(id)
@@ -10595,9 +11134,9 @@ export const useAppStore = create((set, get) => ({
       const next = { ...s.hedisFilters };
       if (!vals || !vals.length) delete next[k];
       else next[k] = vals;
+      // A selected saved filter stays selected while it's edited.
       return {
         hedisFilters: next,
-        activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HEDIS'),
         currentPage: 1,
       };
     });
@@ -10646,6 +11185,46 @@ export const useAppStore = create((set, get) => ({
       try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
       return { savedFiltersByList: nextSaved, activeSavedIdByList: nextActive };
     });
+  },
+  // updateSavedFilter(list, id): overwrite a saved view with the list's
+  // current filters (Save Filter ⌄ → Update "<name>").
+  updateSavedFilter: (list, id) => {
+    track('list.saved_filter_updated', { list, filterId: id });
+    set(s => {
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      const cur = s.savedFiltersByList[list] || [];
+      const nextList = cur.map(f => (f.id === id ? { ...f, filters: { ...(s[key] || {}) } } : f));
+      const nextSaved = { ...s.savedFiltersByList, [list]: nextList };
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      return { savedFiltersByList: nextSaved };
+    });
+  },
+  // resetSavedFilter(list): Reset Selection in the Saved Filters dropdown.
+  // Clears that list's filters and deselects its saved filter.
+  resetSavedFilter: (list) => {
+    track('list.saved_filter_reset', { list });
+    set(s => {
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      return {
+        [key]: {},
+        activeSavedIdByList: detachSaved(s.activeSavedIdByList, list),
+        ...(list === 'HCC' ? { hccActiveSavedId: null } : {}),
+        currentPage: 1,
+      };
+    });
+  },
+  // copySavedFilter(list, id): a duplicate named "<name> (Copy)", just
+  // below the original. The selected filter doesn't change. Returns its id.
+  copySavedFilter: (list, id) => {
+    track('list.saved_filter_copied', { list, filterId: id });
+    const cur = get().savedFiltersByList[list] || [];
+    const i = cur.findIndex(f => f.id === id);
+    if (i < 0) return null;
+    const copy = { id: `sf-${Date.now()}`, name: `${cur[i].name} (Copy)`, filters: { ...cur[i].filters } };
+    const nextSaved = { ...get().savedFiltersByList, [list]: [...cur.slice(0, i + 1), copy, ...cur.slice(i + 1)] };
+    try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+    set({ savedFiltersByList: nextSaved });
+    return copy.id;
   },
   renameSavedFilter: (list, id, name) => {
     track('list.saved_filter_renamed', { list, filterId: id });
@@ -10753,6 +11332,51 @@ export const useAppStore = create((set, get) => ({
       if (error) console.warn('[store] persist column prefs failed — run supabase/user_worklist_column_prefs_migration.sql:', error.message);
     } catch (e) {
       console.warn('[store] persist column prefs failed:', e?.message);
+    }
+  },
+
+  // ── Per-user side-panel layouts (Supabase + localStorage) ──
+  // Tab and widget order + on/off per panel (More > Customize on the patient
+  // profile's left panel). Supabase table: user_panel_layouts (see
+  // supabase/user_panel_layouts_migration.sql); localStorage seeds the first
+  // paint and keeps working until the migration runs.
+  panelLayouts: (() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('panelLayouts') || 'null');
+      return (cached && typeof cached === 'object') ? cached : {};
+    } catch { return {}; }
+  })(),
+  panelLayoutsLoaded: false,
+
+  fetchPanelLayouts: async () => {
+    if (get().panelLayoutsLoaded) return;
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { data, error } = await supabase
+        .from('user_panel_layouts')
+        .select('panel_key, layout')
+        .eq('user_id', userId);
+      if (!error && Array.isArray(data) && data.length) {
+        const merged = { ...get().panelLayouts };
+        for (const row of data) merged[row.panel_key] = row.layout || {};
+        set({ panelLayouts: merged });
+        try { localStorage.setItem('panelLayouts', JSON.stringify(merged)); } catch { /* */ }
+      }
+    } catch { /* table may not exist yet: keep the local copy */ }
+    set({ panelLayoutsLoaded: true });
+  },
+
+  savePanelLayout: async (panelKey, layout) => {
+    set(s => ({ panelLayouts: { ...s.panelLayouts, [panelKey]: layout } }));
+    try { localStorage.setItem('panelLayouts', JSON.stringify(get().panelLayouts)); } catch { /* */ }
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { error } = await supabase
+        .from('user_panel_layouts')
+        .upsert({ user_id: userId, panel_key: panelKey, layout }, { onConflict: 'user_id,panel_key' });
+      if (error) console.warn('[store] save panel layout failed (run supabase/user_panel_layouts_migration.sql):', error.message);
+    } catch (e) {
+      console.warn('[store] save panel layout failed:', e?.message);
     }
   },
 
@@ -11489,6 +12113,11 @@ export const useAppStore = create((set, get) => ({
   // HCC DiagPanel drawer (Phase 2: read-only)
   diagPanelOpen: false,
   diagPanelMemberId: null,
+  // Floating shell only: the open Diagnosis Gaps Details shows as the main
+  // panel of the patient split (patient card on the left) instead of as a
+  // drawer. See hooks/useProgramPanelSplitActive and DiagPanel/diagPanelSplit.
+  diagPanelSplit: false,
+  setDiagPanelSplit: (next) => set({ diagPanelSplit: next }),
   diagActiveTab: 'Codes',
   diagDosFilter: null,      // null = first DOS (member.dos_list[0]); 'ALL' = sweep; else a date string
   diagViewMode: 'ICD',      // 'ICD' (flat sections, default) | 'HCC' (grouped)
@@ -11706,6 +12335,7 @@ export const useAppStore = create((set, get) => ({
         { userId: 'fallback-5', name: 'Bobby Brown',    initials: 'BB', roles: 'Front Desk Staff/Receptionist', capacityPct: 30, assignTo: [] },
       ],
     },
+    ...SAMPLE_CARE_PROGRAM_TEAMS,
   ],
   // Load teams from Supabase. Keeps the seeded fallback when the table is
   // empty or errors (same SWR-style pattern the rest of the store uses).
@@ -11720,11 +12350,15 @@ export const useAppStore = create((set, get) => ({
   },
   // Mutations update local state optimistically, then persist to Supabase.
   addHccCareTeam: (team) => {
+    const before = get().hccCareTeams;
     set(s => ({ hccCareTeams: [team, ...s.hccCareTeams] }));
+    get().syncTimerAccessToTeams(before);
     supabase.from('care_teams').insert(careTeamJsToDb(team))
       .then(({ error }) => { if (error) console.error('addHccCareTeam:', error); });
   },
   updateHccCareTeam: (id, patch) => {
+    const before = get().hccCareTeams;
+    get().syncTimerAccessToTeams(before, { id, patch });
     set(s => ({
       hccCareTeams: s.hccCareTeams.map(t => t.id === id ? { ...t, ...patch } : t),
     }));
@@ -11734,7 +12368,66 @@ export const useAppStore = create((set, get) => ({
         .then(({ error }) => { if (error) console.error('updateHccCareTeam:', error); });
     }
   },
+  // Keeps Timer Access in step with care program teams (BHI / CCM):
+  //  • A program's timer starts at "All users" while it has no care program
+  //    team (with members). When its first such team appears, access switches
+  //    to "Care Program Team only" on its own, logged as a System change.
+  //  • Otherwise, members gaining or losing the timer through the team (ticked
+  //    / unticked "can log billable time", added, removed) are logged in that
+  //    program's timer history, as an add / remove entry.
+  // `pending` is a change not applied yet ({ id, patch } or { deleteId }).
+  syncTimerAccessToTeams: async (before, pending) => {
+    const after = pending?.deleteId
+      ? before.filter(t => t.id !== pending.deleteId)
+      : pending
+        ? before.map(t => (t.id === pending.id ? { ...t, ...pending.patch } : t))
+        : get().hccCareTeams;
+    const teamsFor = (teams, code) => teams.filter(t => t.kind === 'care-program' && t.teamType === code && (t.members || []).length > 0);
+    const timerNames = (teams, code) => new Set(teamsFor(teams, code).flatMap(t => t.members || []).filter(m => m.canLogTime !== false).map(m => m.name));
+    const { TIMER_PROGRAM_CODES } = await import('../features/settings/billing/careProgramBillingData');
+    const changes = TIMER_PROGRAM_CODES.map((code) => {
+      const gained = !teamsFor(before, code).length && teamsFor(after, code).length > 0;
+      const was = timerNames(before, code);
+      const now = timerNames(after, code);
+      return { code, gained, added: [...now].filter(n => !was.has(n)), removed: [...was].filter(n => !now.has(n)) };
+    }).filter(c => c.gained || c.added.length || c.removed.length);
+    if (!changes.length) return;
+    await get().fetchCareProgramBilling();
+    const at = new Date().toISOString();
+    const today = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    const actor = get().currentUserProfile?.name || 'You';
+    for (const c of changes) {
+      const setting = get().billingTimerSettings.find(t => t.program === c.code);
+      if (!setting) continue;
+      if (c.gained) {
+        if (setting.access === 'team') continue;
+        get().saveBillingTimerSetting({
+          ...setting,
+          access: 'team',
+          userNames: [],
+          roles: [],
+          lastModifiedAt: today,
+          lastModifiedBy: 'System',
+          history: [{ at, actor: 'System', kind: 'updated', from: setting.access, to: 'team' }, ...(setting.history || [])],
+        });
+        continue;
+      }
+      // With "All users" the team doesn't decide who has the timer.
+      if (setting.access === 'all') continue;
+      get().saveBillingTimerSetting({
+        ...setting,
+        lastModifiedAt: today,
+        lastModifiedBy: actor,
+        history: [{
+          at, actor, kind: 'team',
+          ...(c.added.length ? { added: { users: c.added, roles: [] } } : {}),
+          ...(c.removed.length ? { removed: { users: c.removed, roles: [] } } : {}),
+        }, ...(setting.history || [])],
+      });
+    }
+  },
   deleteHccCareTeam: (id) => {
+    get().syncTimerAccessToTeams(get().hccCareTeams, { deleteId: id });
     set(s => ({ hccCareTeams: s.hccCareTeams.filter(t => t.id !== id) }));
     supabase.from('care_teams').delete().eq('id', id)
       .then(({ error }) => { if (error) console.error('deleteHccCareTeam:', error); });
@@ -13063,6 +13756,7 @@ export const useAppStore = create((set, get) => ({
   openDiagPanel: (id, opts = {}) => set({
     diagPanelOpen: true,
     diagPanelMemberId: id,
+    diagPanelSplit: false,
     diagActiveTab: 'Codes',
     // `initialDos` and `highlightCode` come from row popovers (Visits → open a
     // specific DOS, OpenICDs hover → scroll/highlight a specific code).
@@ -13088,7 +13782,7 @@ export const useAppStore = create((set, get) => ({
     if ((get().hccMembers?.length || 0) === 0) await get().fetchHccMembers?.();
     get().openDiagPanel(memberId, { leftPanel: 'comments' });
   },
-  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null, diagOpenDocId: null }),
+  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagPanelSplit: false, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null, diagOpenDocId: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
   setDiagViewMode: (mode) => set({ diagViewMode: mode }),
@@ -13728,6 +14422,97 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // ── Patient contacts (Send To in the patient send drawers) ──
+  // { [patientId]: contact[] }. Falls back to sample contacts (session only)
+  // until patient_contacts exists or has none for the patient.
+  patientContacts: {},
+  fetchPatientContacts: async (patientId) => {
+    if (!patientId || get().patientContacts[patientId]) return;
+    const { rowToContact, sampleContactsFor } = await import('../features/messages/comms/sendTo');
+    const { data, error } = await supabase.from('patient_contacts').select('*').eq('patient_id', String(patientId));
+    if (error) console.warn('fetchPatientContacts — falling back to samples:', error.message);
+    const list = !error && data?.length ? data.map(rowToContact) : sampleContactsFor(String(patientId));
+    set(s => ({ patientContacts: { ...s.patientContacts, [patientId]: list } }));
+  },
+
+  // ── Inbound eFax (Comms → E-fax) ──
+  // Each fax keeps who it was read as being about and who it's linked to.
+  // Falls back to sample faxes (session only) until efax_inbound exists;
+  // `efaxLive` says whether writes reach the table.
+  efaxes: [],
+  efaxesLoading: false,
+  efaxesDidFetch: false,
+  efaxLive: false,
+  fetchEfaxes: async () => {
+    if (get().efaxesDidFetch) return;
+    set({ efaxesDidFetch: true, efaxesLoading: true });
+    const { rowToFax, sampleFaxes } = await import('../features/messages/efax/efaxData');
+    const { data, error } = await supabase.from('efax_inbound').select('*').order('received_at', { ascending: false });
+    if (error) console.warn('fetchEfaxes: falling back to samples:', error.message);
+    if (!error && data?.length) {
+      set({ efaxes: data.map(rowToFax), efaxesLoading: false, efaxLive: true });
+      return;
+    }
+    await get().fetchAllPatients();
+    set({ efaxes: sampleFaxes(get().allPatients || []), efaxesLoading: false, efaxLive: !error });
+  },
+  addEfax: async (fax) => {
+    set(s => ({ efaxes: [fax, ...s.efaxes] }));
+    if (!get().efaxLive) return;
+    const { faxToRow } = await import('../features/messages/efax/efaxData');
+    const { error } = await supabase.from('efax_inbound').insert(faxToRow(fax));
+    if (error) console.warn('addEfax: kept for this session only:', error.message);
+  },
+  updateEfax: async (id, patch) => {
+    set(s => ({ efaxes: s.efaxes.map(f => (f.id === id ? { ...f, ...patch } : f)) }));
+    if (!get().efaxLive) return;
+    const { faxToRow } = await import('../features/messages/efax/efaxData');
+    const fax = get().efaxes.find(f => f.id === id);
+    const { error } = await supabase.from('efax_inbound').update(faxToRow(fax)).eq('id', id);
+    if (error) console.warn('updateEfax: kept for this session only:', error.message);
+  },
+
+  // ── Care program billing (Settings → Billing) ──
+  // Billable claims, monthly reports and the billing-timer rule per program.
+  // Falls back to the samples (session only) until the tables exist.
+  billableClaims: [],
+  billingReports: [],
+  billingTimerSettings: [],
+  careProgramBillingLoading: false,
+  careProgramBillingFetched: false,
+  fetchCareProgramBilling: async () => {
+    if (get().careProgramBillingLoading || get().careProgramBillingFetched) return;
+    set({ careProgramBillingLoading: true });
+    const d = await import('../features/settings/billing/careProgramBillingData');
+    const [bill, reps, timers] = await Promise.all([
+      supabase.from('care_program_billable').select('*').order('date_of_service', { ascending: false }),
+      supabase.from('care_program_billing_reports').select('*').order('month', { ascending: false }),
+      supabase.from('billing_timer_settings').select('*').order('program', { ascending: true }),
+    ]);
+    const pick = (res, map, sample, name) => {
+      if (!res.error && res.data?.length) return res.data.map(map);
+      if (res.error) console.warn(`fetchCareProgramBilling (${name}) — falling back to samples:`, res.error.message);
+      return sample;
+    };
+    set({
+      billableClaims: pick(bill, d.rowToBillable, d.SAMPLE_BILLABLE, 'billable'),
+      billingReports: pick(reps, d.rowToReport, d.SAMPLE_BILLING_REPORTS, 'reports'),
+      billingTimerSettings: pick(timers, d.rowToTimer, d.SAMPLE_TIMER_SETTINGS, 'timer'),
+      careProgramBillingLoading: false,
+      careProgramBillingFetched: true,
+    });
+  },
+  saveBillingTimerSetting: async (setting) => {
+    const { timerToRow } = await import('../features/settings/billing/careProgramBillingData');
+    set(s => ({
+      billingTimerSettings: s.billingTimerSettings.some(t => t.id === setting.id)
+        ? s.billingTimerSettings.map(t => (t.id === setting.id ? setting : t))
+        : [...s.billingTimerSettings, setting],
+    }));
+    const { error } = await supabase.from('billing_timer_settings').upsert(timerToRow(setting), { onConflict: 'id' });
+    if (error) console.error('saveBillingTimerSetting:', error.message);
+  },
+
   // ── User availability (Settings → Calendar → User availability) ──
   // One entry per availability block. Until user_availability exists, the
   // samples are kept for the session only (userAvailabilityLocal).
@@ -13767,13 +14552,45 @@ export const useAppStore = create((set, get) => ({
     }));
     const removed = before.filter(b => !next.some(n => n.id === b.id)).map(b => b.id);
     if (!get().userAvailabilityLocal) {
-      if (next.length) {
-        const { error } = await supabase.from('user_availability').upsert(next.map(blockToRow), { onConflict: 'id' });
-        if (error) { console.warn('saveUserAvailability:', error.message); get().showToast?.('Could not save availability. Try again.'); return false; }
+      // All or nothing: the save_user_availability function writes and removes
+      // in one transaction (user_availability_new_view_migration.sql).
+      const { error: rpcError } = await supabase.rpc('save_user_availability', {
+        p_rows: next.map(b => ({ ...blockToRow(b), allow_overlap: !!b.allowOverlap })),
+        p_remove: removed,
+      });
+      const noRpc = rpcError && (rpcError.code === 'PGRST202' || /could not find the function/i.test(rpcError.message || ''));
+      if (rpcError && !noRpc) {
+        console.warn('saveUserAvailability:', rpcError.message);
+        get().showToast?.('Could not save availability. Nothing was changed. Try again.');
+        return false;
       }
-      if (removed.length) {
-        const { error } = await supabase.from('user_availability').delete().in('id', removed);
-        if (error) { console.warn('saveUserAvailability (remove):', error.message); get().showToast?.('Could not remove a block. Try again.'); return false; }
+      if (noRpc) {
+        // Until that function exists: write, then remove, and if removing
+        // fails, put back what was there so a save never half-lands.
+        if (next.length) {
+          let { error } = await supabase.from('user_availability').upsert(next.map(blockToRow), { onConflict: 'id' });
+          // Before the migration adds allow_overlap, save without it rather than fail.
+          if (error && /allow_overlap/.test(error.message || '')) {
+            ({ error } = await supabase.from('user_availability').upsert(next.map(b => { const { allow_overlap: _drop, ...row } = blockToRow(b); return row; }), { onConflict: 'id' }));
+          }
+          if (error) { console.warn('saveUserAvailability:', error.message); get().showToast?.('Could not save availability. Nothing was changed. Try again.'); return false; }
+        }
+        if (removed.length) {
+          const { error } = await supabase.from('user_availability').delete().in('id', removed);
+          if (error) {
+            console.warn('saveUserAvailability (remove):', error.message);
+            const added = next.filter(n => !before.some(b => b.id === n.id)).map(n => n.id);
+            const undoAdd = added.length ? await supabase.from('user_availability').delete().in('id', added) : { error: null };
+            const undoEdit = before.length ? await supabase.from('user_availability').upsert(before.map(blockToRow), { onConflict: 'id' }) : { error: null };
+            if (undoAdd.error || undoEdit.error) {
+              get().showToast?.('Availability may be partly saved. Showing what was saved; check and try again.');
+              get().fetchUserAvailability?.({ force: true });
+            } else {
+              get().showToast?.('Could not save availability. Nothing was changed. Try again.');
+            }
+            return false;
+          }
+        }
       }
     }
     set(s => ({ userAvailability: [...s.userAvailability.filter(b => !same(b)), ...next] }));
@@ -13993,6 +14810,29 @@ export const useAppStore = create((set, get) => ({
       }));
       return null;
     }
+  },
+
+  // UDS social-risk KPIs from care plan SDOH needs and referrals
+  // (care_plan_sdoh migration; lib/sdohReport). `missing` until it has run.
+  sdohSocialRisk: { status: 'idle', data: null },
+  fetchSdohSocialRisk: async () => {
+    set({ sdohSocialRisk: { ...get().sdohSocialRisk, status: 'loading' } });
+    const [b, r] = await Promise.all([
+      supabase.from('patient_care_plan_barriers').select('id, plan_id, title, sdoh_domain, status').not('sdoh_domain', 'is', null),
+      supabase.from('patient_care_plan_interventions').select('id, plan_id, config').eq('kind', 'sdoh-referral'),
+    ]);
+    if (b.error) {
+      const missing = /sdoh_domain/i.test(b.error.message || '');
+      if (!missing) console.warn('fetchSdohSocialRisk:', b.error.message);
+      set({ sdohSocialRisk: { status: missing ? 'missing' : 'error', data: null } });
+      return;
+    }
+    const planIds = [...new Set((b.data || []).map(x => x.plan_id))];
+    const plans = planIds.length
+      ? await supabase.from('patient_care_plans').select('id, patient_id').in('id', planIds)
+      : { data: [] };
+    const planPatient = new Map((plans.data || []).map(p => [p.id, String(p.patient_id)]));
+    set({ sdohSocialRisk: { status: 'ready', data: sdohSocialRisk({ barriers: b.data || [], referrals: r.data || [], planPatient }) } });
   },
 
   fetchViewKpis: async (viewId) => {
@@ -14623,7 +15463,8 @@ export const useAppStore = create((set, get) => ({
       return null;
     }
     // eslint-disable-next-line no-unused-vars
-    const { id: _id, created_at: _c, updated_at: _u, ...rest } = original;
+    // An account email's key stays with the original; the copy is a plain email.
+    const { id: _id, created_at: _c, updated_at: _u, system_key: _k, email_html: _h, ...rest } = original;
     const { data: copy, error: insertErr } = await supabase
       .from('campaigns')
       .insert({
@@ -15107,6 +15948,11 @@ export const useAppStore = create((set, get) => ({
       s.colorVariables,
     );
     if (!dbPatch) return true;
+    // Account emails are sent by the server, which can't run the builder's
+    // renderer: keep the rendered HTML next to the design.
+    if (s.editingCampaignSystemKey && dbPatch.email_template != null) {
+      dbPatch.email_html = accountEmailHtml(s.emailDocument);
+    }
     track('email.template_saved', { templateId: s.editingCampaignId });
     const { error } = await supabase
       .from('campaigns')
@@ -15135,6 +15981,7 @@ export const useAppStore = create((set, get) => ({
   // editable Reader-compatible document; selectedBlockId is what the right panel inspects.
   editingCampaignId: null,
   editingCampaignName: null,
+  editingCampaignSystemKey: null,
   setEditingCampaignName: (name) => set({ editingCampaignName: name }),
 
   // Org-level CAN-SPAM footer settings (physical address + unsubscribe URL).
@@ -15311,6 +16158,7 @@ export const useAppStore = create((set, get) => ({
     set({
       editingCampaignId: campaign.id,
       editingCampaignName: campaign.name,
+      editingCampaignSystemKey: campaign.systemKey || null,
       emailDocument: doc,
       colorVariables: campaign.colorVariables || defaultVars,
       selectedBlockId: 'root',
@@ -15327,7 +16175,7 @@ export const useAppStore = create((set, get) => ({
   },
   closeEmailBuilder: () => {
     track('email.template_closed');
-    set({ editingCampaignId: null, editingComponent: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', selectedColumnIdx: null, bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
+    set({ editingCampaignId: null, editingComponent: null, editingCampaignName: null, editingCampaignSystemKey: null, emailDocument: null, selectedBlockId: 'root', selectedColumnIdx: null, bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
     updateHash(get);
   },
 

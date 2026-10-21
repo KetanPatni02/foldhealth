@@ -1,5 +1,8 @@
 import { Icon as IconifyIcon } from '@iconify/react';
 import { FilterIcon } from './FilterIcon';
+import { AIIcon } from './AIIcon';
+import { AddIconMinimalist } from './AddIconMinimalist';
+import { GaugeIcon } from './GaugeIcon';
 import { SmsIcon } from './SmsIcon';
 import { ExpandDrawerIcon } from './ExpandDrawerIcon';
 import { CallPcpIcon } from './CallPcpIcon';
@@ -69,6 +72,11 @@ export function Icon({ name, size = 18, color, style, className }) {
       />
     );
   }
+  // The AI sparkle (gradient); -mono is solid, for filled surfaces.
+  if (name === 'custom:ai') return <AIIcon size={size} style={style} className={className} />;
+  if (name === 'custom:ai-mono') return <AIIcon size={size} color={color || 'currentColor'} style={style} className={className} />;
+  if (name === 'custom:gauge') return <GaugeIcon size={size} color={color || 'currentColor'} style={style} className={className} />;
+  if (name === 'custom:add') return <AddIconMinimalist size={size} color={color || 'currentColor'} style={style} className={className} />;
   if (name === 'custom:filter') return <FilterIcon size={size} color={color} />;
   if (name === 'custom:menu-dots') return <MenuDotsIcon size={size} color={color} />;
   if (name === 'custom:history') return <HistoryIcon size={size} color={color} />;

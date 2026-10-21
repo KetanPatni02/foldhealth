@@ -20,6 +20,16 @@
   transform: translate(-50%, 0);
 }
 
+/* Side placements — bubble is centred vertically on the trigger and sits
+   outside it horizontally. Used by rail-style sidebars where top/bottom
+   placements would land between adjacent icons. */
+.bubbleLeft {
+  transform: translate(-100%, -50%);
+}
+.bubbleRight {
+  transform: translate(0, -50%);
+}
+
 /* Edge-anchored variants: `left` here is the trigger's own edge, so the
    bubble grows inward instead of overflowing the panel. */
 .bubbleAlignRight {
@@ -38,6 +48,17 @@
 @keyframes tt-fade {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+/* Card variant: a light tooltip holding a small card of content (a heading
+   and notes), e.g. the AI confidence explainer (Figma 2941:74217). */
+.bubbleLight.bubbleCard {
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--space-1);
+  font-weight: 400;
+  white-space: normal;
+  box-shadow: var(--shadow-tooltip);
 }
 
 /* Light variant — matches ActionButton tooltips. */
@@ -68,4 +89,14 @@
   transform: translateX(-50%);
   border: var(--space-1) solid transparent;
   border-bottom-color: var(--neutral-0);
+}
+/* Edge-aligned: the arrow sits over the trigger's centre (--tt-arrow from
+   the bubble's anchored edge), kept a little inside the bubble. */
+.bubbleLight.bubbleAlignLeft::after {
+  left: clamp(var(--space-3), var(--tt-arrow, var(--space-3)), calc(100% - var(--space-3)));
+}
+.bubbleLight.bubbleAlignRight::after {
+  left: auto;
+  right: clamp(var(--space-3), var(--tt-arrow, var(--space-3)), calc(100% - var(--space-3)));
+  transform: translateX(50%);
 }

@@ -35,14 +35,7 @@ import styles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 import { parseLocalDate } from '../../../../../../../../lib/localDate';
 
-const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
-const STATUS_TONE = {
-  'Not Started': 'grey',
-  'In Progress': 'warning',
-  'On Hold': 'grey',
-  Met: 'success',
-  'Not Met': 'error',
-};
+import { GBI_STATUSES, gbiStatusMeta } from '../../lib/gbiStatus';
 
 function adherenceNum(value) {
   const n = Number(value);
@@ -97,7 +90,11 @@ function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit }) {
  * Intervention details — Paper 35-0. Mirrors Goal Details layout with
  * adherence, linked goals, automations, notes, and activity feed.
  */
-export function InterventionPreviewDrawer({ intervention, patientId, program, onClose, onEdit, onOpenGoal, consolidated = false, signedView = false, focusSection = null }) {
+export function InterventionPreviewDrawer({ intervention, patientId, program, onClose, onEdit, onOpenGoal, consolidated = false, signedView = false, focusSection = null, readOnly = false, snapshot = null }) {
+  // `readOnly` + `snapshot`: opened from a past version or an earlier
+  // template run; items come from that copy, nothing can be changed and
+  // empty sections are hidden.
+  const ro = consolidated || readOnly;
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   // `signedView`: opened from a surface that shows the plan as last signed
   // (Comprehensive Care Plan, Monitoring). The item is read from that copy
@@ -105,7 +102,9 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   // documentation, so those stay open.
   const liveSlice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const signedSlice = useSignedCarePlan(signedView ? key : null);
-  const slice = signedView ? signedSlice : liveSlice;
+  const slice = useMemo(() => (snapshot
+    ? { ...liveSlice, goals: snapshot.goals || [], interventions: snapshot.interventions || [], barriers: snapshot.barriers || [] }
+    : (signedView ? signedSlice : liveSlice)), [snapshot, signedView, signedSlice, liveSlice]);
   const audit = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
   const lastVisit = useAppStore(s => {
     const p = (s.patients || []).find(x => x.id === patientId)
@@ -250,7 +249,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   // canDocument: notes and live progress (status, priority, title, adherence),
   // which apply to the signed plan without a signature. canEdit: details and
   // structure, which are draft edits made in the editor.
-  const canDocument = !!(patientId && program);
+  const canDocument = !!(patientId && program) && !readOnly;
   const canEdit = canDocument && !signedView;
   const saveLive = (patch) => (signedView
     ? saveCarePlanLiveField(patientId, program, 'intervention', live.id, patch)
@@ -311,7 +310,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
       <div className={styles.body}>
         <div className={styles.statusBar}>
           <Select
-            options={GBI_STATUSES.map(s => ({ value: s, label: s }))}
+            options={GBI_STATUSES.map(s => ({ value: s, label: s, icon: gbiStatusMeta(s).icon }))}
             value={live.status}
             onChange={changeStatus}
             disabled={!canDocument}
@@ -320,7 +319,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
             style={{ width: 'fit-content' }}
           />
           <div className={styles.statusActions}>
-            {!consolidated && (
+            {!ro && (
               <>
                 <ActionButton
                   icon="solar:pen-linear"
@@ -352,6 +351,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
         <div className={`${styles.hero} ${styles.heroWithKind}`}>
           <div className={styles.titleRow}>
             <span className={styles.priorityTrigger} aria-hidden="false">
+              {readOnly ? <PriorityIcon priority={live.priority} size={20} /> : (
               <DetailDropdown
                 value={live.priority}
                 options={PRIORITY_OPTIONS}
@@ -369,6 +369,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
               >
                 <PriorityIcon priority={live.priority} size={20} />
               </DetailDropdown>
+              )}
             </span>
             {/* The title edits where it stands: click the text, type, then
                 Enter or click away to save; Escape cancels. No input box. */}
@@ -513,7 +514,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
         {/* Linked Goals section — hidden entirely in the Comprehensive
             Care Plan view when nothing is linked (user can't link new
             goals here); otherwise shown read-only (Link/Unlink hidden). */}
-        {(!consolidated || linkedGoals.length > 0) && (
+        {(!ro || linkedGoals.length > 0) && (
         <section className={barrierStyles.section}>
           <div className={barrierStyles.sectionHead}>
             <button
@@ -529,7 +530,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 className={`${barrierStyles.sectionChevron} ${open.goals ? barrierStyles.sectionChevronOpen : ''}`}
               />
             </button>
-            {canEdit && !consolidated && (
+            {canEdit && !ro && (
               <ActionButton
                 icon="solar:add-linear"
                 size="S"
@@ -567,7 +568,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                         tooltip="Open goal"
                         onClick={() => onOpenGoal?.(g)}
                       />
-                      {canEdit && !consolidated && (
+                      {canEdit && !ro && (
                         <>
                           <span className={barrierStyles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                           <ActionButton
@@ -590,7 +591,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
         {/* Automations section — hidden entirely in the Comprehensive
             Care Plan view when nothing is set up (user can't add new
             automations from that surface); otherwise shown read-only. */}
-        {(!consolidated || automations.length > 0) && (
+        {(!ro || automations.length > 0) && (
         <section className={barrierStyles.section}>
           <div className={barrierStyles.sectionHead}>
             <button
@@ -606,7 +607,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 className={`${barrierStyles.sectionChevron} ${open.automations ? barrierStyles.sectionChevronOpen : ''}`}
               />
             </button>
-            {canEdit && !!live.goalId && !consolidated && (
+            {canEdit && !!live.goalId && !ro && (
               <ActionButton
                 icon="solar:add-linear"
                 size="S"

@@ -1,0 +1,23 @@
+.handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--space-1);
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+.handle:hover { background: var(--neutral-50); }
+.handle:active { cursor: grabbing; }
+.handle:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+
+/* The item being dragged lifts above its neighbours. */
+.dragging {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--shadow-popover);
+}

@@ -1,0 +1,13 @@
+.trigger {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--space-1);
+}
+
+.trigger:focus-visible {
+  outline: 1px solid var(--primary-300);
+  outline-offset: 1px;
+}

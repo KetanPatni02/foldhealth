@@ -33,6 +33,20 @@ export function FilterBar({
   showSaveFilter = true,
   autoFit = false,
   primaryKeys: primaryKeysProp,
+  // A selected saved filter (see useSavedFilterActions): Clear All's and
+  // Save Filter's labels, and the Save Filter ⌄ menu ([{ key, label }] +
+  // onSelect(key)).
+  clearAllLabel,
+  saveLabel,
+  // Spec mode (worklist filter allocation): the chip row stays on one line.
+  // Primary chips fill it in roster order; the ones that don't fit move into
+  // More Filters (under "Primary", above the secondary filters grouped by
+  // `group` / domain). A filter picked there shows in the row; unchecking it
+  // clears its value. Picks are kept here, not in `visibleKeys`, so an old
+  // stored visible set can't push the row onto a second line.
+  pinPrimary = false,
+  saveMenuItems,
+  onSaveMenuSelect,
 } = {}) {
   const storeActiveFilters = useAppStore(s => s.activeFilters);
   const storeSetFilter = useAppStore(s => s.setFilter);
@@ -48,17 +62,26 @@ export function FilterBar({
   const internalChipsRef = useRef(null);
   const internalTailRef = useRef(null);
   const measureRef = useRef(null);
+  const leadingRef = useRef(null);
   const setChipsRef = mergeRefs(internalChipsRef, chipsRef);
   const setTailRef = mergeRefs(internalTailRef, tailRef);
 
-  const effectiveDefs = filterDefs ?? filterDefsForList(storeActiveSubnavList);
+  // Memoised: filterDefsForList builds new defs each call, and the auto-fit
+  // effect below depends on them.
+  const effectiveDefs = useMemo(
+    () => filterDefs ?? filterDefsForList(storeActiveSubnavList),
+    [filterDefs, storeActiveSubnavList],
+  );
   const effectiveFilters = filters ?? storeActiveFilters;
   const effectiveGetOptions = getOptions ?? ((def) => resolveOptions(def, storePatients));
   const listForSave = storeActiveSubnavList || 'TCM';
   const effectiveOnFilterChange = onFilterChange ?? ((key, next) => storeSetFilter(key, next));
   const effectiveOnClearAll = onClearAll ?? storeClearAllFilters;
   const effectiveOnSaveFilter = onSaveFilter ?? ((name) => storeSaveSavedFilter(listForSave, name));
-  const effectiveMoreItems = moreFilterItems ?? effectiveDefs.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary }));
+  const effectiveMoreItems = moreFilterItems ?? effectiveDefs.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary, group: fd.group }));
+  const fitToRow = autoFit || pinPrimary;
+  // Spec mode: the filters picked from More Filters.
+  const picks = useMemo(() => (pinPrimary ? customVisible ?? [] : []), [pinPrimary, customVisible]);
 
   const keyOrder = useMemo(
     () => Object.fromEntries(effectiveDefs.map((fd, i) => [fd.key, i])),
@@ -97,8 +120,8 @@ export function FilterBar({
   );
 
   useLayoutEffect(() => {
-    if (!autoFit) { setAutoInactive(null); return undefined; }
-    if (visibleKeysProp !== undefined || customized) {
+    if (!fitToRow) { setAutoInactive(null); return undefined; }
+    if (!pinPrimary && (visibleKeysProp !== undefined || customized)) {
       setAutoInactive(null);
       return undefined;
     }
@@ -112,21 +135,32 @@ export function FilterBar({
       let budget = avail;
       const tailW = internalTailRef.current?.offsetWidth ?? 0;
       if (tailW) budget -= tailW + GAP;
+      const leadW = leadingRef.current?.offsetWidth ?? 0;
+      if (leadW) budget -= leadW + GAP;
       activeKeys.forEach(k => { budget -= widthOf(k) + GAP; });
+      // Spec mode: picks already hold their place in the row.
+      picks.filter(k => !activeKeySet.has(k)).forEach(k => { budget -= widthOf(k) + GAP; });
       const fit = new Set();
       for (const k of inactivePrimary) {
+        if (picks.includes(k)) continue;
         const w = widthOf(k) + GAP;
         if (budget - w >= 0) { budget -= w; fit.add(k); } else break;
       }
-      setAutoInactive(fit);
+      // Same chips as last time: keep the old set so nothing re-renders.
+      setAutoInactive(prev => (prev && prev.size === fit.size && [...fit].every(k => prev.has(k)) ? prev : fit));
     };
     compute();
     const ro = new ResizeObserver(compute);
     ro.observe(container);
     return () => ro.disconnect();
-  }, [autoFit, visibleKeysProp, customized, activeKeys, inactivePrimary]);
+  }, [fitToRow, pinPrimary, picks, activeKeySet, visibleKeysProp, customized, activeKeys, inactivePrimary]);
+
 
   const visibleKeys = useMemo(() => {
+    if (pinPrimary) {
+      const fit = autoInactive ? inactivePrimary.filter(k => autoInactive.has(k)) : inactivePrimary;
+      return orderKeys([...activeKeys, ...picks, ...fit]);
+    }
     if (visibleKeysProp !== undefined) {
       return orderKeys([...visibleKeysProp, ...activeKeys]);
     }
@@ -140,9 +174,34 @@ export function FilterBar({
     const base = customVisible ?? primaryKeys;
     return orderKeys([...base, ...activeKeys]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleKeysProp, customVisible, activeKeys, primaryKeys, autoFit, autoInactive, inactivePrimary]);
+  }, [pinPrimary, picks, visibleKeysProp, customVisible, activeKeys, primaryKeys, autoFit, autoInactive, inactivePrimary]);
+
+  // Spec mode: primaries already in the row that weren't picked from More
+  // Filters (they fit, or a value put them there). More Filters leaves these
+  // out; everything else is listed there.
+  const inRow = useMemo(() => {
+    if (!pinPrimary) return new Set();
+    const primarySet = new Set(primaryKeys);
+    return new Set(visibleKeys.filter(k => primarySet.has(k) && !picks.includes(k)));
+  }, [pinPrimary, primaryKeys, visibleKeys, picks]);
+
+  const clearValue = (k) => effectiveOnFilterChange(k, multiSelect ? [] : null);
 
   const toggleVisible = (k) => {
+    if (pinPrimary) {
+      if (inRow.has(k)) return;
+      const shown = visibleKeys.includes(k);
+      // Unchecking clears the filter's value, as on HCC.
+      if (shown && activeKeySet.has(k)) clearValue(k);
+      // Shown only because it had a value: clearing it is enough.
+      if (shown && !picks.includes(k)) return;
+      setCustomVisible(prev => {
+        const next = new Set(prev ?? []);
+        if (next.has(k)) next.delete(k); else next.add(k);
+        return [...next];
+      });
+      return;
+    }
     if (onToggleVisible) {
       // Pass the current computed visible set so callers can toggle *just this
       // key* against auto-fit's live selection — otherwise, when `visibleKeys`
@@ -166,6 +225,13 @@ export function FilterBar({
   };
 
   const clearVisible = () => {
+    // Spec mode: Clear Selection unchecks everything picked in More Filters
+    // and clears those values.
+    if (pinPrimary) {
+      activeKeys.filter(k => !inRow.has(k)).forEach(clearValue);
+      setCustomVisible([]);
+      return;
+    }
     if (onClearVisible) {
       onClearVisible();
       return;
@@ -220,7 +286,7 @@ export function FilterBar({
   return (
     <div className={styles.filterBar}>
       <div className={styles.filterRow} ref={setChipsRef}>
-        {leadingNode}
+        {leadingNode && <span ref={leadingRef} className={styles.leading}>{leadingNode}</span>}
         {visibleKeys.map(k => (
           <span key={k}>{renderOne(k, false)}</span>
         ))}
@@ -235,12 +301,16 @@ export function FilterBar({
           onClearAll={() => effectiveOnClearAll()}
           onSaveFilter={() => effectiveOnSaveFilter()}
           onOpenSaveDialog={() => setSaveDialogOpen(true)}
+          clearAllLabel={clearAllLabel}
+          saveLabel={saveLabel}
+          saveMenuItems={saveMenuItems}
+          onSaveMenuSelect={(key) => (key === 'new' && showInternalSaveDialog ? setSaveDialogOpen(true) : onSaveMenuSelect?.(key))}
         />
       </div>
 
-      {autoFit && (
+      {fitToRow && (
         <div className={styles.measure} ref={measureRef} aria-hidden="true">
-          {primaryKeys.map((k) => (
+          {[...new Set([...primaryKeys, ...activeKeys, ...picks])].map((k) => (
             <span key={k} data-mk={k} aria-hidden="true" style={{ display: 'inline-flex' }}>
               {renderOne(k, true)}
             </span>
@@ -255,6 +325,8 @@ export function FilterBar({
           anchorRect={moreRect}
           visibleKeys={visibleKeys}
           moreFilterItems={effectiveMoreItems}
+          grouped={pinPrimary}
+          hiddenKeys={inRow}
           onToggle={toggleVisible}
           onClear={clearVisible}
           onClose={() => setMoreRect(null)}

@@ -28,6 +28,7 @@ import {
   GOAL_COLUMNS,
   INTERVENTION_COLUMNS,
   BARRIER_COLUMNS,
+  gbiStatusMenuItems,
 } from '../../tables/carePlanTableShared';
 import { fmtCarePlanDate, isCompletedStatus } from '../../tables/carePlanTableModel';
 import { enrichGoalRows, enrichInterventionRows } from '../../tables/carePlanTableSort';
@@ -44,7 +45,6 @@ import { localDateMs } from '../../../../../../../../lib/localDate';
 import { apiFetch } from '../../../../../../../../lib/apiFetch';
 import { useSignedCarePlans } from '../../lib/useSignedCarePlans';
 
-const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 const PRIORITIES = ['high', 'medium', 'low'];
 
 // Compact the cross-program snapshot into the small JSON the summary API
@@ -724,7 +724,7 @@ function BarriersTable({ rows, onOpen, onStatusMenu, programOverlap }) {
               color="var(--neutral-300)"
               className={`${sharedRow.closedBarriersChevron} ${closedOpen ? '' : sharedRow.closedBarriersChevronClosed}`}
             />
-            <span className={sharedRow.closedBarriersLabel}>Resolved Barriers</span>
+            <span className={sharedRow.closedBarriersLabel}>Closed Barriers</span>
             <span className={sharedRow.completedCount}>{closedRows.length}</span>
           </button>
           {closedOpen && (
@@ -1121,7 +1121,7 @@ export function CarePlanSummaryView({
                   : 'Summarize active programs'
                 }
               >
-                <Icon name="solar:magic-stick-3-linear" size={14} color="var(--primary-300)" />
+                <Icon name="custom:ai" size={14} color="var(--primary-300)" />
                 <span>
                   {summaryState === 'loading' ? 'AI is writing…'
                   : summaryState === 'ready' ? 'Generated Summary'
@@ -1243,9 +1243,9 @@ export function CarePlanSummaryView({
         <MenuPopover
           anchorRect={statusMenu.rect}
           align="left"
-          width={160}
+          width={180}
           ariaLabel="Change status"
-          items={GBI_STATUSES.map(st => ({ key: st, label: st }))}
+          items={gbiStatusMenuItems(TYPE_OF[statusMenu.kind], statusMenu.item?.status)}
           onSelect={changeStatus}
           onClose={() => setStatusMenu(null)}
         />

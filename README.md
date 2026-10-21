@@ -93,6 +93,210 @@ build requires esbuild ≥ 0.28 on Node 26.
   `pharmacy_worklist_care_program_sync_migration.sql` (enrolls each member in
   the Pharmacy Program) and `pharmacy_care_plan_template_seed.sql` (MAD / MAH /
   MAC care plan template), run in that order.
+
+- **Redesigned patient Overview.** The Overview tab is now a card dashboard:
+  Unity Patient Synopsis, Health Chart, Highlights, Suggested Actions, Care
+  Plan, Active Care Programs, Gaps, Recent Notes, Quick Actions, Upcoming
+  Appointments, Tasks and Vitals. Columns follow the Overview's own width:
+  three (25 / 50 / 25) when the left panel is collapsed and there is room,
+  at most two (1/3 + 2/3) while the panel is open, one when narrow
+  (`overviewLayout.js`). Quick Actions are pinnable per user
+  (`user_panel_layouts`). Care plan, programs, notes, tasks and appointments
+  read their existing tables; the synopsis, health scores, highlights,
+  suggested actions, vitals and gaps live in the new `patient_overview`
+  table. New shared pieces: `DashboardCard`, `QuickActionTile`, `Sparkline`.
+  Needs `supabase/patient_overview_migration.sql`.
+- **Customize the patient panel.** The patient profile's left panel has
+  More > Customize: switch tabs, and the widgets inside Gaps, PAMI/Hx,
+  Vitals/Labs and Summary, on or off and drag them into order, as in the
+  analytics Export Report drawer. The layout is per user
+  (`user_panel_layouts`, cached in localStorage), applies on Save, and keeps
+  at least one tab shown. New shared pieces: `SectionCustomizer`,
+  `SortableList` (moved from analytics), `PanelSection` and `BadgeSelect`
+  (the redesigned Summary tab), and `moreActions` on `OverflowTabStrip`.
+  Needs `supabase/user_panel_layouts_migration.sql`.
+- **Worklist filters and saved filters, per the worklist filter spec.**
+  HCC, HEDIS, SNP, Annual Visits and TOC IP list their filters in the spec's
+  order (always-primary first, then each worklist's own). The chip row stays
+  on one line: what doesn't fit sits in More Filters, which now lists those
+  primaries first and the secondary filters under their domain (Member,
+  Workflow Status, Assignment, Geography, Clinical). Picking one shows it in
+  the row; unchecking clears its value. Saved filters work the same on every
+  worklist (HCC, HEDIS, SNP, Annual Visit, JSA, CCM, TCM, TOC IP): the Figma
+  dropdown (hover, selected and inline edit states, Make a Copy, a delete
+  confirmation, an empty state), the selected filter stays selected while you
+  edit (Go Back to Filter, Save Changes, Save a New Filter, Copy Filter), and
+  Reset Selection clears that worklist's filters. DOB filters (HCC, HEDIS,
+  SNP, CCM) pick by Years or Custom Dates. CCM's filters now live in the store
+  so they can be saved.
+- **Individualized Plan AI.** An empty care plan offers Draft Individualized
+  Plan (also in the care plan ⋯ menu). UnityAI reads the patient's chronic
+  conditions, latest assessments, open barriers, recent events and lab trends
+  as numbered facts (`care-plan/lib/individualizedPlan.js`), picks the
+  best-fitting templates and drafts a tailored set of goals, interventions
+  and barriers (`/api/care-plan-individualized`). It's written onto the plan
+  unsigned (a draft), and every item is flagged "AI · Review" with its
+  rationale and the inputs it cites, as they read when drafted. Anything that
+  cites nothing real is dropped on the server. Reviewers clear items one by
+  one or all at once, or discard the AI items; History records the draft.
+  Needs `supabase/care_plan_ai_suggestions_migration.sql`.
+- **Automation Rules: auto-apply care plan templates on enrollment.**
+  Settings > Automation Rules (was the Automations placeholder) holds
+  account-level rules: the programs a rule watches, conditions over the
+  patient's chronic conditions (problem list, diagnosis events), labs (for
+  example HbA1c > 9 within 365 days), recent encounters (ED, inpatient) and
+  assessment answers, matched all or any, plus the templates to attach and
+  who reviews. When a patient enrolls, matching rules attach their templates
+  to the care plan unsigned (a draft), one review task goes to the care
+  manager with the reasons, the plan's History records it, and every
+  evaluation is logged with why it did or didn't match (Recent evaluations).
+  Engine: `features/settings/automation-rules/lib/automationRules.js`. Needs
+  `supabase/automation_rules_migration.sql`, which also seeds the
+  "Diabetes + HbA1c > 9" example rule, off by default.
+- **SDOH barriers, community referrals and UDS social risk.** Care plans and
+  care plan templates get a Social Needs (SDOH) section with the six
+  domains: housing, food, transportation, finance, social and safety. Each
+  need is a barrier with a structured domain, need and suggested ICD-10-CM
+  Z-code (`care-plan/lib/sdohTaxonomy.js`). SDOH needs take Findhelp and Unite
+  Us referrals as their own intervention type (`sdoh-referral`): no partner
+  API, the partner's site opens in a new tab and the referral's program,
+  notes and status (Draft, Sent, Accepted, Completed, Declined) are tracked
+  on the plan. Templates can suggest a referral per need; it lands as a
+  Draft. Analytics > SDoH & Equity gains a live UDS Social Risk card
+  (patients, needs, referred, closed loop and resolved by domain). Needs
+  `supabase/care_plan_sdoh_migration.sql`.
+
+- **Pause a care plan.** The care plan ⋯ menu gets Pause Care Plan: reason
+  (Hospitalized, Traveling, Patient request, Other with a note), pause start
+  date, planned resume date and an auto-resume toggle. While paused the plan
+  shows a banner with Resume Now, no overdue flags, no next touchpoint, and
+  its automations read as paused; `isCarePlanPaused`
+  (`care-plan/lib/carePlanPause.js`) is the gate any cadence or outreach job
+  must check. Resume (by hand, or automatically the first time the plan is
+  opened on or after the resume date) returns it to Active and recomputes the
+  next touchpoint (earliest open intervention due date, else the soonest goal
+  cadence), shown in the plan summary. Every pause and resume writes a
+  History entry. Needs `supabase/care_plan_pause_migration.sql`.
+
+- **Draft a care plan template from plain English.** Settings → Care Plan
+  library → New Template opens with "Describe this template in plain
+  English" (`src/components/UnityPromptField`). UnityAI
+  (`/api/care-plan-template-draft`, Gemini) drafts the name, summary,
+  template type and conditions, plus goals with their cadence, interventions
+  and barriers, picking from the library first: every library reference is
+  checked against the catalog the client sent (`lib/aiTemplateDraft.js`).
+  The draft lands in the editor for review with a banner saying what came
+  from the library and what's new; Redraft replaces it and Discard Draft
+  removes it, leaving anything added by hand. New goals are created in the
+  library when the template saves (with no invented target values), then
+  Save as Template publishes. The three AI endpoints now share one function
+  (`api/ai.js`), so the deployment uses 9 of Hobby's 12.
+- **Care plan GBI statuses: Discontinued, Not Applicable, Resolved.** Goals,
+  interventions and barriers can now be Discontinued (patient refusal) or Not
+  Applicable, and barriers can be Resolved, alongside Not Started / In
+  Progress / On Hold / Met / Not Met. Every status has an icon and a color,
+  and On Hold is now blue rather than grey. The vocabulary lives in one place
+  (`care-plan/lib/gbiStatus.js`) that every badge, picker, filter and rollup
+  reads. Reporting: Met and Resolved are achieved, Not Met is the only
+  failure, and Discontinued / Not Applicable count as neither, so they leave
+  completion rates, average progress and template-run outcomes, and never
+  show red. Closed items collapse into "Closed Goals / Interventions /
+  Barriers". No migration: status columns are plain text.
+
+- **Account emails from the email builder.** Unlock Account (User ID +
+  set-password link), Password Set, Account Activated and Sign-up Approved are
+  email builder templates (Settings → Content → Emails, category "Account
+  Security") with new Account tokens: `{{user_id}}`, `{{set_password_link}}`,
+  `{{sign_in_link}}`, `{{event_time}}`. The server sends whichever template
+  has that `system_key`, filling the tokens, and falls back to the built-in
+  email when there is none. A new password after an unlock now sends Account
+  Activated; approving a Pending sign-up sends Sign-up Approved. Run
+  `supabase/account_email_templates_migration.sql`, then `bun run seed`.
+- **Update card replaces the new-version strip.** When a newer deploy is
+  live, a card appears in the bottom-right corner above everything, listing
+  the top three bold lead-ins from this section (baked into
+  `/version.json` at build time). Refresh reloads; Dismiss hides it until a
+  later deploy. Keep these lead-ins short: they are the card's highlights.
+- **Login Activity in a user's Audit Log.** Two cards sit above the
+  timeline: "Last successful sign-in" and "Failed attempts · 30 days". Each
+  sign-in and lockout entry shows date • time • method • user, then the
+  event (for example "Account locked"), its reason ("5 failed attempts ·
+  locked by the system") and "Device • Location". The server reads the
+  device, location and a masked IP from the request headers through
+  `/api/auth-activity`, which is routed inside `api/account.js` so no new
+  Vercel function is added. Run
+  `supabase/account_activity_context_migration.sql` after
+  `account_unlock_link_migration.sql`.
+- **Account lockout: administrator-only unlock with an emailed link.** A
+  locked account stays locked even with the right password. It all runs on
+  the Supabase free plan: the existing access-token hook refuses password
+  sign-in while locked, and the sign-in page reports each failure to
+  `record_sign_in_failure`, which counts it only after checking the password
+  really is wrong, so nobody can lock an account they didn't guess at. (The
+  paid Password Verification Hook is optional; it also counts guesses sent
+  straight to the Auth API.) The user requests an unlock from the sign-in
+  screen; an admin unlocks it from their profile, which emails the User ID
+  and a one-time link (24 hours) to set a new password and sign in. A locked
+  practice admin can still reset by emailed code, so locking every admin
+  can't leave nobody to unlock. Every step (failed attempts, lock, request,
+  unlock and reason, link sent, password set) is recorded in the user's
+  Audit Log. Password reset, unlock and security email now share one
+  function (`api/account.js`) to stay under Vercel Hobby's 12-function
+  limit. Needs `supabase/account_unlock_link_migration.sql`.
+
+- **HCC Diagnosis Gaps and the Care Plan in the side panel (floating
+  sidebar).** The Diagnosis Gaps Details drawer has "Open in Side Panel"
+  beside its close button: the drawer morphs into the patient split (a view
+  transition) with the patient card on the left, laid out 30 / 35 / 35
+  (patient, document preview, ICDs). "Open as Drawer" goes back to the
+  worklist with the drawer. A program's care plan can also open as its own
+  panel ("Open in Separate Panel"); its Care Plan step then says so, with Go
+  to Panel and Show Here. Also: care plan priority icons line up under the
+  "P" header, and the document preview hides the PDF viewer's scrollbar.
+
+- **Account lockout (HITRUST).** Five failed password attempts in a row lock
+  a staff account until a person acts (no timer). Sign-in pauses on the 5th
+  try with Reset password and Contact your administrator. Forgot password now
+  uses a 6-digit emailed code (15 minutes, 5 tries, 3 per hour, no reuse of
+  recent passwords). Admins see a red "Account locked since…" line and a
+  Locked filter in Settings → Users, and unlock from the profile with a
+  recorded reason. Security emails go out through Resend. Needs
+  `supabase/account_lockout_migration.sql` and the Supabase Password
+  Verification Hook.
+
+- **Care program in a right panel (floating sidebar).** A care program's ⋯
+  menu, and the Care Plan's ⋯ menu, offer "Open in Right Panel" when the
+  floating sidebar is on: the patient view becomes a patient card
+  (breadcrumb, compact banner, care-gap tabs) beside the program at full
+  height (or, for patient-level orgs, the patient's Care Plan). The right
+  panel's other tabs join the patient card's tabs and open there, or as
+  panels from their row in the More dropdown. Open panels get browser-style
+  tabs (the active tab merges into its card): click a tab to bring its panel
+  into focus, drag tabs to reorder. Panels scroll and snap one at a time with
+  the next one peeking at the edge (`src/components/PanelStack`). The compact patient banner now
+  adapts to its width: quick actions overflow into ⋯ and the Acuity/RAF
+  metrics wrap into a grid. "Open Inline" or closing the program restores
+  the standard layout.
+
+- **Comms → E-fax: received faxes matched to a patient.** Each fax shows
+  the file (View File / Download) and an "Add Patient Context" row, with the
+  AI's picks attached under the message as "Suggested Members" (confidence
+  badge, hover for what it rests on, + to add). "View N More" and + open
+  Patient Context for eFax: search any patient or add an OCR match. Once
+  added, the patient shows with View Profile / Change Patient and an AI mark
+  when the OCR suggested them. "Create Test eFax" receives a fax about any
+  patient read as a strong match, needs review, or no match. Stored in
+  `efax_inbound` (`supabase/efax_inbound_migration.sql`).
+- **Settings → Billing: Billable, Billing History and Timer Access.**
+  Billable lists unbilled members with Program Type, CPT Code, Provider,
+  Date of Service and Members filters and a total. Billing History lists
+  monthly reports, each opening its billed members in a drawer. Timer
+  Access sets, per program (BHI and CCM), who sees the billing timer on a
+  patient's profile: the Care Program Team only, the team plus selected
+  additional users and roles, or everyone with patient access. The Care Program Team
+  drawer gains a "This user can log billable time for this program" check
+  per member. Data lives in `supabase/care_program_billing_migration.sql`.
+
 - **Care program report, History and End Program.** The ⋯ menu in a care
   program's header now has History (this program's slice of the Program
   Activity Log), Download Report and End Program (with a confirmation).

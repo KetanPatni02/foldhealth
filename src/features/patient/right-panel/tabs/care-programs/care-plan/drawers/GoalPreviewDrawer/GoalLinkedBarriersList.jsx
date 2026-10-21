@@ -83,7 +83,7 @@ export function GoalLinkedBarriersList({
               icon="solar:menu-dots-linear"
               size="S"
               tooltip="More"
-              disabled={!canEdit && !onOpen}
+              disabled={!onRowMenu}
               onClick={(e) => onRowMenu?.({ item: b, rect: e.currentTarget.getBoundingClientRect() })}
             />
           </div>

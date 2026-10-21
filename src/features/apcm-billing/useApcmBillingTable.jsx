@@ -72,8 +72,14 @@ export function useApcmBillingTable(searchQuery) {
     }
   };
 
+  const tabPatients = useMemo(
+    () => patients.filter(p => p.tab === activeTab && surfacesForAttestation(p)),
+    [patients, activeTab],
+  );
+  const isFiltered = !!searchQuery.trim() || !!icdFilter || !!providerFilter || !!activeFilters.cpt;
+
   const filtered = useMemo(() => {
-    let result = patients.filter(p => p.tab === activeTab && surfacesForAttestation(p));
+    let result = tabPatients;
 
     const applyMemberSearch = (q, list) => {
       if (!q.trim()) return list;
@@ -92,7 +98,7 @@ export function useApcmBillingTable(searchQuery) {
     if (providerFilter) result = result.filter(p => p.renderingProvider === providerFilter);
     if (activeFilters.cpt) result = result.filter(p => p.cptCode === activeFilters.cpt);
     return result;
-  }, [patients, activeTab, searchQuery, icdFilter, providerFilter, activeFilters]);
+  }, [tabPatients, searchQuery, icdFilter, providerFilter, activeFilters]);
 
   const icdOptions = useMemo(() => {
     const map = new Map();
@@ -219,6 +225,8 @@ export function useApcmBillingTable(searchQuery) {
   const resetPage = () => setCurrentPage(1);
 
   return {
+    totalCount: tabPatients.length,
+    isFiltered,
     openQuickView,
     isLoading,
     perPage,

@@ -9,6 +9,8 @@ import {
   mergeGapsFromNotes,
   mergeSavedGapsIntoState,
   savedGapData,
+  NOTELESS_GAP_CODES,
+  noteOpenGaps,
 } from './ClinicalNotePanel.utils';
 
 // Human-friendly form-type label for the activity log's detailCard.
@@ -47,13 +49,13 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   );
 
   const activeGaps = useMemo(() => {
-    const base = member.gaps.filter(g => g.status !== 'Completed' && !String(g.status).startsWith('Closed'));
+    const base = noteOpenGaps(member.gaps);
     if (!amendNote?.gapCodes?.length) return base;
     const baseCodes = new Set(base.map(g => g.code));
     const missing = (amendNote.gapCodes || [])
       .map(code => member.gaps.find(g => g.code === code))
       .filter(Boolean)
-      .filter(g => !baseCodes.has(g.code));
+      .filter(g => !baseCodes.has(g.code) && !NOTELESS_GAP_CODES.has(g.code));
     return missing.length ? [...base, ...missing] : base;
   }, [member.gaps, amendNote]);
 

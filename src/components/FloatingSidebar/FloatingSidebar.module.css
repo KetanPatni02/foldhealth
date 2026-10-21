@@ -1,0 +1,249 @@
+/* ── Fold Health FloatingSidebar ──
+ * Figma Fold-Pixel node 1255:42011. One floating rounded card that pairs
+ * the compact dark rail with a white sub-nav. The frame owns the border +
+ * radius + overflow clip so neither child panel needs to repeat the chrome.
+ */
+
+.frame {
+  display: inline-flex;
+  align-items: stretch;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  height: 100%;
+  box-sizing: border-box;
+  /* Smooth collapse / expand between the rail-only 52 px shell and
+     the full 240 px sub-nav shell. Matches Fold's standard pane
+     transition (280 ms, same curve the SideNav itself uses so the two
+     stay in lock-step when a feature portals its SideNav in). */
+  transition: width 280ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Marker so the shared SideNav knows it is already inside the floating
+   shell and skips the global `[data-sidebar-shape="floating"] .nav` card
+   chrome (which would double up the border + shadow). */
+.frame[data-float-shell] {}
+
+/* Rail stays full-height on the left so the layout reads as two panels
+   side by side: NavBar (this card) + Body (TopBar + content), per the
+   user's requested shape. The breadcrumb lives inside Body's top row,
+   adjacent to the rail, not above it. Both sides stay rounded now that
+   the .app gap sits a visible 6 px between NavBar and Body. */
+
+/* Icon-only mode drops the sub-nav. The frame hugs the rail width so an
+   explicit `width` prop still works when the caller wants a fixed slot. */
+.frame.railOnly {
+  width: 52px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame { transition: none; }
+}
+
+/* ── Dark rail (left) ────────────────────────────────────────────────── */
+.rail {
+  flex-shrink: 0;
+  width: 52px;
+  background: var(--primary-500);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-1);
+  gap: var(--space-1);
+  color: var(--sidebar-fg);
+}
+
+/* Icons here read as the brand's primary chrome — Fold's global 1px
+   stroke normalization gets overridden locally so Solar linear icons
+   render at their native 1.5px weight. Scoped to the rail so the
+   sub-panel icons (inside <Input> etc.) keep the global 1px look.
+   The compact density variant (Figma 1256:42013) opts out, letting the
+   global 1px stroke apply for a quieter chrome. */
+:root:not([data-floating-density="compact"]) .rail :global(svg.iconify) [stroke]:not([stroke="none"]),
+:root:not([data-floating-density="compact"]) .rail :global(svg.iconify) [stroke-width] {
+  stroke-width: 1.5 !important;
+}
+
+.logo {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* Breathing room before the Home tile — the rail's 4 px gap was too
+     tight and made the logo read as another nav tile. */
+  margin-bottom: var(--space-3);
+}
+
+.railItems {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.railItems::-webkit-scrollbar { width: 0; }
+
+.railBottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  width: 100%;
+  padding-top: var(--space-1);
+}
+
+/* ── Rail tile — single-layer 44×44 painted card ─────────────────────── */
+/* Figma: 44×44 tile with 8px padding and 12px radius, holding a 24×24
+   icon. Hover / active repaint the whole card (no nested padding to
+   nibble at the paint). White icons throughout, per Figma spec. */
+.tile {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--neutral-0);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tile:hover:not(.tileActive) {
+  background: var(--sidebar-hover-bg);
+}
+
+.tileActive {
+  background: var(--primary-400);
+  border-color: var(--primary-300);
+}
+
+/* Compact variant (Figma 1256:42013): smaller 36x36 tile with 8px
+   radius to pair with the 20px icon. The tile both tightens the active
+   container visually and pulls neighbouring items closer, since rows
+   are driven by tile size rather than an added gap. Padding drops to
+   --space-1 so the content box (36 - 2 border - 2*4 padding = 26px)
+   doesn't shrink the 20px icon in the centering flex. */
+:root[data-floating-density="compact"] .tile {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  padding: var(--space-1);
+}
+
+.tile:focus-visible { outline: none; }
+.tile:focus-visible {
+  box-shadow: 0 0 0 2px var(--primary-200);
+}
+
+/* Count badge on a rail tile — same corner anchor as the primary Sidebar
+   so the two components surface counts the same way. */
+.tileBadge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 var(--space-1);
+  background: var(--secondary-300);
+  color: var(--neutral-0);
+  font-size: var(--font-2xs);
+  font-weight: 500;
+  line-height: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* ── Hover tooltip body ──────────────────────────────────────────────── */
+/* The portaled Tooltip gets a styled label here: item name on the left,
+   keyboard shortcut on the right in a pill. */
+.tipLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tipShortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 0 var(--space-1);
+  background: var(--sidebar-hover-bg);
+  color: var(--neutral-0);
+  border-radius: 4px;
+  font-size: var(--font-2xs);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* One inline SVG: nested rounded glass panels over a soft green
+   gradient, framing the Fold mark. The SVG carries its own gradient,
+   backdrop blurs, hairline strokes, and inner shadows, nothing to
+   paint at this layer, just a 44x44 display box. */
+.omniSvg {
+  width: 44px;
+  height: 44px;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ── Right sub-panel (white) ─────────────────────────────────────────── */
+.subPanel {
+  flex: 1 1 auto;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  min-height: 0;
+  /* Opacity + pointer-events toggle in step with the frame's width
+     transition so the sub-nav content fades out just before it clips
+     away. Keeping the panel mounted (rather than unmounting it on
+     collapse) is what lets the width animation read as smooth. */
+  opacity: 1;
+  transition: opacity 180ms ease;
+}
+
+.frame[data-sub-nav-open="false"] .subPanel {
+  opacity: 0;
+  pointer-events: none;
+  min-width: 0;
+}
+
+.searchWrap {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  flex-shrink: 0;
+}
+
+.subNavWrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+/* Shared SideNav sits in a floating frame now, not a page column, so drop
+   the right hairline it carries by default and the explicit rail width:
+   the sub-panel's flex sizing is the source of truth here. */
+.subNav {
+  border-right: none;
+  width: 100%;
+  flex: 1 1 auto;
+}

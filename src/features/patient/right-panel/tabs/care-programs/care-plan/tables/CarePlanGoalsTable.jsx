@@ -29,6 +29,7 @@ import {
   formatGoalFrequency,
   goalTargetUnitMissing,
 } from '../../../../../../settings/care-plan-library/lib';
+import { AiSuggestionBadge } from '../ai/AiSuggestionBadge';
 import styles from './carePlanTables.module.css';
 
 // "Goal < 7 %" exactly as the goal editor formats it. Assessments are skipped:
@@ -100,7 +101,7 @@ export function CarePlanGoalsTable({
       || (showActions && c.key === 'actions'))
     : COMPACT_GOAL_COLUMNS;
 
-  // Met goals collapse into "Completed Goals"; templates have no status.
+  // Closed goals (see isCompletedStatus) collapse into "Closed Goals"; templates have no status.
   const { activeRows, completedRows } = useMemo(() => {
     if (template) return { activeRows: sorted, completedRows: [] };
     const active = [];
@@ -151,6 +152,7 @@ export function CarePlanGoalsTable({
           icon={goalCategoryIcon(g.category)}
           iconTitle={g.category ? normalizeCategory(g.category) : 'Goal'}
           title={g.title}
+          badge={<AiSuggestionBadge kind="goal" item={g} />}
           meta={g.subtitle || null}
           layout="stacked"
           linked={linked(g)}
@@ -236,6 +238,7 @@ export function CarePlanGoalsTable({
             icon={goalCategoryIcon(g.category)}
             iconTitle={g.category ? normalizeCategory(g.category) : 'Goal'}
             title={g.title}
+            badge={<AiSuggestionBadge kind="goal" item={g} />}
             meta={meta}
             layout="stacked"
             showLink={false}
@@ -307,7 +310,7 @@ export function CarePlanGoalsTable({
         renderRow={renderRow}
         renderTbodyFooter={template ? undefined : (ctx) => (
           <CompletedRowsGroup
-            label="Completed Goals"
+            label="Closed Goals"
             rows={completedRows}
             open={completedOpen}
             onToggle={() => setCompletedOpen(v => !v)}

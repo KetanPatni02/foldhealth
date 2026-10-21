@@ -77,6 +77,8 @@ export const ActionButton = forwardRef(function ActionButton({
     return () => window.removeEventListener('scroll', hide, true);
   }, [anchor]);
 
+  // A plain `disabled` from callers dims the button like state="disabled".
+  if (rest.disabled) state = 'disabled';
   const iconSize = size === 'S' ? 16 : size === 'XL' ? 32 : 20;
   const sizeClass = size === 'S' ? styles.sizeS : size === 'XL' ? styles.sizeXL : styles.sizeL;
   const stateClass = state === 'disabled' ? styles.disabled : state === 'error' ? styles.error : styles.active;

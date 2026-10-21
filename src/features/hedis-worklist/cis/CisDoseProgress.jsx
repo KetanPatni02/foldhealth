@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { CIS_DOSE_STATUS } from './cisRules';
 import { CisStatusBadge } from './CisStatus';
-import { EVALUATION_BADGE, fmtDate, isGiven, isLocked } from './cisStatusConfig';
-import strongBaby from '../../../assets/cis/strong-baby.png';
+import { EVALUATION_BADGE, fmtDate, isLocked } from './cisStatusConfig';
 import styles from './CisImmunizationsTab.module.css';
 
 /**
@@ -81,22 +79,11 @@ function BlockDetail({ a, r }) {
 const blockDate = (r) => r.record?.date ?? r.nextDue ?? r.start;
 
 const blockKey = (a, r) => `${a.key}-${r.number}`;
-const doneKeys = (blocks) => new Set(blocks.filter(({ r }) => isGiven(r.status)).map(({ a, r }) => blockKey(a, r)));
 
 function DoseBlocks({ result, onSelect }) {
   const blocks = result.antigens
     .flatMap(a => a.rows.filter(r => !r.extra).slice(0, a.required).map(r => ({ a, r })))
     .sort((x, y) => blockDate(x.r) - blockDate(y.r));
-  // A dose that turns Completed after mount gets a one-second celebration
-  // over its block. Doses already given when the tab opened don't.
-  const [seen, setSeen] = useState(() => ({ result, done: doneKeys(blocks) }));
-  const [cheers, setCheers] = useState([]);
-  if (seen.result !== result) {
-    const done = doneKeys(blocks);
-    const fresh = [...done].filter(k => !seen.done.has(k));
-    setSeen({ result, done });
-    if (fresh.length) setCheers(fresh);
-  }
   return (
     <div className={styles.blocksWrap}>
       <div className={styles.blocks} role="group" aria-label={`${result.doses.completed} of ${result.doses.total} doses complete`}>
@@ -120,15 +107,6 @@ function DoseBlocks({ result, onSelect }) {
               className={`${styles.block} ${styles[BLOCK_CLASS[r.status]] || ''}`}
             >
               {isLocked(r) && <Icon name="solar:lock-keyhole-minimalistic-linear" size={10} color="var(--placeholder-text)" />}
-              {cheers.includes(blockKey(a, r)) && (
-                <img
-                  src={strongBaby}
-                  alt=""
-                  aria-hidden="true"
-                  className={styles.cheer}
-                  onAnimationEnd={() => setCheers(c => c.filter(k => k !== blockKey(a, r)))}
-                />
-              )}
             </span>
           </Tooltip>
         ))}
