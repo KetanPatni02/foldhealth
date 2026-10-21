@@ -87,6 +87,7 @@ import { resolvePatientStoreId } from '../lib/resolvePatientStoreId';
 import { resolvePatientForCall } from '../lib/patientCall';
 
 import { reportPersistFailure } from './lib/reportPersistFailure';
+import { createResyncGate, isRealUserId } from './lib/resyncGate';
 import { isPastDate, parseDuration, formatDuration } from './lib/taskDateUtils';
 import {
   campaignSendRowToJs,
@@ -319,6 +320,11 @@ const CARE_PLAN_LOG_ACTIONS = [
   'status_changed', 'priority_changed', 'progress_changed', 'assignee_changed', 'updated',
   'note', 'note_deleted', 'note_cleared', 'review_requested', 'discarded', 'restored',
 ];
+
+// One gate per resync query; see lib/resyncGate.js for why these exist.
+const notificationsResync = createResyncGate();
+const unreadMessagesResync = createResyncGate();
+const tabHidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
 
 export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
@@ -4564,6 +4570,10 @@ export const useAppStore = create((set, get) => ({
     const userId = await get()._resolveWorklistUser();
     const sameUser = get().carePlanFavoritesUserId === userId;
     if (!force && get().carePlanFavoritesLoaded && sameUser) return;
+    if (!isRealUserId(userId)) {
+      set({ carePlanFavorites: [], carePlanFavoritesLoaded: true, carePlanFavoritesUserId: userId });
+      return;
+    }
     const { data, error } = await supabase
       .from('care_plan_template_favorites').select('template_id').eq('user_id', userId);
     if (error) console.warn('fetchCarePlanFavorites:', error.message);
@@ -5735,10 +5745,15 @@ export const useAppStore = create((set, get) => ({
    * while leaving ephemeral entries alone. Safe to call repeatedly — it is
    * the recovery path for anything realtime missed while the socket was
    * down, so it runs on subscribe, on reconnect, and on tab refocus.
+   * Gated to one run a minute per user (`force` skips the wait).
    */
-  fetchNotifications: async () => {
+  fetchNotifications: async ({ force = false } = {}) => {
     const me = get().currentUserProfile;
-    if (!me?.id) return;
+    if (!isRealUserId(me?.id)) return;
+    return notificationsResync(me.id, () => get()._loadNotifications(me), { force });
+  },
+
+  _loadNotifications: async (me) => {
     set({ notificationsLoading: true });
     const COLS = 'id, type, title, body, action, task_id, hcc_member_id, read, created_at, actor_name';
     const query = (cols) => supabase
@@ -5777,7 +5792,7 @@ export const useAppStore = create((set, get) => ({
    */
   subscribeNotifications: () => {
     const me = get().currentUserProfile;
-    if (!me?.id) return () => {};
+    if (!isRealUserId(me?.id)) return () => {};
     get()._notificationsChannel?.unsubscribe();
     const ch = supabase
       .channel(`notifications:${me.id}`)
@@ -5813,8 +5828,9 @@ export const useAppStore = create((set, get) => ({
           },
         });
       })
+      // A hidden tab skips this; it resyncs on refocus (useNotificationsFeed).
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') get().fetchNotifications();
+        if (status === 'SUBSCRIBED' && !tabHidden()) get().fetchNotifications();
       });
     set({ _notificationsChannel: ch });
     return () => { ch.unsubscribe(); set({ _notificationsChannel: null }); };
@@ -6170,19 +6186,21 @@ export const useAppStore = create((set, get) => ({
    * Counted server-side (head + exact) rather than by pulling rows: the badge
    * only needs a number, and the inbox can be long.
    */
-  fetchMessagesUnreadCount: async () => {
+  fetchMessagesUnreadCount: async ({ force = false } = {}) => {
     const me = get().currentUserProfile;
-    if (!me?.id) return;
-    const { count, error } = await supabase
-      .from('direct_messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('recipient_id', me.id)
-      .is('read_at', null);
-    if (error) {
-      console.warn('unread message count failed:', error.message);
-      return;
-    }
-    set({ messagesUnreadCount: count || 0 });
+    if (!isRealUserId(me?.id)) return;
+    return unreadMessagesResync(me.id, async () => {
+      const { count, error } = await supabase
+        .from('direct_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('recipient_id', me.id)
+        .is('read_at', null);
+      if (error) {
+        console.warn('unread message count failed:', error.message);
+        return;
+      }
+      set({ messagesUnreadCount: count || 0 });
+    }, { force });
   },
 
   /**
@@ -6196,9 +6214,10 @@ export const useAppStore = create((set, get) => ({
    */
   subscribeUnreadMessages: () => {
     const me = get().currentUserProfile;
-    if (!me?.id) return () => {};
+    if (!isRealUserId(me?.id)) return () => {};
     get()._unreadMessagesChannel?.unsubscribe();
-    const recount = () => get().fetchMessagesUnreadCount();
+    // A real insert/update always recounts; only the resync path is gated.
+    const recount = () => get().fetchMessagesUnreadCount({ force: true });
     const ch = supabase
       .channel(`unread-messages:${me.id}`)
       .on('postgres_changes', {
@@ -6231,8 +6250,11 @@ export const useAppStore = create((set, get) => ({
       }, recount)
       // Same reasoning as the notifications channel: a postgres_changes
       // binding delivers nothing for the window it was disconnected, so
-      // recount on every (re)subscribe rather than trusting the socket.
-      .subscribe((status) => { if (status === 'SUBSCRIBED') recount(); });
+      // recount on every (re)subscribe rather than trusting the socket,
+      // through the gate, and not from a hidden tab (it resyncs on refocus).
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED' && !tabHidden()) get().fetchMessagesUnreadCount();
+      });
     set({ _unreadMessagesChannel: ch });
     return () => { ch.unsubscribe(); set({ _unreadMessagesChannel: null }); };
   },

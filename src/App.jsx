@@ -126,8 +126,9 @@ function App() {
         const provider = takeOAuthSignIn();
         if (provider) setTimeout(() => reportSignInSuccess(provider), 0);
         applyDefaults(s?.user);
-        useAppStore.setState({ carePlanFavoritesLoaded: false, carePlanFavoritesUserId: null });
-        void useAppStore.getState().fetchCarePlanFavorites({ force: true });
+        // supabase-js also emits SIGNED_IN on tab refocus and token refresh,
+        // so no force: the fetch re-runs only when the signed-in user changed.
+        void useAppStore.getState().fetchCarePlanFavorites();
         // Invited users arrive here via the confirmation email with a
         // placeholder password. Keep them on ResetPasswordPage so they
         // can set a real one before dropping into the app.
@@ -149,7 +150,7 @@ function App() {
       applyDefaults(s?.user);
       setSession(s);
       if (s?.user) {
-        void useAppStore.getState().fetchCarePlanFavorites({ force: true });
+        void useAppStore.getState().fetchCarePlanFavorites();
       }
     });
 
