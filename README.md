@@ -37,6 +37,17 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Customize the patient Overview.** Each Overview column now scrolls on its
+  own. "Customize Overview" opens a kanban board (new `SortableLanes`
+  component): drag widgets between the three columns, reorder them, or move
+  them to Hidden. One arrangement drives every layout: at two columns,
+  Column 3 stacks under Column 1; at one, all three stack in order. Saved per
+  user in `user_panel_layouts` (`patientOverviewLayout`). Nine new widgets
+  read real data: Risk & Acuity, Contact & Reachability, Care Team, Caregiver
+  & Family, Consent, Medications and Diagnoses & Problems (p360 profile), and
+  Since Last Touch and Program Progress (patient monitoring). The left panel
+  Summary widgets are available too, hidden by default and marked "Sample
+  data" because they still show built-in data.
 - **Redesigned patient Overview.** The Overview tab is now a card dashboard:
   Unity Patient Synopsis, Health Chart, Highlights, Suggested Actions, Care
   Plan, Active Care Programs, Gaps, Recent Notes, Quick Actions, Upcoming

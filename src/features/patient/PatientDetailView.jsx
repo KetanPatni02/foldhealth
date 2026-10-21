@@ -144,6 +144,8 @@ export function PatientDetailView() {
     ? stackState
     : { programKey: primaryKey, ids: ['program'], activeId: 'program' };
   const [leftWidth, setLeftWidth] = useState(496);
+  // Overview > Customize opens from the tab bar, so the state lives here.
+  const [customizingOverview, setCustomizingOverview] = useState(false);
   // The HCC side panel opens at 30 / 35 / 35 (patient card / documents /
   // ICDs); null holds the card at 30% until it's dragged.
   const [diagLeftWidth, setDiagLeftWidth] = useState(null);
@@ -325,7 +327,14 @@ export function PatientDetailView() {
   // One renderer for the right panel's tabs, shared by the standard layout
   // and the split (where they render in the patient card or the side panel).
   const renderRightTab = (tab) => (
-    tab === 'Overview' ? <OverviewTab patient={patientWithAppStatus} leftPanelOpen={!leftCollapsed} />
+    tab === 'Overview' ? (
+      <OverviewTab
+        patient={patientWithAppStatus}
+        leftPanelOpen={!leftCollapsed}
+        customizing={customizingOverview}
+        onCustomizeClose={() => setCustomizingOverview(false)}
+      />
+    )
       : tab === 'Monitoring' ? <MonitoringTab patient={patientWithAppStatus} />
         : tab === 'Notes' ? <PatientNotesTab patient={patientWithAppStatus} />
           : tab === 'Care Management' ? <CareManagementView />
@@ -533,6 +542,15 @@ export function PatientDetailView() {
             leftCollapsed={leftCollapsed}
             onToggleLeft={toggleLeft}
             extraTabs={leftCollapsed ? leftTabs : undefined}
+            actions={barActiveTab === 'Overview' ? (
+              <ActionButton
+                icon="solar:tuning-2-linear"
+                size="S"
+                tooltip="Customize Overview"
+                tooltipLeft
+                onClick={() => setCustomizingOverview(true)}
+              />
+            ) : null}
           />
           <div className={styles.tabContent}>
             {leftCollapsed && showingLeftContent ? (
