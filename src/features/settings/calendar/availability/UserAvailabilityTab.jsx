@@ -23,6 +23,7 @@ import { OOO_ICON } from '../../../ooo/oooUtils';
 import { UserAvailabilityDrawer } from './UserAvailabilityDrawer';
 // The list, or This Week (providers by day, from the redesign view).
 import { UserAvailabilityNewView } from './UserAvailabilityNewView';
+import { UserPickerPopover } from '../../../../components/UserPickerPopover/UserPickerPopover';
 import { DateRangePopover } from '../../../../components/DateRangePopover/DateRangePopover';
 import { fmtDay } from '../../../../components/DateRangeFilter/dateRangePresets';
 import { Toggle } from '../../../../components/Toggle/Toggle';
@@ -58,12 +59,17 @@ const COLUMNS = [
   { key: 'status', label: 'Status', width: 120 },
   { key: 'location', label: 'Location', width: 170 },
   { key: 'dates', label: 'Start & End Date', width: 200, sortKey: 'startDate', sortType: 'date' },
-  // No width: Repeats and Details split what the fixed columns leave.
-  { key: 'repeats', label: 'Repeats' },
+  // Repeats shares the leftover width with Details but tops out at 224px (what a
+  // long monthly rule needs); past that, Details takes the rest. 835px is the
+  // fixed columns (User, Status, Location, Dates, Actions).
+  { key: 'repeats', label: 'Repeats', width: 'min(224px, calc((100% - 835px) / 2))' },
   { key: 'details', label: 'Details' },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 105 },
 ];
 const STATUS_FILTER = { Active: 'active', Upcoming: 'upcoming', Past: 'expired' };
+// The List opens on what's current: Active and Upcoming (Past is a pick away).
+const DEFAULT_STATUSES = ['Active', 'Upcoming'];
+const isDefaultStatus = (v) => v.length === DEFAULT_STATUSES.length && DEFAULT_STATUSES.every(k => v.includes(k));
 
 const ROW_MENU = [
   { key: 'add', icon: 'solar:add-linear', label: 'Add availability' },
@@ -125,8 +131,11 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [layout, setLayout] = useState('list');
   const [fLocations, setFLocations] = useState([]);
-  const [fStatuses, setFStatuses] = useState([]);
+  const [fStatuses, setFStatuses] = useState(DEFAULT_STATUSES);
   const [fTypes, setFTypes] = useState([]);
+  const [fUsers, setFUsers] = useState([]);
+  // 'Fixed Slot' (has an end date) / 'Rolling Slot' (none).
+  const [fSpans, setFSpans] = useState([]);
   // [fromISO, toISO]: keeps slots that run on any day in it.
   const [fRange, setFRange] = useState([]);
   // { key: 'name' | 'startDate', dir: 'asc' | 'desc' } or null for the default order.
@@ -157,12 +166,15 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
   };
 
   const users = useMemo(() => {
-    // The filters are List-only; This Week shows a fixed week of everyone's availability.
+    // The filters apply in both views. In Week, the default Status (Active,
+    // Upcoming) isn't applied, so a past week still shows what ran then.
     const listView = layout === 'list';
-    const locs = listView ? fLocations : [];
-    const stats = listView ? fStatuses : [];
-    const types = listView ? fTypes : [];
-    const range = listView ? fRange : [];
+    const locs = fLocations;
+    const stats = listView || !isDefaultStatus(fStatuses) ? fStatuses : [];
+    const types = fTypes;
+    const range = fRange;
+    const people = fUsers;
+    const spans = fSpans;
     const emails = Object.fromEntries((taskProfiles || []).map(p => [p.name, p.email]));
     const byName = new Map();
     (blocks || []).forEach(b => { const k = b.userName?.toLowerCase(); if (k) byName.set(k, [...(byName.get(k) || []), b]); });
@@ -179,18 +191,22 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
             : STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.startDate.localeCompare(b.startDate)),
       }))
       .filter(u => !q || u.name.toLowerCase().includes(q) || String(u.email || '').toLowerCase().includes(q))
+      // User narrows people, not slots: everyone picked stays listed.
+      .filter(u => !people.length || people.includes(u.name))
       // Filters narrow each user's blocks; with any on, users left with none drop out.
       .map(u => ({
         ...u,
         blocks: u.blocks.filter(b => (!locs.length || locs.includes(b.location))
-          // Past slots stay hidden unless the Status filter asks for them, or a
-          // date range reaches back to them.
-          // This Week shows past slots too (a past week shows what was available then).
-          && (stats.length ? stats.some(k => STATUS_FILTER[k] === b.status) : (!listView || range.length === 2 || b.status !== 'expired'))
+          // No status picked shows every slot (This Week always does: a past
+          // week shows what was available then).
+          && (!stats.length || stats.some(k => STATUS_FILTER[k] === b.status))
           && (!types.length || (b.slots || []).some(sl => types.includes(sl.appointmentType || ALL_TYPES)))
+          && (!spans.length || spans.includes(b.endDate ? 'Fixed Slot' : 'Rolling Slot'))
           && (range.length !== 2 || (b.startDate <= range[1] && (b.endDate || '9999-12-31') >= range[0]))),
       }))
-      .filter(u => !(locs.length || stats.length || types.length || range.length) || u.blocks.length)
+      // The default Active + Upcoming doesn't count as narrowing: users on
+      // practice hours stay listed.
+      .filter(u => !(locs.length || (stats.length && !isDefaultStatus(stats)) || types.length || range.length || spans.length) || u.blocks.length)
       // People with their own availability first, then by name.
       // Sorted by date, a user ranks by their first slot (now leading their rows).
       // Sorted by name, it's purely alphabetical.
@@ -199,10 +215,15 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
         : (b.blocks.length > 0) - (a.blocks.length > 0)
           || (sortDir && a.blocks.length && (sortDir === 'asc' ? 1 : -1) * a.blocks[0].startDate.localeCompare(b.blocks[0].startDate))
           || a.name.localeCompare(b.name)));
-  }, [platformUsers, taskProfiles, blocks, query, layout, fLocations, fStatuses, fTypes, fRange, sort, sortDir]);
+  }, [platformUsers, taskProfiles, blocks, query, layout, fLocations, fStatuses, fTypes, fRange, fUsers, fSpans, sort, sortDir]);
+  // For the User filter: keyed by name (what fUsers holds), with role for the second line.
+  const pickerUsers = useMemo(() => (platformUsers || [])
+    .filter(u => u.name)
+    .map(u => ({ name: u.name, role: u.clinicalRoles?.[0] || 'Staff', initials: u.initials }))
+    .sort((a, b) => a.name.localeCompare(b.name)), [platformUsers]);
   const allLocations = useMemo(() => [...new Set((blocks || []).map(b => b.location).filter(Boolean))].sort(), [blocks]);
   const allTypes = useMemo(() => [...new Set((blocks || []).flatMap(b => (b.slots || []).map(sl => sl.appointmentType || ALL_TYPES)))].sort(), [blocks]);
-  const filtersOn = fLocations.length || fStatuses.length || fTypes.length || fRange.length;
+  const filtersOn = fLocations.length || !isDefaultStatus(fStatuses) || fTypes.length || fRange.length || fUsers.length || fSpans.length;
 
   const lastPage = Math.max(1, Math.ceil(users.length / perPage));
   const pageNow = Math.min(page, lastPage);
@@ -225,7 +246,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
 
   const tools = (
     <>
-      <Toggle size="S" items={[{ key: 'list', label: 'List' }, { key: 'week', label: 'This Week' }]} active={layout} onChange={setLayout} />
+      <Toggle size="S" items={[{ key: 'list', label: 'List' }, { key: 'week', label: 'Week' }]} active={layout} onChange={setLayout} />
       <span className={styles.toolDivider} aria-hidden="true" />
       {searchOpen ? (
         <SearchBar
@@ -237,9 +258,9 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
       ) : (
         <SearchIconButton tooltipBelow onClick={() => setSearchOpen(true)} />
       )}
-      {/* Search | Filter: only in List, where the filter icon is. */}
-      {layout === 'list' && <span className={styles.toolDivider} aria-hidden="true" />}
-      {layout === 'list' && <ActionButton icon="custom:filter" size="L" tooltip={filtersOpen ? 'Hide filters' : 'Filters'} tooltipBelow active={filtersOpen || !!filtersOn} onClick={() => setFiltersOpen(o => !o)} />}
+      {/* Search | Filter */}
+      <span className={styles.toolDivider} aria-hidden="true" />
+      <ActionButton icon="custom:filter" size="L" tooltip={filtersOpen ? 'Hide filters' : 'Filters'} tooltipBelow active={filtersOpen || !!filtersOn} onClick={() => setFiltersOpen(o => !o)} />
       <span className={styles.toolDivider} aria-hidden="true" />
       <Button variant="secondary" size="L" leadingIconElement={<AddIconMinimalist size={16} color="currentColor" />} onClick={() => setEditing({})}>Add new</Button>
     </>
@@ -251,7 +272,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
         <Avatar variant="staff" size="M" initials={u.initials} userName={u.name} userId={u.id} />
         <span className={styles.userText}>
           <span className={styles.userName}>{u.name}</span>
-          <span className={styles.userSub}>{u.email || u.role}</span>
+          <span className={styles.userSub}>{u.role}</span>
         </span>
       </span>
     </td>
@@ -451,7 +472,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
               <td className={styles.td}><Badge tone={look.tone} size="S" label={look.label} /></td>
               <td className={styles.td}><span className={styles.cellText}>{b.location}</span></td>
               <td className={`${styles.td} ${styles.datesTd}`}>
-                <span className={styles.cellText}>{formatDate(b.startDate)} – {b.endDate ? formatDate(b.endDate) : 'Ongoing'}</span>
+                <span className={styles.cellText}>{formatDate(b.startDate)} – {b.endDate ? formatDate(b.endDate) : 'Present'}</span>
               </td>
               <td className={styles.td}>
                 <span className={styles.repeats}>
@@ -503,11 +524,37 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
           </InfoBar>
         </div>
       )}
-      {filtersOpen && layout === 'list' && (
+      {filtersOpen && (
         <div className={styles.filterBar}>
+          {/* Users as in Figma Eventus 16978:128250: checkbox, avatar, name over role. */}
+          <FilterChip
+            label="User"
+            active={fUsers.length > 0}
+            activeSummary={fUsers.length ? (fUsers.length === 1 ? fUsers[0] : `${fUsers[0]} +${fUsers.length - 1}`) : undefined}
+            onClear={() => { setFUsers([]); setPage(1); }}
+            renderPopover={({ anchorRect, onClose }) => (
+              <UserPickerPopover
+                multiple
+                anchorRect={anchorRect}
+                users={pickerUsers}
+                selected={fUsers}
+                onSelect={(next) => { setFUsers(next); setPage(1); }}
+                onClose={onClose}
+              />
+            )}
+          />
           <FilterChip label="Location" searchable options={allLocations} selected={fLocations} onChange={(v) => { setFLocations(v); setPage(1); }} />
-          <FilterChip label="Status" options={Object.keys(STATUS_FILTER)} selected={fStatuses} onChange={(v) => { setFStatuses(v); setPage(1); }} />
+          {/* Like Employer Impact's Time Frame: the default reads as a neutral, set value
+              (no ✕); once changed it's an active filter, and clearing it goes back to the default. */}
+          <FilterChip
+            label="Status"
+            options={Object.keys(STATUS_FILTER)}
+            selected={fStatuses}
+            noClear={isDefaultStatus(fStatuses)}
+            onChange={(v) => { setFStatuses(v.length ? v : DEFAULT_STATUSES); setPage(1); }}
+          />
           <FilterChip label="Appointment Type" searchable options={allTypes} selected={fTypes} onChange={(v) => { setFTypes(v); setPage(1); }} />
+          <FilterChip label="Slot Type" options={['Fixed Slot', 'Rolling Slot']} selected={fSpans} onChange={(v) => { setFSpans(v); setPage(1); }} />
           {/* Availability looks ahead, so just a custom range (no "Last 7 days" presets). */}
           <FilterChip
             label="Date Range"
@@ -524,7 +571,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
               />
             )}
           />
-          {filtersOn ? <Link variant="secondary" onClick={() => { setFLocations([]); setFStatuses([]); setFTypes([]); setFRange([]); }}>Clear all</Link> : null}
+          {filtersOn ? <Link variant="secondary" onClick={() => { setFLocations([]); setFStatuses(DEFAULT_STATUSES); setFTypes([]); setFRange([]); setFUsers([]); setFSpans([]); }}>Clear all</Link> : null}
         </div>
       )}
       {layout === 'week' ? (
@@ -532,7 +579,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
           view="week"
           users={users}
           loading={!usersFetched || !blocksFetched}
-          onEdit={(u) => setEditing({ user: u })}
+          onEdit={(u, focusId) => setEditing({ user: u, focusId })}
           onAdd={(u) => setEditing({ user: u, addBlock: true })}
           renderActions={(u) => (
             <span className={styles.weekActions}>
@@ -576,6 +623,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
         <UserAvailabilityDrawer
           user={editing.user || null}
           addBlock={!!editing.addBlock}
+          focusBlockId={editing.focusId || null}
           cloneFrom={editing.cloneFrom || null}
           users={users}
           variant="new"
@@ -589,17 +637,13 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
         <ConfirmDialog
           variant="destructive"
           title="Delete availability?"
-          description={`${total} availability slot${total === 1 ? '' : 's'} for ${deleting.name} will be deleted and they will follow the availability schedule of their assigned practice.`}
+          description={`${total === 1 ? 'The' : `All ${total}`} availability slot${total === 1 ? '' : 's'} for ${deleting.name} will be deleted and they will follow the availability schedule of their assigned practice.`}
           confirmLabel="Delete"
           cancelLabel="Cancel"
           loading={deleteBusy}
           onCancel={() => setDeleting(null)}
           onConfirm={deleteAvailability}
-        >
-          <InfoBar variant="inline" tone="warning" icon="solar:danger-triangle-linear">
-            All slots under this availability will be deleted.
-          </InfoBar>
-        </ConfirmDialog>
+        />
         );
       })()}
       {oooUser && (

@@ -183,6 +183,8 @@
   padding: 0;
 }
 .timeColItem:hover { background: var(--primary-50); color: var(--primary-300); }
+.timeColItem:disabled,
+.timeColItem:disabled:hover { background: none; color: var(--neutral-150); cursor: not-allowed; }
 
 .timeColItemSelected {
   background: var(--primary-300) !important;

@@ -30,14 +30,19 @@ export const TIMEZONES = [
 ];
 
 /**
- * A slot's timezone, as everywhere in User Availability: its short name on a
- * given day, so DST is right ("America/New_York" → "EDT" in summer, "EST" in
- * winter). Zones without a US abbreviation read "GMT+5:30".
+ * A slot's timezone, as everywhere in User Availability: the season-neutral
+ * US abbreviation ("America/New_York" → "ET", Los Angeles → "PT"), since a
+ * recurring slot is in Eastern Time all year, not EST half of it and EDT the
+ * other. Zones without one fall back to their offset ("GMT+5:30"); `on` picks
+ * the date for that offset.
  */
 export function timezoneAbbr(tz, on = new Date()) {
+  const part = (opts) => new Intl.DateTimeFormat('en-US', { timeZone: tz, ...opts })
+    .formatToParts(on).find(p => p.type === 'timeZoneName')?.value;
   try {
-    return new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
-      .formatToParts(on).find(p => p.type === 'timeZoneName')?.value || tz;
+    const generic = part({ timeZoneName: 'shortGeneric' });
+    if (generic && /^[A-Z]{2,4}$/.test(generic)) return generic;
+    return part({ timeZoneName: 'short' }) || tz;
   } catch {
     return String(tz || '').replace(/_/g, ' ');
   }
@@ -121,6 +126,28 @@ const listDays = (days = []) => {
   if (sorted.join() === '0,6') return 'Weekends';
   if (sorted.length === 7) return 'Every day';
   return sorted.map(d => DAY_SHORT[d]).join(', ');
+};
+
+/** Compact days for short notes: runs of 3+ collapse, "Sun–Tue", "Mon, Wed–Fri". */
+export const shortDays = (days = []) => {
+  const sorted = [...new Set(days)].sort((a, b) => a - b);
+  if (sorted.length === 7) return 'Every day';
+  const runs = [];
+  sorted.forEach((d) => {
+    const last = runs[runs.length - 1];
+    if (last && d === last[1] + 1) last[1] = d; else runs.push([d, d]);
+  });
+  return runs.flatMap(([a, z]) => (z - a >= 2
+    ? [`${DAY_SHORT[a]}–${DAY_SHORT[z]}`]
+    : Array.from({ length: z - a + 1 }, (_, k) => DAY_SHORT[a + k]))).join(', ');
+};
+
+/** Compact hours: "9–11 AM" in one half of the day, "9 AM–1 PM" across noon. */
+export const shortHours = ({ start, end }) => {
+  const [a, b] = [formatTime(start), formatTime(end)];
+  const [ta, pa] = a.split(' ');
+  const [tb, pb] = b.split(' ');
+  return pa === pb ? `${ta}–${tb} ${pb}` : `${a}–${b}`;
 };
 
 const every = (n, one, unit) => (n > 1 ? `Every ${n} ${unit}` : one);
@@ -252,6 +279,17 @@ const earlier = (a, b) => (a < b ? a : b);
  *
  * @returns {{ index: number, days: number[], hours: {start, end}[], from: string, to: string }[][]}
  */
+/** Minutes to add to a time in `fromTz` to read it in `toTz`, on ISO day `isoDate`. */
+export function tzShiftMinutes(fromTz, toTz, isoDate) {
+  if (!fromTz || !toTz || fromTz === toTz) return 0;
+  try {
+    const ms = Date.UTC(...String(isoDate || isoDay(new Date())).split('-').map((n, i) => Number(n) - (i === 1 ? 1 : 0)), 12);
+    return zoneOffsetMin(toTz, ms) - zoneOffsetMin(fromTz, ms);
+  } catch {
+    return 0;
+  }
+}
+
 export function findConflicts(blocks, today = isoDay(new Date())) {
   return blocks.map((a, i) => blocks.flatMap((b, k) => {
     if (k === i) return [];
@@ -263,11 +301,20 @@ export function findConflicts(blocks, today = isoDay(new Date())) {
     const from = later(later(a.startDate || '', b.startDate || ''), today);
     const to = earlier(a.endDate || '9999-12-31', b.endDate || '9999-12-31');
     if (from > to) return [];
+    // Each slot's hours are in its own timezone: b's are shifted into a's
+    // (at the start of the shared dates) before comparing, so 9 AM PDT and
+    // 9 AM EDT don't count as the same time. Reported hours are in a's zone.
+    const shift = tzShiftMinutes(b.timezone, a.timezone, from);
+    const toM = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
+    const toT = (n) => `${pad(Math.floor(n / 60))}:${pad(n % 60)}`;
     const raw = [];
     (a.slots || []).forEach(sa => (b.slots || []).forEach(sb => {
       if (!sa.start || !sa.end || !sb.start || !sb.end) return;
-      if (!(sa.start < sb.end && sb.start < sa.end)) return;
-      raw.push({ start: later(sa.start, sb.start), end: earlier(sa.end, sb.end) });
+      const as = toM(sa.start), ae = toM(sa.end);
+      const bs = toM(sb.start) + shift, be = toM(sb.end) + shift;
+      const s0 = Math.max(as, bs, 0), e0 = Math.min(ae, be, 24 * 60);
+      if (s0 >= e0) return;
+      raw.push({ start: toT(s0), end: toT(e0) });
     }));
     raw.sort((x, y) => x.start.localeCompare(y.start));
     const hours = [];
