@@ -16,12 +16,6 @@
   background: var(--neutral-50);
 }
 
-/* The "hidden" lane reads as secondary. */
-.muted {
-  background: var(--neutral-25);
-  border: 0.5px dashed var(--neutral-150);
-}
-
 .laneHeader {
   display: flex;
   align-items: center;
@@ -55,7 +49,7 @@
   flex: 1;
   min-height: var(--space-16);
   border-radius: calc(var(--space-1) * 1.5);
-  transition: background-color 120ms ease;
+  transition: background-color 150ms ease;
 }
 
 .over { background: var(--primary-50); }
@@ -77,12 +71,39 @@
   border-radius: calc(var(--space-1) * 1.5);
   background: var(--neutral-0);
   cursor: grab;
+  transition: border-color 120ms ease, background-color 120ms ease;
 }
 
+.card:hover { border-color: var(--neutral-200); }
+
+/* The dragged card's own slot becomes the landing indicator: a dashed,
+   tinted gap the same size as the card, moving as the drop target moves.
+   (Beats SortableList's lifted .dragging style on purpose.) */
+.card[data-dragging] {
+  border: 1px dashed var(--primary-300);
+  background: var(--primary-50);
+  box-shadow: none;
+}
+
+.card[data-dragging] > * { visibility: hidden; }
+
+/* The copy under the pointer: lifted and slightly tilted. */
 .overlay {
+  border-color: var(--primary-200);
   box-shadow: var(--shadow-popover);
   cursor: grabbing;
+  transform: rotate(1.5deg) scale(1.02);
 }
+
+/* Switched off: stays in place, dimmed, with its show control always visible. */
+.disabled {
+  background: var(--neutral-25);
+  border-style: dashed;
+}
+
+.disabled .label,
+.disabled .meta,
+.disabled .grip { opacity: 0.55; }
 
 .grip {
   display: inline-flex;
@@ -115,7 +136,26 @@
   text-overflow: ellipsis;
 }
 
+/* Actions show on hover or keyboard focus, and always on switched-off cards
+   and touch screens (no hover to reveal them). */
 .actions {
   display: inline-flex;
   flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.card:hover .actions,
+.card:focus-within .actions,
+.disabled .actions { opacity: 1; }
+
+@media (hover: none) {
+  .actions { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay { transform: none; }
+  .actions,
+  .card,
+  .laneBody { transition: none; }
 }

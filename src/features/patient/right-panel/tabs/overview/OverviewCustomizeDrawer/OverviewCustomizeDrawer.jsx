@@ -8,33 +8,44 @@ import { LANE_HINTS, LANE_LABELS, OVERVIEW_WIDGETS, normalizeOverviewLayout } fr
 import styles from './OverviewCustomizeDrawer.module.css';
 
 const BY_KEY = Object.fromEntries(OVERVIEW_WIDGETS.map(w => [w.key, w]));
-const HIDDEN = 'hidden';
 const laneKey = i => `lane-${i}`;
 
-const toItem = k => ({ key: k, label: BY_KEY[k].label, meta: BY_KEY[k].sample ? 'Sample data' : undefined });
-
 function toLanes(layout) {
-  return [
-    ...layout.lanes.map((keys, i) => ({
-      key: laneKey(i), title: LANE_LABELS[i], hint: LANE_HINTS[i], emptyText: 'Drop widgets here', items: keys.map(toItem),
+  const hidden = new Set(layout.hidden);
+  return layout.lanes.map((keys, i) => ({
+    key: laneKey(i),
+    title: LANE_LABELS[i],
+    hint: LANE_HINTS[i],
+    emptyText: 'Drop widgets here',
+    items: keys.map(k => ({
+      key: k,
+      label: BY_KEY[k].label,
+      meta: BY_KEY[k].sample ? 'Sample data' : undefined,
+      disabled: hidden.has(k),
     })),
-    { key: HIDDEN, title: 'Hidden', hint: 'Not shown on the Overview', muted: true, emptyText: 'Drag widgets here to hide them', items: layout.hidden.map(toItem) },
-  ];
+  }));
 }
 
-const laneItemKeys = (lanes, key) => (lanes.find(l => l.key === key)?.items || []).map(it => it.key);
+const laneItems = (lanes, i) => lanes.find(l => l.key === laneKey(i))?.items || [];
 
 function toLayout(lanes) {
   return {
-    lanes: [0, 1, 2].map(i => laneItemKeys(lanes, laneKey(i))),
-    hidden: laneItemKeys(lanes, HIDDEN),
+    lanes: [0, 1, 2].map(i => laneItems(lanes, i).map(it => it.key)),
+    hidden: [0, 1, 2].flatMap(i => laneItems(lanes, i).filter(it => it.disabled).map(it => it.key)),
   };
 }
 
+function laneCount(lane) {
+  const off = lane.items.filter(i => i.disabled).length;
+  const on = lane.items.length - off;
+  return off ? `${on} shown · ${off} hidden` : `${on} shown`;
+}
+
 /**
- * Overview > Customize: drag widgets between the three columns, reorder
- * them, or drag them to Hidden. Applies on Save, per user. The 2- and
- * 1-column layouts fold the same three lanes, so there is one arrangement.
+ * Overview > Customize: drag widgets within and between the three columns,
+ * and hide or show them in place. Hidden widgets stay where they are, dimmed,
+ * so showing one puts it back in the same spot. Applies on Save, per user.
+ * The 2- and 1-column layouts fold the same three lanes.
  */
 export function OverviewCustomizeDrawer({ layout, onSave, onClose }) {
   const showToast = useAppStore(s => s.showToast);
@@ -42,19 +53,14 @@ export function OverviewCustomizeDrawer({ layout, onSave, onClose }) {
   const defaults = useMemo(() => toLanes(normalizeOverviewLayout(undefined)), []);
   const isDefault = JSON.stringify(toLayout(lanes)) === JSON.stringify(toLayout(defaults));
 
-  const move = (itemKey, fromKey, toKey) => setLanes(prev => {
-    const item = prev.find(l => l.key === fromKey)?.items.find(i => i.key === itemKey);
-    if (!item) return prev;
-    return prev.map((l) => {
-      if (l.key === fromKey) return { ...l, items: l.items.filter(i => i.key !== itemKey) };
-      if (l.key === toKey) return { ...l, items: [...l.items, item] };
-      return l;
-    });
-  });
+  const toggle = itemKey => setLanes(prev => prev.map(l => ({
+    ...l,
+    items: l.items.map(i => (i.key === itemKey ? { ...i, disabled: !i.disabled } : i)),
+  })));
 
   const save = () => {
     const next = toLayout(lanes);
-    if (next.lanes.every(l => l.length === 0)) {
+    if (next.lanes.flat().length === next.hidden.length) {
       showToast?.('Keep at least one widget shown');
       return;
     }
@@ -75,16 +81,18 @@ export function OverviewCustomizeDrawer({ layout, onSave, onClose }) {
       primaryAction={<Button variant="primary" size="L" onClick={save}>Save</Button>}
     >
       <p className={styles.intro}>
-        Drag widgets between columns to arrange the Overview, or drag them to Hidden. On narrower screens Column 3
-        stacks under Column 1, and with one column all three stack in order. Only you see this layout.
+        Drag widgets to arrange the Overview. Hover a widget to hide it; hidden widgets stay in place, dimmed, so you
+        can show them again. On narrower screens Column 3 stacks under Column 1, and with one column all three stack in
+        order. Only you see this layout.
       </p>
       <SortableLanes
         lanes={lanes}
         onChange={setLanes}
-        renderActions={(item, fromKey) => (fromKey === HIDDEN ? (
-          <ActionButton icon="solar:add-circle-linear" size="S" tooltip={`Show ${item.label}`} onClick={() => move(item.key, HIDDEN, laneKey(0))} />
+        renderCount={laneCount}
+        renderActions={item => (item.disabled ? (
+          <ActionButton icon="solar:eye-closed-linear" size="S" tooltip={`Show ${item.label}`} tooltipLeft onClick={() => toggle(item.key)} />
         ) : (
-          <ActionButton icon="solar:eye-closed-linear" size="S" tooltip={`Hide ${item.label}`} onClick={() => move(item.key, fromKey, HIDDEN)} />
+          <ActionButton icon="solar:eye-linear" size="S" tooltip={`Hide ${item.label}`} tooltipLeft onClick={() => toggle(item.key)} />
         ))}
       />
     </Drawer>

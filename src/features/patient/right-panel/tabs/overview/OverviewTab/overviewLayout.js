@@ -22,9 +22,9 @@ export function overviewColumnCount(width, { leftPanelOpen }) {
 export const LANE_LABELS = ['Column 1', 'Column 2', 'Column 3'];
 export const LANE_HINTS = ['Narrow, left', 'Wide, middle', 'Narrow, right'];
 
-// Every widget the Overview can show. `group` only sorts the hidden list in
-// Customize. `sample` marks widgets reused from the left panel Summary tab
-// that still show built-in sample data rather than this patient's.
+// Every widget the Overview can show. `sample` marks widgets reused from the
+// left panel Summary tab that still show built-in sample data rather than
+// this patient's.
 export const OVERVIEW_WIDGETS = [
   { key: 'synopsis', label: 'Patient Synopsis', group: 'Summary' },
   { key: 'healthChart', label: 'Health Chart', group: 'Summary' },
@@ -59,50 +59,59 @@ export const OVERVIEW_WIDGETS = [
 export const OVERVIEW_WIDGET_KEYS = OVERVIEW_WIDGETS.map(w => w.key);
 const KNOWN = new Set(OVERVIEW_WIDGET_KEYS);
 
-// Synopsis and Health Chart open the first lane; Quick Actions sits directly
-// above Upcoming Appointments. Anything not in a lane starts hidden.
+// Every widget has a home lane. Hidden widgets stay in their lane (dimmed in
+// Customize, skipped on the Overview), so showing one again puts it back
+// where it was. Synopsis and Health Chart open the first lane; Quick Actions
+// sits directly above Upcoming Appointments.
 export const DEFAULT_OVERVIEW_LAYOUT = {
   lanes: [
-    ['synopsis', 'healthChart', 'riskAcuity', 'highlights'],
-    ['suggestedActions', 'carePlan', 'carePrograms', 'gaps', 'notes'],
-    ['quickActions', 'appointments', 'contact', 'tasks', 'vitals', 'careTeam'],
+    ['synopsis', 'healthChart', 'riskAcuity', 'highlights', 'conditions', 'medications', 'careUtilization', 'populationGroups'],
+    ['suggestedActions', 'carePlan', 'carePrograms', 'gaps', 'notes', 'programProgress', 'sinceLastTouch', 'priorAuth', 'careJourneys', 'automations'],
+    ['quickActions', 'appointments', 'contact', 'tasks', 'vitals', 'careTeam', 'caregivers', 'consent', 'insurance', 'subscription'],
+  ],
+  hidden: [
+    'conditions', 'medications', 'careUtilization', 'populationGroups',
+    'programProgress', 'sinceLastTouch', 'priorAuth', 'careJourneys', 'automations',
+    'caregivers', 'consent', 'insurance', 'subscription',
   ],
 };
 
-export function defaultHidden() {
-  const placed = new Set(DEFAULT_OVERVIEW_LAYOUT.lanes.flat());
-  return OVERVIEW_WIDGET_KEYS.filter(k => !placed.has(k));
-}
+const DEFAULT_LANE_OF = Object.fromEntries(
+  DEFAULT_OVERVIEW_LAYOUT.lanes.flatMap((lane, i) => lane.map(k => [k, i])),
+);
+const DEFAULT_HIDDEN = new Set(DEFAULT_OVERVIEW_LAYOUT.hidden);
 
 /**
- * Saved layout → a complete, valid one. Drops unknown or duplicate keys, and
- * places widgets the user has never seen (added after they last saved) where
- * the default puts them, so a new widget shows up instead of staying hidden.
+ * Saved layout → a complete, valid one: every known widget in exactly one
+ * lane, `hidden` a subset of them. Drops unknown or duplicate keys. Widgets
+ * the user has never seen (added after they last saved) go to their default
+ * lane with their default visibility.
  */
 export function normalizeOverviewLayout(saved) {
+  const source = saved && Array.isArray(saved.lanes) ? saved : DEFAULT_OVERVIEW_LAYOUT;
   const lanes = [[], [], []];
   const seen = new Set();
-  const take = (k) => {
-    if (!KNOWN.has(k) || seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  };
-  const savedLanes = Array.isArray(saved?.lanes) ? saved.lanes : DEFAULT_OVERVIEW_LAYOUT.lanes;
-  savedLanes.slice(0, 3).forEach((lane, i) => {
-    (Array.isArray(lane) ? lane : []).forEach((k) => { if (take(k)) lanes[i].push(k); });
+  source.lanes.slice(0, 3).forEach((lane, i) => {
+    (Array.isArray(lane) ? lane : []).forEach((k) => {
+      if (KNOWN.has(k) && !seen.has(k)) { seen.add(k); lanes[i].push(k); }
+    });
   });
-  const hidden = (Array.isArray(saved?.hidden) ? saved.hidden : (saved ? [] : defaultHidden())).filter(take);
-  // Widgets neither placed nor hidden by the user are new to them.
-  DEFAULT_OVERVIEW_LAYOUT.lanes.forEach((lane, i) => {
-    lane.forEach((k) => { if (take(k)) lanes[i].push(k); });
+  const savedHidden = new Set(Array.isArray(source.hidden) ? source.hidden : []);
+  const hidden = new Set([...savedHidden].filter(k => seen.has(k)));
+  // Not in any lane: new to this user, or saved before hidden widgets kept
+  // their lane. Either way it goes home; a widget the user hid stays hidden.
+  OVERVIEW_WIDGET_KEYS.forEach((k) => {
+    if (seen.has(k)) return;
+    lanes[DEFAULT_LANE_OF[k] ?? 0].push(k);
+    if (savedHidden.has(k) || DEFAULT_HIDDEN.has(k)) hidden.add(k);
   });
-  OVERVIEW_WIDGET_KEYS.forEach((k) => { if (take(k)) hidden.push(k); });
-  return { lanes, hidden };
+  return { lanes, hidden: [...hidden] };
 }
 
 /** The visible columns for a column count, folded from the three lanes. */
 export function overviewColumns(layout, count) {
-  const [a, b, c] = layout.lanes;
+  const hidden = new Set(layout.hidden);
+  const [a, b, c] = layout.lanes.map(lane => lane.filter(k => !hidden.has(k)));
   if (count === 3) return [a, b, c];
   if (count === 2) return [[...a, ...c], b];
   return [[...a, ...b, ...c]];
