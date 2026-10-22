@@ -11,7 +11,7 @@
 // tint of the palette group.
 export const FAMILY = {
   trigger: { color: 'var(--primary-300)', bg: 'var(--primary-50)' },
-  condition: { color: 'var(--accent-magenta)', bg: 'var(--accent-light-magenta)' },
+  condition: { color: 'var(--primary-300)', bg: 'var(--primary-50)' },
   send: { color: 'var(--accent-amber)', bg: 'var(--accent-light-amber)' },
   order: { color: 'var(--accent-green)', bg: 'var(--accent-light-light-green)' },
   add: { color: 'var(--accent-teal)', bg: 'var(--accent-light-teal)' },

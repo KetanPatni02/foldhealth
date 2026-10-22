@@ -1,14 +1,10 @@
 import { useRef, useState } from 'react';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { Badge } from '../../../components/Badge/Badge';
-import { Button } from '../../../components/Button/Button';
 import { Icon } from '../../../components/Icon/Icon';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { STATUSES, statusDef } from '../lib/catalog';
 import styles from './AutomationBuilder.module.css';
-
-const STATUS_TONE = { draft: 'grey', active: 'success', inactive: 'warning' };
 
 /**
  * Title (rename in place), unsaved-changes dot, status menu, and the actions:
@@ -68,7 +64,10 @@ export function BuilderHeader({
           aria-haspopup="menu"
           aria-expanded={menu}
         >
-          <Badge tone={STATUS_TONE[status]} size="S" label={`${statusDef(status).label} automation`} chevron />
+          <span className={`${styles.statusPill} ${styles[`status_${status}`]}`}>
+            {statusDef(status).label} Automation
+            <span className={styles.statusCaret}><Icon name="solar:alt-arrow-down-linear" size={12} /></span>
+          </span>
         </button>
         {menu && (
           <MenuPopover
@@ -86,17 +85,23 @@ export function BuilderHeader({
         )}
       </div>
       <div className={styles.headerActions}>
-        <Tooltip label={canTest ? 'Simulates the workflow without touching real data. Delay steps are skipped.' : 'Select a trigger and add a step to test.'} maxWidth={260}>
-          <span>
-            <Button variant="tertiary" size="M" leadingIcon="solar:play-linear" disabled={!canTest || testing} onClick={onTest}>Test</Button>
+        {canTest && (
+          <span className={styles.testLink}>
+            <button type="button" className={styles.testButton} disabled={testing} onClick={onTest}>
+              <Icon name="solar:play-linear" size={16} />
+              Test
+            </button>
+            <Tooltip label="This simulates workflows without impacting real data. Delay steps are skipped for speed." maxWidth={240} align="right">
+              <span className={styles.testInfo}><Icon name="solar:info-circle-linear" size={14} /></span>
+            </Tooltip>
           </span>
-        </Tooltip>
+        )}
         {!isNew && <ActionButton icon="solar:history-linear" tooltip="Edit log & history" onClick={onHistory} />}
         {!isNew && <ActionButton icon="solar:copy-linear" tooltip="Duplicate" onClick={onDuplicate} />}
         <span className={styles.headerDivider} />
         <ActionButton icon="solar:close-circle-linear" tooltip="Close" onClick={onClose} />
         <span className={styles.headerDivider} />
-        <Button size="M" leadingIcon="solar:check-read-linear" onClick={onSave}>Save</Button>
+        <ActionButton icon="solar:check-linear" tooltip="Save" onClick={onSave} />
       </div>
     </div>
   );

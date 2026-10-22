@@ -35,7 +35,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--font-2xl);
-  font-weight: 500;
+  font-weight: 400;
   color: var(--neutral-500);
 }
 .headerActions {
@@ -85,6 +85,9 @@
   grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: var(--space-4);
   align-items: start;
+  padding: var(--space-4);
+  border-radius: 12px;
+  background: var(--neutral-50);
 }
 .emptyBox {
   flex: 1;

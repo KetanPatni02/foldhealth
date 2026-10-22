@@ -7,13 +7,26 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
+  border: 0.5px solid var(--primary-100);
   border-radius: 6px;
+  background: var(--primary-25);
+  color: var(--primary-300);
 }
 .arrow {
-  width: 16px;
-  border-top: 1px dashed var(--neutral-200);
+  position: relative;
+  width: 18px;
+  border-top: 1px dotted var(--primary-200);
+}
+.arrow::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: -3px;
+  border-left: 4px solid var(--primary-200);
+  border-top: 2.5px solid transparent;
+  border-bottom: 2.5px solid transparent;
 }
 .more {
   font-size: var(--font-xs);

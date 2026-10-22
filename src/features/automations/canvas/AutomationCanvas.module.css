@@ -372,3 +372,22 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* Before a trigger is chosen: a short connector ending in a dot. */
+.looseEnd {
+  position: absolute;
+  top: 32px;
+  width: 1px;
+  height: 20px;
+  background: var(--neutral-200);
+}
+.looseEnd::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--neutral-200);
+}

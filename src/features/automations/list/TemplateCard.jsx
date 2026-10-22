@@ -1,5 +1,4 @@
 import { formatDurationMinutes } from '../lib/analytics';
-import { FlowIcons } from '../shared/FlowIcons';
 import { CardStats } from './AutomationCard';
 import { plural } from './listUtils';
 import styles from './Card.module.css';
@@ -17,11 +16,10 @@ export function TemplateCard({ template: t, avgMinutes, onOpen }) {
       onClick={() => onOpen(t)}
       onKeyDown={(e) => { if (e.key === 'Enter') onOpen(t); }}
     >
-      <div className={styles.top}><FlowIcons graph={t.graph} /></div>
       <h3 className={styles.title}>{t.name}</h3>
       <p className={styles.description}>{t.description}</p>
       <CardStats graph={t.graph} third={{ label: 'Used', value: plural(t.usedCount || 0, 'time') }} />
-      <div className={styles.avg}>Avg. execution time: {formatDurationMinutes(avgMinutes)}</div>
+      <div className={styles.avg}>Avg. Execution Time : {formatDurationMinutes(avgMinutes)}</div>
     </article>
   );
 }

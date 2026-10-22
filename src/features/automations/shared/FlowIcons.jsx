@@ -1,6 +1,6 @@
 import { Icon } from '../../../components/Icon/Icon';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
-import { FAMILY, nodeDef, triggerDef } from '../lib/catalog';
+import { nodeDef, triggerDef } from '../lib/catalog';
 import { getNode, orderedSteps } from '../lib/graph';
 import styles from './FlowIcons.module.css';
 
@@ -24,15 +24,15 @@ export function FlowIcons({ graph, max = 4 }) {
   return (
     <span className={styles.flow}>
       <Tooltip label={tdef?.label || 'No trigger yet'}>
-        <span className={styles.tile} style={{ color: FAMILY.trigger.color, background: FAMILY.trigger.bg }}>
-          <Icon name={tdef?.icon || 'solar:bolt-linear'} size={14} />
+        <span className={styles.tile}>
+          <Icon name={tdef?.icon || 'solar:bolt-linear'} size={16} />
         </span>
       </Tooltip>
       {shown.length > 0 && <span className={styles.arrow} aria-hidden="true" />}
       {shown.map(def => (
         <Tooltip key={def.type} label={def.nodeLabel}>
-          <span className={styles.tile} style={{ color: FAMILY[def.family]?.color, background: FAMILY[def.family]?.bg }}>
-            <Icon name={def.icon} size={14} />
+          <span className={styles.tile}>
+            <Icon name={def.icon} size={16} />
           </span>
         </Tooltip>
       ))}

@@ -84,7 +84,7 @@ export function ExecutionBarChart({ data, keys, height = 220 }) {
             label={{ value: 'Execution', angle: -90, position: 'insideLeft', offset: 10, style: AXIS_LABEL }} />
           <ChartTooltip cursor={{ fill: 'var(--neutral-50)' }} content={<BarTip keys={keys} />} />
           {keys.map(k => (
-            <Bar key={k} dataKey={k} name={SERIES[k].label} fill={SERIES[k].color} radius={[3, 3, 0, 0]} maxBarSize={12} />
+            <Bar key={k} dataKey={k} name={SERIES[k].label} fill={SERIES[k].color} radius={[3, 3, 0, 0]} maxBarSize={12} isAnimationActive={false} />
           ))}
         </BarChart>
       </ResponsiveContainer>

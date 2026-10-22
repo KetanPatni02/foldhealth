@@ -3,7 +3,6 @@ import { Button } from '../../../components/Button/Button';
 import { Icon } from '../../../components/Icon/Icon';
 import { Switch } from '../../../components/Switch/Switch';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
-import { FlowIcons } from '../shared/FlowIcons';
 import { graphCounts, formatDurationMinutes } from '../lib/analytics';
 import { AutomationMenu } from './AutomationMenu';
 import { avgRunMinutes, latestFailures, plural } from './listUtils';
@@ -33,19 +32,18 @@ export function AutomationCard({ automation: a, runs, actions }) {
       onClick={() => actions.open(a)}
       onKeyDown={(e) => { if (e.key === 'Enter') actions.open(a); }}
     >
-      <div className={styles.top}>
-        <FlowIcons graph={graph} />
-        <AutomationMenu hasRuns={runs.length > 0} onSelect={(key) => actions.menu(key, a)} />
-      </div>
       <h3 className={styles.title}>{a.name}</h3>
       <p className={styles.description}>{a.description || 'No description yet.'}</p>
-      <CardStats graph={graph} third={{ label: 'Executed', value: plural(runs.length, 'time') }} />
-      <div className={styles.avg}>Avg. execution time: {formatDurationMinutes(avgRunMinutes(runs))}</div>
+      <CardStats graph={graph} third={{ label: 'Used', value: plural(runs.length, 'time') }} />
+      <div className={styles.avg}>Avg. Execution Time : {formatDurationMinutes(avgRunMinutes(runs))}</div>
       <div className={styles.footer} onClick={e => e.stopPropagation()}>
         {isDraft ? (
           <>
             <Badge tone="grey" size="S" label="Draft" />
-            <Button variant="secondary" size="S" leadingIcon="solar:pen-linear" onClick={() => actions.edit(a)}>Continue editing</Button>
+            <span className={styles.footerRight}>
+              <Button variant="secondary" size="S" leadingIcon="solar:pen-linear" onClick={() => actions.edit(a)}>Continue editing</Button>
+              <AutomationMenu hasRuns={runs.length > 0} onSelect={(key) => actions.menu(key, a)} />
+            </span>
           </>
         ) : (
           <>
@@ -66,6 +64,7 @@ export function AutomationCard({ automation: a, runs, actions }) {
               {a.status === 'active' && (
                 <Button variant="secondary" size="S" leadingIcon="solar:play-linear" onClick={() => actions.run(a)}>Run</Button>
               )}
+              <AutomationMenu hasRuns={runs.length > 0} onSelect={(key) => actions.menu(key, a)} />
             </span>
           </>
         )}

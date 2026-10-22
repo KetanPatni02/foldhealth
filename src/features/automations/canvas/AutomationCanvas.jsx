@@ -53,6 +53,7 @@ function CanvasInner({
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [dragging, setDragging] = useState(false);
   const [fitted, setFitted] = useState(true);
+  const wrapRef = useRef(null);
   const rf = useReactFlow();
   const zoom = useStore(zoomSelector);
   const editing = mode === 'edit';
@@ -142,9 +143,19 @@ function CanvasInner({
     if (didFit.current || !nodes.length) return;
     didFit.current = true;
     requestAnimationFrame(() => {
-      if (!(focusId && focus(focusId, 0))) rf.fitView({ padding: 0.15, maxZoom: 1 });
+      if (focusId && focus(focusId, 0)) return;
+      // The builder opens at actual size with "Starts here" at the top
+      // center (Figma); previews and analytics fit the whole flow.
+      const start = layout.items.find(i => i.id === 'start');
+      if ((editing || nodes.length === 1) && start && wrapRef.current) {
+        const width = wrapRef.current.clientWidth;
+        rf.setViewport({ x: width / 2 - (start.x + start.w / 2), y: 40, zoom: 1 });
+        setFitted(false);
+        return;
+      }
+      rf.fitView({ padding: 0.15, maxZoom: 1 });
     });
-  }, [nodes.length, rf, focusId, focus]);
+  }, [nodes.length, rf, focusId, focus, editing, layout]);
 
   useEffect(() => {
     if (focusId && didFit.current) focus(focusId, 400);
@@ -177,7 +188,7 @@ function CanvasInner({
 
   return (
     <CanvasContext.Provider value={ctx}>
-      <div className={`${styles.canvas} ${className || ''}`}>
+      <div ref={wrapRef} className={`${styles.canvas} ${className || ''}`}>
         <ReactFlow
           nodes={nodes}
           edges={edges}

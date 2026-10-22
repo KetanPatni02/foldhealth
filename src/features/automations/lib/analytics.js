@@ -99,15 +99,19 @@ export function channelFunnel(messages, channel) {
 }
 
 /** One row per day in the range: { key, label, sent, delivered, opened, clicked, failed }. */
+// Day buckets use the viewer's local calendar day (the range starts at local
+// midnight); a UTC key would shift every bucket by the timezone offset.
+const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export function dailySeries(messages, channel, range) {
   const days = [];
   for (let t = new Date(range.from); t <= range.to; t = new Date(t.getTime() + DAY)) {
-    const key = t.toISOString().slice(0, 10);
+    const key = dayKey(t);
     days.push({ key, label: t.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }), sent: 0, delivered: 0, opened: 0, clicked: 0, failed: 0 });
   }
   const byKey = new Map(days.map(d => [d.key, d]));
   messages.filter(m => m.channel === channel).forEach(m => {
-    const d = byKey.get(new Date(m.sentAt).toISOString().slice(0, 10));
+    const d = byKey.get(dayKey(new Date(m.sentAt)));
     if (!d) return;
     d.sent += 1;
     if (m.status === 'failed') { d.failed += 1; return; }

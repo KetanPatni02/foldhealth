@@ -52,7 +52,7 @@ function nodeClasses(ctx, id, base) {
   ].filter(Boolean).join(' ');
 }
 
-function StartNode() {
+function StartNode({ data }) {
   const ctx = useCanvas();
   return (
     <div className={styles.startWrap}>
@@ -60,11 +60,13 @@ function StartNode() {
         <Icon name="solar:star-fall-minimalistic-linear" size={16} />
         Starts here
       </div>
+      {data?.dangling ? <span className={styles.looseEnd} aria-hidden="true" /> : (
       <Tooltip label={ctx.anyCollapsed ? 'Expand All Nodes' : 'Collapse All Nodes'}>
         <button type="button" className={styles.collapseAll} onClick={ctx.toggleAll} aria-label={ctx.anyCollapsed ? 'Expand all nodes' : 'Collapse all nodes'}>
           <Icon name={ctx.anyCollapsed ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-up-linear'} size={12} />
         </button>
       </Tooltip>
+      )}
       <Handle type="source" position={Position.Bottom} className={styles.handle} isConnectable={false} />
     </div>
   );

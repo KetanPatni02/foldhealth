@@ -375,6 +375,11 @@ export function layoutGraph(graph, { slots = false, collapsed = new Set(), statB
   const edges = [];
   const root = getNode(graph, 'trigger');
   if (!root) return { items, edges, width: 0, height: 0 };
+  // Before a trigger is chosen only "Starts here" shows, with a loose end.
+  if (!root.type) {
+    items.push({ id: 'start', kind: 'start', x: 0, y: 0, w: SIZES.start.w, h: SIZES.start.h, dangling: true });
+    return { items, edges, width: SIZES.start.w, height: SIZES.start.h + 24 };
+  }
 
   // `slots`: true for every open branch, or (parentId) => boolean.
   const wantSlots = typeof slots === 'function' ? slots : () => !!slots;

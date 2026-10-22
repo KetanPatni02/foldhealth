@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Input } from '../../../components/Input/Input';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
+import { DragHandleIcon } from '../../../components/Icon/DragHandleIcon';
 import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyState';
 import { ACTIONS, CONDITIONS, FAMILY, LOGIC, triggerDef } from '../lib/catalog';
 import { DRAG_TYPE } from '../canvas/CanvasNodes';
@@ -49,9 +50,9 @@ export function Palette({ triggerType, onPickTrigger, isAllowed, whyNot, onAdd, 
         aria-disabled={disabled}
         onKeyDown={(e) => { if (e.key === 'Enter' && !disabled) onAdd(def.type); }}
       >
-        <Icon name="solar:menu-dots-linear" size={14} className={styles.dragHandle} />
+        <DragHandleIcon size={14} className={styles.dragHandle} />
         <Icon name={def.icon} size={16} color={disabled ? 'var(--neutral-200)' : FAMILY[family]?.color} />
-        <span className={styles.paletteLabel}>{def.label}</span>
+        <span className={styles.paletteLabel}>{family === 'condition' ? `If ${def.label.charAt(0).toLowerCase()}${def.label.slice(1)}` : def.label}</span>
         {def.help || def.helper ? (
           <Tooltip label={def.help || def.helper} maxWidth={240}>
             <span className={styles.paletteInfo}><Icon name="solar:info-circle-linear" size={14} /></span>
@@ -123,7 +124,8 @@ export function Palette({ triggerType, onPickTrigger, isAllowed, whyNot, onAdd, 
 
         {!triggerType ? (
           <div className={styles.paletteEmpty}>
-            <RingEmptyState icon="solar:bolt-linear" size="S" label="The trigger you choose decides which conditions and actions you can use." />
+            <Icon name="solar:bolt-linear" size={32} color="var(--primary-300)" />
+            <p>The chosen trigger will determine which conditions and actions can be applied.</p>
           </div>
         ) : groups.length === 0 ? (
           <div className={styles.paletteEmpty}>
@@ -136,7 +138,7 @@ export function Palette({ triggerType, onPickTrigger, isAllowed, whyNot, onAdd, 
               return (
                 <div key={g.group} className={styles.paletteGroup}>
                   <span className={styles.paletteSection}>{g.group}</span>
-                  <div className={styles.paletteBox} style={{ background: FAMILY[family]?.bg }}>
+                  <div className={`${styles.paletteBox} ${styles[`box_${family}`]}`}>
                     {g.items.map(i => item(i, family))}
                   </div>
                 </div>

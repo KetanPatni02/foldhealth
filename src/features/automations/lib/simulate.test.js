@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { simulateRun, resumePoint, testStep } from './simulate';
-import { channelFunnel, nodeStats, overview } from './analytics';
+import { channelFunnel, dailySeries, nodeStats, overview, rangeFor } from './analytics';
 import { SEED_AUTOMATIONS as RAW, SEED_TEMPLATES, buildSeedActivity, wireTemplateIds } from '../data/automationSeed';
 import { TEMPLATE_CATEGORIES } from './catalog';
 import { graphProblems } from './graph';
@@ -110,5 +110,15 @@ describe('seed data', () => {
       expect(ms.length).toBe(r.memberCount);
       expect(r.completedCount + r.inProgressCount + r.failedCount).toBe(r.memberCount);
     }
+  });
+});
+
+describe('dailySeries', () => {
+  it('buckets by local day, including today', () => {
+    const now = new Date();
+    const range = rangeFor('lastWeek', now);
+    const days = dailySeries([{ channel: 'email', status: 'delivered', sentAt: now.toISOString() }], 'email', range);
+    expect(days.at(-1).sent).toBe(1);
+    expect(days.reduce((s, d) => s + d.sent, 0)).toBe(1);
   });
 });

@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { SectionTitleBar } from '../../../components/SectionTitleBar/SectionTitleBar';
-import { TabStrip } from '../../../components/TabStrip/TabStrip';
+import { SubTabs } from '../../../components/SubTabs/SubTabs';
 import { Input } from '../../../components/Input/Input';
 import { Link } from '../../../components/Link/Link';
 import { Icon } from '../../../components/Icon/Icon';
@@ -80,6 +79,7 @@ export function AutomationsList() {
   const [historyTarget, setHistoryTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const searchRef = useRef(null);
 
   const loading = status !== 'ready';
   const runMap = useMemo(() => runsByAutomation(allRuns), [allRuns]);
@@ -199,69 +199,76 @@ export function AutomationsList() {
     : <RingEmptyState icon="solar:documents-linear" label="No templates in this category yet" />);
 
   const header = (
-    <SectionTitleBar
-      tabs={[
-        { key: 'mine', label: 'My Automations', count: automations.length },
-        { key: 'templates', label: 'Templates', count: templates.length },
-      ]}
-      activeTab={tab}
-      onTabChange={switchTab}
-      rightExtras={(
-        <div className={styles.headerRight}>
-          <Input
-            type="search"
-            leadingIcon="solar:magnifer-linear"
-            placeholder={tab === 'templates' ? 'Search templates' : 'Search automations'}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            wrapperClassName={styles.search}
-            aria-label="Search automations"
-          />
-          <span className={styles.divider} />
-          <Link onClick={() => setGuideOpen(true)} role="button" tabIndex={0} className={styles.guideLink}>
-            <Icon name="solar:play-linear" size={16} />
-            Get Started
-          </Link>
-          <span className={styles.divider} />
-          <Toggle items={LAYOUTS} active={layout} onChange={setLayout} size="S" />
-          <span className={styles.divider} />
-          <ActionButton icon="solar:add-circle-linear" tooltip="New automation" tooltipBelow tooltipLeft onClick={() => openNewAutomation(null)} />
-        </div>
-      )}
-    />
+    <div className={styles.headerRow}>
+      <SubTabs
+        tabs={[
+          { key: 'mine', label: 'My Automations', count: automations.length },
+          { key: 'templates', label: 'Templates', count: templates.length },
+        ]}
+        activeKey={tab}
+        onChange={switchTab}
+      />
+      <div className={styles.headerRight}>
+        <Input
+          type="search"
+          leadingIcon="solar:magnifer-linear"
+          placeholder="Search Automation"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          wrapperClassName={styles.search}
+          aria-label="Search automations"
+          ref={searchRef}
+        />
+        <span className={styles.divider} />
+        <Link onClick={() => setGuideOpen(true)} role="button" tabIndex={0} className={styles.guideLink}>
+          <Icon name="solar:play-linear" size={16} />
+          Get Started
+        </Link>
+        <span className={styles.divider} />
+        <Toggle items={LAYOUTS} active={layout} onChange={setLayout} size="S" />
+        <span className={styles.divider} />
+        <ActionButton icon="solar:add-square-linear" tooltip="New automation" tooltipBelow tooltipLeft onClick={() => openNewAutomation(null)} />
+      </div>
+    </div>
+  );
+
+  const searchToggle = (
+    <>
+      <ActionButton icon="solar:magnifer-linear" tooltip="Search" size="S" onClick={() => searchRef.current?.focus()} />
+    </>
   );
 
   const mineSubBar = (
     <>
-      <TabStrip
-        fullWidth={false}
-        items={STATUS_TABS.map(t => ({ key: t.key, label: t.label, count: loading ? undefined : statusCounts[t.key] }))}
-        activeKey={statusTab}
-        onChange={setStatusTab}
-        trailing={(
-          <span className={styles.subRight}>
-            {errorCount > 0 && (
-              <>
-                <Tooltip label="Members who failed in each automation’s latest run">
-                  <button type="button" className={styles.errorsLink} onClick={() => setStatusTab('errors')}>
-                    <Icon name="solar:danger-triangle-linear" size={16} />
-                    {plural(errorCount, 'Error')}
-                  </button>
-                </Tooltip>
-                <span className={styles.divider} />
-              </>
-            )}
-            <ActionButton
-              icon="custom:filter"
-              tooltip="Filter"
-              tooltipLeft
-              active={filtersOpen}
-              count={filterCount ? String(filterCount) : undefined}
-              onClick={() => setFiltersOpen(v => !v)}
-            />
-          </span>
-        )}
-      />
+      <div className={styles.subRow}>
+        <SubTabs
+          leading={searchToggle}
+          tabs={STATUS_TABS.map(t => ({ key: t.key, label: t.label, count: loading ? undefined : statusCounts[t.key] }))}
+          activeKey={statusTab}
+          onChange={setStatusTab}
+        />
+        <span className={styles.subRight}>
+          {errorCount > 0 && (
+            <>
+              <Tooltip label="Members who failed in each automation’s latest run">
+                <button type="button" className={styles.errorsLink} onClick={() => setStatusTab('errors')}>
+                  <Icon name="solar:danger-triangle-linear" size={16} />
+                  {plural(errorCount, 'Error')}
+                </button>
+              </Tooltip>
+              <span className={styles.divider} />
+            </>
+          )}
+          <ActionButton
+            icon="custom:filter"
+            tooltip="Filter"
+            tooltipLeft
+            active={filtersOpen}
+            count={filterCount ? String(filterCount) : undefined}
+            onClick={() => setFiltersOpen(v => !v)}
+          />
+        </span>
+      </div>
       {(filtersOpen || filterCount > 0) && (
         <div className={styles.filterRow}>
           <FilterChip label="Execution type" options={EXECUTION_TYPES} selected={execFilter} onChange={setExecFilter} />
@@ -273,12 +280,14 @@ export function AutomationsList() {
   );
 
   const templatesSubBar = (
-    <TabStrip
-      fullWidth={false}
-      items={categoryTabs.map(t => ({ ...t, count: loading ? undefined : t.count }))}
-      activeKey={category}
-      onChange={setCategory}
-    />
+    <div className={styles.subRow}>
+      <SubTabs
+        leading={searchToggle}
+        tabs={categoryTabs.map(t => ({ ...t, count: loading ? undefined : t.count }))}
+        activeKey={category}
+        onChange={setCategory}
+      />
+    </div>
   );
 
   let body;

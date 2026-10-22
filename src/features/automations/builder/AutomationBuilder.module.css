@@ -147,19 +147,20 @@
   align-items: center;
   gap: var(--space-3);
   min-height: 48px;
-  padding: var(--space-3);
-  border: 1px dashed var(--primary-200);
+  padding: var(--space-3) var(--space-4);
+  border: 0.5px solid var(--primary-200);
   border-radius: 8px;
-  background: var(--neutral-0);
+  background: var(--primary-50);
   color: var(--primary-300);
   font-size: var(--font-base);
   text-align: left;
   cursor: pointer;
 }
 .triggerCardSet {
-  border-style: solid;
+  border-color: var(--primary-100);
   background: var(--ai-gradient-light);
   color: var(--neutral-500);
+  font-size: var(--font-sm);
 }
 .logicGrid {
   display: grid;
@@ -174,12 +175,15 @@
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-2) 0;
-  background: var(--status-warning-light);
+  background: var(--neutral-0);
   color: var(--neutral-400);
   font-size: var(--font-xs);
   cursor: grab;
 }
-.logicTile + .logicTile { border-left: 1px solid var(--neutral-150); }
+/* Each tile sits in a tooltip wrapper: make the wrapper the grid cell. */
+.logicGrid > * { display: flex; min-width: 0; }
+.logicGrid > * > .logicTile { flex: 1; }
+.logicGrid > * + * { border-left: 0.5px solid var(--neutral-150); }
 .logicTileDisabled { background: var(--neutral-25); color: var(--neutral-200); cursor: not-allowed; }
 .paletteTabs {
   display: flex;
@@ -199,7 +203,20 @@
   background: var(--neutral-25);
   color: var(--neutral-500);
 }
-.paletteEmpty { padding: var(--space-6) 0; }
+.paletteEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-16) var(--space-4) 0;
+  text-align: center;
+}
+.paletteEmpty p {
+  margin: 0;
+  font-size: var(--font-base);
+  line-height: 1.45;
+  color: var(--neutral-400);
+}
 .paletteGroups {
   display: flex;
   flex-direction: column;
@@ -213,10 +230,14 @@
 .paletteBox {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--neutral-100);
+  border: 0.5px solid var(--neutral-100);
   border-radius: 8px;
   padding: var(--space-1) 0;
 }
+.box_condition { background: var(--primary-25); border-color: var(--primary-100); }
+.box_send { background: var(--accent-light-amber); border-color: color-mix(in srgb, var(--accent-amber) 35%, transparent); }
+.box_order { background: var(--accent-light-light-green); border-color: color-mix(in srgb, var(--accent-green) 35%, transparent); }
+.box_add { background: var(--accent-light-cyan); border-color: color-mix(in srgb, var(--accent-cyan) 35%, transparent); }
 .paletteRow {
   display: flex;
   align-items: center;
@@ -552,3 +573,43 @@
   display: flex;
   gap: var(--space-2);
 }
+
+/* Header: Test link and status pill (Figma 60) */
+.testLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.testButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 0;
+  background: transparent;
+  color: var(--primary-300);
+  font-size: var(--font-base);
+  cursor: pointer;
+}
+.testButton:disabled { color: var(--neutral-200); cursor: not-allowed; }
+.testInfo { display: inline-flex; color: var(--primary-300); }
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding-left: var(--space-1);
+  border: 0.5px solid currentColor;
+  border-radius: 4px;
+  font-size: var(--font-xs);
+}
+.statusCaret {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border-left: 0.5px solid currentColor;
+}
+.status_active { color: var(--status-success); background: var(--status-success-light); }
+.status_draft { color: var(--neutral-300); background: var(--neutral-25); }
+.status_inactive { color: var(--status-warning-dark); background: var(--status-warning-light); }

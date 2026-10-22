@@ -7,8 +7,9 @@ import styles from './SubTabs.module.css';
  * top-level tabs; use this for a secondary switch inside a tab.
  *
  * Props:
- *  - tabs      (string | {key,label})[]  — tab definitions. A bare string is
- *                                          both the key and the label.
+ *  - tabs      (string | {key,label,count})[] — tab definitions. A bare string
+ *                                          is both the key and the label; `count`
+ *                                          shows a small bordered number badge.
  *  - activeKey string                    — the selected tab's key.
  *  - onChange  (key) => void             — called with a tab's key on click.
  *  - leading   ReactNode                 — optional content rendered before the
@@ -22,6 +23,7 @@ export function SubTabs({ tabs, activeKey, onChange, leading, className }) {
       {tabs.map((t) => {
         const key = typeof t === 'string' ? t : t.key;
         const label = typeof t === 'string' ? t : t.label;
+        const count = typeof t === 'string' ? undefined : t.count;
         return (
           <button
             key={key}
@@ -30,6 +32,7 @@ export function SubTabs({ tabs, activeKey, onChange, leading, className }) {
             onClick={() => onChange(key)}
           >
             {label}
+            {count != null && <span className={styles.count}>{count}</span>}
           </button>
         );
       })}
