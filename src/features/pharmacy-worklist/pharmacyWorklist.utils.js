@@ -13,12 +13,6 @@ export const MEASURE_NAMES = {
 // otherwise the plan's.
 export const effectivePdc = (x) => x?.pdcProjected ?? x?.pdc ?? null;
 
-// A gap's Recent Fill: the latest confirmed fill across its active drugs.
-export function gapRecentFill(x) {
-  return (x.medications || []).filter(d => d.status !== 'Discontinued' && d.recentFill)
-    .reduce((best, d) => (!best || parseMdy(d.recentFill) > parseMdy(best.recentFill) ? d : best), null);
-}
-
 export const medLabel = (d) => `${d.name} ${d.strength} ${d.unit}`;
 export const measureDrugs = (x) => (x.medications || []).map(medLabel).join(', ');
 

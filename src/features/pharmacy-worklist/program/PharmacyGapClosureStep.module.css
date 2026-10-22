@@ -58,3 +58,5 @@
 }
 .empty p { margin: 0; }
 .factHint { font-size: var(--font-sm); color: var(--neutral-300); }
+.recentFills { grid-column: span 2; }
+.recentFillRow { display: flex; flex-direction: column; gap: var(--space-1); }

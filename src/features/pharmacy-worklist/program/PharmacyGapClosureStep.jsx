@@ -5,7 +5,7 @@ import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
 import {
-  GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, addDaysMdy, daysFromToday, fillDueTone, gapRecentFill, measureStatus, parseMdy, pdcTone,
+  GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, addDaysMdy, daysFromToday, fillDueTone, measureStatus, parseMdy, pdcTone,
 } from '../pharmacyWorklist.utils';
 import { MeasureCode, SubStatus } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -34,25 +34,29 @@ const fromIso = (iso) => {
 
 const latestDate = (dates) => dates.filter(Boolean).reduce((max, d) => (!max || parseMdy(d) > parseMdy(max) ? d : max), null);
 
-// Recent Fill Date: set by an outreach outcome (pickup confirmed / refill
-// approval received) and editable here while closing the gap.
+// Recent Fill, per active drug: set by an outreach outcome (pickup confirmed /
+// refill approval received) and editable here while closing the gap.
 function RecentFill({ member, x }) {
   const setRecentFill = useAppStore(s => s.setPharmacyRecentFill);
-  const latest = gapRecentFill(x);
-  const src = latest?.recentFillSource;
-  const hint = !latest ? 'Set by a pickup or refill-approved outreach'
-    : src?.manual ? `Edited ${src.date}`
-    : src?.outcome ? `From ${src.outcome.split(' · ').pop()}`
-    : null;
+  const active = x.medications.filter(d => d.status !== 'Discontinued');
+  const hintOf = (d) => (!d.recentFill ? 'Set by a pickup or refill-approved outreach'
+    : d.recentFillSource?.manual ? `Edited ${d.recentFillSource.date}`
+    : d.recentFillSource?.outcome ? `From ${d.recentFillSource.outcome.split(' · ').pop()}`
+    : null);
   return (
-    <div className={styles.fact}>
+    <div className={`${styles.fact} ${styles.recentFills}`}>
       <span className={styles.factLabel}>Recent Fill Date</span>
-      <DatePicker
-        value={toIso(latest?.recentFill)}
-        onSelect={(iso) => setRecentFill(member.id, x.code, fromIso(iso))}
-        aria-label={`${x.code} recent fill date`}
-      />
-      {hint && <span className={styles.factHint}>{hint}</span>}
+      {active.map(d => (
+        <div key={d.id} className={styles.recentFillRow}>
+          {active.length > 1 && <span className={styles.factValue}>{d.name} {d.strength} {d.unit}</span>}
+          <DatePicker
+            value={toIso(d.recentFill)}
+            onSelect={(iso) => setRecentFill(member.id, x.code, d.id, fromIso(iso) || null)}
+            aria-label={`${d.name} recent fill date`}
+          />
+          {hintOf(d) && <span className={styles.factHint}>{hintOf(d)}</span>}
+        </div>
+      ))}
     </div>
   );
 }

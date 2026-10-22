@@ -203,7 +203,9 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
   const member = memberProp || fromProfile;
   const focus = useAppStore(s => s.pharmacyFocusGap);
   const setRecentFill = useAppStore(s => s.setPharmacyRecentFill);
-  const [toggled, setToggled] = useState(() => new Set());
+  // Expansion the user chose, per gap; gaps they haven't touched follow
+  // their default, so a later status change doesn't flip a chosen state.
+  const [chosen, setChosen] = useState(() => new Map());
   const [openId, setOpenId] = useState(null);
 
   const all = useMemo(() => (member?.measures || [])
@@ -215,14 +217,9 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
   const openCodes = new Set(all.filter(x => OPEN_GAPS.has(x.st.gap)).map(x => x.code));
   // Red only for an open gap's risk; a closed gap's numbers are history.
   const riskClass = (code, tone) => (openCodes.has(code) ? TONE_CLASS[tone] || '' : '');
-  // Open gaps (and the one opened from the worklist) start expanded; a
-  // click flips any gap from its default.
-  const isExpanded = (code) => (openCodes.has(code) || code === focusCode) !== toggled.has(code);
-  const toggle = (code) => setToggled(prev => {
-    const next = new Set(prev);
-    if (next.has(code)) next.delete(code); else next.add(code);
-    return next;
-  });
+  // Open gaps (and the one opened from the worklist) start expanded.
+  const isExpanded = (code) => (chosen.has(code) ? chosen.get(code) : openCodes.has(code) || code === focusCode);
+  const toggle = (code) => setChosen(prev => new Map(prev).set(code, !isExpanded(code)));
   const medCount = all.reduce((n, x) => n + x.medications.length, 0);
   const openMed = openId
     ? all.flatMap(x => x.medications.map(d => ({ ...d, measure: x.code }))).find(d => d.id === openId)
@@ -297,13 +294,17 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                                 <span className={styles.rxGeneric}>{d.generic}{d.status === 'Discontinued' ? ' · Discontinued' : ''}</span>
                               </td>
                               <td>{d.lastFill}</td>
-                              <td className={styles.dateCell} onClick={e => e.stopPropagation()}>
-                                <DatePicker
-                                  value={toIso(d.recentFill)}
-                                  onSelect={(iso) => { const mdy = fromIso(iso); if (mdy !== (d.recentFill || '')) setRecentFill(member.id, x.code, mdy || null, d.id); }}
-                                  aria-label={`${d.name} recent fill date`}
-                                />
-                              </td>
+                              {d.status === 'Discontinued' ? (
+                                <td>{d.recentFill || '—'}</td>
+                              ) : (
+                                <td className={styles.dateCell} onClick={e => e.stopPropagation()}>
+                                  <DatePicker
+                                    value={toIso(d.recentFill)}
+                                    onSelect={(iso) => setRecentFill(member.id, x.code, d.id, fromIso(iso) || null)}
+                                    aria-label={`${d.name} recent fill date`}
+                                  />
+                                </td>
+                              )}
                               <td className={riskClass(d.measure, fillDueTone(d.nextFill))}>{d.nextFill}</td>
                               <td className={riskClass(d.measure, pdcTone(d.pdc))}>{d.pdc == null ? '—' : `${d.pdc}%`}</td>
                               <td>{d.mpr ?? '—'}</td>
