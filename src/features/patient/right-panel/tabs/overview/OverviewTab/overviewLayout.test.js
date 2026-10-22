@@ -22,32 +22,49 @@ describe('overviewColumnCount', () => {
 });
 
 describe('normalizeOverviewLayout', () => {
+  const placedOnce = (l) => {
+    const all = l.lanes.flat();
+    expect(all).toHaveLength(OVERVIEW_WIDGET_KEYS.length);
+    expect(new Set(all)).toEqual(new Set(OVERVIEW_WIDGET_KEYS));
+    l.hidden.forEach(k => expect(all).toContain(k));
+  };
+
   it('returns the default for a user with nothing saved', () => {
     const l = normalizeOverviewLayout(undefined);
     expect(l.lanes).toEqual(DEFAULT_OVERVIEW_LAYOUT.lanes);
-    expect([...l.lanes.flat(), ...l.hidden].sort()).toEqual([...OVERVIEW_WIDGET_KEYS].sort());
+    expect(new Set(l.hidden)).toEqual(new Set(DEFAULT_OVERVIEW_LAYOUT.hidden));
+    placedOnce(l);
   });
 
-  it('keeps every widget exactly once, dropping unknown and duplicate keys', () => {
-    const l = normalizeOverviewLayout({ lanes: [['synopsis', 'nope', 'synopsis'], ['tasks'], []], hidden: ['tasks', 'vitals'] });
-    const all = [...l.lanes.flat(), ...l.hidden];
-    expect(all).toHaveLength(OVERVIEW_WIDGET_KEYS.length);
-    expect(new Set(all).size).toBe(all.length);
+  it('keeps every widget in exactly one lane, dropping unknown and duplicate keys', () => {
+    const l = normalizeOverviewLayout({ lanes: [['synopsis', 'nope', 'synopsis'], ['tasks'], []], hidden: ['tasks', 'nope'] });
+    placedOnce(l);
     expect(l.lanes[0][0]).toBe('synopsis');
     expect(l.lanes[1][0]).toBe('tasks');
-    expect(l.hidden).toContain('vitals');
+    expect(l.hidden).toContain('tasks');
+    expect(l.hidden).not.toContain('nope');
   });
 
-  it('respects a widget the user hid', () => {
-    const l = normalizeOverviewLayout({ lanes: [[], [], []], hidden: ['synopsis'] });
-    expect(l.hidden).toContain('synopsis');
-    expect(l.lanes.flat()).not.toContain('synopsis');
+  it('keeps a hidden widget in its lane', () => {
+    const l = normalizeOverviewLayout({ lanes: [['synopsis', 'tasks'], [], []], hidden: ['tasks'] });
+    expect(l.lanes[0].slice(0, 2)).toEqual(['synopsis', 'tasks']);
+    expect(l.hidden).toContain('tasks');
   });
 
-  it('places widgets the user has never seen where the default puts them', () => {
+  it('places widgets the user has never seen in their default lane with default visibility', () => {
     const l = normalizeOverviewLayout({ lanes: [['synopsis'], [], []], hidden: [] });
     expect(l.lanes[2]).toContain('quickActions');
+    expect(l.hidden).not.toContain('quickActions');
+    expect(l.lanes[2]).toContain('insurance');
     expect(l.hidden).toContain('insurance');
+  });
+
+  it('moves widgets from the old Hidden list back into their lanes, still hidden', () => {
+    // Saved before hidden widgets kept their lane: hidden ones were in no lane.
+    const l = normalizeOverviewLayout({ lanes: [['synopsis'], ['carePlan'], ['tasks']], hidden: ['vitals'] });
+    placedOnce(l);
+    expect(l.lanes[2]).toContain('vitals');
+    expect(l.hidden).toContain('vitals');
   });
 });
 
@@ -64,6 +81,10 @@ describe('overviewColumns', () => {
 
   it('stacks all lanes in order at one', () => {
     expect(overviewColumns(layout, 1)).toEqual([['a', 'b', 'c', 'd', 'e']]);
+  });
+
+  it('leaves hidden widgets out', () => {
+    expect(overviewColumns({ ...layout, hidden: ['b', 'd'] }, 3)).toEqual([['a'], ['c'], ['e']]);
   });
 
   it('keeps the default Overview rules: synopsis and chart first, Quick Actions above appointments', () => {

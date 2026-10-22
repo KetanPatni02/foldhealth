@@ -47,12 +47,14 @@ export function CareProgramsCard({ patientId }) {
             title={<button type="button" className={styles.titleButton} onClick={() => openProgram(prog)}>{prog.name}</button>}
             meta={[prog.assignee, prog.pcp !== '—' && `PCP ${prog.pcp}`, prog.startDate !== '—' && `Started ${prog.startDate}`]}
             trailing={(
-              <span className={styles.programTrailing}>
-                <span className={`${styles.bar} ${styles.barFixed}`} role="progressbar" aria-valuenow={prog.progress} aria-valuemin={0} aria-valuemax={100} aria-label={`${prog.name} progress`}>
-                  <span className={styles.barFill} style={{ width: `${prog.progress}%` }} />
+              <span className={styles.trail}>
+                <span className={styles.programTrailing}>
+                  <span className={`${styles.bar} ${styles.barFixed}`} role="progressbar" aria-valuenow={prog.progress} aria-valuemin={0} aria-valuemax={100} aria-label={`${prog.name} progress`}>
+                    <span className={styles.barFill} style={{ width: `${prog.progress}%` }} />
+                  </span>
+                  <span className={`${styles.muted} ${styles.pct}`}>{prog.progress}%</span>
                 </span>
-                <span className={styles.muted}>{prog.progress}%</span>
-                <Badge tone="primary" size="S" label={prog.status} />
+                <span className={styles.statusSlotWide}><Badge tone="primary" size="S" label={prog.status} /></span>
               </span>
             )}
           />
