@@ -341,7 +341,7 @@ th.stickyMember { left: 36px; border-right: 0.5px solid var(--neutral-150); }
   align-items: center;
   gap: 3px;
   width: 100%;
-  padding: var(--space-1) 14px;
+  padding: var(--space-1) var(--space-3);
   background: none;
   border: none;
   cursor: pointer;
