@@ -41,12 +41,16 @@ export function FilterBarTail({
         </button>
       )}
 
-      {/* More Filters | Save Filter | Clear All (worklist filter spec 2.4). */}
+      {/* More Filters | Clear All | Save Filter. */}
       {hasActive && (
         <>
+          {hasAction('moreFilters') && <span className={styles.vDivider} />}
+          <button className={styles.clearAll} onClick={onClearAll}>
+            {clearAllLabel}
+          </button>
           {(hasAction('saveFilter') || hasAction('saveFilterDialog')) && (
             <>
-              {hasAction('moreFilters') && <span className={styles.vDivider} />}
+              <span className={styles.vDivider} />
               {saveMenuItems?.length ? (
                 <>
                   <button
@@ -79,10 +83,6 @@ export function FilterBarTail({
               )}
             </>
           )}
-          {(hasAction('moreFilters') || hasAction('saveFilter') || hasAction('saveFilterDialog')) && <span className={styles.vDivider} />}
-          <button className={styles.clearAll} onClick={onClearAll}>
-            {clearAllLabel}
-          </button>
         </>
       )}
     </div>

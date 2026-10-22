@@ -20,6 +20,7 @@ import { dosSourceLetter, DOS_SOURCE_LABELS, DOS_SOURCE_LABEL_TO_LETTER } from '
 import { canonicalStatus } from './statusSpec';
 import { POS_CODES } from './data/posCodes';
 import { parseLocalDate } from '../../lib/localDate';
+import { GENDER_FILTER_OPTIONS, LANGUAGE_FILTER_OPTIONS, memberGenderLabel, memberLanguageLabel } from '../../lib/memberFilters';
 
 export const MORE_FILTER_ITEMS = [
   // Spec 2.1: always-primary (DOB, Gender, Language, Assignee; HCC has no
@@ -113,7 +114,7 @@ export const FILTER_DEFS = [
   // Advanced Illness — CMS frailty adjunct score, integer 1..10. Range
   // slider matches Decile so the picker is instantly familiar.
   { k: 'ad',     label: 'Adv. Illness',        type: 'range', opts: ['1','2','3','4','5','6','7','8','9','10'] },
-  { k: 'g',      label: 'Gender',              type: 'multi', opts: ['Male', 'Female'] },
+  { k: 'g',      label: 'Gender',              type: 'multi', opts: GENDER_FILTER_OPTIONS },
   { k: 'open',   label: 'Open ICDs',           type: 'radio', opts: ['< 5 Gaps', '5 - 10 Gaps', '10 - 15 Gaps', '> 15 Gaps'] },
   // Documents Available — filter by the NUMBER of documents attached to the
   // record instead of a binary Available/Not-Available flag (Figma 4240:110644).
@@ -145,9 +146,9 @@ export const FILTER_DEFS = [
   { k: 'ipa',    label: 'IPA',                type: 'multi', dynamic: 'ipa', opts: [] },
   { k: 'hp',     label: 'HP Code',            type: 'multi', dynamic: 'hp',  opts: [] },
   // Language — the DB stores 2-letter codes, but the picker shows display
-  // names. matchOne('lang') translates m.language back to the display label
-  // via LANGUAGE_LABEL below before comparing.
-  { k: 'lang',   label: 'Language',           type: 'multi', opts: ['English', 'Spanish', 'Italian', 'Japanese', 'Punjabi'] },
+  // names (the list every worklist shares). matchOne('lang') translates
+  // m.language to its label before comparing.
+  { k: 'lang',   label: 'Language',           type: 'multi', opts: LANGUAGE_FILTER_OPTIONS, searchable: true },
   // RAF — same integer-bucket range slider Decile / Adv. Illness use.
   // Real RAF is a decimal in ~[1.0, 6.5]; matchOne compares numerically
   // against the (mn, mx) integer bounds.
@@ -235,18 +236,6 @@ function measurementYearOpts() {
   return [String(y), String(y - 1), String(y - 2)];
 }
 
-// Language code → display label. The DB stores ISO 639-1 codes on
-// hcc_members.language; the Language filter shows the human-readable names.
-// Only the codes we currently seed are listed; unknown codes pass through
-// as-is so the filter still matches something you can see in the data.
-const LANGUAGE_LABEL = {
-  en: 'English',
-  es: 'Spanish',
-  it: 'Italian',
-  ja: 'Japanese',
-  pa: 'Punjabi',
-};
-
 // Role-status filter → engine value normalization. Rebuttal and Returned are
 // now distinct stored values, so no aliasing is needed; kept as the single
 // place to add one.
@@ -300,8 +289,7 @@ function matchOne(m, k, vals) {
     case 'rl':    return vals.includes(m.rl);
     case 'coh':   return vals.includes(m.coh);
     case 'g':     {
-      const long = m.g === 'M' ? 'Male' : m.g === 'F' ? 'Female' : m.g;
-      return vals.includes(m.g) || vals.includes(long);
+      return vals.includes(m.g) || vals.includes(memberGenderLabel(m.g));
     }
     case 'open': {
       const cnt = m.open || 0;
@@ -355,7 +343,7 @@ function matchOne(m, k, vals) {
     case 'pcp':  return vals.includes(m.pcp);
     case 'ipa':  return vals.includes(m.ipa);
     case 'hp':   return vals.includes(m.hp);
-    case 'lang': return vals.includes(LANGUAGE_LABEL[m.language] || m.language);
+    case 'lang': return vals.includes(memberLanguageLabel(m.language));
     case 'raf': {
       // Range slider values are [mn, mx] as string ints; row's raf is numeric.
       if (vals.length >= 2) {

@@ -7,6 +7,7 @@ import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
 import { DobFilter } from '../../components/DobFilter/DobFilter';
 import { dobInRange } from '../../components/DateRangePopover/yearSpan';
+import { GENDER_FILTER_OPTIONS, LANGUAGE_FILTER_OPTIONS, MEMBER_STATUS_FILTER_OPTIONS, memberGenderLabel, memberLanguageLabel } from '../../lib/memberFilters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
@@ -34,12 +35,14 @@ const EMPTY_TIME_FILTER = { user: ALL_USERS, threshold: null };
 // numeric / date fields we derive a bucket label per row via BUCKET_FN
 // below. Order here matches the Figma chip row left → right.
 const FILTER_KEYS = [
+  // Member filters first, in the order every worklist uses.
+  { key: 'memberStatus',        label: 'Member Status' },
   { key: 'dob',                 label: 'DOB' },
   { key: 'gender',              label: 'Gender' },
   { key: 'language',            label: 'Language' },
+  { key: 'assignee',            label: 'Assignee' },
   { key: 'utrFlag',             label: 'UTR Flag' },
   { key: 'utrAge',              label: 'UTR Age' },
-  { key: 'assignee',            label: 'Assigned to' },
   { key: 'status',              label: 'Status' },
   { key: 'programDueDate',      label: 'Program Due Date' },
   { key: 'lastOutreachDate',    label: 'Last Outreach Date' },
@@ -47,14 +50,11 @@ const FILTER_KEYS = [
   { key: 'assignmentDate',      label: 'Assignment Date' },
   { key: 'ipa',                 label: 'IPA' },
   { key: 'hpCode',              label: 'HP Code' },
-  { key: 'memberStatus',        label: 'Member Status' },
   // billableMins / unloggedMins are rendered via TimeFilterChip below (they
   // compose a user selector + threshold radio, not a multi-select bucket),
   // so they don't live in this key list.
   { key: 'unloggedUser',        label: 'Unlogged User' },
 ];
-
-const LANG_LABEL = { en: 'English', ch: 'Chinese', es: 'Spanish', ko: 'Korean', vi: 'Vietnamese' };
 
 // Parse an "MM/DD/YYYY" string; returns null when the input is missing or
 // malformed so callers can bucket that as 'None' / 'Never'.
@@ -106,8 +106,8 @@ const utrAgeBucket = (days) => {
 // option lists AND for evaluating each row against a selected filter — keeps
 // the two branches consistent by construction.
 const BUCKET_FN = {
-  gender:              (m) => m.gender || 'Unknown',
-  language:            (m) => LANG_LABEL[m.language] || 'Other',
+  gender:              (m) => memberGenderLabel(m.gender),
+  language:            (m) => memberLanguageLabel(m.language),
   utrFlag:             (m) => m.utrFlag || 'No',
   utrAge:              (m) => utrAgeBucket(m.utrAgeDays),
   assignee:            (m) => m.assigneeName || 'Unassigned',
@@ -122,24 +122,38 @@ const BUCKET_FN = {
   unloggedUser:        (m) => m.assigneeName || 'Unassigned',
 };
 
-// Chip definitions for the shared FilterBar. First 8 chips are `primary`
+// Member filters show the vocabulary every worklist shares, not the values
+// that happen to be in the rows.
+const MEMBER_OPTIONS = {
+  memberStatus: MEMBER_STATUS_FILTER_OPTIONS,
+  gender: GENDER_FILTER_OPTIONS,
+  language: LANGUAGE_FILTER_OPTIONS,
+};
+
+// Chip definitions for the shared FilterBar. The CCM_PRIMARY_KEYS chips are `primary`
 // (rendered by default, on one line — the shared FilterBar's autoFit packer
 // hides overflow into More Filters); the rest are extended (hidden by
 // default, opt-in via More Filters).
 const CCM_PRIMARY_KEYS = new Set([
-  'dob', 'gender', 'language', 'utrFlag',
-  'utrAge', 'assignee', 'status', 'programDueDate',
+  'memberStatus', 'dob', 'gender', 'language',
+  'assignee', 'utrFlag', 'utrAge', 'status', 'programDueDate',
 ]);
+// More Filters domain for each secondary filter.
+const CCM_GROUP = {
+  ipa: 'Member', hpCode: 'Member',
+  lastOutreachDate: 'Workflow Status', lastOutreachOutcome: 'Workflow Status',
+  assignmentDate: 'Assignment',
+};
 const CCM_FILTER_DEFS = (() => {
   const defs = [];
   for (const f of FILTER_KEYS) {
     if (f.key === 'unloggedUser') continue;
-    defs.push({ ...f, primary: CCM_PRIMARY_KEYS.has(f.key) });
+    defs.push({ ...f, primary: CCM_PRIMARY_KEYS.has(f.key), group: CCM_GROUP[f.key] });
   }
   defs.push(
-    { key: 'billableMins', label: 'Billable Mins', primary: false },
-    { key: 'unloggedMins', label: 'Unlogged Mins', primary: false },
-    { key: 'unloggedUser', label: 'Unlogged User', primary: false },
+    { key: 'billableMins', label: 'Billable Mins', primary: false, group: 'Workflow Status' },
+    { key: 'unloggedMins', label: 'Unlogged Mins', primary: false, group: 'Workflow Status' },
+    { key: 'unloggedUser', label: 'Unlogged User', primary: false, group: 'Assignment' },
   );
   return defs;
 })();
@@ -147,6 +161,7 @@ const CCM_MORE_FILTER_ITEMS = CCM_FILTER_DEFS.map(fd => ({
   k: fd.key,
   label: fd.label,
   primary: fd.primary,
+  group: fd.group,
 }));
 
 const thStyle = {
@@ -199,9 +214,6 @@ export function CcmWorklistTable() {
   const unloggedFilter = filters.unloggedMins || EMPTY_TIME_FILTER;
   const setBillableFilter = (v) => setCcmFilter('billableMins', isTimeFilterActive(v) ? v : null);
   const setUnloggedFilter = (v) => setCcmFilter('unloggedMins', isTimeFilterActive(v) ? v : null);
-  // `null` = default (FilterBar's autoFit packer picks visible chips); a
-  // populated array = user-customized set from the More Filters popover.
-  const [visibleKeys, setVisibleKeys] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -222,7 +234,7 @@ export function CcmWorklistTable() {
     }
     const opts = {};
     for (const { key } of FILTER_KEYS) {
-      opts[key] = [...sets[key]].toSorted();
+      opts[key] = MEMBER_OPTIONS[key] || [...sets[key]].toSorted();
     }
     return opts;
   }, [members]);
@@ -314,6 +326,7 @@ export function CcmWorklistTable() {
       {showFilterBar && (
         <FilterBar
           autoFit
+          pinPrimary
           leading={null}
           filterDefs={CCM_FILTER_DEFS}
           moreFilterItems={CCM_MORE_FILTER_ITEMS}
@@ -332,19 +345,6 @@ export function CcmWorklistTable() {
           onSaveMenuSelect={savedActions.onSaveMenuSelect}
           onSaveFilter={(name) => saveSavedFilter('CCM', name)}
           hasActive={hasAnyActive || savedActions.edited}
-          visibleKeys={visibleKeys ?? undefined}
-          onToggleVisible={(k) => {
-            setVisibleKeys(prev => {
-              const seed = prev ?? CCM_FILTER_DEFS.reduce((keys, fd) => {
-                if (fd.primary) keys.push(fd.key);
-                return keys;
-              }, []);
-              const next = new Set(seed);
-              if (next.has(k)) next.delete(k); else next.add(k);
-              return [...next];
-            });
-          }}
-          onClearVisible={() => setVisibleKeys([])}
           renderChip={(k /* , mirror */) => {
             if (k === 'billableMins') {
               return (
@@ -402,6 +402,7 @@ export function CcmWorklistTable() {
                 options={filterOptions[k] || []}
                 selected={filters[k] || []}
                 onChange={vals => setFilter(k, vals)}
+                searchable={k === 'language'}
               />
             );
           }}

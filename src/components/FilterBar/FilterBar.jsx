@@ -38,12 +38,14 @@ export function FilterBar({
   // onSelect(key)).
   clearAllLabel,
   saveLabel,
-  // Spec mode (worklist filter allocation): the chip row stays on one line.
-  // Primary chips fill it in roster order; the ones that don't fit move into
-  // More Filters (under "Primary", above the secondary filters grouped by
-  // `group` / domain). A filter picked there shows in the row; unchecking it
+  // Spec mode (worklist filter allocation): the primary chips that fit on the
+  // first line (next to More Filters / Clear All / Save Filter) show, in
+  // roster order; the rest move into More Filters (under "Primary", above the
+  // secondary filters grouped by `group` / domain). Filters picked there, or
+  // with a value but not among those primaries, follow them and wrap onto
+  // more lines as needed, so they never push a primary out. Unchecking a pick
   // clears its value. Picks are kept here, not in `visibleKeys`, so an old
-  // stored visible set can't push the row onto a second line.
+  // stored visible set can't reshuffle the primaries.
   pinPrimary = false,
   saveMenuItems,
   onSaveMenuSelect,
@@ -137,12 +139,19 @@ export function FilterBar({
       if (tailW) budget -= tailW + GAP;
       const leadW = leadingRef.current?.offsetWidth ?? 0;
       if (leadW) budget -= leadW + GAP;
-      activeKeys.forEach(k => { budget -= widthOf(k) + GAP; });
-      // Spec mode: picks already hold their place in the row.
-      picks.filter(k => !activeKeySet.has(k)).forEach(k => { budget -= widthOf(k) + GAP; });
       const fit = new Set();
+      if (pinPrimary) {
+        // First line: primaries in roster order (with their values) until
+        // one doesn't fit. Picks and other values go on the second line.
+        for (const k of primaryKeys) {
+          const w = widthOf(k) + GAP;
+          if (budget - w >= 0) { budget -= w; fit.add(k); } else break;
+        }
+        setAutoInactive(prev => (prev && prev.size === fit.size && [...fit].every(k => prev.has(k)) ? prev : fit));
+        return;
+      }
+      activeKeys.forEach(k => { budget -= widthOf(k) + GAP; });
       for (const k of inactivePrimary) {
-        if (picks.includes(k)) continue;
         const w = widthOf(k) + GAP;
         if (budget - w >= 0) { budget -= w; fit.add(k); } else break;
       }
@@ -153,14 +162,21 @@ export function FilterBar({
     const ro = new ResizeObserver(compute);
     ro.observe(container);
     return () => ro.disconnect();
-  }, [fitToRow, pinPrimary, picks, activeKeySet, visibleKeysProp, customized, activeKeys, inactivePrimary]);
+  }, [fitToRow, pinPrimary, primaryKeys, effectiveFilters, visibleKeysProp, customized, activeKeys, inactivePrimary]);
 
+
+  // Spec mode: the primaries that fit, then everything else that shows
+  // (picks, values on other filters).
+  const { firstLine, secondLine } = useMemo(() => {
+    if (!pinPrimary) return { firstLine: [], secondLine: [] };
+    const first = autoInactive ? primaryKeys.filter(k => autoInactive.has(k)) : primaryKeys;
+    const firstSet = new Set(first);
+    return { firstLine: first, secondLine: orderKeys([...activeKeys, ...picks]).filter(k => !firstSet.has(k)) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinPrimary, autoInactive, primaryKeys, activeKeys, picks]);
 
   const visibleKeys = useMemo(() => {
-    if (pinPrimary) {
-      const fit = autoInactive ? inactivePrimary.filter(k => autoInactive.has(k)) : inactivePrimary;
-      return orderKeys([...activeKeys, ...picks, ...fit]);
-    }
+    if (pinPrimary) return [...firstLine, ...secondLine];
     if (visibleKeysProp !== undefined) {
       return orderKeys([...visibleKeysProp, ...activeKeys]);
     }
@@ -174,7 +190,7 @@ export function FilterBar({
     const base = customVisible ?? primaryKeys;
     return orderKeys([...base, ...activeKeys]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pinPrimary, picks, visibleKeysProp, customVisible, activeKeys, primaryKeys, autoFit, autoInactive, inactivePrimary]);
+  }, [pinPrimary, firstLine, secondLine, visibleKeysProp, customVisible, activeKeys, primaryKeys, autoFit, autoInactive, inactivePrimary]);
 
   // Spec mode: primaries already in the row that weren't picked from More
   // Filters (they fit, or a value put them there). More Filters leaves these
@@ -283,6 +299,26 @@ export function FilterBar({
     );
   };
 
+  // More Filters | Clear All | Save Filter: always after the last chip.
+  const tailNode = (
+    <FilterBarTail
+      tailRef={setTailRef}
+      moreBtnRef={moreBtnRef}
+      actions={tailActions}
+      moreRect={moreRect}
+      onOpenMore={openMore}
+      onCloseMore={() => setMoreRect(null)}
+      hasActive={hasActive}
+      onClearAll={() => effectiveOnClearAll()}
+      onSaveFilter={() => effectiveOnSaveFilter()}
+      onOpenSaveDialog={() => setSaveDialogOpen(true)}
+      clearAllLabel={clearAllLabel}
+      saveLabel={saveLabel}
+      saveMenuItems={saveMenuItems}
+      onSaveMenuSelect={(key) => (key === 'new' && showInternalSaveDialog ? setSaveDialogOpen(true) : onSaveMenuSelect?.(key))}
+    />
+  );
+
   return (
     <div className={styles.filterBar}>
       <div className={styles.filterRow} ref={setChipsRef}>
@@ -290,22 +326,7 @@ export function FilterBar({
         {visibleKeys.map(k => (
           <span key={k}>{renderOne(k, false)}</span>
         ))}
-        <FilterBarTail
-          tailRef={setTailRef}
-          moreBtnRef={moreBtnRef}
-          actions={tailActions}
-          moreRect={moreRect}
-          onOpenMore={openMore}
-          onCloseMore={() => setMoreRect(null)}
-          hasActive={hasActive}
-          onClearAll={() => effectiveOnClearAll()}
-          onSaveFilter={() => effectiveOnSaveFilter()}
-          onOpenSaveDialog={() => setSaveDialogOpen(true)}
-          clearAllLabel={clearAllLabel}
-          saveLabel={saveLabel}
-          saveMenuItems={saveMenuItems}
-          onSaveMenuSelect={(key) => (key === 'new' && showInternalSaveDialog ? setSaveDialogOpen(true) : onSaveMenuSelect?.(key))}
-        />
+        {tailNode}
       </div>
 
       {fitToRow && (

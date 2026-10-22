@@ -23,10 +23,6 @@ const AWV_FILTER_DEFS = [
   { key: 'fr',            label: 'Frailty',            primary: false, group: 'Clinical' },
 ];
 const AWV_MORE_FILTER_ITEMS = AWV_FILTER_DEFS.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary, group: fd.group }));
-const AWV_PRIMARY_KEYS = [];
-for (const fd of AWV_FILTER_DEFS) {
-  if (fd.primary) AWV_PRIMARY_KEYS.push(fd.key);
-}
 
 // WorklistShell column defs — sticky checkbox + sticky Members col on the
 // left, AWV middle columns from AwvWorklistRow (each carries `renderCell`
@@ -61,17 +57,6 @@ export function AwvWorklistTable() {
   const [filterBarOpen, setFilterBarOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  // `null` = uncustomised (FilterBar autoFit picks visible chips from the
-  // primary set). Once the user toggles anything from More Filters, the
-  // custom set takes over.
-  const [visibleKeys, setVisibleKeys] = useState(null);
-  const toggleVisible = (k) => setVisibleKeys(prev => {
-    const base = prev ?? AWV_PRIMARY_KEYS;
-    const next = new Set(base);
-    if (next.has(k)) next.delete(k); else next.add(k);
-    return [...next];
-  });
-  const clearVisible = () => setVisibleKeys([]);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
@@ -149,9 +134,6 @@ export function AwvWorklistTable() {
       onSaveFilter={(name) => saveSavedFilter('AWV', name)}
       getOptions={(def) => filterOptions[def.key] || []}
       moreFilterItems={AWV_MORE_FILTER_ITEMS}
-      {...(visibleKeys !== null ? { visibleKeys } : {})}
-      onToggleVisible={toggleVisible}
-      onClearVisible={clearVisible}
     />
   );
 

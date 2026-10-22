@@ -329,7 +329,7 @@ th.stickyMember { left: 36px; border-right: 0.5px solid var(--neutral-150); }
 /* Equal-height footer row inside the box across all 5 columns, divided
    from the visits above by a hairline — keeps the box bottom aligned. */
 .dosFooter {
-  min-height: 32px;
+  min-height: var(--space-6);
   display: flex;
   align-items: center;
   border-top: 0.5px solid var(--neutral-150);
@@ -341,7 +341,7 @@ th.stickyMember { left: 36px; border-right: 0.5px solid var(--neutral-150); }
   align-items: center;
   gap: 3px;
   width: 100%;
-  padding: 6px 14px;
+  padding: var(--space-1) var(--space-3);
   background: none;
   border: none;
   cursor: pointer;

@@ -9,6 +9,7 @@ import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { DobFilter } from '../../components/DobFilter/DobFilter';
 import { dobInRange } from '../../components/DateRangePopover/yearSpan';
+import { GENDER_FILTER_OPTIONS, LANGUAGE_FILTER_OPTIONS, memberGenderLabel, memberLanguageLabel } from '../../lib/memberFilters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
@@ -102,9 +103,13 @@ const BUCKET_FN = {
   trigger:          (m) => m.trigger || 'None',
   riskIq:           (m) => m.riskIq || 'Undetermined',
   outreach:         (m) => (m.outreach ? m.outreach.status : 'None'),
-  gender:           (m) => m.gender || null,
-  language:         (m) => m.language || null,
+  gender:           (m) => memberGenderLabel(m.gender),
+  language:         (m) => memberLanguageLabel(m.language),
 };
+
+// Member filters show the vocabulary every worklist shares, not the values
+// that happen to be in the rows.
+const STATIC_OPTIONS = { gender: GENDER_FILTER_OPTIONS, language: LANGUAGE_FILTER_OPTIONS };
 
 const MORE_FILTER_ITEMS = FILTER_KEYS.map(f => ({ k: f.key, label: f.label, primary: f.primary, group: f.group }));
 const PRIMARY_FILTER_KEYS = [];
@@ -197,7 +202,7 @@ export function SnpWorklistTable() {
     }
     const opts = {};
     for (const { key } of FILTER_KEYS) {
-      opts[key] = sets[key] ? [...sets[key]].toSorted() : [];
+      opts[key] = STATIC_OPTIONS[key] || (sets[key] ? [...sets[key]].toSorted() : []);
     }
     return opts;
   }, [members]);
@@ -365,6 +370,7 @@ export function SnpWorklistTable() {
                 options={filterOptions[k] || []}
                 selected={filters[k] || []}
                 onChange={vals => setFilter(k, vals)}
+                searchable={k === 'language'}
               />
             );
           }}
