@@ -37,7 +37,7 @@ describe('normalizeOverviewLayout', () => {
   });
 
   it('keeps every widget in exactly one lane, dropping unknown and duplicate keys', () => {
-    const l = normalizeOverviewLayout({ lanes: [['synopsis', 'nope', 'synopsis'], ['tasks'], []], hidden: ['tasks', 'nope'] });
+    const l = normalizeOverviewLayout({ revision: 2, lanes: [['synopsis', 'nope', 'synopsis'], ['tasks'], []], hidden: ['tasks', 'nope'] });
     placedOnce(l);
     expect(l.lanes[0][0]).toBe('synopsis');
     expect(l.lanes[1][0]).toBe('tasks');
@@ -46,25 +46,38 @@ describe('normalizeOverviewLayout', () => {
   });
 
   it('keeps a hidden widget in its lane', () => {
-    const l = normalizeOverviewLayout({ lanes: [['synopsis', 'tasks'], [], []], hidden: ['tasks'] });
+    const l = normalizeOverviewLayout({ revision: 2, lanes: [['synopsis', 'tasks'], [], []], hidden: ['tasks'] });
     expect(l.lanes[0].slice(0, 2)).toEqual(['synopsis', 'tasks']);
     expect(l.hidden).toContain('tasks');
   });
 
   it('places widgets the user has never seen in their default lane with default visibility', () => {
-    const l = normalizeOverviewLayout({ lanes: [['synopsis'], [], []], hidden: [] });
+    const l = normalizeOverviewLayout({ revision: 2, lanes: [['synopsis'], [], []], hidden: [] });
     expect(l.lanes[2]).toContain('quickActions');
     expect(l.hidden).not.toContain('quickActions');
-    expect(l.lanes[2]).toContain('insurance');
+    expect(l.lanes[0]).toContain('insurance');
     expect(l.hidden).toContain('insurance');
   });
 
   it('moves widgets from the old Hidden list back into their lanes, still hidden', () => {
     // Saved before hidden widgets kept their lane: hidden ones were in no lane.
-    const l = normalizeOverviewLayout({ lanes: [['synopsis'], ['carePlan'], ['tasks']], hidden: ['vitals'] });
+    const l = normalizeOverviewLayout({ revision: 2, lanes: [['synopsis'], ['carePlan'], ['tasks']], hidden: ['vitals'] });
     placedOnce(l);
-    expect(l.lanes[2]).toContain('vitals');
+    expect(l.lanes[1]).toContain('vitals');
     expect(l.hidden).toContain('vitals');
+  });
+
+  it('replaces a layout saved before the column categories', () => {
+    const l = normalizeOverviewLayout({
+      lanes: [['synopsis', 'healthChart'], ['suggestedActions', 'carePlan'], ['quickActions', 'vitals']],
+      hidden: ['vitals'],
+    });
+    expect(l.lanes).toEqual(DEFAULT_OVERVIEW_LAYOUT.lanes);
+    expect(l.lanes[0]).toEqual(expect.arrayContaining(['synopsis', 'careTeam', 'contact']));
+    expect(l.lanes[1][0]).toBe('vitals');
+    expect(l.lanes[2][0]).toBe('quickActions');
+    expect(l.hidden).not.toContain('vitals');
+    expect(l.hidden).toContain('medications');
   });
 });
 
@@ -87,13 +100,15 @@ describe('overviewColumns', () => {
     expect(overviewColumns({ ...layout, hidden: ['b', 'd'] }, 3)).toEqual([['a'], ['c'], ['e']]);
   });
 
-  it('keeps the default Overview rules: synopsis and chart first, Quick Actions above appointments', () => {
+  it('keeps the three categories: context, clinical work, then what to do next', () => {
     const l = normalizeOverviewLayout(undefined);
-    for (const count of [1, 2, 3]) {
-      const cols = overviewColumns(l, count);
-      expect(cols[0].slice(0, 2)).toEqual(['synopsis', 'healthChart']);
-      const col = cols.find(c => c.includes('quickActions'));
-      expect(col[col.indexOf('quickActions') + 1]).toBe('appointments');
-    }
+    const [overview, care, actions] = overviewColumns(l, 3);
+    expect(overview.slice(0, 3)).toEqual(['synopsis', 'healthChart', 'riskAcuity']);
+    expect(overview).toEqual(expect.arrayContaining(['careTeam', 'contact']));
+    expect(care.slice(0, 5)).toEqual(['vitals', 'carePlan', 'carePrograms', 'gaps', 'notes']);
+    expect(actions.slice(0, 4)).toEqual(['quickActions', 'suggestedActions', 'appointments', 'tasks']);
+    // Two columns keep Care Management wide and stack Actionables under Overview.
+    expect(overviewColumns(l, 2)[0].slice(0, 2)).toEqual(['synopsis', 'healthChart']);
+    expect(overviewColumns(l, 2)[1][0]).toBe('vitals');
   });
 });

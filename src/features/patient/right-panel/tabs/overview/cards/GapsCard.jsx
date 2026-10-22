@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DashboardCard, DashboardCardBody } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
+import { CappedRows } from './CappedRows';
 import { SubTabs } from '../../../../../../components/SubTabs/SubTabs';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Button } from '../../../../../../components/Button/Button';
@@ -21,37 +22,47 @@ export function GapsCard({ overview, actions }) {
   };
 
   return (
-    <DashboardCard icon="solar:danger-triangle-linear" title="Gaps" count={gaps.length || null}>
-      {gaps.length > 0 && (
-        <div className={styles.tabs}>
-          <SubTabs
-            tabs={[{ key: 'quality', label: `Quality gaps (${quality.length})` }, { key: 'hcc', label: `HCC gaps (${hcc.length})` }]}
-            activeKey={tab}
-            onChange={setTab}
-          />
-        </div>
+    <DashboardCard
+      icon="solar:danger-triangle-linear"
+      title="Gaps"
+      count={gaps.length || null}
+      tabs={gaps.length > 0 && (
+        <SubTabs
+          className={styles.tabRow}
+          tabs={[{ key: 'quality', label: `Quality gaps (${quality.length})` }, { key: 'hcc', label: `HCC gaps (${hcc.length})` }]}
+          activeKey={tab}
+          onChange={setTab}
+        />
       )}
-      <DashboardCardBody>
+    >
+      <DashboardCardBody className={styles.listBody}>
         {gaps.length === 0 ? (
           <p className={styles.empty}>No open gaps.</p>
         ) : list.length === 0 ? (
           <p className={styles.empty}>No open {tab === 'hcc' ? 'HCC' : 'quality'} gaps.</p>
-        ) : list.map(g => (
-          <PanelSectionItem
-            key={g.id}
-            leading={<span className={styles.codeChip}>{g.code}</span>}
-            title={g.title}
-            meta={g.detail}
-            trailing={(
-              <span className={styles.trail}>
-                <span className={styles.statusSlot}><Badge tone={g.tone || 'grey'} size="S" label={g.status} /></span>
-                {g.cta
-                  ? <Button variant="secondary" size="S" className={styles.ctaButton} onClick={() => run(g)}>{g.cta}</Button>
-                  : <span className={styles.ctaButton} />}
-              </span>
+        ) : (
+          <CappedRows
+            items={list}
+            resetKey={tab}
+            render={g => (
+              <PanelSectionItem
+                key={g.id}
+                inset
+                leading={<span className={styles.codeChip}>{g.code}</span>}
+                title={g.title}
+                meta={g.detail}
+                trailing={(
+                  <span className={styles.trail}>
+                    <span className={styles.statusSlot}><Badge tone={g.tone || 'grey'} size="S" label={g.status} /></span>
+                    {g.cta
+                      ? <Button variant="secondary" size="S" className={styles.ctaButton} onClick={() => run(g)}>{g.cta}</Button>
+                      : <span className={styles.ctaButton} />}
+                  </span>
+                )}
+              />
             )}
           />
-        ))}
+        )}
       </DashboardCardBody>
     </DashboardCard>
   );

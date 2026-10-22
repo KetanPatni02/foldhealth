@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardCard, DashboardCardBody } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
+import { CappedRows } from './CappedRows';
 import { SubTabs } from '../../../../../../components/SubTabs/SubTabs';
 import { PriorityIcon } from '../../../../../../components/PriorityIcon/PriorityIcon';
 import { Checkbox } from '../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -10,7 +11,7 @@ import { groupTasksForTab } from '../../../../left-panel/tabs/tasks/TasksTab/gro
 import { TaskDetailDrawer } from '../../../../../tasks/TaskDetailDrawer';
 import styles from './overviewCards.module.css';
 
-const VISIBLE = 4;
+const VISIBLE = 3;
 
 // Same patient match as the Monitoring tab: member id, store id, or name.
 function tasksForPatient(tasks, patient) {
@@ -53,7 +54,8 @@ export function TasksCard({ patient, actions }) {
       actions={<Button variant="ghost" size="S" onClick={actions.addTask}>Add task</Button>}
     >
       <div className={styles.tabs}>
-        <SubTabs
+          <SubTabs
+          className={styles.tabRow}
           tabs={[
             { key: 'pending', label: `Open (${groups.pending.length})` },
             { key: 'overdue', label: `Overdue (${groups.overdue.length})` },
@@ -63,12 +65,18 @@ export function TasksCard({ patient, actions }) {
           onChange={setTab}
         />
       </div>
-      <DashboardCardBody>
+      <DashboardCardBody className={styles.listBody}>
         {list.length === 0 ? (
           <p className={styles.empty}>{tab === 'completed' ? 'No completed tasks.' : isOverdueTab ? 'Nothing overdue.' : 'No open tasks.'}</p>
-        ) : list.slice(0, VISIBLE).map(t => (
+        ) : (
+          <CappedRows
+            items={list}
+            limit={VISIBLE}
+            resetKey={tab}
+            render={t => (
           <div key={t.id} className={styles.clickRow}>
             <PanelSectionItem
+              inset
               leading={(
                 <span className={styles.leadPair}>
                   <span className={styles.aboveStretch}>
@@ -92,7 +100,9 @@ export function TasksCard({ patient, actions }) {
               ]}
             />
           </div>
-        ))}
+            )}
+          />
+        )}
       </DashboardCardBody>
       {openTask && (
         <TaskDetailDrawer

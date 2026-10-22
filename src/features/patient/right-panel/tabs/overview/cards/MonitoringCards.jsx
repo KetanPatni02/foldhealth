@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
+import { CappedRows } from './CappedRows';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { useAppStore } from '../../../../../../store/useAppStore';
@@ -30,14 +31,19 @@ export function SinceLastTouchCard({ memberId }) {
         {data?.continuityLast && <PanelSectionItem title="Last touch" meta={data.continuityLast} />}
         {items.length === 0 ? (
           <p className={styles.empty}>Nothing new recorded since the last touch.</p>
-        ) : items.map(t => (
-          <PanelSectionItem
-            key={t.text}
-            title={t.text}
-            wrapTitle
-            trailing={t.source ? <Badge tone="grey" size="S" label={t.source} /> : null}
+        ) : (
+          <CappedRows
+            items={items}
+            render={t => (
+              <PanelSectionItem
+                key={t.text}
+                title={t.text}
+                wrapTitle
+                trailing={t.source ? <span className={styles.statusSlotWide}><Badge tone="grey" size="S" label={t.source} /></span> : null}
+              />
+            )}
           />
-        ))}
+        )}
       </DashboardCardBody>
     </DashboardCard>
   );
@@ -57,7 +63,7 @@ export function ProgramProgressCard({ memberId }) {
       <DashboardCardBody>
         {programs.length === 0 ? (
           <p className={styles.empty}>No program steps tracked for this patient yet.</p>
-        ) : programs.map(p => (
+        ) : programs.slice(0, 2).map(p => (
           <div key={p.code} className={styles.programBlock}>
             <PanelSectionItem
               leading={<span className={styles.codeChip}>{p.code}</span>}
@@ -65,7 +71,7 @@ export function ProgramProgressCard({ memberId }) {
               meta={[p.progress, p.next]}
               wrapTitle
             />
-            {(p.steps || []).map(s => {
+            {(p.steps || []).slice(0, 3).map(s => {
               const st = STEP[s.status];
               return (
                 <PanelSectionItem
@@ -79,6 +85,9 @@ export function ProgramProgressCard({ memberId }) {
             })}
           </div>
         ))}
+        {programs.length > 2 && (
+          <p className={styles.muted}>{programs.length - 2} more program{programs.length - 2 === 1 ? '' : 's'} on the Care Management tab.</p>
+        )}
       </DashboardCardBody>
     </DashboardCard>
   );

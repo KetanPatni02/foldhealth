@@ -68,6 +68,15 @@
   padding: var(--space-2) 0;
 }
 
+.inset {
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+.alignTop {
+  align-items: flex-start;
+}
+
 .item + .item {
   border-top: 0.5px solid var(--neutral-100);
 }

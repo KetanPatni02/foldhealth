@@ -40,14 +40,41 @@
 
 .statusSlotWide {
   display: flex;
-  justify-content: flex-start;
-  min-width: 120px;
+  justify-content: flex-end;
+  min-width: 96px;
 }
 
 .ctaButton {
   width: 104px;
   justify-content: center;
 }
+
+/* Narrow action column: same slot for every label, shorter than the gaps CTAs. */
+.ctaButton.suggestCta {
+  width: 80px;
+  height: 22px;
+  min-height: 22px;
+  padding: 0 var(--space-1);
+  font-size: var(--font-xs);
+}
+
+.suggestClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--space-1);
+  background: transparent;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+
+.suggestClose:hover { background: var(--neutral-50); }
+
+.suggestTrail { column-gap: var(--space-1); }
 
 /* Percent text right-aligned in a fixed width so 0% and 100% line up. */
 .pct {
@@ -150,8 +177,7 @@
 .synopsisBody {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding-bottom: var(--space-3);
+  gap: var(--space-2);
 }
 
 .synopsisText {
@@ -197,6 +223,7 @@
 .legend {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-4);
   font-size: var(--font-sm);
   color: var(--neutral-200);
@@ -215,19 +242,7 @@
 }
 
 .radar {
-  height: 230px;
-}
-
-.scoreRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-1) 0 var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: calc(var(--space-1) * 1.5);
-  background: var(--neutral-50);
-  font-size: var(--font-sm);
-  color: var(--neutral-200);
+  height: 188px;
 }
 
 .scoreValue {
@@ -242,6 +257,8 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
 }
+
+.statsTwo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .stat {
   display: flex;
@@ -302,7 +319,9 @@
 }
 
 /* ── Gaps ── */
-.tabs { padding: 0 var(--space-4) var(--space-1); }
+.tabs { padding: var(--space-2) var(--space-3) 0; }
+
+.tabRow { flex-wrap: wrap; }
 
 .codeChip {
   display: inline-flex;
@@ -340,50 +359,199 @@
 
 .quickGridInner {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
-  padding-bottom: var(--space-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1) var(--space-2);
 }
 
-/* Full-width single column: one row of six instead of a stretched 3×2. */
 @container (min-width: 560px) {
-  .quickGridInner { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .quickGridInner { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.notesBody {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* List rows run to the card edges; the row itself carries the inline inset. */
+.listBody {
+  padding: 0;
+}
+
+.listBody .empty {
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+.listBody > button {
+  margin-left: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.listNote {
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-2);
 }
 
 /* ── Vitals ── */
-.vitalsGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.vitalNavs {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2);
-  padding-bottom: var(--space-2);
+  min-width: 0;
 }
 
+.vitalNav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  padding: 0;
+  border: 0.5px solid var(--placeholder-text);
+  border-radius: var(--space-1);
+  background: var(--neutral-0);
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+
+.vitalNav:disabled {
+  border-color: transparent;
+  background: var(--neutral-50);
+  color: var(--neutral-200);
+  cursor: default;
+}
+
+.vitalsRow {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.vitalsRow::-webkit-scrollbar { display: none; }
+
 .vital {
+  --vital-tone: var(--status-success-dark);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 156px;
+  height: 170px;
+  min-width: 0;
+  scroll-snap-align: start;
+  overflow: hidden;
+  border: 0.5px solid var(--vital-tone);
+  border-radius: var(--space-2);
+  background:
+    linear-gradient(57deg, transparent 61%, color-mix(in srgb, var(--vital-tone) 10%, transparent) 100%),
+    var(--neutral-0);
+}
+
+.vital[data-tone="error"] { --vital-tone: var(--status-error-dark); }
+.vital[data-tone="warning"] { --vital-tone: var(--status-warning-dark); }
+
+.vital[data-tone="error"],
+.vital[data-tone="warning"] {
+  border-color: color-mix(in srgb, var(--vital-tone) 35%, var(--neutral-0));
+}
+
+.vitalBody {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) 0;
   min-width: 0;
-  padding: var(--space-2) var(--space-3);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: calc(var(--space-1) * 1.5);
+}
+
+.vitalGoal,
+.vitalMeta {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  margin: 0;
+  font-size: var(--font-sm);
+  line-height: var(--leading-tight);
+  color: var(--placeholder-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vitalName {
+  margin: 0;
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vitalValueRow {
   display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+  min-width: 0;
+  margin: 0;
+}
+
+.vitalReading {
+  display: inline-flex;
   align-items: baseline;
-  gap: var(--space-1);
+  gap: calc(var(--space-1) / 2);
   min-width: 0;
 }
 
 .vitalValue {
-  font-size: var(--font-lg);
-  font-weight: 500;
-  color: var(--neutral-500);
+  font-size: var(--font-xl);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  color: var(--neutral-400);
 }
 
-.vitalChange {
-  margin-left: auto;
+.vitalUnit {
   font-size: var(--font-sm);
-  font-weight: 500;
+  line-height: var(--leading-tight);
+  color: var(--neutral-300);
   white-space: nowrap;
+}
+
+.vitalPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  min-width: 18px;
+  padding: calc(var(--space-1) / 2) var(--space-1);
+  border-radius: var(--space-1);
+  background: color-mix(in srgb, var(--vital-tone) 12%, var(--neutral-0));
+  color: var(--vital-tone);
+  font-size: var(--font-sm);
+  line-height: var(--leading-tight);
+  white-space: nowrap;
+}
+
+.vitalTrend {
+  position: relative;
+  flex: 1;
+  min-height: 48px;
+  margin-top: auto;
+}
+
+.vitalTrendSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.vitalDot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid var(--vital-tone);
+  border-radius: 50%;
+  background: var(--neutral-0);
+  transform: translate(-50%, -50%);
 }

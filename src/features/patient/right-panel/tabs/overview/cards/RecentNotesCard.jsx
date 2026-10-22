@@ -60,7 +60,7 @@ export function RecentNotesCard({ patientId, actions }) {
         </>
       )}
     >
-      <DashboardCardBody>
+      <DashboardCardBody className={styles.notesBody}>
         {list.length === 0 ? (
           <p className={styles.empty}>No clinical notes yet.</p>
         ) : list.slice(0, VISIBLE).map(n => {
@@ -71,7 +71,7 @@ export function RecentNotesCard({ patientId, actions }) {
               leading={<span className={styles.tile}><Icon name="solar:notes-linear" size={16} /></span>}
               title={<button type="button" className={styles.titleButton} onClick={openNotes}>{noteTitle(n)}</button>}
               meta={[n.authorName, formatDate(n.updatedAt || n.createdAt)]}
-              trailing={<Badge tone={status.tone} size="S" label={status.label} />}
+              trailing={<span className={styles.statusSlotWide}><Badge tone={status.tone} size="S" label={status.label} /></span>}
             />
           );
         })}
