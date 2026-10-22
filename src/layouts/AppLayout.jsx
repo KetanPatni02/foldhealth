@@ -627,10 +627,9 @@ function WorklistFilterBar(props) {
   return (
     <FilterBar
       {...props}
-      // One line of chips; the rest sit in More Filters. TOC IP also follows
-      // the worklist filter spec (primaries in spec order, More Filters by domain).
+      // The primaries that fit show first; added filters follow and wrap.
       autoFit
-      pinPrimary={list === 'TOC IP'}
+      pinPrimary
       onClearAll={savedActions.onClearAll}
       clearAllLabel={savedActions.clearAllLabel}
       saveLabel={savedActions.saveLabel}

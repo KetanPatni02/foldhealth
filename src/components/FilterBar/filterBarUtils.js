@@ -1,17 +1,11 @@
+import { GENDER_FILTER_OPTIONS, LANGUAGE_FILTER_CODE_OPTIONS } from '../../lib/memberFilters';
+
+// Rows store gender as M / F; the chip shows the shared labels.
+const GENDER_CODE_OPTIONS = GENDER_FILTER_OPTIONS.map(label => ({ value: label[0], label }));
+
 export const FILTER_DEFS = [
-  { key: 'gender', label: 'Gender', primary: true, options: [
-    { value: 'M', label: 'Male' },
-    { value: 'F', label: 'Female' },
-    { value: 'O', label: 'Other' },
-  ]},
-  { key: 'language', label: 'Language', primary: true, options: [
-    { value: 'en', label: 'English' },
-    { value: 'es', label: 'Spanish' },
-    { value: 'zh', label: 'Chinese' },
-    { value: 'yue', label: 'Cantonese' },
-    { value: 'ko', label: 'Korean' },
-    { value: 'vi', label: 'Vietnamese' },
-  ]},
+  { key: 'gender', label: 'Gender', primary: true, options: GENDER_CODE_OPTIONS },
+  { key: 'language', label: 'Language', primary: true, searchable: true, options: LANGUAGE_FILTER_CODE_OPTIONS },
   { key: 'lace', label: 'LACE Acuity', primary: true, options: [
     { value: 'High', label: 'High' },
     { value: 'Medium', label: 'Medium' },
@@ -30,7 +24,7 @@ export const FILTER_DEFS = [
     { value: 'queued', label: 'Queued' },
     { value: 'failed', label: 'Failed' },
   ]},
-  { key: 'assignee', label: 'Assigned to', primary: true, optionsFromData: true },
+  { key: 'assignee', label: 'Assignee', primary: true, optionsFromData: true },
   { key: 'outreachType', label: 'Outreach Window', primary: true, options: [
     { value: '48h', label: 'TCM 48h' },
     { value: '7d', label: 'TCM 7d' },
@@ -73,10 +67,11 @@ const TOC_IP_PRIMARY = ['gender', 'language', 'assignee', 'tocStatus', 'carePlan
 const TOC_IP_GROUP = {
   status: 'Workflow Status', outreachType: 'Workflow Status', tocType: 'Workflow Status',
   priority: 'Workflow Status', outreachCategory: 'Workflow Status',
+  readmission: 'Workflow Status', carePlanStatus: 'Workflow Status',
   agentAssigned: 'Assignment',
   lace: 'Clinical',
 };
-const TOC_IP_LABEL = { assignee: 'Assignee', carePlanStatus: 'Care Plan Status' };
+const TOC_IP_LABEL = { carePlanStatus: 'Care Plan Status' };
 
 function tocIpDefs(defs) {
   const byKey = Object.fromEntries(defs.map(d => [d.key, d]));
@@ -103,7 +98,8 @@ export function filterDefsForList(list) {
     }
     return def;
   });
-  return list === 'TOC IP' ? tocIpDefs(defs) : defs;
+  // TCM keeps its primaries; its secondaries sit under their domains too.
+  return list === 'TOC IP' ? tocIpDefs(defs) : defs.map(d => (d.primary ? d : { ...d, group: TOC_IP_GROUP[d.key] }));
 }
 
 export function resolveOptions(filterDef, patients) {

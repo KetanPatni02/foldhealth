@@ -37,6 +37,14 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Consistent worklist filters.** Gender (Male, Female, Other), Language
+  (one searchable list) and Member Status now show the same options on every
+  worklist (`src/lib/memberFilters.js`), so SNP and CCM no longer show raw
+  codes. Every worklist uses the same filter bar layout: the primary filters
+  that fit show first, filters added from More Filters follow them and wrap
+  onto more lines, and More Filters | Clear All | Save Filter come last. CCM,
+  JSA and TCM group their secondary filters by domain in More Filters, and
+  CCM leads with the member filters. The HCC "View More" row is 8px shorter.
 - **Customize the patient Overview.** Each Overview column now scrolls on its
   own. "Customize Overview" opens a kanban board (new `SortableLanes`
   component): drag widgets between the three columns, reorder them, or move
