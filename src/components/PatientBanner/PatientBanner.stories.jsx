@@ -7,7 +7,7 @@ export default {
   parameters: {
     layout: 'padded',
     docs: {
-      description: { component: 'Compact patient-header row used at the top of chart drawers, call drawers, and detail views. Shows avatar, name, gender/age, member ID, and (optional) RAF trend.' },
+      description: { component: 'Compact patient-header row used at the top of chart drawers, call drawers, and detail views. Shows avatar, name, gender/age, Fold ID, and (optional) RAF trend.' },
     },
   },
   argTypes: {
@@ -34,7 +34,7 @@ export default {
     },
     memberId: {
       control: 'text',
-      description: 'Member ID, e.g. "#219384756102".',
+      description: 'Fold ID, e.g. "11065".',
       table: { type: { summary: 'string' } },
     },
     raf: {
@@ -71,7 +71,7 @@ export const Playground = {
     name: 'Jane Doe',
     gender: 'Female',
     age: '67y 2m',
-    memberId: '#219384756102',
+    memberId: '11065',
     raf: '4.234',
     rafChange: '0.512',
     rafUp: true,

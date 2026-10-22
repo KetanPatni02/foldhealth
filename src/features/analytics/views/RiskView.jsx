@@ -209,7 +209,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead>
-            <tr><th>Member ID</th><th>HCC Category</th><th>Description</th><th className={s.r}>Est. Revenue Impact</th><th>Last Coded Date</th><th>Action</th></tr>
+            <tr><th>Fold ID</th><th>HCC Category</th><th>Description</th><th className={s.r}>Est. Revenue Impact</th><th>Last Coded Date</th><th>Action</th></tr>
           </thead>
           <tbody>
             {openHccSuspects === null && (
