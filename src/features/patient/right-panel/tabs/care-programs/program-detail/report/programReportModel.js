@@ -374,7 +374,7 @@ export function buildProgramReport({ program, patient, steps, manual, range, ena
     { label: 'Patient Name', value: orDash(patient?.name) },
     { label: 'Date Of Birth', value: [patient?.dob, patient?.age ? `(${/^\d+$/.test(String(patient.age)) ? `${patient.age}Y` : patient.age})` : ''].filter(Boolean).join(' ') || '—' },
     { label: 'Gender', value: orDash(patient?.gender) },
-    { label: 'Member ID', value: patient?.memberId ? `#${patient.memberId}` : '—' },
+    { label: 'Fold ID', value: patient?.memberId ? `#${patient.memberId}` : '—' },
     { label: 'Primary Care Provider', value: orDash(patient?.pcp) },
     { label: 'Insurance', value: orDash(patient?.insurance) },
   ];

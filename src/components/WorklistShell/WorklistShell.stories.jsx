@@ -38,7 +38,7 @@ export default {
 
 // ── Sample data — patient-like rows so the story mirrors the real feature ──
 const SAMPLE_MEMBERS = [
-  { id: 'm-1', initials: 'AB', name: 'Annette Brave',    memberId: '#837261495203', gender: 'M', age: '67y 3m', status: 'New',      assignee: 'Ignacio Beer', startDate: '02/22', mins: 1089 },
+  { id: 'm-1', initials: 'AB', name: 'Annette Brave',    memberId: '11089', gender: 'M', age: '67y 3m', status: 'New',      assignee: 'Ignacio Beer', startDate: '02/22', mins: 1089 },
   { id: 'm-2', initials: 'DW', name: 'Derek Winslow',    memberId: '#846273915048', gender: 'M', age: '34y 1m', status: 'Engaged',  assignee: 'Ignacio Beer', startDate: '11/11', mins: 1500 },
   { id: 'm-3', initials: 'SL', name: 'Sophie Langley',   memberId: '#675849203716', gender: 'F', age: '29y 6m', status: 'Engaged',  assignee: 'Robin Berg',   startDate: '08/14', mins: 960 },
   { id: 'm-4', initials: 'LH', name: 'Lila Hawthorne',   memberId: '#739218465037', gender: 'M', age: '58y 2m', status: 'New',      assignee: 'You',          startDate: '04/18', mins: 1260 },

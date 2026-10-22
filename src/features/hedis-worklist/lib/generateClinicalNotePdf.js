@@ -106,7 +106,7 @@ export function generateClinicalNotePdf({
   const noteTitle = gapCodes.length === 1 ? `${gapCodes[0]} Visit Note` : 'Consolidated Clinical Note';
   heading(noteTitle, 18);
   body(`Patient: ${member.name}   ·   ${member.gender === 'F' ? 'Female' : member.gender === 'M' ? 'Male' : 'Other'} · Age ${member.age}`);
-  body(`Member ID: ${member.memberId}`);
+  body(`Fold ID: ${member.memberId}`);
   body(`Date of Service: ${dateOfService || '—'}`);
   body(`Generated: ${new Date().toLocaleString()}   ·   Signed by: ${signedBy}`);
   divider();
