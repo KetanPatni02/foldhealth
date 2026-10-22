@@ -37,6 +37,28 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Configurable program steps and the SNP Snapshot form.** In Settings >
+  Care Program Configuration > Steps, Add Step and the gear on every step set
+  its name, what it opens in the patient's program (a form from the Forms
+  library, a built-in screen, or nothing yet), its section, and Show /
+  Mandatory / Alert. Snapshot is its own step (first, above Outreach, for SNP
+  and TOC IP); Pre-visit now holds only the Pre-visit Assessment. A program's
+  Snapshot renders its "<CODE> Snapshot" form, editable and saved per patient
+  program in `form_responses`, above the Primary Care Team. The "SNP Snapshot"
+  form (Trigger Information, Member & Eligibility, Outreach & Engagement, Care
+  Plan, TOC, Risk Stratification) is seeded by
+  `supabase/snp_snapshot_form_migration.sql` / `bun run seed`.
+- **CMP worklist and sub-programs.** CMP (Care Management Program) is
+  enrolled per sub-program: SPD, Whole Child Model, Basic / Complex Case
+  Management, Coordination of Care, Maternity Program or Pediatrics Program.
+  Picking CMP under New Program on a member opens that list; sub-programs the
+  member already has are greyed out. Population > Worklists has a CMP
+  worklist, one row per enrollment: Sub Program, Program Sub Status
+  (editable), Care Plan Status, Next Action Due, Outreach, Assignee, Program
+  Start / Due Dates, Risk IQ and Tasks, with the shared filter bar and saved
+  filters. Backed by `cmp_members` (`supabase/cmp_members_migration.sql`,
+  seeded by `bun run seed`) and a `sub_program` column on
+  `patient_care_programs` (`supabase/patient_care_programs_sub_program_migration.sql`).
 - **Consistent worklist filters.** Gender (Male, Female, Other), Language
   (one searchable list) and Member Status now show the same options on every
   worklist (`src/lib/memberFilters.js`), so SNP and CCM no longer show raw
@@ -226,6 +248,16 @@ build requires esbuild ≥ 0.28 on Node 26.
   `supabase/account_lockout_migration.sql` and the Supabase Password
   Verification Hook.
 
+- **Care Program Configuration (Settings).** A new Settings section lists
+  every program type and lets you create new ones (blank or copied from
+  another program's steps). Each program has Overview, Steps, Worklists,
+  Care Team, Completion Criteria and Access tabs, saved to
+  `care_program_types`. Steps drive the patient's program view: switched-off
+  steps disappear, mandatory flags and order apply, and only active program
+  types can be enrolled. Built-in step ids are kept so saved step statuses
+  still line up. Worklists, Care Team, Completion Criteria and Access are
+  saved but don't yet change navigation or permissions.
+
 - **Care program in a right panel (floating sidebar).** A care program's ⋯
   menu, and the Care Plan's ⋯ menu, offer "Open in Right Panel" when the
   floating sidebar is on: the patient view becomes a patient card
@@ -249,6 +281,7 @@ build requires esbuild ≥ 0.28 on Node 26.
   when the OCR suggested them. "Create Test eFax" receives a fax about any
   patient read as a strong match, needs review, or no match. Stored in
   `efax_inbound` (`supabase/efax_inbound_migration.sql`).
+
 - **Settings → Billing: Billable, Billing History and Timer Access.**
   Billable lists unbilled members with Program Type, CPT Code, Provider,
   Date of Service and Members filters and a total. Billing History lists

@@ -91,6 +91,7 @@ export function PatientDetailView() {
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
   const awvMembers = useAppStore(s => s.awvMembers);
+  const cmpMembers = useAppStore(s => s.cmpMembers);
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers);
   const hedisMembers = useAppStore(s => s.hedisMembers);
@@ -98,6 +99,7 @@ export function PatientDetailView() {
   const fetchPatients = useAppStore(s => s.fetchPatients);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
+  const fetchCmpMembers = useAppStore(s => s.fetchCmpMembers);
   const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
   const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
@@ -110,6 +112,8 @@ export function PatientDetailView() {
   const hccMembersDidFetch = useAppStore(s => s.hccMembersDidFetch);
   const awvMembersLoading = useAppStore(s => s.awvMembersLoading);
   const awvMembersDidFetch = useAppStore(s => s.awvMembersDidFetch);
+  const cmpMembersLoading = useAppStore(s => s.cmpMembersLoading);
+  const cmpMembersDidFetch = useAppStore(s => s.cmpMembersDidFetch);
   const ccmWorklistLoading = useAppStore(s => s.ccmWorklistLoading);
   const ccmWorklistDidFetch = useAppStore(s => s.ccmWorklistDidFetch);
   const snpWorklistLoading = useAppStore(s => s.snpWorklistLoading);
@@ -247,6 +251,7 @@ export function PatientDetailView() {
   const patient = patients.find(matchesId)
     || worklistMemberToPatient(hccMembers.find(matchesId))
     || worklistMemberToPatient(awvMembers?.find(matchesId))
+    || worklistMemberToPatient(cmpMembers?.find(matchesId))
     || worklistMemberToPatient(ccmWorklistMembers?.find(matchesId))
     || worklistMemberToPatient(snpWorklistMembers?.find(matchesId))
     || worklistMemberToPatient(hedisMembers?.find(matchesId))
@@ -279,6 +284,7 @@ export function PatientDetailView() {
     slicePending(patients, patientsDidFetch, patientsLoading)
     || slicePending(hccMembers, hccMembersDidFetch, hccMembersLoading)
     || slicePending(awvMembers, awvMembersDidFetch, awvMembersLoading)
+    || slicePending(cmpMembers, cmpMembersDidFetch, cmpMembersLoading)
     || slicePending(ccmWorklistMembers, ccmWorklistDidFetch, ccmWorklistLoading)
     || slicePending(snpWorklistMembers, snpWorklistDidFetch, snpWorklistLoading)
     || slicePending(hedisMembers, hedisDidFetch, hedisLoading)
@@ -299,6 +305,7 @@ export function PatientDetailView() {
     if (patients.length === 0) fetchPatients?.();
     if (hccMembers.length === 0) fetchHccMembers?.();
     if ((awvMembers?.length || 0) === 0) fetchAwvMembers?.();
+    if ((cmpMembers?.length || 0) === 0) fetchCmpMembers?.();
     if ((ccmWorklistMembers?.length || 0) === 0) fetchCcmWorklistMembers?.();
     if ((snpWorklistMembers?.length || 0) === 0) fetchSnpWorklistMembers?.();
     if ((hedisMembers?.length || 0) === 0) fetchHedisMembers?.();

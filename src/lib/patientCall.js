@@ -3,6 +3,7 @@ import { resolvePatientStoreId } from './resolvePatientStoreId';
 const MEMBER_SLICES = [
   'hccMembers',
   'awvMembers',
+  'cmpMembers',
   'ccmWorklistMembers',
   'snpWorklistMembers',
   'hedisMembers',

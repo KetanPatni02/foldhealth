@@ -23,6 +23,8 @@ import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmA
 import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comms/educationLibrary.js';
 import { sampleFaxes, faxToRow } from '../src/features/messages/efax/efaxData.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
+import { CMP_MEMBERS } from '../src/features/cmp-worklist/data/mock.js';
+import { snpSnapshotFormRow } from '../src/features/forms/templates/snpSnapshotForm.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
 import { CARE_PLAN_MOCK } from '../src/features/patient/data/carePlanMock.js';
@@ -34,6 +36,7 @@ import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src
 import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
 import { OVERVIEW_SEED, overviewToRow } from '../src/features/patient/data/overviewData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
+import { defaultProgramTypes, programTypeToRow } from '../src/features/settings/care-program-config/careProgramConfigModel.js';
 import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows, employerImpactExportRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
 import { sampleOooRecords, demoOooForUser, oooToRow } from '../src/features/ooo/oooSeed.js';
 import { sampleOnCallSchedules, onCallToRow } from '../src/features/ooo/onCallSeed.js';
@@ -624,6 +627,32 @@ function practiceLocationToRow(l) {
   };
 }
 
+function cmpToRow(m) {
+  return {
+    id:                 m.id,
+    patient_id:         m.patientId ?? null,
+    member_id:          m.memberId,
+    sub_program:        m.subProgram ?? null,
+    name:               m.name,
+    initials:           m.in,
+    gender:             m.g,
+    age:                m.age,
+    dob:                m.dob ?? null,
+    language:           m.language || 'en',
+    program_sub_status: m.progSubStatus,
+    care_plan_status:   m.carePlanStatus,
+    next_action_due:    m.nextActionDue ?? null,
+    program_start_date: m.programStartDate ?? null,
+    program_due_date:   m.programDueDate ?? null,
+    outreach:           m.outreach ?? 0,
+    last_outreach:      m.lastOutreach ?? null,
+    assignee:           m.assignee ?? null,
+    assignee_initials:  m.assigneeIn ?? null,
+    risk_level:         m.ri ?? null,
+    tasks:              m.task ?? 0,
+  };
+}
+
 function apcmToRow(p) {
   return {
     id:                          p.id,
@@ -893,6 +922,25 @@ async function main() {
     .from('hedis_members')
     .upsert(hedisRows, { onConflict: 'id' });
   if (he) { console.error('  ✗', he.message); } else { console.log(`  ✓ ${hedisRows.length} new members (${HEDIS_MEMBERS.length - hedisRows.length} already present)`); }
+
+  console.log('Seeding cmp_members...');
+  const { error: cmpErr } = await supabase
+    .from('cmp_members')
+    .upsert(CMP_MEMBERS.map(cmpToRow), { onConflict: 'id' });
+  if (cmpErr) { console.error('  ✗', cmpErr.message, '(run supabase/cmp_members_migration.sql first)'); } else { console.log(`  ✓ ${CMP_MEMBERS.length} members`); }
+
+  // Added once, by name: later edits in the Form builder are kept.
+  console.log('Seeding SNP Snapshot form...');
+  const snapshotRow = snpSnapshotFormRow();
+  const { data: snapshotExisting, error: snapshotFindErr } = await supabase.from('forms').select('id').eq('name', snapshotRow.name).limit(1);
+  if (snapshotFindErr) {
+    console.error('  ✗', snapshotFindErr.message);
+  } else if (snapshotExisting?.length) {
+    console.log(`  ✓ already present (id=${snapshotExisting[0].id})`);
+  } else {
+    const { error: snapshotErr } = await supabase.from('forms').insert({ ...snapshotRow, response_count: 0 });
+    if (snapshotErr) console.error('  ✗', snapshotErr.message); else console.log('  ✓ added');
+  }
 
   console.log('Seeding apcm_patients...');
   const apcmRows = await withoutExistingPeople(supabase, 'apcm_patients', APCM_PATIENTS.map(apcmToRow));
@@ -1179,6 +1227,17 @@ async function main() {
     .upsert(goalLibraryRows, { onConflict: 'id' });
   if (cpgErr) console.error('  ✗', cpgErr.message);
   else console.log(`  ✓ ${goalLibraryRows.length} library goals`);
+
+  console.log('Seeding care_program_types...');
+  // Built-in program types; ignoreDuplicates keeps any configuration already edited in Settings.
+  const programTypeRows = defaultProgramTypes().map(programTypeToRow);
+  const { error: cptypeErr } = await supabase
+    .from('care_program_types')
+    .upsert(programTypeRows, { onConflict: 'id', ignoreDuplicates: true });
+  if (cptypeErr) {
+    if (cptypeErr.code === '42P01') console.log('  ⚠ care_program_types missing — run supabase/care_program_types_migration.sql');
+    else console.error('  ✗', cptypeErr.message);
+  } else console.log(`  ✓ ${programTypeRows.length} care program types`);
 
   console.log('Seeding care_plan_templates (library)...');
   const templateRows = CARE_PLAN_TEMPLATE_LIBRARY.map(carePlanTemplateLibraryToRow);
