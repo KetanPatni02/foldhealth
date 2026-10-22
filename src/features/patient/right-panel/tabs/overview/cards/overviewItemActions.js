@@ -5,16 +5,16 @@ const STOP_WORDS = new Set(['the', 'and', 'from', 'with', 'for', 'visit', 'flagg
 
 export function findWorklistMember(members, patient) {
   if (!patient || !members?.length) return null;
-  const ids = [patient.id, patient.memberId, patient.patientId]
+  const ids = new Set([patient.id, patient.memberId, patient.patientId]
     .filter(v => v != null && v !== '')
-    .map(String);
+    .map(String));
   const name = patient.name ? String(patient.name).trim().toLowerCase() : '';
   return members.find((m) => {
     if (!m) return false;
     const mids = [m.id, m.memberId, m.patientId, m.patient_id]
       .filter(v => v != null && v !== '')
       .map(String);
-    if (ids.some(id => mids.includes(id))) return true;
+    if (mids.some(id => ids.has(id))) return true;
     return !!name && String(m.name || '').trim().toLowerCase() === name;
   }) || null;
 }
