@@ -10,40 +10,33 @@ export default {
     docs: {
       description: {
         component:
-          'A kanban-style board: drag cards to reorder within a lane or move them between lanes, by pointer or keyboard. Empty lanes accept drops. Used by the patient Overview\'s Customize drawer, where the lanes are the three columns plus a muted "Hidden" lane.',
+          'A kanban-style board: drag cards to reorder within a lane or move them between lanes, by pointer or keyboard. The dragged card leaves a dashed slot where it will land. Cards with `disabled` stay in place, dimmed. `renderActions` controls appear on hover or focus, and always on disabled cards. Used by the patient Overview\'s Customize drawer.',
       },
     },
   },
 };
 
 const INITIAL = [
-  { key: 'c1', title: 'Column 1', hint: 'Narrow, left', items: [{ key: 'synopsis', label: 'Patient Synopsis' }, { key: 'chart', label: 'Health Chart' }] },
+  { key: 'c1', title: 'Column 1', hint: 'Narrow, left', items: [{ key: 'synopsis', label: 'Patient Synopsis' }, { key: 'chart', label: 'Health Chart' }, { key: 'meds', label: 'Medications', disabled: true }] },
   { key: 'c2', title: 'Column 2', hint: 'Wide, middle', items: [{ key: 'actions', label: 'Suggested Actions' }, { key: 'plan', label: 'Care Plan' }] },
-  { key: 'c3', title: 'Column 3', hint: 'Narrow, right', items: [{ key: 'tasks', label: 'Tasks' }] },
-  { key: 'hidden', title: 'Hidden', muted: true, emptyText: 'Drag widgets here to hide them', items: [{ key: 'insurance', label: 'Insurance', meta: 'Sample data' }] },
+  { key: 'c3', title: 'Column 3', hint: 'Narrow, right', items: [{ key: 'tasks', label: 'Tasks' }, { key: 'insurance', label: 'Insurance', meta: 'Sample data', disabled: true }] },
 ];
 
 export const Default = {
   render: () => {
     const [lanes, setLanes] = useState(INITIAL);
+    const toggle = key => setLanes(prev => prev.map(l => ({ ...l, items: l.items.map(i => (i.key === key ? { ...i, disabled: !i.disabled } : i)) })));
     return (
-      <div style={{ width: 680 }}>
+      <div style={{ width: 560 }}>
         <SortableLanes
           lanes={lanes}
           onChange={setLanes}
-          renderActions={(item, laneKey) => (
+          renderActions={item => (
             <ActionButton
-              icon={laneKey === 'hidden' ? 'solar:add-circle-linear' : 'solar:eye-closed-linear'}
+              icon={item.disabled ? 'solar:eye-closed-linear' : 'solar:eye-linear'}
               size="S"
-              tooltip={laneKey === 'hidden' ? 'Show' : 'Hide'}
-              onClick={() => setLanes(prev => {
-                const from = prev.find(l => l.key === laneKey);
-                const moved = from.items.find(i => i.key === item.key);
-                const toKey = laneKey === 'hidden' ? 'c1' : 'hidden';
-                return prev.map(l => (l.key === laneKey
-                  ? { ...l, items: l.items.filter(i => i.key !== item.key) }
-                  : l.key === toKey ? { ...l, items: [...l.items, moved] } : l));
-              })}
+              tooltip={item.disabled ? `Show ${item.label}` : `Hide ${item.label}`}
+              onClick={() => toggle(item.key)}
             />
           )}
         />

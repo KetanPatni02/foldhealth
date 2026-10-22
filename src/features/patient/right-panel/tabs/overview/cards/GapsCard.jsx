@@ -43,10 +43,12 @@ export function GapsCard({ overview, actions }) {
             title={g.title}
             meta={g.detail}
             trailing={(
-              <>
-                <Badge tone={g.tone || 'grey'} size="S" label={g.status} />
-                {g.cta && <Button variant="secondary" size="S" onClick={() => run(g)}>{g.cta}</Button>}
-              </>
+              <span className={styles.trail}>
+                <span className={styles.statusSlot}><Badge tone={g.tone || 'grey'} size="S" label={g.status} /></span>
+                {g.cta
+                  ? <Button variant="secondary" size="S" className={styles.ctaButton} onClick={() => run(g)}>{g.cta}</Button>
+                  : <span className={styles.ctaButton} />}
+              </span>
             )}
           />
         ))}

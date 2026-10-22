@@ -23,6 +23,66 @@
 
 .spacer { flex: 1; }
 
+/* Row controls in fixed slots, so statuses and buttons line up down a list
+   whatever their text (Open vs At risk, Order Lab vs Log Reading). */
+.trail {
+  display: grid;
+  grid-auto-flow: column;
+  align-items: center;
+  column-gap: var(--space-2);
+}
+
+.statusSlot {
+  display: flex;
+  justify-content: flex-start;
+  width: 64px;
+}
+
+.statusSlotWide {
+  display: flex;
+  justify-content: flex-start;
+  min-width: 120px;
+}
+
+.ctaButton {
+  width: 104px;
+  justify-content: center;
+}
+
+/* Percent text right-aligned in a fixed width so 0% and 100% line up. */
+.pct {
+  width: var(--space-8);
+  text-align: right;
+}
+
+/* Whole row opens its item: the title button stretches over the row, and
+   controls inside the row (a checkbox) sit above it. */
+.clickRow {
+  position: relative;
+  border-radius: var(--space-1);
+}
+
+.clickRow + .clickRow { border-top: 0.5px solid var(--neutral-100); }
+
+.clickRow:hover { background: var(--neutral-25); }
+
+.stretch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.aboveStretch {
+  position: relative;
+  z-index: 1;
+}
+
+.leadPair {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* Unity-suggested content without the full AI wash. */
 .aiOutline { border-color: var(--primary-200); }
 
