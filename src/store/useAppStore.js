@@ -2052,6 +2052,9 @@ export const useAppStore = create((set, get) => ({
       id:           r.id,
       code:         r.code,
       subProgram:   r.sub_program || null,
+      triggerType:  r.trigger_type || null,
+      triggerDate:  r.trigger_date || null,
+      memberInfo:   r.member_info || null,
       name:         r.name,
       acuity:       r.acuity,
       status:       r.status || 'New',
@@ -2103,6 +2106,10 @@ export const useAppStore = create((set, get) => ({
           : isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}`,
         code: entry.code,
         subProgram,
+        // SNP: what triggered the enrollment and for which plan id (Create SNP Program).
+        triggerType: entry.triggerType || null,
+        triggerDate: entry.triggerDate || null,
+        memberInfo: entry.memberInfo || null,
         name: subProgram ? `${subProgram} (${entry.code})` : `${entry.name} (${entry.code})`,
         acuity: null,
         status: 'New',
@@ -2161,14 +2168,23 @@ export const useAppStore = create((set, get) => ({
       // sub-program. Until that migration runs, fall back to the old key
       // (a second CMP sub-program then only saves locally). Each save tries
       // the key its row most likely needs first, then the other.
-      const upsertSubProgram = () => supabase.from('patient_care_programs')
-        .upsert({ ...row, sub_program: program.subProgram || '' }, { onConflict: 'patient_id, code, sub_program', ignoreDuplicates: true })
+      // The trigger columns come from
+      // patient_care_programs_snp_trigger_migration.sql; until it runs, the
+      // last tries save without them.
+      const trigger = Object.fromEntries(Object.entries({
+        trigger_type: program.triggerType, trigger_date: program.triggerDate, member_info: program.memberInfo,
+      }).filter(([, v]) => v));
+      const upsertSubProgram = (extra) => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...extra, sub_program: program.subProgram || '' }, { onConflict: 'patient_id, code, sub_program', ignoreDuplicates: true })
         .select('id');
-      const upsertLegacy = () => supabase.from('patient_care_programs')
-        .upsert(row, { onConflict: 'patient_id, code', ignoreDuplicates: true })
+      const upsertLegacy = (extra) => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...extra }, { onConflict: 'patient_id, code', ignoreDuplicates: true })
         .select('id');
-      const [first, second] = program.subProgram ? [upsertSubProgram, upsertLegacy] : [upsertLegacy, upsertSubProgram];
-      first().then((res) => (res.error ? second() : res)).then(({ data, error }) => {
+      const keyOrder = program.subProgram ? [upsertSubProgram, upsertLegacy] : [upsertLegacy, upsertSubProgram];
+      const tries = Object.keys(trigger).length
+        ? [...keyOrder.map(fn => () => fn(trigger)), ...keyOrder.map(fn => () => fn({}))]
+        : keyOrder.map(fn => () => fn({}));
+      tries.reduce((p, attempt) => p.then(res => (res && !res.error ? res : attempt())), Promise.resolve(null)).then(({ data, error }) => {
         if (error) { console.warn('addCareProgram — insert failed:', error.message); return; }
         // Enrolling is program activity, but only when it really enrolled: a
         // duplicate is ignored above, and logging it anyway filled the log
@@ -15806,6 +15822,22 @@ export const useAppStore = create((set, get) => ({
       return false;
     }
     return true;
+  },
+
+  // The response saved under one session (e.g. a patient program's Snapshot,
+  // session `snapshot:<patientId>:<programId>`), or null.
+  fetchFormResponseBySession: async (formId, sessionId) => {
+    if (!formId || !sessionId || (typeof formId === 'string' && formId.startsWith('local-'))) return null;
+    const { data, error } = await supabase
+      .from('form_responses').select('id, answers, completed_at, created_at')
+      .eq('form_id', formId).eq('session_id', sessionId)
+      .order('created_at', { ascending: false }).limit(1);
+    if (error) {
+      console.warn('fetchFormResponseBySession:', error.message);
+      return null;
+    }
+    const row = data?.[0];
+    return row ? { id: row.id, answers: row.answers || {}, savedAt: row.completed_at || row.created_at } : null;
   },
 
   // All responses for a form (newest first), with the submitter's name when the

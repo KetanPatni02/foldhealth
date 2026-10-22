@@ -262,8 +262,13 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   };
   const stepName = activeStepObj?.name || '';
   const isMandatoryStep = !!activeStepObj?.mandatory;
-  // Built-in assessments, or one linked from the Forms library in Care Program Configuration.
-  const assessmentCfg = ASSESSMENT_STEPS[stepName] || (activeStepObj?.formId ? { formName: stepName, title: stepName } : undefined);
+  // What the step opens (Care Program Configuration): a linked form wins, else
+  // its built-in screen, else the screen its name matches.
+  const linkedFormId = activeStepObj?.formId || null;
+  const screenName = linkedFormId ? '' : (activeStepObj?.screen || stepName);
+  const assessmentCfg = linkedFormId
+    ? { formId: linkedFormId, formName: activeStepObj.formName || stepName, title: stepName }
+    : ASSESSMENT_STEPS[screenName];
 
   const activeStepIdx = ALL_STEPS.findIndex(s => s.id === activeStep);
   const nextStep = activeStepIdx >= 0 && activeStepIdx < ALL_STEPS.length - 1 ? ALL_STEPS[activeStepIdx + 1] : null;
@@ -271,18 +276,19 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   const toggleSection = (id) => setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }));
 
   const stepFlags = {
-    isBillingStep: activeStepObj?.kind === 'billing',
-    isOutreachStep: stepName === 'Outreach',
-    isPreVisitStep: /^pre-?visit$/i.test(stepName),
-    isCarePlanStep: stepName === 'Care Plan',
-    isAppointmentStep: /appointment/i.test(stepName),
-    isOpenCareGapsStep: stepName === 'Open Care Gaps' || stepName === 'Care Gaps',
-    isMedReconStep: stepName === 'Medication Reconciliation' || stepName === 'Medication Review',
-    isProgramTasksStep: stepName === 'Program Related Task',
-    isProgramFilesStep: stepName === 'Program Related Files' || stepName === 'Program Documents' || stepName === 'Documents',
-    isReferralStep: stepName === 'Referral Review',
-    isLettersStep: stepName === 'Letters',
-    isDiagnosisGapsStep: stepName === 'Open Diagnosis Gaps',
+    isBillingStep: !linkedFormId && (activeStepObj?.kind === 'billing' || screenName === 'Billing Review'),
+    isOutreachStep: screenName === 'Outreach',
+    isPreVisitStep: /^pre-?visit$/i.test(screenName),
+    isSnapshotStep: screenName === 'Snapshot',
+    isCarePlanStep: screenName === 'Care Plan',
+    isAppointmentStep: /appointment/i.test(screenName),
+    isOpenCareGapsStep: screenName === 'Open Care Gaps' || screenName === 'Care Gaps',
+    isMedReconStep: screenName === 'Medication Reconciliation' || screenName === 'Medication Review',
+    isProgramTasksStep: screenName === 'Program Related Task',
+    isProgramFilesStep: screenName === 'Program Related Files' || screenName === 'Program Documents' || screenName === 'Documents',
+    isReferralStep: screenName === 'Referral Review',
+    isLettersStep: screenName === 'Letters',
+    isDiagnosisGapsStep: screenName === 'Open Diagnosis Gaps',
   };
 
   return {
@@ -303,7 +309,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
     patientId, updateCareProgram, letters, shownLetters, status, assignee,
     isUnassigned, otherPrograms, prevTrigger, nextTrigger, triggerNum,
     changeStatus, allLettersSelected, someLettersSelected, toggleAllLetters,
-    toggleLetter, previewLetter, downloadSelectedLetters, stepName,
+    toggleLetter, previewLetter, downloadSelectedLetters, stepName, screenName,
     isMandatoryStep, assessmentCfg, goNextStep, toggleSection, stepFlags,
     initialsOf, progressForCode: progressFor, onSwitchProgram,
     activeStepStatus, activeStepSource: activeStepObj?.source || null, markStep, logActivity,

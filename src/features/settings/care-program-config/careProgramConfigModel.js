@@ -8,10 +8,12 @@ import { CARE_PROGRAM_CATALOG } from '../../patient/data/careProgramCatalog.js';
  * `care_program_types` (supabase/care_program_types_migration.sql).
  *
  * Steps are a tree: `{ id, name, kind?, type?: 'section', enabled, mandatory,
- * hasAlert?, custom?, children? }`. A step's `name` picks the screen it opens
- * with in the patient's program (ProgramDetailView), so built-in steps keep
- * their name; sections and added assessments can be named freely. Step ids
- * never change: a patient's saved step status is keyed by them.
+ * hasAlert?, custom?, screen?, formId?, formName?, children? }`. What a step
+ * opens in the patient's program (ProgramDetailView): its linked form
+ * (`formId`, from Settings > Content > Forms), else its built-in `screen`,
+ * else the screen its `name` matches. So any step can be renamed once its
+ * screen is set. Step ids never change: a patient's saved step status is
+ * keyed by them.
  */
 
 export const PROGRAM_STATUSES = [
@@ -28,7 +30,7 @@ export const PROGRAM_STATUSES = [
 export const STEP_LIBRARY = [
   { name: 'Outreach', group: 'Engagement' },
   { name: 'Letters', group: 'Engagement' },
-  { name: 'Snapshot', group: 'Engagement', screen: false },
+  { name: 'Snapshot', group: 'Engagement' },
   { name: 'Care Plan', group: 'Care' },
   { name: 'Appointment', group: 'Care' },
   { name: 'ICT Appointment', group: 'Care' },
@@ -43,6 +45,29 @@ export const STEP_LIBRARY = [
   { name: 'Billing Review', group: 'Records', kind: 'billing' },
 ];
 const LIBRARY_BY_NAME = new Map(STEP_LIBRARY.map(s => [s.name, s]));
+
+/**
+ * Built-in screens a step can open, by name: the library steps that have a
+ * screen plus the built-in assessments.
+ */
+export const STEP_SCREENS = [
+  ...STEP_LIBRARY.filter(l => l.screen !== false).map(l => l.name),
+  'Pre-visit', 'HRA', 'BRCSI Assessment', 'SNP Assessment', 'Post IP Assessment', 'Post Visit Checklist',
+];
+
+/** What a step opens: 'form' (a linked form), 'screen' (a built-in screen) or 'none' (nothing yet). */
+export function stepOpens(step) {
+  if (step?.formId) return 'form';
+  return stepScreen(step) ? 'screen' : 'none';
+}
+
+/** The built-in screen a step opens: its `screen`, else the one its name matches. */
+export function stepScreen(step) {
+  if (!step) return null;
+  if (step.screen) return step.screen;
+  const name = canonical(step.name);
+  return STEP_SCREENS.find(sc => sc.toLowerCase() === String(name).toLowerCase()) || null;
+}
 
 /** Sections that hold assessments (Program Directives, Assessments): their steps can be linked from the Forms library and removed. */
 export const holdsAssessments = section => section?.type === 'section'
@@ -127,13 +152,14 @@ const step = (id, name, extra = {}) => ({ id, name, enabled: true, mandatory: fa
 const off = (id, name, extra = {}) => step(id, name, { enabled: false, ...extra });
 
 /**
- * SNP as listed for the configuration: Outreach, Letters, Program Directives
- * (assessments), Model of Care (Care Plan, ICT Appointment), Medication
+ * SNP as listed for the configuration: Snapshot, Outreach, Letters, Program
+ * Directives (Pre-visit and the assessments), Model of Care (Care Plan, ICT Appointment), Medication
  * Reconciliation, Care Gaps, Task, Referral, Clinical Notes, Diagnosis Gaps,
  * Documents, Orders, Billing. Existing steps keep their ids and settings, so
  * patients' progress doesn't change; the new ones start switched off.
  */
 const SNP_STEPS = [
+  step('step-3s', 'Snapshot'),
   step('step-1', 'Outreach'),
   step('step-2', 'Letters', { mandatory: true }),
   step('step-3', 'Program Directives', {
@@ -243,7 +269,11 @@ export function runtimeSteps(steps = []) {
       const out = { id: s.id, name: s.name, mandatory: !!s.mandatory };
       if (s.kind) out.kind = s.kind;
       if (s.hasAlert) out.hasAlert = true;
-      if (s.formId) out.formId = s.formId; // an assessment linked from the Forms library
+      if (s.screen) out.screen = s.screen;
+      if (s.formId) { // a form linked from the Forms library
+        out.formId = s.formId;
+        if (s.formName) out.formName = s.formName;
+      }
       if (s.type === 'section') {
         out.type = 'section';
         out.expanded = true;

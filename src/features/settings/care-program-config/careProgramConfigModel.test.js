@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PROGRAM_STEPS } from '../../patient/data/programActivityMock.js';
-import { defaultProgramTypes, runtimeSteps, stepCounts, rowToProgramType, programTypeToRow, withLibrarySteps } from './careProgramConfigModel';
+import { defaultProgramTypes, runtimeSteps, stepCounts, rowToProgramType, programTypeToRow, withLibrarySteps, stepOpens, stepScreen } from './careProgramConfigModel';
 
 const ids = list => list.flatMap(s => (s.type === 'section' ? [s.id, ...s.children.map(c => c.id)] : [s.id]));
 
@@ -21,7 +21,7 @@ describe('care program configuration defaults', () => {
     const live = runtimeSteps(snp.steps).flatMap(s => (s.type === 'section' ? s.children : [s])).map(s => s.id).sort();
     const before = ids(PROGRAM_STEPS.SNP).filter(id => !['step-3', 'step-4'].includes(id)).sort();
     expect(live).toEqual(before);
-    expect(stepCounts(snp.steps)).toMatchObject({ on: 14, mandatory: 8 });
+    expect(stepCounts(snp.steps)).toMatchObject({ on: 15, mandatory: 8 });
   });
 });
 
@@ -71,5 +71,25 @@ describe('withLibrarySteps', () => {
     expect(full.indexOf(directives)).toBe(full.findIndex(s => s.name === 'Letters') + 1);
     expect(withLibrarySteps(full)).toEqual(full);
     expect(runtimeSteps(full)).toEqual([]);
+  });
+});
+
+describe('configured steps', () => {
+  it('opens a linked form first, then a set screen, then the screen its name matches', () => {
+    expect(stepOpens({ name: 'Snapshot', formId: '54', formName: 'New OB Intake' })).toBe('form');
+    expect(stepOpens({ name: 'Member Outreach', screen: 'Outreach' })).toBe('screen');
+    expect(stepScreen({ name: 'Member Outreach', screen: 'Outreach' })).toBe('Outreach');
+    expect(stepScreen({ name: 'Program Documents' })).toBe('Program Related Files');
+    expect(stepOpens({ name: 'Snapshot' })).toBe('screen');
+    expect(stepOpens({ name: 'Intake Review' })).toBe('none');
+  });
+
+  it('carries the screen and linked form to the patient program', () => {
+    const [snapshot, outreach] = runtimeSteps([
+      { id: 's1', name: 'Snapshot', enabled: true, formId: '54', formName: 'New OB Intake' },
+      { id: 's2', name: 'Member Outreach', enabled: true, screen: 'Outreach' },
+    ]);
+    expect(snapshot).toMatchObject({ id: 's1', formId: '54', formName: 'New OB Intake' });
+    expect(outreach).toMatchObject({ id: 's2', name: 'Member Outreach', screen: 'Outreach' });
   });
 });

@@ -120,6 +120,10 @@
 .colSwitch { width: 40px; display: flex; justify-content: flex-end; }
 /* Remove, for assessments; empty on other rows so the columns line up. */
 .colDelete { width: 24px; display: flex; justify-content: center; }
+/* Configure (the gear): every step and section. */
+.colConfigure { width: 24px; display: flex; justify-content: center; }
+/* What a step opens, under its name: "Form: PHQ-9". */
+.stepNote { display: block; margin-top: calc(var(--space-1) / 2); font-size: var(--font-sm); color: var(--neutral-300); }
 
 /* ── Steps tree: sections are parent rows; their steps hang off a guide line. ── */
 .sectionRow {

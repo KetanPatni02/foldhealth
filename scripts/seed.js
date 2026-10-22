@@ -24,6 +24,7 @@ import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comm
 import { sampleFaxes, faxToRow } from '../src/features/messages/efax/efaxData.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
 import { CMP_MEMBERS } from '../src/features/cmp-worklist/data/mock.js';
+import { snpSnapshotFormRow } from '../src/features/forms/templates/snpSnapshotForm.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
 import { CARE_PLAN_MOCK } from '../src/features/patient/data/carePlanMock.js';
@@ -927,6 +928,19 @@ async function main() {
     .from('cmp_members')
     .upsert(CMP_MEMBERS.map(cmpToRow), { onConflict: 'id' });
   if (cmpErr) { console.error('  ✗', cmpErr.message, '(run supabase/cmp_members_migration.sql first)'); } else { console.log(`  ✓ ${CMP_MEMBERS.length} members`); }
+
+  // Added once, by name: later edits in the Form builder are kept.
+  console.log('Seeding SNP Snapshot form...');
+  const snapshotRow = snpSnapshotFormRow();
+  const { data: snapshotExisting, error: snapshotFindErr } = await supabase.from('forms').select('id').eq('name', snapshotRow.name).limit(1);
+  if (snapshotFindErr) {
+    console.error('  ✗', snapshotFindErr.message);
+  } else if (snapshotExisting?.length) {
+    console.log(`  ✓ already present (id=${snapshotExisting[0].id})`);
+  } else {
+    const { error: snapshotErr } = await supabase.from('forms').insert({ ...snapshotRow, response_count: 0 });
+    if (snapshotErr) console.error('  ✗', snapshotErr.message); else console.log('  ✓ added');
+  }
 
   console.log('Seeding apcm_patients...');
   const apcmRows = await withoutExistingPeople(supabase, 'apcm_patients', APCM_PATIENTS.map(apcmToRow));

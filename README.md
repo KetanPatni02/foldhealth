@@ -37,6 +37,17 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Configurable program steps and the SNP Snapshot form.** In Settings >
+  Care Program Configuration > Steps, Add Step and the gear on every step set
+  its name, what it opens in the patient's program (a form from the Forms
+  library, a built-in screen, or nothing yet), its section, and Show /
+  Mandatory / Alert. Snapshot is its own step (first, above Outreach, for SNP
+  and TOC IP); Pre-visit now holds only the Pre-visit Assessment. A program's
+  Snapshot renders its "<CODE> Snapshot" form, editable and saved per patient
+  program in `form_responses`, above the Primary Care Team. The "SNP Snapshot"
+  form (Trigger Information, Member & Eligibility, Outreach & Engagement, Care
+  Plan, TOC, Risk Stratification) is seeded by
+  `supabase/snp_snapshot_form_migration.sql` / `bun run seed`.
 - **CMP worklist and sub-programs.** CMP (Care Management Program) is
   enrolled per sub-program: SPD, Whole Child Model, Basic / Complex Case
   Management, Coordination of Care, Maternity Program or Pediatrics Program.

@@ -25,6 +25,7 @@ import { FilterChip } from '../../../../../../components/FilterChip/FilterChip';
 import { AddIconMinimalist } from '../../../../../../components/Icon/AddIconMinimalist';
 import { SearchListPopover } from '../../../../../../components/SearchListPopover/SearchListPopover';
 import { RadioListPopover } from '../../../../../../components/RadioListPopover/RadioListPopover';
+import { CreateSnpProgramDrawer } from './CreateSnpProgramDrawer';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { CP_FILTERS } from '../../../../data/programActivityMock';
 import styles from './CareProgramsTab.module.css';
@@ -66,6 +67,8 @@ export function CareProgramsTab({ header }) {
   // CMP is added per sub-program: picking CMP opens this list next, anchored
   // where New Program is (its rect, or null when closed).
   const [cmpPickerRect, setCmpPickerRect] = useState(null);
+  // SNP is created from a drawer: Member Info, Trigger Type, Trigger Date.
+  const [snpDrawerOpen, setSnpDrawerOpen] = useState(false);
   const [statusMenu, setStatusMenu] = useState(null);
   const [rowMenu, setRowMenu] = useState(null);
   const carePlanSummaryOpen = useAppStore(s => s.carePlanSummaryOpen);
@@ -177,17 +180,23 @@ export function CareProgramsTab({ header }) {
   const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
   const clearFilters = () => setFilters(EMPTY_FILTERS);
 
-  const handleAddProgram = (code, subProgram = null) => {
+  // `details`: CMP's { subProgram }, SNP's { memberInfo, triggerType, triggerDate }.
+  const handleAddProgram = (code, details = null) => {
     const entry = catalog.find(e => e.code === code);
     if (!entry) return;
-    if (code === 'CMP' && !subProgram) {
+    if (code === 'CMP' && !details) {
       setNpOpen(false);
       setCmpPickerRect(npBtnRef.current?.getBoundingClientRect() ?? null);
       return;
     }
-    addCareProgram(patientId, subProgram ? { ...entry, subProgram } : entry);
+    if (code === 'SNP' && !details) {
+      setNpOpen(false);
+      setSnpDrawerOpen(true);
+      return;
+    }
+    addCareProgram(patientId, details ? { ...entry, ...details } : entry);
     const list = useAppStore.getState().careProgramsByPatient[patientId] || [];
-    const created = [...list].reverse().find(p => p.code === code && (!subProgram || p.subProgram === subProgram));
+    const created = [...list].reverse().find(p => p.code === code && (!details?.subProgram || p.subProgram === details.subProgram));
     if (created) setPendingProgram({ program: created, firstStep: true });
   };
 
@@ -343,8 +352,15 @@ export function CareProgramsTab({ header }) {
                 disabledOptions={cmpTaken}
                 showClear={false}
                 width={280}
-                onChange={([sp]) => { setCmpPickerRect(null); if (sp) handleAddProgram('CMP', sp); }}
+                onChange={([sp]) => { setCmpPickerRect(null); if (sp) handleAddProgram('CMP', { subProgram: sp }); }}
                 onClose={() => setCmpPickerRect(null)}
+              />
+            )}
+            {snpDrawerOpen && (
+              <CreateSnpProgramDrawer
+                patientId={patientId}
+                onClose={() => setSnpDrawerOpen(false)}
+                onCreate={(details) => { setSnpDrawerOpen(false); handleAddProgram('SNP', details); }}
               />
             )}
           </div>
