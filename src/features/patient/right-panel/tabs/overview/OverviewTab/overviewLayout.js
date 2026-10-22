@@ -25,7 +25,7 @@ export const LANE_HINTS = ['Patient context', 'Clinical work', 'What to do next'
 
 // Bump when the default lanes change, so a layout saved before the categories
 // picks up the new columns instead of keeping the old mix.
-export const OVERVIEW_LAYOUT_REVISION = 2;
+export const OVERVIEW_LAYOUT_REVISION = 3;
 
 // Every widget the Overview can show. `sample` marks widgets reused from the
 // left panel Summary tab that still show built-in sample data rather than
@@ -75,14 +75,10 @@ export const DEFAULT_OVERVIEW_LAYOUT = {
   revision: OVERVIEW_LAYOUT_REVISION,
   lanes: [
     ['synopsis', 'healthChart', 'riskAcuity', 'highlights', 'careTeam', 'contact', 'caregivers', 'consent', 'populationGroups', 'insurance', 'subscription'],
-    ['vitals', 'carePlan', 'carePrograms', 'gaps', 'notes', 'medications', 'conditions', 'programProgress', 'careUtilization', 'priorAuth', 'careJourneys'],
+    ['vitals', 'carePlan', 'carePrograms', 'gaps', 'notes', 'medications', 'conditions', 'careUtilization', 'priorAuth', 'careJourneys', 'programProgress'],
     ['quickActions', 'suggestedActions', 'appointments', 'tasks', 'sinceLastTouch', 'automations'],
   ],
-  hidden: [
-    'caregivers', 'consent', 'populationGroups', 'insurance', 'subscription',
-    'medications', 'conditions', 'programProgress', 'careUtilization', 'priorAuth', 'careJourneys',
-    'sinceLastTouch', 'automations',
-  ],
+  hidden: ['programProgress'],
 };
 
 const DEFAULT_LANE_OF = Object.fromEntries(

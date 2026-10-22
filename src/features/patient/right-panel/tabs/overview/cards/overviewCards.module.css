@@ -16,6 +16,7 @@
 }
 
 .empty {
+  margin: 0;
   padding: var(--space-3) 0 var(--space-2);
   font-size: var(--font-md);
   color: var(--neutral-200);
@@ -84,12 +85,15 @@
 
 /* Whole row opens its item: the title button stretches over the row, and
    controls inside the row (a checkbox) sit above it. */
-.clickRow {
+.clickRow,
+.listRow {
   position: relative;
-  border-radius: var(--space-1);
 }
 
-.clickRow + .clickRow { border-top: 0.5px solid var(--neutral-100); }
+.clickRow { border-radius: var(--space-1); }
+
+.clickRow + .clickRow,
+.listRow + .listRow { border-top: 0.5px solid var(--neutral-100); }
 
 .clickRow:hover { background: var(--neutral-25); }
 
@@ -159,8 +163,18 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
-  padding: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
 }
+
+.chipButton {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--space-4);
+}
+
+.chipButton:hover { box-shadow: 0 0 0 0.5px var(--primary-200); }
 
 /* One program and its steps; programs are separated by a rule. */
 .programBlock + .programBlock {
@@ -287,8 +301,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin: var(--space-3) 0 var(--space-1);
+  margin: 0;
 }
+
+.consentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.consentBlock p { margin: 0; }
 
 .progressPct {
   font-size: var(--font-sm);
@@ -326,7 +349,7 @@
 .codeChip {
   display: inline-flex;
   align-items: center;
-  min-width: var(--space-8);
+  width: var(--space-12);
   justify-content: center;
   padding: calc(var(--space-1) / 2) var(--space-1);
   border-radius: var(--space-1);
@@ -365,11 +388,6 @@
 
 @container (min-width: 560px) {
   .quickGridInner { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-
-.notesBody {
-  padding-top: 0;
-  padding-bottom: 0;
 }
 
 /* List rows run to the card edges; the row itself carries the inline inset. */

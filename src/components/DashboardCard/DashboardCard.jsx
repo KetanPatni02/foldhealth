@@ -43,8 +43,8 @@ export function DashboardCard({ icon, title, count, tabs, actions, tone = 'defau
  * Just the card frame, for content that brings its own header (a
  * PanelSection-based widget dropped into a dashboard grid).
  */
-export function DashboardCardShell({ className, children }) {
-  return <section className={[styles.card, styles.shell, className].filter(Boolean).join(' ')}>{children}</section>;
+export function DashboardCardShell({ flush = false, className, children }) {
+  return <section className={[styles.card, flush ? '' : styles.shell, className].filter(Boolean).join(' ')}>{children}</section>;
 }
 
 /** Loading placeholder with the card's real header, so the grid doesn't jump when data lands. */

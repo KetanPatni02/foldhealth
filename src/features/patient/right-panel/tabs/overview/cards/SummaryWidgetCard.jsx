@@ -1,4 +1,5 @@
 import { DashboardCardShell } from '../../../../../../components/DashboardCard/DashboardCard';
+import { PanelEmbedded } from '../../../../../../components/PanelSection/PanelSection';
 import { CareUtilizationWidget } from '../../../../shared/widgets/CareUtilizationWidget/CareUtilizationWidget.jsx';
 import { PriorAuthWidget } from '../../../../shared/widgets/PriorAuthWidget/PriorAuthWidget.jsx';
 import { PopulationGroupsWidget } from '../../../../shared/widgets/PopulationGroupsWidget/PopulationGroupsWidget.jsx';
@@ -23,8 +24,10 @@ export function SummaryWidgetCard({ widget }) {
   const Widget = WIDGETS[widget];
   if (!Widget) return null;
   return (
-    <DashboardCardShell>
-      <Widget />
+    <DashboardCardShell flush>
+      <PanelEmbedded>
+        <Widget />
+      </PanelEmbedded>
     </DashboardCardShell>
   );
 }
