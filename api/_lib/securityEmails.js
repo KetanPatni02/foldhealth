@@ -40,9 +40,20 @@ ${body}
 
 const TEMPLATE_KINDS = new Set(['unlock_link', 'password_changed', 'account_activated', 'signup_approved']);
 
-/** The app's address for "Sign in" links: APP_URL, else the request's origin. */
+/**
+ * The app's address for "Sign in" links: APP_URL, else (in production) the
+ * project's production domain from Vercel. Only outside production does it
+ * fall back to the request's own origin: that header is caller-controlled, so
+ * in production it would let anyone point emailed sign-in links at their site.
+ */
 export function appOrigin(req) {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/+$/, '');
+  if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
+    const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    if (prod) return `https://${prod.replace(/^https?:\/\//, '').replace(/\/+$/, '')}`;
+    console.error('[appOrigin] APP_URL is not set in production');
+    return '';
+  }
   const origin = req?.headers?.origin;
   if (origin) return origin.replace(/\/+$/, '');
   const host = req?.headers?.host;

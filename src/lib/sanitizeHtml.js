@@ -9,9 +9,8 @@ import DOMPurify from 'dompurify';
  * or `innerHTML`. Keeping the policy here means there is one place to review
  * and one place to tighten.
  *
- * These are NOT for the email builder's deliberate HTML-authoring surfaces
- * (InlineEditable, the RawHtml block): there the user is intentionally writing
- * markup for their own email, and sanitizing would break the feature.
+ * The email builder's RawHtml block is the exception: the exported email keeps
+ * the author's original markup (see sanitizeEmailHtml for its preview).
  */
 
 // Rich text: formatting, links, lists, tables and images, but no scripts, no

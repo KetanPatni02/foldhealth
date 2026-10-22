@@ -18,7 +18,7 @@ export const longDate = (iso) => {
 };
 
 /** "Oct 8, 2026 → Apr 6, 2027", or "→ Present" with no end date. */
-export const dateSpan = (b) => `${longDate(b.startDate)} → ${b.endDate ? longDate(b.endDate) : 'Present'}`;
+export const dateSpan = (b) => `${longDate(b.startDate)} → ${b.endDate ? longDate(b.endDate) : 'Ongoing'}`;
 
 /** "8:45 AM – 12 PM, 1 – 4 PM" */
 export const hoursText = (b) => (b.slots || []).filter(s => s.start && s.end)

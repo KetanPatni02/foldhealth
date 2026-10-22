@@ -12,7 +12,7 @@ import { reportSignInSuccess, takeOAuthSignIn } from './features/auth/accountSec
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
-import { track, trackPageview } from './lib/tracking';
+import { track, trackPageview, scrubAnalyticsEvent } from './lib/tracking';
 import { maybeApplyOrgDefaults } from './lib/orgDefaults';
 
 // Public, shareable form fill-view (#/f/{id}) — rendered without auth so a
@@ -304,8 +304,9 @@ function App() {
     <Suspense fallback={null}>
       <UpdateAvailableCard />
       <AppLayout />
-      <Analytics />
-      <SpeedInsights />
+      {/* Their scripts report the full URL; keep tokens and prefill params out. */}
+      <Analytics beforeSend={scrubAnalyticsEvent} />
+      <SpeedInsights beforeSend={scrubAnalyticsEvent} />
     </Suspense>
   );
 }

@@ -489,7 +489,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
               <td className={styles.td}><Badge tone={look.tone} size="S" label={look.label} /></td>
               <td className={styles.td}><span className={styles.cellText}>{b.location}</span></td>
               <td className={`${styles.td} ${styles.datesTd}`}>
-                <span className={styles.cellText}>{formatDate(b.startDate)} – {b.endDate ? formatDate(b.endDate) : 'Present'}</span>
+                <span className={styles.cellText}>{formatDate(b.startDate)} – {b.endDate ? formatDate(b.endDate) : 'Ongoing'}</span>
               </td>
               <td className={styles.td}>
                 <span className={styles.repeats}>

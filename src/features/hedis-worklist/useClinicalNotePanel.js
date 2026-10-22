@@ -568,7 +568,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     const { codes } = noteScope();
     if (codes.length === 0) { showToast('No gaps marked Ready for Review'); return; }
     if (editingTaskId) {
-      const pdf = buildPdf(codes, actorName());
+      const pdf = await buildPdf(codes, actorName());
       await updateSignOffTaskPdf(editingTaskId, pdf, actorName());
       showToast('Sign-off note updated');
       onClose();
@@ -581,7 +581,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     if (!reviewer?.id) { setReviewerPickerOpen(false); return; }
     const { codes, primary } = noteScope();
     if (codes.length === 0) { setReviewerPickerOpen(false); return; }
-    const pdf = buildPdf(codes, actorName());
+    const pdf = await buildPdf(codes, actorName());
     // If editing an existing note (draft → submit, or resubmitting a
     // pending note after edits), reuse its gap set and id so we update
     // the SAME record. This is the core single-entity guarantee.
@@ -735,7 +735,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       finalCodes = linkedForReview.gapCodes;
       finalPrimary = finalCodes[0] || primary;
     }
-    const pdf = buildPdf(finalCodes, signer);
+    const pdf = await buildPdf(finalCodes, signer);
     const effectiveId = selectedNoteId || linkedForReview?.id || noteIdByCode[finalPrimary];
     const note = await upsertClinicalNote({
       id: effectiveId,
@@ -809,7 +809,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       finalCodes = linkedForReview.gapCodes;
       finalPrimary = finalCodes[0] || primary;
     }
-    const pdf = buildPdf(finalCodes, signer);
+    const pdf = await buildPdf(finalCodes, signer);
     const effectiveId = selectedNoteId || linkedForReview?.id || noteIdByCode[finalPrimary];
     const note = await upsertClinicalNote({
       id: effectiveId,

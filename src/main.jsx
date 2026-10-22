@@ -7,6 +7,11 @@ import App from './App.jsx'
 import { initTheme } from './lib/theme'
 import { useAppStore } from './store/useAppStore'
 import { startUpdateChecker } from './lib/updateChecker'
+import { attachSentry } from './lib/tracking'
+
+// URLs carry patient-portal tokens (#/p/<token>), auth tokens and form
+// prefill params, so only origin + path ever reach Sentry.
+const stripUrl = (u) => (typeof u === 'string' ? u.split(/[?#]/)[0] : u)
 
 // Sentry — error + performance monitoring. browserTracingIntegration adds
 // the Web Vitals transactions (FCP / LCP / INP / TTFB / CLS) we want to
@@ -36,6 +41,22 @@ if (isDeployedProd) {
     // v11 collects request/response bodies by default. Those are Supabase
     // rows with patient data here, so keep them out of Sentry.
     dataCollection: { httpBodies: [] },
+    // No IPs or cookies; clicks and inputs are dropped because their messages
+    // carry aria-labels with patient names, and URLs lose their hash/query.
+    sendDefaultPii: false,
+    beforeBreadcrumb(crumb) {
+      if (crumb.category === 'ui.click' || crumb.category === 'ui.input') return null
+      if (crumb.data) {
+        for (const k of ['url', 'from', 'to']) if (crumb.data[k]) crumb.data[k] = stripUrl(crumb.data[k])
+      }
+      return crumb
+    },
+    beforeSend(event) {
+      if (event.request?.url) event.request.url = stripUrl(event.request.url)
+      if (event.request?.query_string) delete event.request.query_string
+      if (event.user) delete event.user.ip_address
+      return event
+    },
     // Noise that isn't ours and isn't actionable:
     //   • navigator.locks contention on the Supabase auth token — expected
     //     whenever a user has the app open in more than one tab; the losing
@@ -48,6 +69,8 @@ if (isDeployedProd) {
       /Object Not Found Matching Id:/,
     ],
   })
+  // track() adds its events as breadcrumbs once Sentry is running.
+  attachSentry(Sentry)
 }
 
 // Initialize theme subsystem before first render.

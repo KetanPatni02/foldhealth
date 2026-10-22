@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { jsPDF } from 'jspdf';
 import { FilePreview } from '../../../components/FilePreview/FilePreview';
 import { getIcdsForMember } from '../data/icds';
 import styles from './DocEvidenceViewer.module.css';
@@ -31,9 +30,17 @@ export function DocEvidenceViewer({ member, icdScope, openDoc = null }) {
   // on first cleanup and reuse it stale on remount (blank viewer).
   useEffect(() => {
     if (useDirect) { setUrl(null); return undefined; }
-    const next = buildNotePdfUrl(member, icdScope, openDoc);
-    setUrl(next);
-    return () => { if (next) URL.revokeObjectURL(next); };
+    let cancelled = false;
+    let next = null;
+    buildNotePdfUrl(member, icdScope, openDoc).then((built) => {
+      if (cancelled) { if (built) URL.revokeObjectURL(built); return; }
+      next = built;
+      setUrl(built);
+    });
+    return () => {
+      cancelled = true;
+      if (next) URL.revokeObjectURL(next);
+    };
   }, [useDirect, member?.name, member?.dos, icdScope, openDoc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (useDirect) {
@@ -69,7 +76,7 @@ export function DocEvidenceViewer({ member, icdScope, openDoc = null }) {
 // (when present) tags the header with the specific document's name/type so
 // each tab in the Documents viewer renders its own titled note instead of
 // looking identical.
-function buildNotePdfUrl(member, icdScope, openDoc = null) {
+async function buildNotePdfUrl(member, icdScope, openDoc = null) {
   if (!member?.name) return null;
   const icds = getIcdsForMember(member.name);
   const dos = member?.dos_list?.[0]?.date || member?.dos || '—';
@@ -93,6 +100,7 @@ function buildNotePdfUrl(member, icdScope, openDoc = null) {
   };
   const headerTitle = openDoc?.type ? docTitleFor(openDoc.type) : 'OUTPATIENT CLINIC VISIT NOTE';
 
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'pt', format: 'letter' }); // 612 × 792 pt
   const L = 56;               // left margin
   const R = 612 - 56;         // right edge

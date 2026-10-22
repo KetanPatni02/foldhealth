@@ -26,11 +26,17 @@ import('@vercel/analytics').then(m => {
   // Silent fallback if blocked by adblockers
 });
 
-import * as Sentry from '@sentry/react';
 import { useAppStore } from '../store/useAppStore';
 import { supabase } from './supabase';
 
 const isDev = import.meta.env.DEV;
+
+// Sentry is loaded lazily on the deployed site only (see main.jsx), so it is
+// handed in here instead of imported, which would pull it into the entry chunk.
+let sentry = null;
+export function attachSentry(s) {
+  sentry = s;
+}
 
 // Auto-attached to every event. Kept narrow — just enough context to slice
 // dashboards by current location without leaking domain data.
@@ -58,7 +64,7 @@ export function track(name, props = {}) {
     if (isDev) console.warn('[track] vercel failed', e);
   }
   try {
-    Sentry.addBreadcrumb({
+    sentry?.addBreadcrumb({
       category: 'user-action',
       type: 'user',
       level: 'info',
@@ -72,25 +78,48 @@ export function track(name, props = {}) {
   if (isDev) console.debug('[track]', name, payload);
 }
 
+// Collapses a hash path to its route template. Only this ever leaves the
+// browser: raw paths carry patient-portal tokens (#/p/<token>), auth tokens
+// (token_hash, access_token, refresh_token) and form prefill query params.
+export function normalizeRoute(path) {
+  let route = String(path || '').replace(/^#/, '').split('?')[0].split('#')[0] || '/';
+  // Supabase implicit-flow redirects put `access_token=…` straight in the hash.
+  if (!route.startsWith('/')) return '/';
+
+  // Replace standard UUIDs with [id]
+  route = route.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '[id]');
+  // Replace numeric IDs with [id]
+  route = route.replace(/\/\d+(?=\/|$)/g, '/[id]');
+
+  // Handle specific custom string IDs for this app's routing
+  if (route.match(/^\/p\/[^/]+/)) {
+    route = route.replace(/^\/p\/[^/]+/, '/p/[token]');
+  } else if (route.match(/^\/f\/[^/]+/)) {
+    route = route.replace(/^\/f\/[^/]+/, '/f/[id]');
+  } else if (route.match(/^\/population\/patient\/[^/]+/)) {
+    route = route.replace(/^\/population\/patient\/[^/]+/, '/population/patient/[id]');
+  } else if (route.match(/^\/settings\/messages\/chat-settings\/(?!new$)[^/]+/)) {
+    route = route.replace(/^\/settings\/messages\/chat-settings\/[^/]+/, '/settings/messages/chat-settings/[id]');
+  }
+  return route;
+}
+
+// Vercel Analytics / Speed Insights `beforeSend`: their scripts report
+// location.href, so swap it for origin + path + normalized hash route.
+export function scrubAnalyticsEvent(event) {
+  try {
+    const u = new URL(event.url);
+    const hash = u.hash ? `#${normalizeRoute(u.hash)}` : '';
+    return { ...event, url: `${u.origin}${u.pathname}${hash}` };
+  } catch {
+    return null;
+  }
+}
+
 export function trackPageview(path) {
   try {
-    let route = path;
-
-    // Replace standard UUIDs with [id]
-    route = route.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '[id]');
-    // Replace numeric IDs with [id]
-    route = route.replace(/\/\d+(?=\/|$)/g, '/[id]');
-
-    // Handle specific custom string IDs for this app's routing
-    if (route.match(/^\/f\/[^/]+/)) {
-      route = route.replace(/^\/f\/[^/]+/, '/f/[id]');
-    } else if (route.match(/^\/population\/patient\/[^/]+/)) {
-      route = route.replace(/^\/population\/patient\/[^/]+/, '/population/patient/[id]');
-    } else if (route.match(/^\/settings\/messages\/chat-settings\/(?!new$)[^/]+/)) {
-      route = route.replace(/^\/settings\/messages\/chat-settings\/[^/]+/, '/settings/messages/chat-settings/[id]');
-    }
-
-    vercelPageview({ route, path });
+    const route = normalizeRoute(path);
+    vercelPageview({ route, path: route });
   } catch (e) {
     if (isDev) console.warn('[trackPageview] vercel failed', e);
   }

@@ -784,7 +784,6 @@ function ToolbarButton({ icon, label, onClick, disabled, showDivider, tone, acti
 function plainTextLen(html) {
   if (!html) return 0;
   if (typeof document === 'undefined') return html.replace(/<[^>]*>/g, '').length;
-  const el = document.createElement('div');
-  el.innerHTML = html;
-  return (el.innerText || el.textContent || '').length;
+  // DOMParser documents are inert: no scripts run and no <img onerror> fires.
+  return (new DOMParser().parseFromString(html, 'text/html').body.textContent || '').length;
 }

@@ -176,7 +176,7 @@ CREATE TABLE IF NOT EXISTS patient_problems (
 CREATE INDEX IF NOT EXISTS patient_problems_patient_id_idx ON patient_problems (patient_id);
 ALTER TABLE patient_problems ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_problems" ON patient_problems;
-CREATE POLICY "Allow all on patient_problems" ON patient_problems FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_problems" ON patient_problems FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const PATIENT_ALLERGIES_DDL = `
@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS patient_allergies (
 CREATE INDEX IF NOT EXISTS patient_allergies_patient_id_idx ON patient_allergies (patient_id);
 ALTER TABLE patient_allergies ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_allergies" ON patient_allergies;
-CREATE POLICY "Allow all on patient_allergies" ON patient_allergies FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_allergies" ON patient_allergies FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const SOCIAL_HISTORY_DDL = `
@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS patient_social_history (
 );
 ALTER TABLE patient_social_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_social_history" ON patient_social_history;
-CREATE POLICY "Allow all on patient_social_history" ON patient_social_history FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_social_history" ON patient_social_history FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const PAMI_HISTORY_DDL = `
@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS patient_history_entries (
 CREATE INDEX IF NOT EXISTS patient_history_entries_patient_id_idx ON patient_history_entries (patient_id);
 ALTER TABLE patient_history_entries ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_history_entries" ON patient_history_entries;
-CREATE POLICY "Allow all on patient_history_entries" ON patient_history_entries FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_history_entries" ON patient_history_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 // The History cards' sample rows, on the demo patient only
@@ -288,7 +288,7 @@ CREATE TABLE IF NOT EXISTS patient_immunizations (
 CREATE INDEX IF NOT EXISTS patient_immunizations_patient_id_idx ON patient_immunizations (patient_id);
 ALTER TABLE patient_immunizations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_immunizations" ON patient_immunizations;
-CREATE POLICY "Allow all on patient_immunizations" ON patient_immunizations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_immunizations" ON patient_immunizations FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 
@@ -310,7 +310,7 @@ CREATE INDEX IF NOT EXISTS idx_icd_codes_title ON icd_codes USING gin (to_tsvect
 ALTER TABLE icd_codes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on icd_codes" ON icd_codes;
 DROP POLICY IF EXISTS "Read icd_codes" ON icd_codes;
-CREATE POLICY "Read icd_codes" ON icd_codes FOR SELECT USING (true);
+CREATE POLICY "Read icd_codes" ON icd_codes FOR SELECT TO authenticated USING (true);
 `;
 
 const POS_DDL = `
@@ -322,7 +322,7 @@ CREATE TABLE IF NOT EXISTS pos_codes (
 ALTER TABLE pos_codes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on pos_codes" ON pos_codes;
 DROP POLICY IF EXISTS "Read pos_codes" ON pos_codes;
-CREATE POLICY "Read pos_codes" ON pos_codes FOR SELECT USING (true);
+CREATE POLICY "Read pos_codes" ON pos_codes FOR SELECT TO authenticated USING (true);
 `;
 
 // CCM Billing tables — mirrored in supabase/ccm_billing_migration.sql. Keep
@@ -345,7 +345,7 @@ CREATE TABLE IF NOT EXISTS ccm_billing_periods (
 );
 ALTER TABLE ccm_billing_periods ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for ccm_billing_periods" ON ccm_billing_periods;
-CREATE POLICY "Allow all for ccm_billing_periods" ON ccm_billing_periods FOR ALL USING (true);
+CREATE POLICY "Allow all for ccm_billing_periods" ON ccm_billing_periods FOR ALL TO authenticated USING (true);
 `;
 
 const CCM_ACTIVITIES_DDL = `
@@ -364,7 +364,7 @@ CREATE TABLE IF NOT EXISTS ccm_billable_activities (
 );
 ALTER TABLE ccm_billable_activities ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for ccm_billable_activities" ON ccm_billable_activities;
-CREATE POLICY "Allow all for ccm_billable_activities" ON ccm_billable_activities FOR ALL USING (true);
+CREATE POLICY "Allow all for ccm_billable_activities" ON ccm_billable_activities FOR ALL TO authenticated USING (true);
 `;
 
 const CCM_WORKLIST_DDL = `
@@ -405,7 +405,7 @@ CREATE TABLE IF NOT EXISTS ccm_worklist_members (
 );
 ALTER TABLE ccm_worklist_members ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for ccm_worklist_members" ON ccm_worklist_members;
-CREATE POLICY "Allow all for ccm_worklist_members" ON ccm_worklist_members FOR ALL USING (true);
+CREATE POLICY "Allow all for ccm_worklist_members" ON ccm_worklist_members FOR ALL TO authenticated USING (true);
 `;
 
 const SNP_WORKLIST_DDL = `
@@ -437,7 +437,7 @@ CREATE TABLE IF NOT EXISTS snp_worklist_members (
 );
 ALTER TABLE snp_worklist_members ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for snp_worklist_members" ON snp_worklist_members;
-CREATE POLICY "Allow all for snp_worklist_members" ON snp_worklist_members FOR ALL USING (true);
+CREATE POLICY "Allow all for snp_worklist_members" ON snp_worklist_members FOR ALL TO authenticated USING (true);
 `;
 
 // Self-heal duplicate worklist rows after seeding. The mock data still keys
@@ -474,7 +474,7 @@ CREATE TABLE IF NOT EXISTS caregap_activity (
 );
 ALTER TABLE caregap_activity ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for caregap_activity" ON caregap_activity;
-CREATE POLICY "Allow all for caregap_activity" ON caregap_activity FOR ALL USING (true);
+CREATE POLICY "Allow all for caregap_activity" ON caregap_activity FOR ALL TO authenticated USING (true);
 CREATE INDEX IF NOT EXISTS idx_caregap_activity_member ON caregap_activity (member_id, at DESC);
 `;
 
@@ -497,7 +497,7 @@ CREATE TABLE IF NOT EXISTS ccm_billing_reports (
 );
 ALTER TABLE ccm_billing_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for ccm_billing_reports" ON ccm_billing_reports;
-CREATE POLICY "Allow all for ccm_billing_reports" ON ccm_billing_reports FOR ALL USING (true);
+CREATE POLICY "Allow all for ccm_billing_reports" ON ccm_billing_reports FOR ALL TO authenticated USING (true);
 `;
 
 const PRACTICE_LOCATIONS_DDL = `
@@ -520,7 +520,7 @@ CREATE TABLE IF NOT EXISTS practice_locations (
 );
 ALTER TABLE practice_locations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for practice_locations" ON practice_locations;
-CREATE POLICY "Allow all for practice_locations" ON practice_locations FOR ALL USING (true);
+CREATE POLICY "Allow all for practice_locations" ON practice_locations FOR ALL TO authenticated USING (true);
 `;
 
 // ── Row mappers (JS shape → DB columns) ───────────────────────────────────────
