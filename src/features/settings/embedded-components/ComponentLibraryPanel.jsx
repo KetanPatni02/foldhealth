@@ -12,6 +12,7 @@ import { SimpleTableSkeleton } from '../../../components/SimpleTableSkeleton/Sim
 import { useAppStore } from '../../../store/useAppStore';
 import { DOMAINS } from '../../../data/embeddedComponents';
 import { AuditLogDrawer } from '../shared/AuditLogDrawer';
+import { embedUrl } from './embedUrl';
 
 const PLACEMENT_LABELS = {
   'p360-tab': 'P360 tab',
@@ -206,7 +207,7 @@ function ComponentRow({ comp, onToggle, onEdit, onPreview, onAuditLog, onDuplica
 function PreviewDrawer({ comp, onClose }) {
   const [collapsed, setCollapsed] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
-  const fullUrl = comp.domain && comp.url ? `https://${comp.domain}${comp.url}` : '';
+  const fullUrl = embedUrl(comp.domain, comp.url);
 
   return (
     <Drawer title={`Preview — ${comp.name}`} onClose={onClose}>

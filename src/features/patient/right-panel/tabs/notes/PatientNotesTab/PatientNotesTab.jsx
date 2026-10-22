@@ -17,6 +17,7 @@ import { HeaderCell } from '../../../../../../components/HeaderCell/HeaderCell';
 import { useTableSort } from '../../../../../../components/HeaderCell/useTableSort';
 import styles from './PatientNotesTab.module.css';
 import { parseLocalDate } from '../../../../../../lib/localDate';
+import { openSafeUrl } from '../../../../../../lib/openSafeUrl';
 
 /**
  * PatientNotesTab — the P360 → Notes surface.
@@ -394,8 +395,7 @@ function NoteRow({ note, onOpen, onOpenTask }) {
   const handlePrint = () => {
     const url = note.pdfDataUrl;
     if (url) {
-      const w = window.open(url, '_blank');
-      try { w?.focus(); } catch { /* ignore */ }
+      openSafeUrl(url);
     } else {
       showToast?.('No PDF available for this note');
     }

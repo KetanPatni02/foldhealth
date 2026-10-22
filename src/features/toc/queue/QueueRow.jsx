@@ -11,6 +11,8 @@ import { useAppStore } from '../../../store/useAppStore';
 import { FoldIdTag } from '../../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { Phq9AssessmentDrawer } from './Phq9AssessmentDrawer/Phq9AssessmentDrawer';
+import { LiveCallDuration } from '../worklist/LiveCallDuration';
+import { useCallDuration } from '../worklist/useCallDuration';
 import rowStyles from '../worklist/WorklistRow.module.css';
 import styles from './QueueRow.module.css';
 
@@ -63,7 +65,8 @@ function GoalsTooltipPortal({ goalsDetail, pillRef, visible }) {
 }
 
 function StatusCell({ patient: p, voicemailCalls, completedCall }) {
-  const { status, goals, scheduledTime, callDuration } = p;
+  const { status, goals, scheduledTime } = p;
+  const callDuration = useCallDuration(p);
   const goalsDetail = p.goalsDetail || completedCall?.goalsDetail || [];
   const [goalsHover, setGoalsHover] = useState(false);
   const goalsPillRef = useRef(null);
@@ -254,7 +257,7 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
           {p.onCall ? (
             <span className={rowStyles.outreachOncall}>
               <Icon name="solar:phone-calling-bold" size={14} />
-              On Call: {p.callDuration}
+              On Call: <LiveCallDuration patient={p} />
             </span>
           ) : (
             <span className={rowStyles.outreachTime}>

@@ -206,7 +206,7 @@ export function CalendarView() {
           existingAppointment={calendar.clickedAppointment}
           initialProvider={dayProvider || undefined}
           onClose={() => { setDayProvider(null); calendar.handleCloseDrawer(); }}
-          onSave={calendar.fetchAppointments}
+          onSave={() => calendar.fetchAppointments({ force: true })}
           timezoneLabel={calendar.timezoneLabel}
           source="calendar"
         />

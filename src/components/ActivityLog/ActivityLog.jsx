@@ -16,6 +16,7 @@ import {
   historyTimelineStyles as htStyles,
 } from '../HistoryTimeline/HistoryTimeline';
 import styles from './ActivityLog.module.css';
+import { openSafeUrl } from '../../lib/openSafeUrl';
 
 // Render a comment body with the signed-in user's @-mentions painted in the
 // mention style (secondary-300, weight 500). Other users' mentions stay
@@ -707,10 +708,7 @@ export function ClinicalNoteCardActions({ dc, draftLock = null, onOpenTask, onOp
       return;
     }
     if (dc.pdfDataUrl) {
-      try {
-        const w = window.open(dc.pdfDataUrl, '_blank');
-        w?.focus?.();
-      } catch (_) { /* popup blocker */ }
+      openSafeUrl(dc.pdfDataUrl);
     } else {
       showToast?.('Reopen note — coming soon');
     }

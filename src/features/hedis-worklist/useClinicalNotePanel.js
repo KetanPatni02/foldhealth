@@ -12,6 +12,7 @@ import {
   NOTELESS_GAP_CODES,
   noteOpenGaps,
 } from './ClinicalNotePanel.utils';
+import { openSafeUrl } from '../../lib/openSafeUrl';
 
 // Human-friendly form-type label for the activity log's detailCard.
 const FORM_TYPE_LABEL = {
@@ -849,8 +850,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       }),
     });
     if (pdf?.dataUrl) {
-      const w = window.open(pdf.dataUrl, '_blank');
-      try { w?.focus(); } catch { /* popup blocker */ }
+      openSafeUrl(pdf.dataUrl);
     }
     showToast('Signed and printing…');
     onClose();

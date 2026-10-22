@@ -3,6 +3,8 @@ import { Icon } from '../Icon/Icon';
 import { Avatar } from '../Avatar/Avatar';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { MenuPopover } from '../MenuPopover/MenuPopover';
+import { useStorageUrl } from '../../lib/storageUrl';
+import { openStoredLink } from '../../lib/openSafeUrl';
 import styles from './ChatBubble.module.css';
 
 const URL_RE = /(https?:\/\/[^\s]+)/;
@@ -45,6 +47,8 @@ function formatBytes(n) {
  * @param {React.ReactNode} [props.children] – extra content at the end of the bubble (e.g. a card)
  * @param {boolean} [props.flush]          – no padding: `children` lay out the bubble's sections themselves
  * @param {'patient'|'provider'} [props.avatarVariant='patient'] – the sender's avatar colour (provider: an outside org)
+ * @param {(bucket: string, path: string, expiresIn: number) => Promise<string>} [props.signUrl]
+ *   – signs a private attachment URL; defaults to the signed-in session (see lib/storageUrl.js)
  */
 export function ChatBubble({
   side = 'left',
@@ -63,12 +67,14 @@ export function ChatBubble({
   children,
   flush = false,
   avatarVariant = 'patient',
+  signUrl,
 }) {
   const menuRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const internal = side === 'internal';
   const right = side === 'right';
+  const attachmentUrl = useStorageUrl(attachment?.url, signUrl);
 
   const linkMatch = !attachment && !call && text ? text.match(URL_RE) : null;
   const link = linkMatch?.[1];
@@ -103,10 +109,16 @@ export function ChatBubble({
         </div>
       )}
       {attachment && (
-        <a href={attachment.url} target="_blank" rel="noopener noreferrer" className={styles.attachment}>
+        <a
+          href={attachmentUrl || attachment.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.attachment}
+          onClick={e => openStoredLink(e, attachment.url, signUrl)}
+        >
           {attachment.type === 'image' && (
             <span className={styles.attachImage}>
-              <img src={attachment.url} alt={attachment.name} />
+              {attachmentUrl && <img src={attachmentUrl} alt={attachment.name} />}
             </span>
           )}
           <span className={styles.attachRow}>
