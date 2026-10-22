@@ -9,19 +9,7 @@ import { Pagination } from '../components/Pagination/Pagination';
 import { ActiveCallCard } from '../components/ActiveCallCard/ActiveCallCard';
 import { InvokeAgentModal } from '../components/InvokeAgentModal/InvokeAgentModal';
 import { DegradedBanner } from '../components/DegradedBanner/DegradedBanner';
-import { WorklistTable } from '../features/toc/worklist/WorklistTable';
-import { QueueTable } from '../features/toc/queue/QueueTable';
 import { QueueSummaryBar } from '../features/toc/queue/QueueSummaryBar';
-import { TocWorklistTable } from '../features/toc/TocWorklistTable';
-import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
-import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
-import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
-import { CmpWorklistTable } from '../features/cmp-worklist/CmpWorklistTable';
-import { JsaWorklistTable } from '../features/jsa-worklist/JsaWorklistTable';
-import { CcmWorklistTable } from '../features/ccm-worklist/CcmWorklistTable';
-import { SnpWorklistTable } from '../features/snp-worklist/SnpWorklistTable';
-import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
-import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
 import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
 import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
@@ -57,6 +45,20 @@ const EmailBuilder      = lz(() => import('../features/email-builder/EmailBuilde
 const CampaignBuilder   = lz(() => import('../features/campaign/CampaignBuilder'),  'CampaignBuilder');
 const FormBuilder       = lz(() => import('../features/forms/builder/FormBuilder'), 'FormBuilder');
 const FormView          = lz(() => import('../features/forms/view/FormView'),       'FormView');
+
+// Worklist tables: one renders per subnav list, so each loads on demand.
+const WorklistTable        = lz(() => import('../features/toc/worklist/WorklistTable'), 'WorklistTable');
+const QueueTable           = lz(() => import('../features/toc/queue/QueueTable'), 'QueueTable');
+const TocWorklistTable     = lz(() => import('../features/toc/TocWorklistTable'), 'TocWorklistTable');
+const HccWorklistTable     = lz(() => import('../features/hcc/HccWorklistTable'), 'HccWorklistTable');
+const HedisWorklistTable   = lz(() => import('../features/hedis-worklist/HedisWorklistTable'), 'HedisWorklistTable');
+const AwvWorklistTable     = lz(() => import('../features/awv-worklist/AwvWorklistTable'), 'AwvWorklistTable');
+const CmpWorklistTable     = lz(() => import('../features/cmp-worklist/CmpWorklistTable'), 'CmpWorklistTable');
+const JsaWorklistTable     = lz(() => import('../features/jsa-worklist/JsaWorklistTable'), 'JsaWorklistTable');
+const CcmWorklistTable     = lz(() => import('../features/ccm-worklist/CcmWorklistTable'), 'CcmWorklistTable');
+const SnpWorklistTable     = lz(() => import('../features/snp-worklist/SnpWorklistTable'), 'SnpWorklistTable');
+const AllPatientsTable     = lz(() => import('../features/all-patients/AllPatientsTable'), 'AllPatientsTable');
+const PopulationGroupsView = lz(() => import('../features/population-groups/PopulationGroupsView'), 'PopulationGroupsView');
 
 // Drawers and overlays — only mounted when their state is truthy, so lazy here
 // keeps them out of the entry chunk entirely.
@@ -186,6 +188,7 @@ function PopulationView() {
             <WorklistFilterBar leading={(isToc || (isTcm && activeTab === 'toc-queue')) ? null : undefined} />
           )}
           {isTcm && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          <Suspense fallback={<LazyFallback />}>
           {isHcc
               ? <HccWorklistTable />
               : isHedis
@@ -209,6 +212,7 @@ function PopulationView() {
                         : isToc
                           ? <TocWorklistTable />
                           : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
+          </Suspense>
           {!chromeless && <Pagination />}
         </div>
       </div>

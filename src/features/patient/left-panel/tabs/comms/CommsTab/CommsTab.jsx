@@ -8,7 +8,11 @@ import { useCommsConversations } from '../../../../../messages/comms/useComms';
 import { CommsListEmpty } from '../../../../../messages/comms/CommsEmptyState';
 import { isMissedCall } from '../../../../../messages/comms/commsUtils';
 import { formatTime } from '../../../../../messages/messageUtils';
+import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
+import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
+import { Button } from '../../../../../../components/Button/Button';
 import msgStyles from '../../../../../messages/MessagesView.module.css';
+import styles from './CommsTab.module.css';
 
 function ConvAvatar({ conversation }) {
   const missed = isMissedCall(conversation);
@@ -35,13 +39,24 @@ function ConvAvatar({ conversation }) {
  * Opening one goes to it in Comms.
  */
 export function CommsTab({ patient }) {
-  const { conversations, loading } = useCommsConversations();
+  const { conversations, loading, failed, retry } = useCommsConversations();
   const goToComms = useAppStore(s => s.goToComms);
 
   const id = patient?.id != null ? String(patient.id) : null;
   const mine = conversations.filter(c => (id && c.patient_id === id) || (!c.patient_id && patient?.name && c.patient_name === patient.name));
 
-  if (!loading && mine.length === 0) return <CommsListEmpty viewKey="all" />;
+  if (loading) return <CardSkeleton count={4} />;
+  // Didn't load (no answer in time, or an error): say so, with a way to retry.
+  if (failed) {
+    return (
+      <div className={styles.state}>
+        <RingEmptyState icon="solar:chat-round-dots-linear" label="Conversations failed to load">
+          <Button variant="secondary" size="S" onClick={retry}>Try again</Button>
+        </RingEmptyState>
+      </div>
+    );
+  }
+  if (mine.length === 0) return <CommsListEmpty viewKey="all" />;
 
   return (
     <div className={msgStyles.convList}>

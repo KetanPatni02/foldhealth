@@ -87,6 +87,15 @@
 .bubbleFlush { padding: 0; gap: 0; overflow: hidden; }
 
 .text { white-space: pre-wrap; }
+/* Links inside the text: underlined, info blue; white on the sender's
+   purple bubble. */
+.inlineLink {
+  color: var(--status-info-dark, var(--status-info));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+.bubbleRight .inlineLink { color: var(--neutral-0); }
 
 .timeRow {
   display: flex;

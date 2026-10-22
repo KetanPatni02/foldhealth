@@ -488,6 +488,24 @@ export const useAppStore = create((set, get) => ({
   stickyNoteHistory: [],
   quickNotes: [],
   quickNoteHistory: [],
+  // Recorded vitals per patient: { [patientId]: rows }. Empty or failed
+  // loads leave the Vitals tab on its sample history.
+  patientVitals: {},
+  patientVitalsLoading: false,
+  fetchPatientVitals: async (patientId) => {
+    if (!patientId) return;
+    set({ patientVitalsLoading: true });
+    const { data, error } = await supabase.from('patient_vitals').select('*').eq('patient_id', String(patientId)).order('recorded_on', { ascending: false });
+    set(s => ({ patientVitalsLoading: false, patientVitals: error ? s.patientVitals : { ...s.patientVitals, [patientId]: data || [] } }));
+  },
+  recordPatientVitals: async (patientId, readings) => {
+    const rows = readings.map(r => ({ ...r, patient_id: String(patientId) }));
+    const { data, error } = await supabase.from('patient_vitals').insert(rows).select();
+    if (error) return { error };
+    track('patient.vitals_recorded', { count: rows.length });
+    set(s => ({ patientVitals: { ...s.patientVitals, [patientId]: [...data, ...(s.patientVitals[patientId] || [])] } }));
+    return { data };
+  },
   fetchStickyNotes: async (patientId) => {
     const { data } = await supabase.from('sticky_notes').select('*').eq('patient_id', patientId).order('created_at', { ascending: true });
     if (data) set({ stickyNotes: data });

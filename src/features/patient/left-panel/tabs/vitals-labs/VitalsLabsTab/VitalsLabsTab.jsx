@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ComposedChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, ResponsiveContainer,
 } from '../../../../../../components/LazyRecharts/LazyRecharts';
 import { Toggle } from '../../../../../../components/Toggle/Toggle';
+import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
+import { useAppStore } from '../../../../../../store/useAppStore';
+import { VITALS, formatVital, vitalsHistory } from '../vitalsConfig';
+import { RecordVitalsDrawer } from '../RecordVitalsDrawer/RecordVitalsDrawer';
 import styles from './VitalsLabsTab.module.css';
 
 function GraphIcon() {
@@ -46,27 +50,6 @@ function cssVar(name) {
 
 const TABLE_SECTIONS = [
   {
-    id: 'vitals', title: 'Vitals',
-    rows: [
-      { id: 'bp',   name: 'Blood Pressure',    unit: 'mmHg',        hasPin: true,
-        values: [{ v: '145/90', date: '3/9/25' }, { v: '130/80', date: '3/1/25' }, { v: '120/80', date: '2/24/25' }] },
-      { id: 'spo2', name: 'Blood Oxygen',       unit: '%',           hasPin: true,
-        values: [{ v: '98%', date: '3/9/25' }, { v: '95%', date: '3/1/25', flag: true }, { v: '97%', date: '2/24/25', flag: true }] },
-      { id: 'rr',   name: 'Respiration Rate',   unit: 'breaths/min', hasPin: false,
-        values: [{ v: '22', date: '3/9/25' }, { v: '18', date: '3/1/25' }, { v: '20', date: '2/24/25' }] },
-      { id: 'ht',   name: 'Height',             unit: 'ft',          hasPin: false,
-        values: [{ v: '5\'8"', date: '3/9/25' }, { v: '5\'8"', date: '3/1/25' }, { v: '5\'8"', date: '2/24/25' }] },
-      { id: 'wt',   name: 'Weight',             unit: 'lbs',         hasPin: false,
-        values: [{ v: '150', date: '3/9/25' }, { v: '175', date: '3/1/25', flag: true }, { v: '200', date: '2/24/25', flag: true }] },
-      { id: 'bmi',  name: 'BMI',                unit: 'BMI',         hasPin: false,
-        values: [{ v: '22.5', date: '3/9/25' }, { v: '27.3', date: '3/1/25', flag: true }, { v: '24.1', date: '2/24/25', flag: true }] },
-      { id: 'bt',   name: 'Body Temperature',   unit: '°F',          hasPin: false,
-        values: [{ v: '98.6', date: '3/9/25' }, { v: '99.1', date: '3/1/25' }, { v: '97.8', date: '2/24/25' }] },
-      { id: 'hc',   name: 'Head Circumference', unit: 'cm',          hasPin: false,
-        values: [{ v: '48', date: '3/9/25', flag: true }, { v: '45', date: '3/1/25' }, { v: '44', date: '2/24/25' }] },
-    ],
-  },
-  {
     id: 'biomarkers', title: 'Biomarkers',
     rows: [
       { id: 'bg',  name: 'Blood Glucose',      unit: 'mg/dL', hasPin: true,
@@ -94,6 +77,23 @@ const TABLE_SECTIONS = [
     ],
   },
 ];
+
+const PINNED_VITALS = new Set(['bp', 'spo2']);
+const shortDate = (iso) => { const [y, m, d] = iso.split('-'); return `${+m}/${+d}/${y.slice(2)}`; };
+
+// Vitals table section from recorded readings: latest three per vital,
+// vitals with no readings at all left out.
+function vitalsSection(history) {
+  return {
+    id: 'vitals', title: 'Vitals',
+    rows: VITALS.filter(v => history[v.key]?.length).map(v => ({
+      id: v.key, name: v.name, unit: v.unit, hasPin: PINNED_VITALS.has(v.key),
+      values: history[v.key].slice(0, 3).map(r => ({
+        v: formatVital(v.key, r.value, r.value2), date: shortDate(r.recorded_on), flag: r.flag,
+      })),
+    })),
+  };
+}
 
 // ── Graph data ──────────────────────────────────────────────────────────────
 
@@ -294,10 +294,10 @@ const pick = (sections, keys) => {
   return keys.map(k => byId.get(k)).filter(Boolean);
 };
 
-function TableView({ onOpenGraph, widgets }) {
+function TableView({ sections, onOpenGraph, onAdd, widgets }) {
   return (
     <div className={styles.tableView}>
-      {pick(TABLE_SECTIONS, widgets).map(section => (
+      {pick(sections, widgets).map(section => (
         <div key={section.id} className={styles.tableSection}>
           <div className={styles.tableSectionHeader}>
             <span className={styles.tableSectionTitle}>{section.title}</span>
@@ -306,7 +306,7 @@ function TableView({ onOpenGraph, widgets }) {
                 <GraphIcon />
               </button>
               <span className={styles.sectionActionDivider} />
-              <button className={styles.addIconBtn} title="Add">
+              <button className={styles.addIconBtn} title="Add" onClick={section.id === 'vitals' ? onAdd : undefined}>
                 <AddIcon />
               </button>
             </div>
@@ -344,7 +344,7 @@ function TableView({ onOpenGraph, widgets }) {
 
 // ── Graph View ───────────────────────────────────────────────────────────────
 
-function GraphView({ onClose, widgets }) {
+function GraphView({ onClose, onAdd, widgets }) {
   const [range, setRange] = useState('1W');
 
   const topColor  = cssVar('--chart-1');
@@ -368,7 +368,7 @@ function GraphView({ onClose, widgets }) {
                 <ListIcon />
               </button>
             )}
-            <button className={styles.addIconBtn} title="Add">
+            <button className={styles.addIconBtn} title="Add" onClick={section.id === 'vitals' ? onAdd : undefined}>
               <AddIcon />
             </button>
           </div>
@@ -418,17 +418,35 @@ function GraphView({ onClose, widgets }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-const VITALS_WIDGETS = TABLE_SECTIONS.map(sec => sec.id);
+// Vitals is built from the patient's readings (vitalsSection), the rest are static.
+const VITALS_WIDGETS = ['vitals', ...TABLE_SECTIONS.map(sec => sec.id)];
 
 /** `widgets`: the section ids to show, in order (More > Customize); all by default. */
-export function VitalsLabsTab({ widgets = VITALS_WIDGETS }) {
+export function VitalsLabsTab({ patientId, widgets = VITALS_WIDGETS }) {
   const [graphOpen, setGraphOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const rows = useAppStore(s => s.patientVitals[patientId]);
+  const loading = useAppStore(s => s.patientVitalsLoading);
+  const fetchPatientVitals = useAppStore(s => s.fetchPatientVitals);
+
+  useEffect(() => { fetchPatientVitals(patientId); }, [patientId, fetchPatientVitals]);
+
+  const history = useMemo(() => vitalsHistory(rows), [rows]);
+  const sections = useMemo(() => [vitalsSection(history), ...TABLE_SECTIONS], [history]);
+  const openRecord = () => setRecording(true);
+
   return (
     <div className={styles.wrapper}>
-      {graphOpen
-        ? <GraphView onClose={() => setGraphOpen(false)} widgets={widgets} />
-        : <TableView onOpenGraph={() => setGraphOpen(true)} widgets={widgets} />
+      {/* Skeleton only on the first load for this patient, not on refetches. */}
+      {loading && !rows
+        ? <CardSkeleton count={3} />
+        : graphOpen
+          ? <GraphView onClose={() => setGraphOpen(false)} onAdd={openRecord} widgets={widgets} />
+          : <TableView sections={sections} onOpenGraph={() => setGraphOpen(true)} onAdd={openRecord} widgets={widgets} />
       }
+      {recording && (
+        <RecordVitalsDrawer patientId={patientId} history={history} onClose={() => setRecording(false)} />
+      )}
     </div>
   );
 }

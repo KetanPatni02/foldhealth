@@ -1,0 +1,7 @@
+/* Failed-to-load state: centred in the tab like the empty state. */
+.state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20rem;
+}

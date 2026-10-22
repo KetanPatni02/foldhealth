@@ -306,3 +306,7 @@
 .splitWrapper:has(:disabled) .splitDivider {
   background: var(--neutral-150);
 }
+
+/* Disabled with a reason: hovers pass through to the wrapper's tooltip. */
+.disabledWrap { display: inline-flex; cursor: not-allowed; }
+.disabledWrap > .btn { pointer-events: none; }

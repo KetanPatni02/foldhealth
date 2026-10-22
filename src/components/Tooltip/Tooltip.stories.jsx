@@ -40,3 +40,12 @@ export const Playground = {
     </Tooltip>
   ),
 };
+
+/** Raised: a stronger lift for a card that sits over busy content (e.g. a recipient chip's hover card). */
+export const RaisedCard = {
+  render: () => (
+    <Tooltip variant="card" placement="bottom" align="left" raised label={<span>Patient<br />Amy Phillips · amy89@fold.health</span>}>
+      <Button variant="secondary">Hover me</Button>
+    </Tooltip>
+  ),
+};

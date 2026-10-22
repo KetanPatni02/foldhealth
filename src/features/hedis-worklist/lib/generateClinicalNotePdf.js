@@ -1,4 +1,3 @@
-import jsPDF from 'jspdf';
 import { GAP_TEMPLATES, MEASURE_CPT, savedGapData } from '../ClinicalNotePanel.utils';
 import { contentOf, isFieldVisible } from '../../../lib/noteTemplateRules';
 
@@ -23,9 +22,9 @@ const hasTemplateValues = (fields, data) => fields.some(f => f.type !== 'content
  * @param {Record<string, object>} params.gapData per-gap form values (state)
  * @param {string} [params.signedBy]   actor that triggered generation
  *
- * @returns {{ blob: Blob, filename: string }}
+ * @returns {Promise<{ blob: Blob, filename: string }>}
  */
-export function generateClinicalNotePdf({
+export async function generateClinicalNotePdf({
   member,
   gapCodes,
   dateOfService,
@@ -34,6 +33,7 @@ export function generateClinicalNotePdf({
   gapData,
   signedBy = 'Care Manager',
 }) {
+  const { default: jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();

@@ -14,10 +14,10 @@
  */
 
 import { requireUser } from '../_lib/requireUser.js';
+import { bodyWithinLimit } from '../_lib/limits.js';
 
 const MODEL = process.env.GOOGLE_AI_MODEL || 'gemini-3.8-flash';
-const ENDPOINT = (key) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 // Force Gemini to answer in exactly the shape the SummaryCard renders.
 const RESPONSE_SCHEMA = {
@@ -123,15 +123,12 @@ export default async function handler(req, res) {
 
   const key = process.env.GOOGLE_AI_API_KEY;
   if (!key) {
-    return res.status(500).json({
-      error: {
-        message:
-          'GOOGLE_AI_API_KEY is not set. Add it to your Vercel project env vars ' +
-          '(Production + Preview + Development) and to .env for local dev.',
-      },
-    });
+    console.error('[care-plan-summary] GOOGLE_AI_API_KEY is not set');
+    return res.status(500).json({ error: { message: 'AI summaries are not set up on this deployment.' } });
   }
 
+  // Roughly 170 rows per list fit well under this; the prompt caps them anyway.
+  if (!bodyWithinLimit(req, res, 200 * 1024)) return;
   const plan = req.body && typeof req.body === 'object' ? req.body : null;
   if (!plan) {
     return res.status(400).json({ error: { message: 'Missing or invalid plan body' } });
@@ -151,9 +148,9 @@ export default async function handler(req, res) {
     // couple of short backoff retries turn most of those into a clean result.
     let upstream;
     for (let attempt = 0; attempt < 3; attempt++) {
-      upstream = await fetch(ENDPOINT(key), {
+      upstream = await fetch(ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: requestBody,
       });
       if (upstream.ok || (upstream.status !== 503 && upstream.status !== 429)) break;

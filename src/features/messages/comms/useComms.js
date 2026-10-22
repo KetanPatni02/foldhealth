@@ -10,14 +10,22 @@ const upsert = (list, row) => {
 };
 
 /** Every patient conversation, kept live. */
+// A load that hasn't answered by then counts as failed, so lists don't sit blank.
+const LOAD_TIMEOUT_MS = 15000;
+const withTimeout = (p) => Promise.race([
+  p,
+  new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), LOAD_TIMEOUT_MS)),
+]);
+
 export function useCommsConversations() {
-  const [state, setState] = useState({ conversations: [], loading: true, mode: null });
+  const [state, setState] = useState({ conversations: [], loading: true, failed: false, mode: null });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    const load = () => Promise.all([listConversations(), commsMode()])
-      .then(([conversations, mode]) => { if (alive) setState({ conversations, loading: false, mode }); })
-      .catch(() => { if (alive) setState(s => ({ ...s, loading: false })); });
+    const load = () => withTimeout(Promise.all([listConversations(), commsMode()]))
+      .then(([conversations, mode]) => { if (alive) setState({ conversations, loading: false, failed: false, mode }); })
+      .catch(() => { if (alive) setState(s => ({ ...s, loading: false, failed: true })); });
     load();
     const off = subscribeComms((change) => {
       if (change.type === 'reload') return load();
@@ -31,9 +39,11 @@ export function useCommsConversations() {
       }));
     }, 'comms-convs');
     return () => { alive = false; off(); };
-  }, []);
+  }, [attempt]);
 
-  return state;
+  // Try again after a failed load.
+  const retry = () => { setState(s => ({ ...s, loading: true, failed: false })); setAttempt(n => n + 1); };
+  return { ...state, retry };
 }
 
 /** One conversation's messages, oldest first, kept live. */

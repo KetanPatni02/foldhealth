@@ -6,6 +6,7 @@ import { MenuPopover } from '../MenuPopover/MenuPopover';
 import styles from './ChatBubble.module.css';
 
 const URL_RE = /(https?:\/\/[^\s]+)/;
+const URL_SPLIT_RE = /(https?:\/\/[^\s]+)/g;
 
 function formatBytes(n) {
   if (!n && n !== 0) return '';
@@ -23,7 +24,9 @@ function formatBytes(n) {
  *   "Internal" badge
  *
  * Inside the bubble, in order: an optional reply quote, attachment, link
- * card (the first URL in `text`) or call, then the text. Under it: the time
+ * card (a preview of the first URL in `text`) or call, then the text. Links
+ * stay in the text where they were, underlined: white on our purple bubble,
+ * info blue otherwise. Under it: the time
  * and, for our messages, a status (pass a <MessageStatus />).
  *
  * @param {'left'|'right'|'internal'} props.side
@@ -69,7 +72,6 @@ export function ChatBubble({
 
   const linkMatch = !attachment && !call && text ? text.match(URL_RE) : null;
   const link = linkMatch?.[1];
-  const bodyText = link ? text.replace(link, '').trim() : text;
 
   const copyLink = () => {
     navigator.clipboard?.writeText(link).then(() => {
@@ -131,7 +133,14 @@ export function ChatBubble({
           {call.duration && <span className={styles.callDuration}>{call.duration}</span>}
         </span>
       )}
-      {bodyText && <span className={styles.text}>{bodyText}</span>}
+      {/* The text keeps its links where they were (the card above is a preview). */}
+      {text && (
+        <span className={styles.text}>
+          {text.split(URL_SPLIT_RE).map((part, i) => (i % 2
+            ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={styles.inlineLink}>{part}</a>
+            : part))}
+        </span>
+      )}
       {children}
     </>
   );
