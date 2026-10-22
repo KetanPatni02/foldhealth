@@ -8,8 +8,11 @@ import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Select } from '../../../components/Select/Select';
 import { Drawer } from '../../../components/Drawer/Drawer';
+import { Button } from '../../../components/Button/Button';
+import { TabStrip } from '../../../components/TabStrip/TabStrip';
+import { MedicationClaims } from './MedicationClaims';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
-import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, effectivePdc, fillDueTone, measureStatus, pdcTone } from '../pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, isActiveGap, effectivePdc, fillDueTone, measureStatus, pdcTone } from '../pharmacyWorklist.utils';
 import { MeasureCode, SubStatus } from '../PharmacyCells';
 import { BARRIERS } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -60,6 +63,9 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
     .map(e => ({ date: e.date, by: e.by, source: e.source, rec: e.measures[med.measure] }));
   const update = useAppStore(s => s.updatePharmacyMedication);
   const save = (patch) => update(memberRowId, med.id, patch);
+  // Claims tab (as in HCC), or the medication's details.
+  const [tab, setTab] = useState('details');
+  const claimCount = (med.refills || []).filter(r => !r.source).length;
   const conditions = conditionsOf(med);
   const toggleCondition = (c) => save({
     conditions: conditions.includes(c) ? conditions.filter(x => x !== c) : [...conditions, c],
@@ -67,6 +73,14 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
 
   return (
     <div className={styles.detail}>
+      <TabStrip
+        items={[{ key: 'details', label: 'Details' }, { key: 'claims', label: `Claims (${claimCount})` }]}
+        activeKey={tab}
+        onChange={setTab}
+        fullWidth={false}
+        size="S"
+      />
+      {tab === 'claims' ? <MedicationClaims med={med} /> : <>
       <div className={styles.detailHead}>
         <MeasureCode code={med.measure} />
         <span className={styles.detailMeta}><span>Dose Form:</span> {med.doseForm}</span>
@@ -139,8 +153,9 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
             <tr><th>Fill Date</th><th>Quantity</th><th>Days Supply</th><th>Pharmacy</th><th>Prescriber</th><th>Prescriber Address</th><th>Source</th></tr>
           </thead>
           <tbody>
-            {med.refills.map(r => (
-              <tr key={`${r.date}-${r.source || 'claim'}`}>
+            {/* A reversed claim was never dispensed: it's in Claim History only. */}
+            {med.refills.filter(r => r.claimStatus !== 'Reversed').map((r, i) => (
+              <tr key={`${r.date}-${r.source || 'claim'}-${i}`}>
                 <td>{r.date}</td><td>{r.qty}</td><td>{r.daysSupply}</td>
                 <td>{r.pharmacy}</td><td>{r.prescriber}</td><td>{r.prescriberAddress}</td>
                 {/* Call-confirmed pickups land here before the claim does. */}
@@ -150,6 +165,7 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
           </tbody>
         </table>
       </div>
+      </>}
     </div>
   );
 }
@@ -207,6 +223,37 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
   // their default, so a later status change doesn't flip a chosen state.
   const [chosen, setChosen] = useState(() => new Map());
   const [openId, setOpenId] = useState(null);
+  // Bulk Recent Fill: drugs picked across any gaps, as "code|medId".
+  const setRecentFillBulk = useAppStore(s => s.setPharmacyRecentFillBulk);
+  const [picked, setPicked] = useState(() => new Set());
+  const [bulkDate, setBulkDate] = useState('');
+  // Picks belong to one patient: drop them when another patient opens on
+  // this step (the step is not remounted).
+  const [pickedFor, setPickedFor] = useState(member?.id);
+  if (pickedFor !== member?.id) {
+    setPickedFor(member?.id);
+    setPicked(new Set());
+    setBulkDate('');
+  }
+  const pickKey = (code, medId) => `${code}|${medId}`;
+  const togglePick = (key) => setPicked(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  // Select-all: every active drug of one gap, or of all gaps.
+  const activeKeys = (xs) => xs.flatMap(x => x.medications.filter(d => d.status !== 'Discontinued').map(d => pickKey(x.code, d.id)));
+  const checkState = (keys) => (keys.length && keys.every(k => picked.has(k)) ? true : keys.some(k => picked.has(k)) ? 'indeterminate' : false);
+  const setMany = (keys, on) => setPicked(prev => {
+    const next = new Set(prev);
+    for (const k of keys) { if (on) next.add(k); else next.delete(k); }
+    return next;
+  });
+  const applyBulk = () => {
+    setRecentFillBulk(member.id, [...picked].map(k => { const [code, medId] = k.split('|'); return { code, medId }; }), fromIso(bulkDate));
+    setPicked(new Set());
+    setBulkDate('');
+  };
 
   const all = useMemo(() => (member?.measures || [])
     .map(x => ({ ...x, st: measureStatus(x, member) }))
@@ -214,7 +261,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
   const focusCode = focus?.memberId === member?.id ? focus.code : null;
   const shown = all.toSorted((a, b) => (b.code === focusCode) - (a.code === focusCode));
 
-  const openCodes = new Set(all.filter(x => OPEN_GAPS.has(x.st.gap)).map(x => x.code));
+  const openCodes = new Set(all.filter(x => isActiveGap(x.st)).map(x => x.code));
   // Red only for an open gap's risk; a closed gap's numbers are history.
   const riskClass = (code, tone) => (openCodes.has(code) ? TONE_CLASS[tone] || '' : '');
   // Open gaps (and the one opened from the worklist) start expanded.
@@ -237,8 +284,30 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
   return (
     <div className={styles.wrap}>
       <div className={styles.toolbar}>
+        {activeKeys(all).length > 0 && (
+          <label className={styles.checkRow}>
+            <Checkbox
+              checked={checkState(activeKeys(all))}
+              onCheckedChange={() => setMany(activeKeys(all), checkState(activeKeys(all)) !== true)}
+              aria-label="Select all medications"
+            />
+            <span>Select all medications</span>
+          </label>
+        )}
         <span className={styles.count}>{all.length} gap{all.length === 1 ? '' : 's'} · {medCount} medication{medCount === 1 ? '' : 's'}</span>
       </div>
+
+      {picked.size > 0 && (
+        <div className={styles.bulkBar} role="region" aria-label="Set recent fill for selected medications">
+          <span className={styles.bulkCount}>{picked.size} medication{picked.size === 1 ? '' : 's'} selected</span>
+          <span className={styles.bulkField}>
+            <span className={styles.groupMeta}>Recent Fill</span>
+            <DatePicker value={bulkDate} onSelect={setBulkDate} aria-label="Recent fill date for selected medications" />
+          </span>
+          <Button variant="primary" size="M" disabled={!bulkDate} onClick={applyBulk}>Apply to {picked.size}</Button>
+          <Button variant="ghost" size="M" onClick={() => setPicked(new Set())}>Clear selection</Button>
+        </div>
+      )}
 
       {shown.map(x => {
         const expanded = isExpanded(x.code);
@@ -265,7 +334,15 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                 <table className={`${styles.table} ${styles.medTable}`}>
                   <thead>
                     <tr>
-                      <th>Rx</th><th>Last Fill</th><th>Recent Fill</th><th>Next Fill</th><th>PDC</th><th>MPR</th>
+                      <th className={styles.pickCol}>
+                        {activeKeys([x]).length > 0 && (
+                          <Checkbox
+                            checked={checkState(activeKeys([x]))}
+                            onCheckedChange={() => setMany(activeKeys([x]), checkState(activeKeys([x])) !== true)}
+                            aria-label={`Select all ${x.code} medications`}
+                          />
+                        )}
+                      </th><th>Rx</th><th>Last Fill</th><th>Recent Fill</th><th>Next Fill</th><th>PDC</th><th>MPR</th>
                       <th>DS</th><th>Quantity</th><th>Barrier</th><th>Prescriber</th><th>Pharmacy</th><th aria-label="Open" />
                     </tr>
                   </thead>
@@ -275,7 +352,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                       return (
                         <Fragment key={g.cls}>
                           <tr className={styles.groupRow}>
-                            <td colSpan={12}>
+                            <td colSpan={13}>
                               <span className={styles.groupHead}>
                                 <span className={styles.groupName}>{g.cls}</span>
                                 <span className={styles.groupMeta}>{g.meds.length} medication{g.meds.length === 1 ? '' : 's'}</span>
@@ -289,6 +366,15 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                               className={`${styles.medRow} ${openId === d.id ? styles.medRowSelected : ''} ${d.status === 'Discontinued' ? styles.medRowDc : ''}`}
                               onClick={() => (onOpenMed ? onOpenMed(d.id) : setOpenId(d.id))}
                             >
+                              <td className={styles.pickCol} onClick={e => e.stopPropagation()}>
+                                {d.status !== 'Discontinued' && (
+                                  <Checkbox
+                                    checked={picked.has(pickKey(x.code, d.id))}
+                                    onCheckedChange={() => togglePick(pickKey(x.code, d.id))}
+                                    aria-label={`Select ${d.name}`}
+                                  />
+                                )}
+                              </td>
                               <td className={styles.rxCell}>
                                 <span className={styles.rxName}>{d.name} {d.strength} {d.unit}</span>
                                 <span className={styles.rxGeneric}>{d.generic}{d.status === 'Discontinued' ? ' · Discontinued' : ''}</span>

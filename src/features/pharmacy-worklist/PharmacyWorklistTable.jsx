@@ -14,8 +14,11 @@ import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHea
 import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
 import { PharmacyWorklistRow } from './PharmacyWorklistRow';
 import { PharmacyGapDetailDrawer } from './PharmacyGapDetailDrawer';
+import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
+import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
+import { CareGapDetailDrawer } from '../hedis-worklist/CareGapDetailDrawer';
 import { PHARMACY_MIDDLE_COLUMNS, PHARMACY_HIDDEN_BY_DEFAULT } from './pharmacyColumns';
-import { OPEN_GAPS, daysFromToday, daysLeftBucket, enrichPharmacyMember, measureDrugs, normMemberId, otherGapsCountBucket } from './pharmacyWorklist.utils';
+import { isActiveGap, daysFromToday, daysLeftBucket, enrichPharmacyMember, measureDrugs, normMemberId, otherGapsCountBucket } from './pharmacyWorklist.utils';
 import { MEASURE_NAMES as HEDIS_MEASURE_NAMES } from '../hedis-worklist/CareGapDetailDrawer.utils';
 import styles from './PharmacyWorklistTable.module.css';
 
@@ -32,8 +35,8 @@ const FILTER_KEYS = [
   { key: 'claimRecon',     label: 'Claim Reconciliation', primary: true },
   { key: 'assignee',       label: 'Assigned to',      primary: true },
   { key: 'subStatus',      label: 'Gap Sub-Status',   primary: false },
-  { key: 'otherGapsCount', label: 'Other Care Gaps (count)', primary: false },
-  { key: 'otherGap',       label: 'Other Care Gap',   primary: false },
+  { key: 'otherGapsCount', label: 'Open Care Gaps (count)', primary: false },
+  { key: 'otherGap',       label: 'Open Care Gap',    primary: false },
   { key: 'healthPlan',     label: 'Health Plan',      primary: false },
   { key: 'bookOfBusiness', label: 'Book of Business', primary: false },
   { key: 'ipa',            label: 'IPA',              primary: false },
@@ -41,7 +44,7 @@ const FILTER_KEYS = [
   { key: 'language',       label: 'Language',         primary: false },
 ];
 
-const openGaps = (m) => m.gaps.filter(g => OPEN_GAPS.has(g.status.gap));
+const openGaps = (m) => m.gaps.filter(g => isActiveGap(g.status));
 const isPast = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
 function overdueTags(m) {
   const tags = [];
@@ -110,6 +113,9 @@ export function PharmacyWorklistTable() {
   const filters = useAppStore(s => s.pharmacyFilters);
   const setFilter = useAppStore(s => s.setPharmacyFilter);
   const clearFilters = useAppStore(s => s.clearPharmacyFilters);
+  const saveSavedFilter = useAppStore(s => s.saveSavedFilter);
+  // A selected saved filter stays selected while edited: Go Back / Save Changes / Copy Filter.
+  const savedActions = useSavedFilterActions('Pharmacy', filters, clearFilters);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);
@@ -117,6 +123,16 @@ export function PharmacyWorklistTable() {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  // Any filter change goes back to page 1, including a saved filter applied
+  // or reset from the chip (outside onFilterChange).
+  const [pageFilters, setPageFilters] = useState(filters);
+  if (pageFilters !== filters) {
+    setPageFilters(filters);
+    setPage(1);
+  }
+  // Care Gap Details for an Open Care Gap picked from a row's hover card.
+  const [careGap, setCareGap] = useState(null); // { hedisMemberId, code }
+  const careGapMember = careGap ? (hedisMembers || []).find(h => h.id === careGap.hedisMemberId) : null;
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
   // Overdue claims get a pharmacy follow-up task automatically.
@@ -127,7 +143,7 @@ export function PharmacyWorklistTable() {
   useEffect(() => { fetchHedisMembers(); }, [fetchHedisMembers]);
   const hedisGapsByMember = useMemo(() => new Map((hedisMembers || []).map(h => [
     normMemberId(h.memberId || h.id),
-    (h.gaps || []).filter(g => !g.supersededAt).map(g => ({ code: g.code, name: HEDIS_MEASURE_NAMES[g.code], status: g.status })),
+    (h.gaps || []).filter(g => !g.supersededAt).map(g => ({ code: g.code, name: HEDIS_MEASURE_NAMES[g.code], status: g.status, hedisMemberId: h.id })),
   ])), [hedisMembers]);
 
   const enriched = useMemo(
@@ -220,14 +236,26 @@ export function PharmacyWorklistTable() {
         filterActive={filterBarOpen}
         onFilter={() => setFilterBarOpen(v => !v)}
         onHistory={() => showToast('History – coming soon')}
+        rightExtras={
+          <>
+            <SavedFiltersChip list="Pharmacy" />
+            <span className={styles.titleDivider} />
+          </>
+        }
       />
 
       {filterBarOpen && (
         <FilterBar
           filterDefs={FILTER_KEYS}
           filters={filters}
-          onFilterChange={(k, vals) => { setFilter(k, vals); setPage(1); }}
-          onClearAll={clearFilters}
+          onFilterChange={(k, vals) => setFilter(k, vals)}
+          onClearAll={savedActions.onClearAll}
+          clearAllLabel={savedActions.clearAllLabel}
+          saveLabel={savedActions.saveLabel}
+          saveMenuItems={savedActions.saveMenuItems}
+          onSaveMenuSelect={savedActions.onSaveMenuSelect}
+          hasActive={savedActions.edited || undefined}
+          onSaveFilter={(name) => saveSavedFilter('Pharmacy', name)}
           getOptions={(def) => filterOptions[def.key] || []}
           multiSelect
           visibleKeys={visibleKeys}
@@ -292,6 +320,7 @@ export function PharmacyWorklistTable() {
                   hiddenSet={columnPrefs.hiddenSet}
                   isSelected={selectedIds.has(m.id)}
                   onSelect={toggleSelected}
+                  onOpenCareGap={(hedisMemberId, code) => setCareGap({ hedisMemberId, code })}
                 />
               ))}
             </tbody>
@@ -323,6 +352,14 @@ export function PharmacyWorklistTable() {
       </div>
 
       <PharmacyGapDetailDrawer />
+      {careGapMember && (
+        <CareGapDetailDrawer
+          member={careGapMember}
+          gapCode={careGap.code}
+          year={new Date().getFullYear()}
+          onClose={() => setCareGap(null)}
+        />
+      )}
 
       <Pagination
         currentPage={page}

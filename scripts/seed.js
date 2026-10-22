@@ -769,10 +769,10 @@ function snpWorklistToRow(m, foldIdMap) {
 }
 
 // Mirrors rowToMember in src/store/slices/pharmacyWorklistSlice.js.
-function pharmacyWorklistToRow(m) {
+function pharmacyWorklistToRow(m, foldIdMap) {
   return {
     id:                m.id,
-    member_id:         m.memberId ?? null,
+    member_id:         resolveMemberId(m.memberId, foldIdMap),
     patient_id:        m.patientId ?? null,
     name:              m.name,
     initials:          m.initials ?? null,
@@ -930,11 +930,12 @@ async function main() {
   // Bridge raw payer ids → Fold IDs from patient_registry so worklist rows
   // land with the same identifier the app displays via <FoldIdTag>. Mints
   // fold_ids for any mock member missing from the registry.
-  console.log('\nResolving Fold IDs for HEDIS / CCM / SNP members...');
+  console.log('\nResolving Fold IDs for HEDIS / CCM / SNP / Pharmacy members...');
   const foldIdMap = await resolveFoldIdMap(supabase, [
     ...HEDIS_MEMBERS.map((m) => m.memberId),
     ...CCM_WORKLIST_MEMBERS.map((m) => m.memberId),
     ...SNP_WORKLIST_MEMBERS.map((m) => m.memberId),
+    ...PHARMACY_WORKLIST_MEMBERS.map((m) => m.memberId),
   ]);
   console.log(`  ✓ ${foldIdMap.size} Fold IDs available in patient_registry`);
 
@@ -1192,7 +1193,7 @@ async function main() {
 
   console.log('Seeding pharmacy_worklist_members...');
   try {
-    const pharmacyRows = await withoutExistingPeople(supabase, 'pharmacy_worklist_members', PHARMACY_WORKLIST_MEMBERS.map(pharmacyWorklistToRow));
+    const pharmacyRows = await withoutExistingPeople(supabase, 'pharmacy_worklist_members', PHARMACY_WORKLIST_MEMBERS.map((m) => pharmacyWorklistToRow(m, foldIdMap)));
     const { error: pwe } = await supabase
       .from('pharmacy_worklist_members')
       .upsert(pharmacyRows, { onConflict: 'id' });

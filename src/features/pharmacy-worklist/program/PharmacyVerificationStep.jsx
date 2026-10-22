@@ -10,7 +10,7 @@ import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import {
-  MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, addDaysMdy, fillDueTone, measureStatus, medLabel, parseMdy, pdcTone, todayMdy,
+  MEASURE_NAMES, MEASURE_ORDER, isActiveGap, addDaysMdy, fillDueTone, measureStatus, medLabel, parseMdy, pdcTone, todayMdy,
 } from '../pharmacyWorklist.utils';
 import { Switch } from '../../../components/Switch/Switch';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -167,10 +167,10 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
     if (!member) return [];
     const all = (member.measures || [])
       .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code))
-      .map(x => ({ code: x.code, pickup: x.pickupConfirmed, status: measureStatus(x, member).gap, meds: x.medications.filter(d => d.status !== 'Discontinued') }))
+      .map(x => ({ code: x.code, pickup: x.pickupConfirmed, status: measureStatus(x, member), meds: x.medications.filter(d => d.status !== 'Discontinued') }))
       .filter(g => g.meds.length)
       .map(g => ({ ...g, med: g.meds[0] }));
-    const open = all.filter(g => OPEN_GAPS.has(g.status));
+    const open = all.filter(g => isActiveGap(g.status));
     return open.length ? open : all;
   }, [member]);
 
@@ -231,7 +231,7 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
         refilled: answer.refilled === 'Yes',
         pickedUp: answer.pickedUp === 'Yes',
       })),
-    }, { pickedUpCodes, pendingCodes, refillsByMed, status: pickedAll ? 'Completed' : 'In Progress' });
+    }, { pickedUpCodes, pendingCodes, refillsByMed, status: 'In Progress' });
 
     // Follow-ups: re-check the next gap report for a reversal; confirm any
     // refill request reached the pharmacy a month out.

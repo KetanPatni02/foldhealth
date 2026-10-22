@@ -16,16 +16,27 @@ const matchedMeasure = ({ pickedUpDaysAgo, supply }) => ({
 });
 
 describe('measureStatus: matched claim', () => {
-  it('closes the gap as Closed-Data while the fill still covers today', () => {
+  it('keeps the gap In Progress, with Claim matched as a done sub-status, while the fill covers today', () => {
     const st = measureStatus(matchedMeasure({ pickedUpDaysAgo: 10, supply: 30 }), { callHistory: [] });
-    expect(st.gap).toBe('Closed-Data');
+    expect(st.gap).toBe('In Progress');
     expect(st.label).toBe('Claim matched');
+    expect(st.done).toBe(true);
   });
 
   it('reopens once the supply has run out, even though the claim matched', () => {
     const st = measureStatus(matchedMeasure({ pickedUpDaysAgo: 60, supply: 30 }), { callHistory: [] });
     expect(st.gap).toBe('Open');
     expect(st.label).toBe('Refill overdue');
+  });
+
+  it('puts a covered gap back in play when someone sets it to Open by hand', () => {
+    const x = { ...matchedMeasure({ pickedUpDaysAgo: 10, supply: 30 }), status: 'Open', statusManual: true };
+    const st = measureStatus(x, { callHistory: [] });
+    expect(st.gap).toBe('Open');
+    expect(st.done).toBe(false);
+    const m = enrichPharmacyMember({ id: 'm', memberId: 'm', measures: [x] });
+    expect(m.progress.closed).toBe(0);
+    expect(m.urgentOpen).toBe(true);
   });
 });
 
@@ -36,10 +47,10 @@ describe('enrichPharmacyMember: other care gaps', () => {
     otherCareGaps: [{ code: 'CBP', name: 'Controlling Blood Pressure', status: 'Open' }],
   };
 
-  it('uses the live HEDIS gaps when the member has a HEDIS record', () => {
-    const hedisGapsByMember = new Map([['19401', [{ code: 'CBP', status: 'Completed' }]]]);
+  it('uses the live HEDIS gaps when the member has a HEDIS record, open ones only', () => {
+    const hedisGapsByMember = new Map([['19401', [{ code: 'CBP', status: 'Open' }, { code: 'EED', status: 'Engaged' }, { code: 'COL', status: 'Completed' }, { code: 'BCS', status: 'Closed - Data' }]]]);
     const m = enrichPharmacyMember(member, { hedisGapsByMember });
-    expect(m.otherCareGaps).toEqual([{ code: 'CBP', status: 'Completed' }]);
+    expect(m.otherCareGaps.map(g => g.code)).toEqual(['CBP', 'EED']);
   });
 
   it('falls back to the stored plan-file list without one', () => {
@@ -49,6 +60,6 @@ describe('enrichPharmacyMember: other care gaps', () => {
 
   it('ignores a member-level manual status', () => {
     const m = enrichPharmacyMember({ ...member, status: 'Open', statusManual: true });
-    expect(m.status).toBe('Closed-Data');
+    expect(m.status).toBe('In Progress');
   });
 });

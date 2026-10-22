@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase';
+import { detachSaved, hydrateListFilters } from '../lib/worklistListFilters';
 import { applyPendingPickup, applyPickup, applyRecentFill, recomputeMeasure, withManualRecentFill } from '../../features/pharmacy-worklist/fillEvents';
-import { CLAIM_LAG_DAYS, enrichPharmacyMember, parseMdy, reconcileMeasure, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
+import { CLAIM_LAG_DAYS, enrichPharmacyMember, reconcileMeasure, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
 
 function rowToMember(r) {
   return {
@@ -145,6 +146,25 @@ export function createPharmacyWorklistSlice(set, get) {
       });
     },
 
+    // Bulk Recent Fill from Medication Review: one date for several drugs,
+    // across gaps (`items`: [{ code, medId }]). One activity entry.
+    setPharmacyRecentFillBulk: (id, items, date) => {
+      const row = get().pharmacyWorklistMembers.find(m => m.id === id);
+      if (!row) return;
+      const found = items
+        .map(it => ({ ...it, d: row.measures.find(y => y.code === it.code)?.medications.find(x => x.id === it.medId) }))
+        .filter(it => it.d);
+      if (!found.length) return;
+      const names = found.map(({ code, d }) => `${code} ${d.name}`);
+      update(id, m => ({
+        ...m,
+        measures: m.measures.map(y => found.filter(it => it.code === y.code)
+          .reduce((x, it) => withManualRecentFill(x, it.medId, date || null), y)),
+      }), ['measures'], {
+        t: 'note', title: `Recent fill ${date ? `set to ${date}` : 'cleared'} for ${names.length} drug${names.length === 1 ? '' : 's'}`, note: names.join(', '),
+      });
+    },
+
     // Per-gap status. A hand-picked status overrides the one derived from
     // fills and claims; null hands it back to the data.
     setPharmacyGapStatus: (id, code, status) => {
@@ -242,12 +262,9 @@ export function createPharmacyWorklistSlice(set, get) {
         // Pickups already added their fill above; refill approvals add theirs
         // here. Either way only drugs with an older latest fill change.
         if (recentFillCodes.length) measures = applyRecentFill({ ...m, measures }, recentFillCodes, entry.date, recentFillOutcome, changes);
-        // Same rule as a verification call: every open measure picked up →
-        // Completed; any outreach on an Open gap moves it to In Progress.
-        const allPickedUp = pickupCodes.length > 0 && measures
-          .filter(x => !x.excluded)
-          .every(x => x.pickupConfirmed && !(x.pendingPickupSince && parseMdy(x.pendingPickupSince) > parseMdy(x.pickupConfirmed)));
-        const status = allPickedUp ? 'Completed' : (m.status === 'Open' ? 'In Progress' : m.status);
+        // Any outreach puts the member In Progress. Gaps never close here; a
+        // pickup is the gap's sub-status.
+        const status = 'In Progress';
         if (status !== m.status) changes.push(`Status ${m.status} → ${status}`);
         return { ...m, status, measures, callHistory: [entry, ...(m.callHistory || [])], _changes: changes };
       }, ['status', 'call_history', 'measures'], (changes) => ({
@@ -317,13 +334,14 @@ export function createPharmacyWorklistSlice(set, get) {
     }),
     closePharmacyGapDrawer: () => set({ pharmacyGapDrawer: null }),
 
-    pharmacyFilters: {},
+    pharmacyFilters: hydrateListFilters('Pharmacy'),
     setPharmacyFilter: (k, vals) => set(s => {
       const next = { ...s.pharmacyFilters };
       if (!vals?.length) delete next[k];
       else next[k] = vals;
       return { pharmacyFilters: next };
     }),
-    clearPharmacyFilters: () => set({ pharmacyFilters: {} }),
+    // Clearing also deselects the applied saved filter, like the other lists.
+    clearPharmacyFilters: () => set(s => ({ pharmacyFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'Pharmacy') })),
   };
 }

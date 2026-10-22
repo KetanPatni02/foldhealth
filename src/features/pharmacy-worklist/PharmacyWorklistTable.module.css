@@ -31,3 +31,4 @@
 }
 .emptyTitle { font-size: var(--font-lg); font-weight: 500; color: var(--neutral-400); margin: 0; }
 .emptyText { font-size: var(--font-base); margin: 0; text-align: center; max-width: 320px; }
+.titleDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }

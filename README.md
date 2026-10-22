@@ -37,6 +37,18 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Pharmacy workflow updates.** Every sample patient has MAD, MAH and MAC
+  open with more medications. Gap status is Open or In Progress only (no
+  Completed or Closed-Data). Medication Review supports bulk Recent Fill
+  across gaps, with per-gap and global select-all checkboxes. Each medication
+  has a Claims tab laid out like the HCC Claims tab (claim ID, fill date,
+  status, amount, and an inline claim detail). Lead Note is now Internal Note,
+  next to Outreach. Other Care Gaps is now Open Care Gaps, and each gap in its
+  hover card opens Care Gap Details (the pharmacy patients were added to
+  HEDIS). The Pharmacy worklist gets Saved Filters like the other worklists.
+  Migrations: `supabase/pharmacy_worklist_sample_refresh_migration.sql`, then
+  `supabase/pharmacy_hedis_patients_migration.sql`.
+
 - **Pharmacy worklist, HEDIS layout.** Each patient row stacks one sub-row
   per pharmacy gap (MAD / MAH / MAC) with its own status, start date, PDC,
   drug count and claim reconciliation; assignment stays at the patient level.
