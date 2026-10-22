@@ -13,8 +13,9 @@ notification and unread-count queries on every reconnect and refocus until the
 database fell over.
 
 So local development uses a separate free project, **Foldhealth Dev**
-(`uwswpbiyhlmpnubxtipc`, ap-southeast-1). The deployed app on Vercel keeps
-using production through its own environment variables.
+(`uwswpbiyhlmpnubxtipc`, ap-southeast-1). Vercel preview deployments,
+including the `preview` Git branch, use that same project. Production
+deployments keep using production through their own environment variables.
 
 ## Setup
 

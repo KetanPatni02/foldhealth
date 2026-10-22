@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_PROJECTS } from '../../src/lib/supabaseConfig.js';
+import { supabaseTarget } from '../../src/lib/supabaseConfig.js';
 import { serviceClient } from './serviceClient.js';
 
 /**
@@ -17,12 +17,14 @@ import { serviceClient } from './serviceClient.js';
  *
  * VITE_SUPABASE_* come first because they name the project the browser signs
  * into; a token from any other project fails verification. Without them it
- * uses the same built-in project as the browser client: dev outside
- * production, production in production (src/lib/supabaseConfig.js).
+ * uses the same built-in project as the browser client: Foldhealth Dev for
+ * local dev and Vercel preview, production only for production deploys.
  */
-const FALLBACK = process.env.NODE_ENV === 'production' ? SUPABASE_PROJECTS.prod : SUPABASE_PROJECTS.dev;
-const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || FALLBACK.url;
-const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || FALLBACK.anonKey;
+const { url, anonKey: key } = supabaseTarget({
+  useDev: process.env.VERCEL_ENV === 'preview' || process.env.NODE_ENV !== 'production',
+  url: process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+  anonKey: process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY,
+});
 
 const supabase = url && key
   ? createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
