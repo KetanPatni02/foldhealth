@@ -638,14 +638,12 @@
 }
 
 /* Outreach step — the shared OutreachTab (log form + activity) scrolls
-   within the content column. OutreachTab's own .wrapper already pads
-   12 px on all sides, matching the 12 px horizontal gutter used by
-   .contentHeader above it; no outer padding here, otherwise the
-   composer card sits 28 px in while sibling steps sit at 12 px. */
+   within the content column. */
 .outreachWrap {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: var(--space-4);
 }
 .pharmacyStep {
   flex: 1;
