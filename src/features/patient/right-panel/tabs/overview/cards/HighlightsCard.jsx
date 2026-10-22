@@ -1,5 +1,6 @@
 import { DashboardCard, DashboardCardBody } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
+import { CappedRows } from './CappedRows';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import styles from './overviewCards.module.css';
 
@@ -17,17 +18,22 @@ export function HighlightsCard({ overview }) {
       <DashboardCardBody>
         {highlights.length === 0 ? (
           <p className={styles.empty}>Nothing notable recently.</p>
-        ) : highlights.map(h => {
-          const kind = KIND[h.kind] || { icon: 'solar:info-circle-linear', tone: '' };
-          return (
-            <PanelSectionItem
-              key={h.id}
-              leading={<span className={`${styles.tile} ${styles[kind.tone] || ''}`}><Icon name={kind.icon} size={16} /></span>}
-              title={h.title}
-              meta={[h.date, h.source]}
-            />
-          );
-        })}
+        ) : (
+          <CappedRows
+            items={highlights}
+            render={(h) => {
+              const kind = KIND[h.kind] || { icon: 'solar:info-circle-linear', tone: '' };
+              return (
+                <PanelSectionItem
+                  key={h.id}
+                  leading={<span className={`${styles.tile} ${styles[kind.tone] || ''}`}><Icon name={kind.icon} size={16} /></span>}
+                  title={h.title}
+                  meta={[h.date, h.source]}
+                />
+              );
+            }}
+          />
+        )}
       </DashboardCardBody>
     </DashboardCard>
   );

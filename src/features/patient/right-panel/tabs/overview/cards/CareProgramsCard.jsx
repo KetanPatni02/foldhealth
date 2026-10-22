@@ -38,12 +38,13 @@ export function CareProgramsCard({ patientId }) {
       count={programs.length || null}
       actions={<Button variant="ghost" size="S" onClick={goToCarePrograms}>View all</Button>}
     >
-      <DashboardCardBody>
+      <DashboardCardBody className={styles.listBody}>
         {programs.length === 0 ? (
           <p className={styles.empty}>Not enrolled in any care program.</p>
         ) : programs.slice(0, VISIBLE).map(prog => (
           <PanelSectionItem
             key={prog.id}
+            inset
             title={<button type="button" className={styles.titleButton} onClick={() => openProgram(prog)}>{prog.name}</button>}
             meta={[prog.assignee, prog.pcp !== '—' && `PCP ${prog.pcp}`, prog.startDate !== '—' && `Started ${prog.startDate}`]}
             trailing={(

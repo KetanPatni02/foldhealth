@@ -33,7 +33,7 @@ import { useComponentImage, loadPng, loadInter } from '../../../email-builder/re
 import clientLogoUrl from '../../../../assets/trailhead-clinics-logo.png';
 import clientLogoWhiteUrl from '../../../../assets/trailhead-clinics-logo-white.png';
 import { EMPLOYER_LOGOS, EMPLOYER_LOGO_HEIGHT, LOGO_ROOM, employerLogoUrl, logoForEmployer } from './employerLogos';
-import { SortableItem, SortableList } from './SortableParts';
+import { SortableItem, SortableList } from '../../../../components/SortableList/SortableList';
 import { PRESET_COVERS, loadCoverImage } from './reportCovers';
 import styles from './PrintReportDrawer.module.css';
 

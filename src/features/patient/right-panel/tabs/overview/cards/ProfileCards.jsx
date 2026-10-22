@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
+import { CappedRows } from './CappedRows';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Avatar } from '../../../../../../components/Avatar/Avatar';
 import { Icon } from '../../../../../../components/Icon/Icon';
@@ -13,12 +14,12 @@ import styles from './overviewCards.module.css';
 const list = v => (Array.isArray(v) ? v.filter(Boolean) : []);
 
 // Shared frame: skeleton while the profile loads, one empty line without one.
-function ProfileCard({ patientId, icon, title, count, children }) {
+function ProfileCard({ patientId, icon, title, count, bodyClassName, children }) {
   const profile = useP360Profile(patientId);
   if (profile === undefined) return <DashboardCardSkeleton icon={icon} title={title} rows={2} />;
   return (
     <DashboardCard icon={icon} title={title} count={profile ? count?.(profile) : null}>
-      <DashboardCardBody>
+      <DashboardCardBody className={bodyClassName}>
         {profile ? children(profile) : <p className={styles.empty}>No profile data for this patient yet.</p>}
       </DashboardCardBody>
     </DashboardCard>
@@ -38,7 +39,7 @@ export function RiskAcuityCard({ patientId }) {
       {(p) => {
         const change = Number(p.raf_change) || 0;
         return (
-          <div className={styles.stats}>
+          <div className={`${styles.stats} ${styles.statsTwo}`}>
             <div className={styles.stat}>
               <span className={styles.muted}>RAF score</span>
               <span className={styles.statValue}>
@@ -109,7 +110,7 @@ export function CareTeamCard({ patientId }) {
   // Program owners come from care programs, which the programs card may not have loaded.
   useEffect(() => { if (patientId) fetchCareProgramsForPatient(patientId); }, [patientId, fetchCareProgramsForPatient]);
   return (
-    <ProfileCard patientId={patientId} icon="solar:users-group-rounded-linear" title="Care Team" count={p => list(p.care_team).length || null}>
+    <ProfileCard patientId={patientId} icon="solar:users-group-rounded-linear" title="Care Team" count={p => list(p.care_team).length || null} bodyClassName={styles.listBody}>
       {(p) => {
         const active = (programs || []).filter(pr => pr.status !== 'Closed');
         const owned = {};
@@ -127,17 +128,21 @@ export function CareTeamCard({ patientId }) {
         if (members.length === 0) return <p className={styles.empty}>No care team assigned.</p>;
         return (
           <>
-            {members.map(m => (
-              <PanelSectionItem
-                key={m.name}
-                leading={<Avatar variant="assignee" initials={m.initials} />}
-                title={m.name}
-                meta={[m.title, owned[m.name] && `Owns ${owned[m.name].join(', ')}`]}
-                trailing={m.role ? <Badge tone="grey" size="S" label={m.role} /> : null}
-              />
-            ))}
+            <CappedRows
+              items={members}
+              render={m => (
+                <PanelSectionItem
+                  key={m.name}
+                  inset
+                  leading={<Avatar variant="assignee" initials={m.initials} />}
+                  title={m.name}
+                  meta={[m.title, owned[m.name] && `Owns ${owned[m.name].join(', ')}`]}
+                  trailing={m.role ? <span className={styles.statusSlotWide}><Badge tone="grey" size="S" label={m.role} /></span> : null}
+                />
+              )}
+            />
             {unassigned > 0 && (
-              <p className={styles.muted}>{unassigned} active program{unassigned === 1 ? ' has' : 's have'} no owner.</p>
+              <p className={`${styles.muted} ${styles.listNote}`}>{unassigned} active program{unassigned === 1 ? ' has' : 's have'} no owner.</p>
             )}
           </>
         );
@@ -152,18 +157,23 @@ export function CaregiversCard({ patientId }) {
       {(p) => {
         const family = list(p.family_members);
         if (family.length === 0) return <p className={styles.empty}>No caregivers or family on file.</p>;
-        return family.map(m => {
-          const authority = /caregiver|poa|power of attorney/i.test(`${m.role} ${m.relation}`);
-          return (
-            <PanelSectionItem
-              key={`${m.name}-${m.relation}`}
-              leading={<Avatar variant="assignee" initials={m.initials} />}
-              title={m.name}
-              meta={[m.relation, m.phone, m.phone_hours]}
-              trailing={authority ? <Badge tone="info" size="S" label={m.role || 'Caregiver'} /> : null}
-            />
-          );
-        });
+        return (
+          <CappedRows
+            items={family}
+            render={m => {
+              const authority = /caregiver|poa|power of attorney/i.test(`${m.role} ${m.relation}`);
+              return (
+                <PanelSectionItem
+                  key={`${m.name}-${m.relation}`}
+                  leading={<Avatar variant="assignee" initials={m.initials} />}
+                  title={m.name}
+                  meta={[m.relation, m.phone, m.phone_hours]}
+                  trailing={authority ? <span className={styles.statusSlotWide}><Badge tone="info" size="S" label={m.role || 'Caregiver'} /></span> : null}
+                />
+              );
+            }}
+          />
+        );
       }}
     </ProfileCard>
   );
@@ -207,13 +217,18 @@ export function MedicationsCard({ patientId }) {
       {(p) => {
         const meds = list(p.medication_orders);
         if (meds.length === 0) return <p className={styles.empty}>No active medications on file.</p>;
-        return meds.map(m => (
-          <PanelSectionItem
-            key={m}
-            leading={<span className={`${styles.tile} ${styles.info}`}><Icon name="solar:pill-linear" size={16} /></span>}
-            title={m}
+        return (
+          <CappedRows
+            items={meds}
+            render={m => (
+              <PanelSectionItem
+                key={m}
+                leading={<span className={`${styles.tile} ${styles.info}`}><Icon name="solar:pill-linear" size={16} /></span>}
+                title={m}
+              />
+            )}
           />
-        ));
+        );
       }}
     </ProfileCard>
   );
@@ -230,17 +245,20 @@ export function ConditionsCard({ patientId }) {
         if (!diagnoses.length && !chronic.length && !problems.length) return <p className={styles.empty}>No diagnoses or problems on file.</p>;
         return (
           <>
-            {diagnoses.map((d) => {
-              const [code, ...rest] = String(d).split(' ');
-              const isCode = /^[A-Z]\d/.test(code);
-              return (
-                <PanelSectionItem
-                  key={d}
-                  leading={isCode ? <span className={styles.codeChip}>{code}</span> : null}
-                  title={isCode ? rest.join(' ') : d}
-                />
-              );
-            })}
+            <CappedRows
+              items={diagnoses}
+              render={(d) => {
+                const [code, ...rest] = String(d).split(' ');
+                const isCode = /^[A-Z]\d/.test(code);
+                return (
+                  <PanelSectionItem
+                    key={d}
+                    leading={isCode ? <span className={styles.codeChip}>{code}</span> : null}
+                    title={isCode ? rest.join(' ') : d}
+                  />
+                );
+              }}
+            />
             {(chronic.length > 0 || problems.length > 0) && (
               <div className={styles.chips}>
                 {chronic.map(c => <Badge key={c} tone="warning" size="S" label={c} />)}

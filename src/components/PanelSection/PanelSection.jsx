@@ -52,12 +52,14 @@ export function PanelSection({ title, actions, defaultCollapsed = false, childre
  * @param {React.ReactNode} [props.titleAside] – shown at the end of the title line instead of
  *   as a trailing column, so content below (a progress bar) can span the full row
  * @param {boolean} [props.wrapTitle=false] – let a long title wrap to two lines instead of truncating
+ * @param {boolean} [props.inset=false] – pad the row inline so a full-bleed list still lines up with the card header
+ * @param {boolean} [props.alignTop=false] – keep trailing actions with the title when the row wraps
  * @param {React.ReactNode} [props.children] – extra content under the meta (e.g. a progress bar)
  */
-export function PanelSectionItem({ leading, title, meta, trailing, titleAside, wrapTitle = false, children }) {
+export function PanelSectionItem({ leading, title, meta, trailing, titleAside, wrapTitle = false, inset = false, alignTop = false, children }) {
   const parts = (Array.isArray(meta) ? meta : [meta]).filter(p => p != null && p !== false && p !== '');
   return (
-    <div className={styles.item}>
+    <div className={[styles.item, inset ? styles.inset : '', alignTop ? styles.alignTop : ''].filter(Boolean).join(' ')}>
       {leading && <span className={styles.leading}>{leading}</span>}
       <div className={styles.content}>
         <span className={styles.titleRow}>

@@ -23,7 +23,7 @@ import {
 import { ProgramProgressCard, SinceLastTouchCard } from '../cards/MonitoringCards';
 import { SummaryWidgetCard } from '../cards/SummaryWidgetCard';
 import {
-  OVERVIEW_COLUMN_TEMPLATE, OVERVIEW_WIDGETS, normalizeOverviewLayout, overviewColumnCount, overviewColumns,
+  OVERVIEW_COLUMN_TEMPLATE, OVERVIEW_LAYOUT_REVISION, OVERVIEW_WIDGETS, normalizeOverviewLayout, overviewColumnCount, overviewColumns,
 } from './overviewLayout';
 import styles from './OverviewTab.module.css';
 
@@ -111,7 +111,7 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
       case 'quickActions': return <QuickActionsCard key={key} overview={overview} actions={actions} />;
       case 'appointments': return <AppointmentsCard key={key} patientId={patient.id} />;
       case 'tasks': return <TasksCard key={key} patient={patient} actions={actions} />;
-      case 'vitals': return <VitalsCard key={key} overview={overview} />;
+      case 'vitals': return <VitalsCard key={key} memberId={memberId} overview={overview} />;
       case 'riskAcuity': return <RiskAcuityCard key={key} patientId={patient.id} />;
       case 'contact': return <ContactCard key={key} patientId={patient.id} />;
       case 'careTeam': return <CareTeamCard key={key} patientId={patient.id} />;
@@ -140,7 +140,11 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
       </div>
 
       {customizing && (
-        <OverviewCustomizeDrawer layout={layout} onSave={next => savePanelLayout(LAYOUT_KEY, next)} onClose={() => onCustomizeClose?.()} />
+        <OverviewCustomizeDrawer
+          layout={layout}
+          onSave={next => savePanelLayout(LAYOUT_KEY, { ...next, revision: OVERVIEW_LAYOUT_REVISION })}
+          onClose={() => onCustomizeClose?.()}
+        />
       )}
       {drawer?.kind === 'note' && <NonVisitNoteDrawer patient={patient} onClose={closeDrawer} />}
       {drawer?.kind === 'task' && (

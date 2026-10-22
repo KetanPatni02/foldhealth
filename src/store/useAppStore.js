@@ -188,6 +188,8 @@ import { REFERRAL_SENDER_LINES_MOCK } from '../features/hedis-worklist/data/refe
 import { fetchEfaxNumberRows, persistEfaxNumberInsert, persistEfaxNumberUpdate, persistEfaxNumberDelete } from './lib/efaxNumbersPersist';
 import { fetchCaregapLabRows, persistLabOrder, persistLabResult } from './lib/caregapLabsPersist';
 import { fetchStepStatusRows, persistStepStatus } from './lib/careProgramStepStatusPersist';
+import { fetchProgramTypeRows, persistProgramType, persistProgramTypeDelete } from './lib/careProgramTypesPersist';
+import { defaultProgramTypes } from '../features/settings/care-program-config/careProgramConfigModel';
 import { fetchPatientSnapshotRow } from './lib/patientSnapshotsPersist';
 import { buildPatientSnapshot, patientSnapshotKey } from '../lib/patientSnapshot';
 import { EFAX_NUMBERS_MOCK } from '../features/settings/messages/efax/efaxNumbersMock';
@@ -1222,6 +1224,8 @@ export const useAppStore = create((set, get) => ({
   // its ProgramDetailView on mount. Cleared once consumed.
   pendingCareProgramCode: null,
   pendingCareProgramCarePlan: false,
+  // CMP only: which sub-program to open or enroll (opts.subProgram).
+  pendingCareProgramSubProgram: null,
   navigateToPatient: (patientId, opts = {}) => {
     const from = get().activePage;
     track('nav.patient_opened', { patientId, from });
@@ -1247,6 +1251,7 @@ export const useAppStore = create((set, get) => ({
       updates.pendingCareProgramCode = opts.programCode;
       // Land on the program's Care Plan step rather than its first step.
       updates.pendingCareProgramCarePlan = !!opts.carePlan;
+      updates.pendingCareProgramSubProgram = opts.subProgram || null;
     }
     set(updates);
     const state = get();
@@ -1295,7 +1300,7 @@ export const useAppStore = create((set, get) => ({
     set({ carePlanSummaryOpen: !!open, selectedCareProgramKey: null, careProgramStep: null });
     updateHash?.(get());
   },
-  clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null, pendingCareProgramCarePlan: false }),
+  clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null, pendingCareProgramCarePlan: false, pendingCareProgramSubProgram: null }),
 
   // EditPatientDrawer — one drawer shared by every "Edit …" entry-point
   // on the Profile tab, the P360 banner overflow menu, and every worklist
@@ -1710,6 +1715,57 @@ export const useAppStore = create((set, get) => ({
   // reload; on cold load we hydrate from the DB and fall back to
   // programsForPatient() when the row set is empty.
   careProgramsByPatient: {},
+
+  // Care Program Configuration (Settings): program types, their steps,
+  // worklists, care team, completion criteria and access. The program view
+  // reads each type's steps (see stepsFor). Until care_program_types exists
+  // the built-in types stand in and edits last for the session.
+  careProgramTypes: [],
+  careProgramTypesLoading: false,
+  careProgramTypesDidFetch: false,
+  careProgramTypesMissing: false,
+  fetchCareProgramTypes: async ({ force = false } = {}) => {
+    const s0 = get();
+    if (s0.careProgramTypesLoading || (s0.careProgramTypesDidFetch && !force)) return;
+    set({ careProgramTypesLoading: true });
+    const { types, missing, error } = await fetchProgramTypeRows();
+    if (error && !missing) console.warn('fetchCareProgramTypes:', error.message);
+    set({
+      careProgramTypes: types.length ? types : defaultProgramTypes(),
+      careProgramTypesMissing: missing,
+      careProgramTypesLoading: false,
+      careProgramTypesDidFetch: true,
+    });
+  },
+  saveCareProgramType: async (type) => {
+    const actor = get().currentUserProfile?.name || null;
+    const next = { ...type, createdBy: type.createdBy || actor, updatedAt: new Date().toISOString() };
+    set(s => ({
+      careProgramTypes: s.careProgramTypes.some(t => t.id === next.id)
+        ? s.careProgramTypes.map(t => (t.id === next.id ? next : t))
+        : [...s.careProgramTypes, next],
+    }));
+    if (get().careProgramTypesMissing) return next;
+    const { type: saved, error } = await persistProgramType(next);
+    if (error) {
+      get().showToast?.(`Couldn't save ${next.name}: ${error.message}`);
+      return null;
+    }
+    set(s => ({ careProgramTypes: s.careProgramTypes.map(t => (t.id === saved.id ? saved : t)) }));
+    return saved;
+  },
+  deleteCareProgramType: async (id) => {
+    const prev = get().careProgramTypes;
+    set({ careProgramTypes: prev.filter(t => t.id !== id) });
+    if (get().careProgramTypesMissing) return true;
+    const { error } = await persistProgramTypeDelete(id);
+    if (error) {
+      set({ careProgramTypes: prev });
+      get().showToast?.(`Couldn't delete the program type: ${error.message}`);
+      return false;
+    }
+    return true;
+  },
   careProgramsLoadedFor: {},
   // Program Activity Log entries, keyed by patientId.
   patientProgramActivity: {},
@@ -2021,6 +2077,10 @@ export const useAppStore = create((set, get) => ({
     const rows = (data || []).map(r => ({
       id:           r.id,
       code:         r.code,
+      subProgram:   r.sub_program || null,
+      triggerType:  r.trigger_type || null,
+      triggerDate:  r.trigger_date || null,
+      memberInfo:   r.member_info || null,
       name:         r.name,
       acuity:       r.acuity,
       status:       r.status || 'New',
@@ -2057,14 +2117,26 @@ export const useAppStore = create((set, get) => ({
     set((state) => {
       const existing = state.careProgramsByPatient[patientId] || [];
       // SNP is "triggerable" — it can be enrolled repeatedly, each enrollment a
-      // new trigger (1, 2, 3…). Every other program stays single-instance.
+      // new trigger (1, 2, 3…). CMP allows one enrollment per sub-program
+      // (SPD, Maternity Program, …). Every other program stays single-instance.
       const isTriggerable = entry.code === 'SNP';
-      if (!isTriggerable && existing.some((p) => p.code === entry.code)) return {};
+      const subProgram = entry.subProgram || null;
+      if (subProgram) {
+        if (existing.some((p) => p.code === entry.code && p.subProgram === subProgram)) return {};
+      } else if (!isTriggerable && existing.some((p) => p.code === entry.code)) return {};
       const trigger = existing.filter((p) => p.code === entry.code).length + 1;
+      const subSlug = subProgram ? subProgram.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null;
       program = {
-        id: isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}`,
+        id: subSlug
+          ? `pcp-${patientId}-${entry.code}-${subSlug}`
+          : isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}`,
         code: entry.code,
-        name: `${entry.name} (${entry.code})`,
+        subProgram,
+        // SNP: what triggered the enrollment and for which plan id (Create SNP Program).
+        triggerType: entry.triggerType || null,
+        triggerDate: entry.triggerDate || null,
+        memberInfo: entry.memberInfo || null,
+        name: subProgram ? `${subProgram} (${entry.code})` : `${entry.name} (${entry.code})`,
         acuity: null,
         status: 'New',
         statusColor: 'var(--primary-300)',
@@ -2091,7 +2163,7 @@ export const useAppStore = create((set, get) => ({
     // Persist. Fire-and-forget — the optimistic local update already
     // rendered the row; a slow network shouldn't block the UI.
     if (program) {
-      supabase.from('patient_care_programs').upsert({
+      const row = {
         id:            program.id,
         patient_id:    patientId,
         code:          program.code,
@@ -2108,6 +2180,7 @@ export const useAppStore = create((set, get) => ({
         med_recon_signed_by:   program.medReconSignedBy || null,
         med_recon_signed_role: program.medReconSignedRole || null,
         med_recon_signed_at:   program.medReconSignedAt || null,
+      };
       // ON CONFLICT DO NOTHING against (patient_id, code): the local guard at
       // the top bails when an enrollment already exists locally, so we only
       // reach here when local state was blind to it. Seed rows carry ids like
@@ -2116,7 +2189,28 @@ export const useAppStore = create((set, get) => ({
       // miss the seed row, INSERT, and trip the (patient_id, code) unique key.
       // DO UPDATE would rewrite the id column and dangle references in
       // care_plan_audit / patient_care_plans / patient_care_plan_versions.
-      }, { onConflict: 'patient_id, code', ignoreDuplicates: true }).select('id').then(({ data, error }) => {
+      // With patient_care_programs_sub_program_migration.sql the key is
+      // (patient_id, code, sub_program), so CMP can hold one row per
+      // sub-program. Until that migration runs, fall back to the old key
+      // (a second CMP sub-program then only saves locally). Each save tries
+      // the key its row most likely needs first, then the other.
+      // The trigger columns come from
+      // patient_care_programs_snp_trigger_migration.sql; until it runs, the
+      // last tries save without them.
+      const trigger = Object.fromEntries(Object.entries({
+        trigger_type: program.triggerType, trigger_date: program.triggerDate, member_info: program.memberInfo,
+      }).filter(([, v]) => v));
+      const upsertSubProgram = (extra) => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...extra, sub_program: program.subProgram || '' }, { onConflict: 'patient_id, code, sub_program', ignoreDuplicates: true })
+        .select('id');
+      const upsertLegacy = (extra) => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...extra }, { onConflict: 'patient_id, code', ignoreDuplicates: true })
+        .select('id');
+      const keyOrder = program.subProgram ? [upsertSubProgram, upsertLegacy] : [upsertLegacy, upsertSubProgram];
+      const tries = Object.keys(trigger).length
+        ? [...keyOrder.map(fn => () => fn(trigger)), ...keyOrder.map(fn => () => fn({}))]
+        : keyOrder.map(fn => () => fn({}));
+      tries.reduce((p, attempt) => p.then(res => (res && !res.error ? res : attempt())), Promise.resolve(null)).then(({ data, error }) => {
         if (error) { console.warn('addCareProgram — insert failed:', error.message); return; }
         // Enrolling is program activity, but only when it really enrolled: a
         // duplicate is ignored above, and logging it anyway filled the log
@@ -5753,6 +5847,8 @@ export const useAppStore = create((set, get) => ({
   // mirrored into the URL (#/settings/care-plan-library/<tab>) so a refresh
   // restores the exact library.
   carePlanTab: 'template',
+  careProgramConfigId: null,     // program type open in Settings > Care Program Configuration
+  careProgramConfigTab: 'overview',
   componentWizardOpen: false,
   componentWizardEditId: null,
   componentPreviewId: null,
@@ -6389,7 +6485,11 @@ export const useAppStore = create((set, get) => ({
   setEmbeddedComponentsTab: (tab) => { set({ embeddedComponentsTab: tab }); updateHash(get); },
   setAccountTab: (tab) => { set({ accountTab: tab }); updateHash(get); },
   setContentTab: (tab) => { set({ contentTab: tab }); updateHash(get); },
-  setCarePlanTab: (tab) => {
+  openCareProgramConfig: (id, tab = 'overview') => {
+    set({ careProgramConfigId: id, careProgramConfigTab: tab });
+    updateHash(get);
+  },
+    setCarePlanTab: (tab) => {
     const from = get().carePlanTab;
     if (from !== tab) track('nav.tab_changed', { scope: 'settings', from, to: tab });
     set({ carePlanTab: tab });
@@ -11009,6 +11109,84 @@ export const useAppStore = create((set, get) => ({
       .update({ support_status: newStatus })
       .eq('id', id);
     if (error) console.warn('Failed to update JSA status:', error.message);
+  },
+
+  // ── CMP (Care Management Program) worklist: same shape as the JSA slice,
+  // backed by cmp_members (supabase/cmp_members_migration.sql). Falls back to
+  // the local mock until that table exists and is seeded.
+  cmpMembers: [],
+  cmpMembersLoading: false,
+  cmpMembersDidFetch: false,
+  fetchCmpMembers: async () => {
+    if (useAppStore.getState().cmpMembersDidFetch) return;
+    set({ cmpMembersDidFetch: true, cmpMembersLoading: true });
+
+    const { data, error } = await supabase
+      .from('cmp_members')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      console.warn('fetchCmpMembers error or empty, falling back to local mock:', error?.message);
+      const { CMP_MEMBERS } = await import('../features/cmp-worklist/data/mock');
+      set({
+        cmpMembers: CMP_MEMBERS,
+        cmpMembersLoading: false,
+        ...(error ? { cmpMembersDidFetch: false } : {}),
+      });
+      return;
+    }
+
+    set({
+      cmpMembers: data.map(m => ({
+        id: m.id,
+        patientId: m.patient_id,
+        memberId: m.member_id,
+        subProgram: m.sub_program,
+        name: m.name,
+        in: m.initials,
+        g: m.gender,
+        age: m.age,
+        dob: m.dob,
+        language: m.language || 'en',
+        progSubStatus: m.program_sub_status,
+        carePlanStatus: m.care_plan_status,
+        nextActionDue: m.next_action_due,
+        programStartDate: m.program_start_date,
+        programDueDate: m.program_due_date,
+        outreach: m.outreach ?? 0,
+        lastOutreach: m.last_outreach,
+        assignee: m.assignee,
+        assigneeIn: m.assignee_initials,
+        ri: m.risk_level,
+        task: m.tasks ?? 0,
+      })),
+      cmpMembersLoading: false,
+    });
+  },
+  cmpFilters: hydrateListFilters('CMP'),
+  setCmpFilter: (k, vals) => set(s => {
+    const next = { ...s.cmpFilters };
+    if (!vals || vals.length === 0) delete next[k];
+    else next[k] = vals;
+    return { cmpFilters: next };
+  }),
+  clearCmpFilters: () => set(s => ({ cmpFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'CMP') })),
+  selectedCmpIds: [],
+  selectCmpMember: (id) => set(s => ({
+    selectedCmpIds: s.selectedCmpIds.includes(id)
+      ? s.selectedCmpIds.filter(x => x !== id)
+      : [...s.selectedCmpIds, id],
+  })),
+  selectAllCmp: (ids) => set({ selectedCmpIds: ids }),
+  clearCmpSelected: () => set({ selectedCmpIds: [] }),
+  updateCmpMemberStatus: async (id, newStatus) => {
+    set(s => ({ cmpMembers: s.cmpMembers.map(m => (m.id === id ? { ...m, progSubStatus: newStatus } : m)) }));
+    const { error } = await supabase
+      .from('cmp_members')
+      .update({ program_sub_status: newStatus })
+      .eq('id', id);
+    if (error) console.warn('Failed to update CMP status:', error.message);
   },
 
   selectedHccIds: [],
@@ -15689,6 +15867,22 @@ export const useAppStore = create((set, get) => ({
       return false;
     }
     return true;
+  },
+
+  // The response saved under one session (e.g. a patient program's Snapshot,
+  // session `snapshot:<patientId>:<programId>`), or null.
+  fetchFormResponseBySession: async (formId, sessionId) => {
+    if (!formId || !sessionId || (typeof formId === 'string' && formId.startsWith('local-'))) return null;
+    const { data, error } = await supabase
+      .from('form_responses').select('id, answers, completed_at, created_at')
+      .eq('form_id', formId).eq('session_id', sessionId)
+      .order('created_at', { ascending: false }).limit(1);
+    if (error) {
+      console.warn('fetchFormResponseBySession:', error.message);
+      return null;
+    }
+    const row = data?.[0];
+    return row ? { id: row.id, answers: row.answers || {}, savedAt: row.completed_at || row.created_at } : null;
   },
 
   // All responses for a form (newest first), with the submitter's name when the
