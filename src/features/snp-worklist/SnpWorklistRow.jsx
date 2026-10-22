@@ -196,7 +196,7 @@ export const SNP_MIDDLE_COLUMNS = [
             patientName: m.name,
             // Patient context for the drawer's banner.
             patient: { initials: m.initials, name: m.name, gender: m.gender, age: m.age, memberId: m.memberId },
-            program: { id: m.programId, code: 'SNP', name: 'SNP Care Program' },
+            program: { id: m.programId, code: 'SNP', name: 'Special Needs Plan' },
           })}
           aria-label={`Review ${m.name}'s ${m.carePlanStatus.toLowerCase()} care plan`}
         >
