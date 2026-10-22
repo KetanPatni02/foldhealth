@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { MenuPopover } from '../MenuPopover/MenuPopover';
 import { Switch } from '../Switch/Switch';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Icon } from '../Icon/Icon';
 import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
+import { LinkHighlightTextarea } from '../Textarea/Textarea';
 import styles from './MessageComposer.module.css';
 
 /**
@@ -11,6 +12,10 @@ import styles from './MessageComposer.module.css';
  * Internal toggle and tool icons on top, the message line with Send and
  * Schedule beside it, "Press Enter to send" and Archive on send below.
  * Internal on turns the box orange: the message is for staff only.
+ *
+ * The box grows with its text up to 150px, then scrolls; that includes text
+ * set from outside (e.g. a form link added by a drawer) and shrinking back
+ * after Send. Web links in it show blue and underlined.
  *
  * @param {object}   props
  * @param {string}   props.value
@@ -32,6 +37,8 @@ import styles from './MessageComposer.module.css';
  *   (Figma Communications 1:36070); Send goes out with them
  * @param {(id: string) => void} [props.onRemoveAttachment]
  */
+const MAX_BOX_HEIGHT = 150;
+
 export function MessageComposer({
   value,
   onChange,
@@ -55,10 +62,14 @@ export function MessageComposer({
   const uploading = attachments.some(a => a.uploading);
   const canSend = !disabled && !sending && !uploading && (value.trim().length > 0 || attachments.length > 0);
 
+  // Grows with the text up to MAX_BOX_HEIGHT, then scrolls.
   const grow = (el) => {
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, MAX_BOX_HEIGHT)}px`;
   };
+  // Also when the text is set from outside (a form link added, a draft
+  // cleared after Send), not only while typing.
+  useLayoutEffect(() => { if (ref.current) grow(ref.current); }, [value]);
 
   const send = () => {
     if (!canSend) return;
@@ -83,7 +94,8 @@ export function MessageComposer({
 
       <div className={styles.row}>
         <div className={styles.boxWrap}>
-          <textarea
+          {/* Links in the text show blue and underlined. */}
+          <LinkHighlightTextarea
             ref={ref}
             className={styles.box}
             rows={1}

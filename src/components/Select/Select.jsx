@@ -16,6 +16,17 @@ import styles from './Select.module.css';
  * Props:
  *  - options    [{ value: string, label: string, disabled?: boolean, icon?: string }]
  *                 (`icon`: a Solar icon shown before the option's label)
+ *                 Options may also carry `badgeTooltip` (node): shown on hovering the
+ *                 option's chip when `multiple` + `badges`; and `triggerLabel`, the
+ *                 name shown for the pick (chip text, or the open field's hint) when
+ *                 `label` is a node or `searchText` has extra words (e.g. an email).
+ *  - multiple + badges: picks show as chips on one line; those that don't
+ *                 fit fold into a "+N" chip (hover lists them). Searchable, the
+ *                 field stays one line while open too: chips first, then the
+ *                 search, with no placeholder once something is picked.
+ *                 Removing a chip keeps the menu open.
+ *  - showInfo + infoText: an (i) beside the label with `infoText` in a
+ *                 Tooltip on hover.
  *  - emptyText  (string | (query) => string) — shown when nothing matches; a
  *                 function gets what was typed, for "No users match "x" …"
  *  - value      (string)
@@ -243,8 +254,10 @@ export function Select({
   // Searchable: the field is a combobox you type into (no search box in
   // the menu). Closed it shows the pick like any Select; a click, Enter,
   // ArrowDown or a typed character opens it for typing.
+  // What the open field shows for the current pick: its display name, not
+  // the extra words it's searchable by (e.g. an email address).
   const selectedText = !multiple && selected
-    ? (selected.searchText ?? (typeof selected.label === 'string' ? selected.label : ''))
+    ? (selected.triggerLabel ?? selected.searchText ?? (typeof selected.label === 'string' ? selected.label : ''))
     : '';
   const firstPickable = () => shownOptions.find(o => o.type !== 'header' && !o.disabled);
   const onSearchKeyDown = (e) => {
@@ -296,6 +309,52 @@ export function Select({
       onClick: () => !disabled && setOpen(o => !o),
     };
 
+  // The one-line chip row (as many as fit, then "+N"), shared by the closed
+  // field and the open, searchable one.
+  const badgeRow = (
+    <span ref={badgeRowRef} className={styles.triggerBadges}>
+      {selectedMulti.slice(0, visibleBadgeCount).map(o => {
+        const badge = (
+          <Badge
+            key={o.value}
+            tone="grey"
+            size="S"
+            label={o.triggerLabel ?? o.label}
+            trailingIconElement={<CloseIcon size={12} color="currentColor" />}
+            trailingIconLabel={`Remove ${o.triggerLabel ?? o.label}`}
+            onTrailingIconClick={() => onChange(valueArray.filter(v => v !== o.value))}
+          />
+        );
+        // An option's `badgeTooltip` shows on hovering its chip (e.g. who a recipient is).
+        return o.badgeTooltip
+          ? <Tooltip key={o.value} label={o.badgeTooltip} variant="card" placement="bottom" align="left" raised>{badge}</Tooltip>
+          : badge;
+      })}
+      {hiddenBadges.length > 0 && (
+        <Tooltip
+          label={hiddenBadges.map(o => o.triggerLabel ?? o.label).join(', ')}
+          maxWidth={280}
+        >
+          <Badge tone="grey" size="S" label={`+${hiddenBadges.length}`} />
+        </Tooltip>
+      )}
+      {/* Hidden mirror of the full set (plus a worst-case "+N") used
+          only for width measurement. */}
+      <span ref={badgeMeasureRef} className={styles.triggerBadgesMeasure} aria-hidden="true">
+        {selectedMulti.map(o => (
+          <Badge
+            key={o.value}
+            tone="grey"
+            size="S"
+            label={o.triggerLabel ?? o.label}
+            trailingIconElement={<CloseIcon size={12} color="currentColor" />}
+          />
+        ))}
+        <Badge tone="grey" size="S" label={`+${selectedMulti.length}`} />
+      </span>
+    </span>
+  );
+
   const trigger = (
     <div ref={wrapRef} className={[styles.wrap, needsField ? '' : (className || '')].filter(Boolean).join(' ')} style={style}>
       <TriggerTag
@@ -316,7 +375,29 @@ export function Select({
         {leadingIcon && (
           <Icon name={leadingIcon} size={16} color="currentColor" />
         )}
-        {searchable && open ? (
+        {searchable && open && multiple && badges && selectedMulti.length > 0 ? (
+          // Searching a multi-pick with chips: the field stays one line; as
+          // many chips as fit show, the rest fold into "+N", and the search
+          // is typed after them. Removing a chip keeps the menu open.
+          <span className={styles.triggerBadgesOpen}>
+            <span className={styles.triggerBadgesOpenRow} onClick={(e) => e.stopPropagation()}>
+              {badgeRow}
+            </span>
+            <input
+              ref={searchRef}
+              id={triggerId}
+              type="text"
+              role="combobox"
+              aria-expanded={open}
+              aria-autocomplete="list"
+              className={`${styles.triggerInput} ${styles.triggerInputInline}`}
+              aria-label={searchPlaceholder}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={onSearchKeyDown}
+            />
+          </span>
+        ) : searchable && open ? (
           // Searching: type in the field itself; the current pick shows as
           // the placeholder until something is typed.
           <input
@@ -333,41 +414,7 @@ export function Select({
             onKeyDown={onSearchKeyDown}
           />
         ) : multiple && badges && selectedMulti.length > 0 ? (
-          <span ref={badgeRowRef} className={styles.triggerBadges}>
-            {selectedMulti.slice(0, visibleBadgeCount).map(o => (
-              <Badge
-                key={o.value}
-                tone="grey"
-                size="S"
-                label={o.triggerLabel ?? o.label}
-                trailingIconElement={<CloseIcon size={12} color="currentColor" />}
-                trailingIconLabel={`Remove ${o.triggerLabel ?? o.label}`}
-                onTrailingIconClick={() => onChange(valueArray.filter(v => v !== o.value))}
-              />
-            ))}
-            {hiddenBadges.length > 0 && (
-              <Tooltip
-                label={hiddenBadges.map(o => o.triggerLabel ?? o.label).join(', ')}
-                maxWidth={280}
-              >
-                <Badge tone="grey" size="S" label={`+${hiddenBadges.length}`} />
-              </Tooltip>
-            )}
-            {/* Hidden mirror of the full set (plus a worst-case "+N") used
-                only for width measurement. */}
-            <span ref={badgeMeasureRef} className={styles.triggerBadgesMeasure} aria-hidden="true">
-              {selectedMulti.map(o => (
-                <Badge
-                  key={o.value}
-                  tone="grey"
-                  size="S"
-                  label={o.triggerLabel ?? o.label}
-                  trailingIconElement={<CloseIcon size={12} color="currentColor" />}
-                />
-              ))}
-              <Badge tone="grey" size="S" label={`+${selectedMulti.length}`} />
-            </span>
-          </span>
+          badgeRow
         ) : (
           <span className={styles.triggerLabel} style={selected?.style}>
             {multiple
@@ -500,13 +547,15 @@ export function Select({
         <label className={styles.label} htmlFor={triggerId}>
           <span>{label}</span>
           {showInfo && (
-            <Icon
-              name="solar:info-circle-linear"
-              size={12}
-              color="var(--neutral-300)"
-              className={styles.labelInfo}
-              title={infoText}
-            />
+            <Tooltip label={infoText} maxWidth={280}>
+              <Icon
+                name="solar:info-circle-linear"
+                size={12}
+                color="var(--neutral-300)"
+                className={styles.labelInfo}
+                aria-label={infoText}
+              />
+            </Tooltip>
           )}
           {required && <span className={styles.required} aria-hidden="true" />}
         </label>

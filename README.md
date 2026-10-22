@@ -37,6 +37,18 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Verify ID on patient sends (VBC-25597).** Compose Email, New SMS, Send
+  Content, Send Assessment and the thread's new Send Forms / Send Article
+  drawers can protect their links. Ticking "Verify ID" applies the default
+  methods as a one-line summary (Edit to change, Save to fold back); anyone
+  picked who can't pass the methods is named and blocks Send. Links go out as
+  `/#/secure/<token>` links (the verification page isn't built yet), and a
+  protected SMS starts with "You have a secure message from Fold Health."
+- **Record Vitals.** The + on the patient Vitals tab opens Record New Vitals
+  (11 vitals, each showing its last reading). Readings save to
+  `patient_vitals` (`supabase/patient_vitals_migration.sql`) and the Vitals
+  table shows the latest three per vital; vitals with no readings yet show
+  sample history. Shared config: `vitals-labs/vitalsConfig.js`.
 - **Consistent worklist filters.** Gender (Male, Female, Other), Language
   (one searchable list) and Member Status now show the same options on every
   worklist (`src/lib/memberFilters.js`), so SNP and CCM no longer show raw

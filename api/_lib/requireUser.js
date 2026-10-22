@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_PROJECTS } from '../../src/lib/supabaseConfig.js';
 
 /**
  * Gate for serverless routes that send mail or spend on paid APIs.
@@ -12,10 +13,13 @@ import { createClient } from '@supabase/supabase-js';
  * is `apiFetch` in src/lib/apiFetch.js.
  *
  * VITE_SUPABASE_* come first because they name the project the browser signs
- * into; a token from any other project fails verification.
+ * into; a token from any other project fails verification. Without them it
+ * uses the same built-in project as the browser client: dev outside
+ * production, production in production (src/lib/supabaseConfig.js).
  */
-const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const FALLBACK = process.env.NODE_ENV === 'production' ? SUPABASE_PROJECTS.prod : SUPABASE_PROJECTS.dev;
+const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || FALLBACK.url;
+const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || FALLBACK.anonKey;
 
 const supabase = url && key
   ? createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
