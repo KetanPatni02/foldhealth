@@ -57,3 +57,4 @@
   text-align: center;
 }
 .empty p { margin: 0; }
+.factHint { font-size: var(--font-sm); color: var(--neutral-300); }

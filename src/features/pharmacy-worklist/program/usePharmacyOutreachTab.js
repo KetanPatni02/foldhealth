@@ -3,7 +3,7 @@ import { useAppStore } from '../../../store/useAppStore';
 import { useOutreachTab } from '../../patient/left-panel/tabs/outreach/OutreachTab/useOutreachTab';
 import { MEASURE_ORDER } from '../pharmacyWorklist.utils';
 import { schemaOutcomeItems } from '../interventionSchema';
-import { fillEventFor } from '../fillEvents';
+import { fillEventFor, setsRecentFill } from '../fillEvents';
 import { mapOutcomesToIntervention } from '../outcomeMapping';
 import { DEFAULT_CALL_TYPES } from '../../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab.utils';
 
@@ -91,7 +91,13 @@ export function usePharmacyOutreachTab(member, { programCode = 'PHARM', ...optio
       by: first.author,
       note: [...new Set(entries.map(e => e.note).filter(Boolean))].join(' / '),
       measures: entries.map(e => e.programs[0]),
-    }, { pickupCodes: codesWith('pickup'), pendingCodes: codesWith('pending-pickup') });
+    }, {
+      pickupCodes: codesWith('pickup'),
+      pendingCodes: codesWith('pending-pickup'),
+      // Pickup / refill-approved outcomes set each gap's Recent Fill Date.
+      recentFillCodes: entries.filter(e => outcomesOf(e).some(setsRecentFill)).map(e => e.programs[0]),
+      recentFillOutcome: outcomesOf(entries.find(e => outcomesOf(e).some(setsRecentFill)) || first).find(setsRecentFill),
+    });
 
     // Barriers / interventions / results picked as outcomes also go to the
     // Barrier & Intervention log, per measure.

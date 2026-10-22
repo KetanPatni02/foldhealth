@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { applyPendingPickup, applyPickup } from '../../features/pharmacy-worklist/fillEvents';
+import { applyPendingPickup, applyPickup, applyRecentFill, withRecentFill } from '../../features/pharmacy-worklist/fillEvents';
 import { CLAIM_LAG_DAYS, enrichPharmacyMember, parseMdy, reconcileMeasure, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
 
 function rowToMember(r) {
@@ -130,6 +130,23 @@ export function createPharmacyWorklistSlice(set, get) {
       update(id, m => m, [], { t: 'call', title: `Dialed ${who}`, note: number });
     },
 
+    // Recent Fill, edited in Medication Review (one drug) or Gap Closure
+    // (`medId` null: every active drug of the gap). An empty date clears it.
+    // Next fill, Next Fill Due and the projected PDC follow (recomputeMeasure).
+    setPharmacyRecentFill: (id, code, date, medId = null) => {
+      const x = get().pharmacyWorklistMembers.find(m => m.id === id)?.measures.find(y => y.code === code);
+      if (!x) return;
+      const med = medId ? x.medications.find(d => d.id === medId) : null;
+      const prev = med ? med.recentFill : x.medications.find(d => d.recentFill)?.recentFill;
+      update(id, m => ({
+        ...m,
+        measures: m.measures.map(y => (y.code !== code ? y
+          : withRecentFill(y, date || null, { outcome: null, date: todayMdy(), manual: true }, medId))),
+      }), ['measures'], {
+        t: 'note', title: `${code} recent fill edited${med ? ` · ${med.name}` : ''}`, note: `${prev || '—'} → ${date || '—'}`,
+      });
+    },
+
     // Per-gap status. A hand-picked status overrides the one derived from
     // fills and claims; null hands it back to the data.
     setPharmacyGapStatus: (id, code, status) => {
@@ -216,12 +233,16 @@ export function createPharmacyWorklistSlice(set, get) {
     // per outreach. Pickup outcomes ripple into the record: the measure turns
     // pickup-confirmed and each medication's fill dates move (applyPickup);
     // "Pending — Pick up" marks the measure pending pickup.
-    logPharmacyOutreach: (memberRowId, entry, { pickupCodes = [], pendingCodes = [] } = {}) => {
+    logPharmacyOutreach: (memberRowId, entry, { pickupCodes = [], pendingCodes = [], recentFillCodes = [], recentFillOutcome = null } = {}) => {
       update(memberRowId, m => {
         let measures = m.measures;
         let changes = [];
         if (pickupCodes.length) ({ measures, changes } = applyPickup({ ...m, measures }, pickupCodes, entry.date, 'Pickup confirmed by call'));
         if (pendingCodes.length) measures = applyPendingPickup({ ...m, measures }, pendingCodes, entry.date);
+        if (recentFillCodes.length) {
+          measures = applyRecentFill({ ...m, measures }, recentFillCodes, entry.date, recentFillOutcome);
+          changes.push(`Recent fill date ${entry.date} (${recentFillCodes.join(', ')})`);
+        }
         // Same rule as a verification call: every open measure picked up →
         // Completed; any outreach on an Open gap moves it to In Progress.
         const allPickedUp = pickupCodes.length > 0 && measures

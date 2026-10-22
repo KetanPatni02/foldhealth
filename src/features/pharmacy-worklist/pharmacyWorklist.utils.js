@@ -9,6 +9,16 @@ export const MEASURE_NAMES = {
   MAC: 'Medication Adherence for Cholesterol (Statins)',
 };
 
+// PDC to act on: projected with a recent fill once one is confirmed,
+// otherwise the plan's.
+export const effectivePdc = (x) => x?.pdcProjected ?? x?.pdc ?? null;
+
+// A gap's Recent Fill: the latest confirmed fill across its active drugs.
+export function gapRecentFill(x) {
+  return (x.medications || []).filter(d => d.status !== 'Discontinued' && d.recentFill)
+    .reduce((best, d) => (!best || parseMdy(d.recentFill) > parseMdy(best.recentFill) ? d : best), null);
+}
+
 export const medLabel = (d) => `${d.name} ${d.strength} ${d.unit}`;
 export const measureDrugs = (x) => (x.medications || []).map(medLabel).join(', ');
 
@@ -50,7 +60,7 @@ export function mostUrgentMeasure(measures, statuses) {
     const fa = parseMdy(a.failDate) ?? Infinity;
     const fb = parseMdy(b.failDate) ?? Infinity;
     if (fa !== fb) return fa - fb;
-    return (a.pdc ?? 101) - (b.pdc ?? 101);
+    return (effectivePdc(a) ?? 101) - (effectivePdc(b) ?? 101);
   })[0] || null;
 }
 
@@ -59,7 +69,8 @@ export function mostUrgentMeasure(measures, statuses) {
 export function derivePriority(measure) {
   if (!measure) return 'P3';
   const days = daysFromToday(measure.failDate);
-  const lowPdc = measure.pdc != null && measure.pdc <= 90;
+  const pdc = effectivePdc(measure);
+  const lowPdc = pdc != null && pdc <= 90;
   let score = 0;
   if (days != null && days <= 14) score += 2;
   else if (days != null && days <= 45) score += 1;
@@ -183,7 +194,8 @@ function measureSubStatus(x, callHistory) {
   if (fillDueTone(x.nextFillDue) === 'error') {
     return { label: 'Refill overdue', detail: `Next fill ${-daysFromToday(x.nextFillDue)}d overdue` };
   }
-  if (x.pdc != null && x.pdc < 80) return { label: 'Low PDC', detail: `PDC ${x.pdc}% is below 80%` };
+  const pdc = effectivePdc(x);
+  if (pdc != null && pdc < 80) return { label: 'Low PDC', detail: `${x.pdcProjected != null ? 'Projected PDC' : 'PDC'} ${pdc}% is below 80%` };
   if (!x.nextFillDue) return { label: 'No fill data', detail: 'No fill date on file' };
   const due = daysFromToday(x.nextFillDue);
   if (due <= REFILL_DUE_DAYS) return { label: 'Refill due', detail: `Next fill due ${x.nextFillDue} (${due === 0 ? 'today' : `in ${due}d`})` };
@@ -318,7 +330,7 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
   const otherCareGaps = hedisGapsByMember?.get(normMemberId(m.memberId || m.id)) ?? m.otherCareGaps ?? [];
   const gaps = measureCodes.map(code => {
     const x = m.measures.find(y => y.code === code);
-    return { ...x, medications: x.medications || [], startDate: gapStartDate(x), status: statuses[code], recon: reconcileMeasure(x) };
+    return { ...x, medications: x.medications || [], pdcPlan: x.pdc, pdc: effectivePdc(x), startDate: gapStartDate(x), status: statuses[code], recon: reconcileMeasure(x) };
   });
   return {
     ...m,
@@ -331,7 +343,7 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
     otherCareGapsCount: otherCareGaps.length,
     priority,
     priorityRank: priorityRank(priority),
-    pdc: urgent?.pdc ?? null,
+    pdc: effectivePdc(urgent),
     failDate: urgent?.failDate ?? null,
     failDateSort: parseMdy(urgent?.failDate),
     nextFillDue: urgent?.nextFillDue ?? null,
