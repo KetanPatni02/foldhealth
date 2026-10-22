@@ -157,9 +157,11 @@ export function ProgramDetailViewContentHeader({
           <div className={styles.assessmentHeader}>
             <div className={styles.assessmentHeaderText}>
               <span className={styles.assessmentTitle}>{assessmentCfg.title}</span>
-              <span className={styles.assessmentMeta}>
-                Filled by {assessmentCfg.filledBy} on {assessmentCfg.filledDate} • Reviewed by {assessmentCfg.reviewedBy} on {assessmentCfg.reviewedDate}
-              </span>
+              {assessmentCfg.filledBy && (
+                <span className={styles.assessmentMeta}>
+                  Filled by {assessmentCfg.filledBy} on {assessmentCfg.filledDate} • Reviewed by {assessmentCfg.reviewedBy} on {assessmentCfg.reviewedDate}
+                </span>
+              )}
             </div>
           </div>
         ) : isMedReconStep ? (

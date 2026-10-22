@@ -52,6 +52,12 @@
   transition: background 0.12s;
 }
 .row:hover { background: var(--neutral-50); }
+/* Not pickable (e.g. a program the member already has): grey label and a
+   filled grey radio. */
+.rowDisabled { cursor: default; }
+.rowDisabled:hover { background: none; }
+.rowDisabled .label { color: var(--neutral-200); }
+.rowDisabled .radio { border-color: var(--neutral-100); background: var(--neutral-100); }
 
 .label {
   flex: 1;

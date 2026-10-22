@@ -30,6 +30,10 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   // Step definitions only; each step's status is worked out per patient below.
   // Patient-level orgs keep the care plan in Care Management, not here.
   const programCarePlan = showsProgramCarePlan(useAppStore(s => s.carePlanMode));
+  // Steps come from Care Program Configuration once it has loaded; a change there redraws them.
+  const programTypes = useAppStore(s => s.careProgramTypes);
+  const fetchCareProgramTypes = useAppStore(s => s.fetchCareProgramTypes);
+  useEffect(() => { fetchCareProgramTypes?.(); }, [fetchCareProgramTypes]);
   const stepsForProgram = (code) => (programCarePlan ? stepsFor(code) : withoutCarePlanStep(stepsFor(code)));
   const baseStepList = stepsForProgram(program.code);
   const ALL_STEPS = flatSteps(baseStepList);
@@ -40,7 +44,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   // this program falls back to the program's default step.
   const storedStep = useAppStore(s => s.careProgramStep);
   const setActiveStep = useAppStore(s => s.setCareProgramStep);
-  const defaultStep = isCcm ? 'ccm-billing' : firstStep?.id;
+  const defaultStep = isCcm && ALL_STEPS.some(st => st.id === 'ccm-billing') ? 'ccm-billing' : firstStep?.id;
   const activeStep = (storedStep && ALL_STEPS.some(s => s.id === storedStep)) ? storedStep : defaultStep;
   const [expandedSections, setExpandedSections] = useState({});
   const [activeLetterTab, setActiveLetterTab] = useState('All');
@@ -199,7 +203,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
     step.type === 'section'
       ? { ...step, children: step.children.map(c => ({ ...c, ...deriveStepStatus(c, stepCtx) })) }
       : { ...step, ...deriveStepStatus(step, stepCtx) }
-  )), [program.code, stepCtx, programCarePlan]); // eslint-disable-line react-hooks/exhaustive-deps
+  )), [program.code, stepCtx, programCarePlan, programTypes]); // eslint-disable-line react-hooks/exhaustive-deps
   const programProgress = programProgressOf(flatSteps(stepList));
 
   // Keep the enrollment's stored progress in step, so the program list and
@@ -258,7 +262,8 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   };
   const stepName = activeStepObj?.name || '';
   const isMandatoryStep = !!activeStepObj?.mandatory;
-  const assessmentCfg = ASSESSMENT_STEPS[stepName];
+  // Built-in assessments, or one linked from the Forms library in Care Program Configuration.
+  const assessmentCfg = ASSESSMENT_STEPS[stepName] || (activeStepObj?.formId ? { formName: stepName, title: stepName } : undefined);
 
   const activeStepIdx = ALL_STEPS.findIndex(s => s.id === activeStep);
   const nextStep = activeStepIdx >= 0 && activeStepIdx < ALL_STEPS.length - 1 ? ALL_STEPS[activeStepIdx + 1] : null;

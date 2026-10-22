@@ -6,6 +6,7 @@ export const LIST_FILTER_KEY = {
   AWV: 'awvFilters',
   JSA: 'jsaFilters',
   CCM: 'ccmFilters',
+  CMP: 'cmpFilters',
 };
 
 export function detachSaved(activeSavedIdByList, list) {
