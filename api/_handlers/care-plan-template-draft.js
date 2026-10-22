@@ -12,6 +12,7 @@
 
 import { geminiGenerateContent } from '../_lib/googleGemini.js';
 import { requireUser } from '../_lib/requireUser.js';
+import { bodyWithinLimit } from '../_lib/limits.js';
 import {
   TEMPLATE_DESCRIPTION_MAX,
   TEMPLATE_DRAFT_SCHEMA,
@@ -29,8 +30,11 @@ export default async function handler(req, res) {
 
   const key = process.env.GOOGLE_AI_API_KEY;
   if (!key) {
-    return res.status(500).json({ error: { message: 'AI drafting is not set up on this deployment (GOOGLE_AI_API_KEY is missing).' } });
+    return res.status(500).json({ error: { message: 'AI drafting is not set up on this deployment.' } });
   }
+
+  // The library catalog rides along, so allow more than the default cap.
+  if (!bodyWithinLimit(req, res, 200 * 1024)) return;
 
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const description = typeof body.description === 'string' ? body.description.trim() : '';

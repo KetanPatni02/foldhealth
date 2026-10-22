@@ -18,6 +18,7 @@ import {
 } from '../../../data/embeddedComponents';
 import s from './EmbeddedComponents.module.css';
 import g from '../agents/goals/GoalsPanel.module.css';
+import { embedUrl } from './embedUrl';
 
 const STEPS = ['Configure', 'Surfaces', 'Preview'];
 
@@ -601,7 +602,7 @@ function StepSurfaces({ data, onChange }) {
 function StepContext({ data, onChange }) {
   const activeDomains = DOMAINS.filter(d => d.status === 'active');
   const selectedDomain = activeDomains.find(d => d.id === data.domainId);
-  const fullUrl = selectedDomain ? `https://${selectedDomain.domain}${data.url}` : '';
+  const fullUrl = selectedDomain ? embedUrl(selectedDomain.domain, data.url) : '';
   const selectedFieldCount = data.contextFields.length;
   const totalFieldCount = CONTEXT_FIELDS.length;
 
@@ -687,7 +688,7 @@ function StepContext({ data, onChange }) {
 function StepConfigure({ data, onChange, embedDomains }) {
   const activeDomains = (embedDomains && embedDomains.length > 0 ? embedDomains : DOMAINS).filter(d => d.enabled !== false && d.status !== 'removed');
   const selectedDomain = activeDomains.find(d => d.id === data.domainId);
-  const fullUrl = selectedDomain ? `https://${selectedDomain.domain}${data.url}` : '';
+  const fullUrl = selectedDomain ? embedUrl(selectedDomain.domain, data.url) : '';
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   return (
@@ -818,7 +819,7 @@ function StepConfigure({ data, onChange, embedDomains }) {
 function StepPreview({ data, onChange, embedDomains }) {
   const allDomains = (embedDomains && embedDomains.length > 0) ? embedDomains : DOMAINS;
   const selectedDomain = allDomains.find(d => d.id === data.domainId);
-  const fullUrl = selectedDomain ? `https://${selectedDomain.domain}${data.url}` : '';
+  const fullUrl = selectedDomain ? embedUrl(selectedDomain.domain, data.url) : '';
   const selectedFieldCount = data.contextFields.length;
   const totalFieldCount = CONTEXT_FIELDS.length;
   const [iframeLoading, setIframeLoading] = useState(true);

@@ -316,6 +316,14 @@ export function AppLayout() {
       const names = { first_name: firstName, last_name: lastName, full_name: fullName };
       const identity = { id: user.id, email: user.email, updated_at: new Date().toISOString() };
 
+      // Skip the write when this browser already synced these exact values.
+      // Every profiles write is a realtime event that makes each open
+      // Messages tab in the org re-read all profiles, so an unconditional
+      // write per page load fanned out across everyone.
+      const syncKey = `fold:profileSynced:${user.id}`;
+      const fingerprint = JSON.stringify([user.email, fullName, firstName, lastName]);
+      try { if (localStorage.getItem(syncKey) === fingerprint) return; } catch { /* storage blocked */ }
+
       // Write first, ask questions only if it missed. This was a
       // `select id` → then `update` or `insert`, i.e. two serialized round
       // trips on every single page load to do what is almost always one
@@ -347,6 +355,9 @@ export function AppLayout() {
           ...names,
           status: 'Active',
         });
+      }
+      if (updated?.length) {
+        try { localStorage.setItem(syncKey, fingerprint); } catch { /* storage blocked */ }
       }
     });
   }, []);

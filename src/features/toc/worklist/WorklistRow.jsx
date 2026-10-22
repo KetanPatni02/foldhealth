@@ -13,6 +13,7 @@ import { OutreachPopover } from '../../../components/OutreachPopover/OutreachPop
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../../store/useAppStore';
+import { LiveCallDuration } from './LiveCallDuration';
 import { FoldIdTag } from '../../../components/FoldIdTag/FoldIdTag';
 import { platformUsersForAssigneePicker } from '../../../lib/worklistAssignee';
 import styles from './WorklistRow.module.css';
@@ -182,7 +183,7 @@ export const WORKLIST_MIDDLE_COLUMNS = [
           {p.onCall ? (
             <span className={styles.outreachOncall}>
               <Icon name="solar:phone-calling-bold" size={14} />
-              On Call: {p.callDuration}
+              On Call: <LiveCallDuration patient={p} />
             </span>
           ) : (
             <span className={styles.outreachTime}>

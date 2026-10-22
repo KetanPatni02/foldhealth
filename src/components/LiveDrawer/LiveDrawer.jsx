@@ -5,12 +5,12 @@ import { Drawer } from '../Drawer/Drawer';
 import { ComplianceBadges } from '../ComplianceBadges/ComplianceBadges';
 import { DepartmentSelector, TransferringState, TransferFailure, NoHumanAvailable, CallbackOffer, PostTransferFeedback } from '../TransferFlow/TransferFlow';
 import { useAppStore } from '../../store/useAppStore';
+import { LiveCallDuration } from '../../features/toc/worklist/LiveCallDuration';
 import styles from './LiveDrawer.module.css';
 
 export function LiveDrawer() {
-  const liveDrawerPatient = useAppStore(s => s.liveDrawerPatient);
   const closeLiveDrawer = useAppStore(s => s.closeLiveDrawer);
-  const patients = useAppStore(s => s.patients);
+  const p = useAppStore(s => s.patients.find(x => x.id === s.liveDrawerPatient));
   const callDetails = useAppStore(s => s.callDetails);
   const showToast = useAppStore(s => s.showToast);
   const [listenActive, setListenActive] = useState(false);
@@ -20,7 +20,6 @@ export function LiveDrawer() {
   const [transferState, setTransferState] = useState(null);
   const [transferDept, setTransferDept] = useState(null);
 
-  const p = patients.find(x => x.id === liveDrawerPatient);
   if (!p) return null;
 
   // Resolve call data from call_details (ongoing record) with fallback to patient fields
@@ -51,7 +50,7 @@ export function LiveDrawer() {
               <span className={styles.dot}>•</span>
               <span className={styles.callLine1Detail}>{p.name}</span>
               <span className={styles.dot}>•</span>
-              <span className={styles.callTimer}>{p.callDuration || '00:00'}</span>
+              <span className={styles.callTimer}><LiveCallDuration patient={p} /></span>
             </div>
             <div className={styles.callLine2}>
               Via: <Icon name="solar:bot-bold" size={13} color="var(--primary-300)" /> {p.agentAssigned || 'Anna'} → To: {p.name}

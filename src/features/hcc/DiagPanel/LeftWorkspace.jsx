@@ -30,6 +30,7 @@ import { normalizeRole } from '../reviewedBy';
 import { SYSTEM_USERS } from '../systemUsers';
 import { OutreachTab as PatientOutreachTab } from '../../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
 import { DocEvidenceViewer } from './DocEvidenceViewer';
+import { openStoredLink } from '../../../lib/openSafeUrl';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
 import { commentAuthorLabel, currentAuthor, isCommentMine, mentionProfileIds } from './commentAuthor';
@@ -1361,7 +1362,7 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
                       className={styles.docsTabExternalLink}
                       aria-label={`Open ${d.name} in a new tab`}
                       title="Open in new browser tab"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); openStoredLink(e, d.pdf); }}
                     >
                       <Icon name="solar:square-top-down-linear" size={12} color="currentColor" />
                     </a>

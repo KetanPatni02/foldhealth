@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import * as Sentry from '@sentry/react'
+// Named imports, not `import * as Sentry`: holding the namespace kept Replay
+// and Feedback in the entry chunk even though neither is used.
+import { init as initSentry, browserTracingIntegration, addBreadcrumb } from '@sentry/react'
 import './styles/tailwind.css'
 import './index.css'
 import App from './App.jsx'
@@ -29,14 +31,14 @@ const isDeployedProd =
   !['localhost', '127.0.0.1'].includes(window.location.hostname)
 
 if (isDeployedProd) {
-  Sentry.init({
+  initSentry({
     dsn: 'https://2d5be2c606f585f9dd1fdfe9b23ae274@o4511450529529856.ingest.us.sentry.io/4511450531037184',
     environment: 'production',
     // Route envelopes through our own /api/monitoring function so requests
     // leave the browser as a same-origin path. Bypasses ad/privacy blockers
     // that match the public *.ingest.sentry.io host.
     tunnel: '/api/monitoring',
-    integrations: [Sentry.browserTracingIntegration()],
+    integrations: [browserTracingIntegration()],
     tracesSampleRate: 1.0,
     // v11 collects request/response bodies by default. Those are Supabase
     // rows with patient data here, so keep them out of Sentry.
@@ -70,7 +72,7 @@ if (isDeployedProd) {
     ],
   })
   // track() adds its events as breadcrumbs once Sentry is running.
-  attachSentry(Sentry)
+  attachSentry({ addBreadcrumb })
 }
 
 // Initialize theme subsystem before first render.

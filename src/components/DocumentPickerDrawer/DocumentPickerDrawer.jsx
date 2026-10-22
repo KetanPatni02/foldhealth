@@ -9,6 +9,7 @@ import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
 import { DocumentUploadForm } from '../DocumentUploadForm/DocumentUploadForm';
 import { useDocumentUploadForm } from '../DocumentUploadForm/useDocumentUploadForm';
 import styles from './DocumentPickerDrawer.module.css';
+import { openSafeUrl } from '../../lib/openSafeUrl';
 
 const LAST_UPDATE_OPTIONS = [
   { label: 'Last 7 Days', days: 7 },
@@ -214,7 +215,7 @@ export function DocumentPickerDrawer({ documents = [], alreadyAdded = [], onAdd,
                         icon="solar:eye-linear"
                         tooltip={r.url ? 'Preview' : 'Preview not available'}
                         state={r.url ? 'active' : 'disabled'}
-                        onClick={() => { if (r.url) window.open(r.url, '_blank', 'noopener'); }}
+                        onClick={() => { if (r.url) openSafeUrl(r.url, 'noopener'); }}
                       />
                     </div>
                   </td>

@@ -31,8 +31,8 @@ import { supabase } from './supabase';
 
 const isDev = import.meta.env.DEV;
 
-// Sentry is loaded lazily on the deployed site only (see main.jsx), so it is
-// handed in here instead of imported, which would pull it into the entry chunk.
+// Sentry only runs on the deployed site (see main.jsx), which hands in the
+// one function used here once it has initialized.
 let sentry = null;
 export function attachSentry(s) {
   sentry = s;

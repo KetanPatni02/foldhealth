@@ -19,6 +19,7 @@ import { resolvePerformedByLabel, LOCATION_OPTIONS as DSF_LOCATIONS } from './ds
 import { getItems, getResponseScale, totalScore, isPhq2Positive, phq9Branch, phq9BandLabel } from './dsf/dsfScoring';
 import { DSF_CARE_PLANS } from './dsf/dsfCarePlans';
 import styles from './ClinicalNotePreviewBody.module.css';
+import { openSafeUrl } from '../../lib/openSafeUrl';
 
 // Platform-wide date display is MM/DD/YYYY. Values come off the form as
 // either an ISO YYYY-MM-DD string (native <input type="date">) or a Date-
@@ -142,7 +143,7 @@ export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
             <div key={doc.id || i} className={styles.docRow}>
               <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
               <span className={styles.docName}>{doc.filename || 'Uploaded Document'}</span>
-              <button type="button" className={styles.docAction} onClick={() => { const w = window.open(doc.url, '_blank'); try { w?.focus(); } catch {} }}>
+              <button type="button" className={styles.docAction} onClick={() => openSafeUrl(doc.url)}>
                 <Icon name="solar:eye-linear" size={16} color="var(--neutral-400)" />
               </button>
             </div>

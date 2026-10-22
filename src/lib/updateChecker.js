@@ -108,7 +108,9 @@ export function startUpdateChecker() {
     if (remote && remote.version !== localVersion) markNewBuild(remote);
   };
   check();
-  setInterval(check, POLL_MS);
+  // Background tabs skip the poll; the visibilitychange check below catches
+  // up the moment the tab is looked at again.
+  setInterval(() => { if (!document.hidden) check(); }, POLL_MS);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) check();
   });

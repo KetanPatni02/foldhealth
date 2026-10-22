@@ -8,6 +8,7 @@ import { ClinicalNotePreviewBody } from '../hedis-worklist/ClinicalNotePreviewBo
 import { ClinicalNoteVersionsDrawer } from './ClinicalNoteVersionsDrawer';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './TasksView.module.css';
+import { openSafeUrl } from '../../lib/openSafeUrl';
 
 /**
  * ClinicalNotePreviewDrawer — read-only linked-note preview shell.
@@ -97,7 +98,7 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
                 tooltip="Print"
                 onClick={() => {
                   const url = note.pdfDataUrl;
-                  if (url) { const w = window.open(url, '_blank'); try { w?.focus(); } catch { /* */ } }
+                  if (url) openSafeUrl(url);
                   else showToast?.('No PDF for this version');
                 }}
               />

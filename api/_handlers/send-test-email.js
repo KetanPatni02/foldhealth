@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { requireUser } from '../_lib/requireUser.js';
+import { bodyWithinLimit } from '../_lib/limits.js';
 import { addressList, isEmail, headerText, isSafeHttpsUrl, MAX_RECIPIENTS } from '../_lib/validate.js';
 
 const resend = process.env.RESEND_API_KEY
@@ -17,6 +18,8 @@ export default async function handler(req, res) {
     console.error('[send-test-email] RESEND_API_KEY is not set');
     return res.status(500).json({ error: { message: 'Email sending is not configured.' } });
   }
+
+  if (!bodyWithinLimit(req, res, 512 * 1024)) return;
 
   const { subject, html, fromName, listUnsubscribe } = req.body || {};
   const to = addressList(req.body?.to);

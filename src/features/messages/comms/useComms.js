@@ -37,7 +37,7 @@ export function useCommsConversations() {
           : upsert(s.conversations, change.row))
           .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)),
       }));
-    }, 'comms-convs');
+    });
     return () => { alive = false; off(); };
   }, [attempt]);
 
@@ -69,7 +69,7 @@ export function useCommsMessages(conversationId) {
         ...s,
         messages: upsert(s.messages, change.row).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
       }));
-    }, `comms-msgs-${conversationId}`);
+    });
     return () => { alive = false; off(); };
   }, [conversationId]);
 
@@ -98,7 +98,7 @@ export function useCommsMessagesFor(conversationIds) {
       }
       if (!ids.includes(change.row.conversation_id)) return;
       setState(s => ({ ...s, messages: upsert(s.messages, change.row) }));
-    }, 'comms-folder');
+    });
     return () => { alive = false; off(); };
   }, [key]);
 

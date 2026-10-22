@@ -130,7 +130,9 @@ CREATE TABLE IF NOT EXISTS hedis_members (
   state             text,
   created_at        timestamptz DEFAULT now()
 );
-ALTER TABLE hedis_members DISABLE ROW LEVEL SECURITY;
+ALTER TABLE hedis_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all" ON hedis_members;
+CREATE POLICY "Allow all" ON hedis_members FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const APCM_DDL = `
@@ -156,7 +158,9 @@ CREATE TABLE IF NOT EXISTS apcm_patients (
   program_id                  text,
   created_at                  timestamptz DEFAULT now()
 );
-ALTER TABLE apcm_patients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE apcm_patients ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all" ON apcm_patients;
+CREATE POLICY "Allow all" ON apcm_patients FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const PATIENT_PROBLEMS_DDL = `
