@@ -1,29 +1,27 @@
 -- Pharmacy patients on HEDIS: Open Care Gaps on a pharmacy row open Care
 -- Gap Details. Run after pharmacy_worklist_sample_refresh_migration.sql.
 --
--- 1. Every pharmacy demo member (19401-19410) gets a patient_registry entry.
--- 2. pharmacy_worklist_members.member_id becomes the Fold ID, as on every
---    other worklist.
+-- 1. Every pharmacy demo member (19401-19410) gets a patient_registry entry
+--    with its own number as the Fold ID. These members were keyed
+--    id = member_id = patient_id = 19401-19410 (a reserved block, like
+--    HEDIS's 19301-19305); letting the registry mint a fresh fold_id would
+--    give the row a Fold ID that no longer matches its patient_id, profile
+--    and programs. fold_id is unique and the sequence is far below 19401.
+-- 2. pharmacy_worklist_members.member_id is left as is: it already is the
+--    Fold ID.
 -- 3. Each member with other care gaps gets a ph-<id> hedis_members row with
 --    the same Fold ID, so the worklist joins the two. Generated from
 --    src/features/hedis-worklist/data/mock.js.
 --
 -- Safe to run more than once: existing registry entries and HEDIS rows are
--- kept, and only rows still on the raw member id are remapped.
+-- kept.
 
 begin;
 
-insert into public.patient_registry (member_id)
-select v.member_id
+insert into public.patient_registry (member_id, fold_id)
+select v.member_id, v.member_id::integer
 from (values ('19401'), ('19402'), ('19403'), ('19404'), ('19405'), ('19406'), ('19407'), ('19408'), ('19409'), ('19410')) as v(member_id)
-on conflict (member_id) do nothing;
-
-update public.pharmacy_worklist_members as m
-set member_id = r.fold_id::text
-from public.patient_registry as r
-where m.id in ('19401', '19402', '19403', '19404', '19405', '19406', '19407', '19408', '19409', '19410')
-  and m.member_id = m.id
-  and r.member_id = lower(trim(m.member_id));
+on conflict do nothing;
 
 insert into public.hedis_members (
   id, initials, name, gender, age, member_id, language, gaps, assignee, assignee_initials,

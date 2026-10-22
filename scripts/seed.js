@@ -769,10 +769,11 @@ function snpWorklistToRow(m, foldIdMap) {
 }
 
 // Mirrors rowToMember in src/store/slices/pharmacyWorklistSlice.js.
-function pharmacyWorklistToRow(m, foldIdMap) {
+function pharmacyWorklistToRow(m) {
   return {
     id:                m.id,
-    member_id:         resolveMemberId(m.memberId, foldIdMap),
+    // Already the Fold ID (reserved block 19401-19410); never re-minted.
+    member_id:         m.memberId ?? null,
     patient_id:        m.patientId ?? null,
     name:              m.name,
     initials:          m.initials ?? null,
@@ -930,12 +931,21 @@ async function main() {
   // Bridge raw payer ids → Fold IDs from patient_registry so worklist rows
   // land with the same identifier the app displays via <FoldIdTag>. Mints
   // fold_ids for any mock member missing from the registry.
-  console.log('\nResolving Fold IDs for HEDIS / CCM / SNP / Pharmacy members...');
+  // The pharmacy members' ids are already Fold IDs (19401-19410) and the
+  // ph- HEDIS rows reuse them, so register them as their own fold_id before
+  // resolveFoldIdMap would mint new ones.
+  await supabase
+    .from('patient_registry')
+    .upsert(
+      PHARMACY_WORKLIST_MEMBERS.map((m) => ({ member_id: m.memberId, fold_id: Number(m.memberId) })),
+      { onConflict: 'member_id', ignoreDuplicates: true },
+    );
+
+  console.log('\nResolving Fold IDs for HEDIS / CCM / SNP members...');
   const foldIdMap = await resolveFoldIdMap(supabase, [
     ...HEDIS_MEMBERS.map((m) => m.memberId),
     ...CCM_WORKLIST_MEMBERS.map((m) => m.memberId),
     ...SNP_WORKLIST_MEMBERS.map((m) => m.memberId),
-    ...PHARMACY_WORKLIST_MEMBERS.map((m) => m.memberId),
   ]);
   console.log(`  ✓ ${foldIdMap.size} Fold IDs available in patient_registry`);
 
@@ -1193,7 +1203,7 @@ async function main() {
 
   console.log('Seeding pharmacy_worklist_members...');
   try {
-    const pharmacyRows = await withoutExistingPeople(supabase, 'pharmacy_worklist_members', PHARMACY_WORKLIST_MEMBERS.map((m) => pharmacyWorklistToRow(m, foldIdMap)));
+    const pharmacyRows = await withoutExistingPeople(supabase, 'pharmacy_worklist_members', PHARMACY_WORKLIST_MEMBERS.map(pharmacyWorklistToRow));
     const { error: pwe } = await supabase
       .from('pharmacy_worklist_members')
       .upsert(pharmacyRows, { onConflict: 'id' });
