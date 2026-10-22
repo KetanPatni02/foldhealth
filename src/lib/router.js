@@ -213,6 +213,15 @@ export function stateToHash(state) {
       const cplTab = state.carePlanTab || 'template';
       return buildHash('settings', 'care-plan-library', CARE_PLAN_TABS.includes(cplTab) ? cplTab : 'template');
     }
+    // Automations: #/settings/automations[/templates]
+    //   …/<id>/edit · …/<id>/analytics[/node] · …/<id>/trace/<runMemberId>
+    if (settingsNavItem === 'automations') {
+      const v = state.automationsView || {};
+      if (v.screen === 'builder' && v.id) return buildHash('settings', 'automations', String(v.id), 'edit');
+      if (v.screen === 'analytics' && v.id) return buildHash('settings', 'automations', String(v.id), 'analytics', v.analyticsTab === 'node' ? 'node' : null);
+      if (v.screen === 'trace' && v.id && v.runMemberId) return buildHash('settings', 'automations', String(v.id), 'trace', String(v.runMemberId));
+      return buildHash('settings', 'automations', v.tab === 'templates' ? 'templates' : null);
+    }
     // Sections without a panel yet still get a real path — clicking them
     // used to fall through to the agents branch, which yanked the user to
     // whatever agents tab was last active. ('agents' itself is excluded —
@@ -479,6 +488,19 @@ export function hashToState(route, state = null) {
       }
       updates.carePlanTab = CARE_PLAN_TABS.includes(route.tab) ? route.tab : 'template';
       updates.carePlanCreateOpen = false;
+      return updates;
+    }
+    if (route.section === 'automations') {
+      updates.settingsNavItem = 'automations';
+      const prev = state?.automationsView || {};
+      // A drawer asked for in state (failure toast) survives the hash sync for the same automation.
+      const keepDrawer = prev.screen === 'analytics' && prev.id === route.tab && route.id === 'analytics';
+      const view = { tab: prev.tab || 'mine', analyticsTab: 'global', runMemberId: null, drawer: keepDrawer ? prev.drawer || null : null };
+      if (route.tab && route.tab !== 'templates' && route.id === 'edit') Object.assign(view, { screen: 'builder', id: route.tab });
+      else if (route.tab && route.id === 'analytics') Object.assign(view, { screen: 'analytics', id: route.tab, analyticsTab: route.sub === 'node' ? 'node' : 'global' });
+      else if (route.tab && route.id === 'trace' && route.sub) Object.assign(view, { screen: 'trace', id: route.tab, runMemberId: route.sub });
+      else Object.assign(view, { screen: 'list', id: null, tab: route.tab === 'templates' ? 'templates' : 'mine' });
+      updates.automationsView = view;
       return updates;
     }
     // Every other known section slug (incl. not-yet-built panels) restores

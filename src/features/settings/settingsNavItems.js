@@ -17,7 +17,7 @@ export const SETTINGS_MENU_ITEMS = [
   { icon: 'solar:watch-square-linear', label: 'Wearables', key: 'wearables' },
   { icon: 'solar:rocket-linear', label: 'Journeys', key: 'journeys' },
   { icon: 'solar:ghost-smile-linear', label: 'Agents', key: 'agents' },
-  { icon: 'solar:bolt-linear', label: 'Automation Rules', key: 'automations' },
+  { icon: 'solar:bolt-linear', label: 'Automations', key: 'automations' },
   { icon: 'solar:library-linear', label: 'Cost Template', key: 'cost-template' },
   { icon: 'solar:user-id-linear', label: 'Memberships', key: 'memberships' },
   { icon: 'solar:bill-list-linear', label: 'Billing', key: 'billing' },

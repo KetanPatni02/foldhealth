@@ -1,7 +1,8 @@
-/* Automation Rules engine: which auto-apply rules match a patient at care
-   program enrollment, and why. Pure JS (no store, no React) so it's tested
-   on its own; the store gathers the inputs and acts on the result
-   (runAutoApplyRules). Rules live in automation_rules (account level).
+/* Clinical criteria: whether a patient's chronic conditions, labs, recent
+   encounters and assessment answers match, and why. The "Patient matches
+   clinical criteria" condition uses it (formerly Settings > Automation Rules;
+   rules now live as automations, see enrollmentRules.js). Pure JS so it's
+   tested on its own; the store gathers the inputs (runAutoApplyRules).
 
    A rule: { id, name, enabled, programCodes: string[] (empty = any),
      match: 'all' | 'any', conditions: Condition[], templateIds, reviewer }

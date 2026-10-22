@@ -1,0 +1,374 @@
+.canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--neutral-25);
+  border: 1px solid var(--neutral-100);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.handle {
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+}
+
+/* ── Start ── */
+.startWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+.start {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--primary-200);
+  border-radius: 8px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font-size: var(--font-sm);
+  white-space: nowrap;
+}
+.collapseAll {
+  position: absolute;
+  top: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+
+/* ── Cards ── */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-hover), opacity var(--duration-base) var(--ease-out);
+}
+.card:hover { border-color: var(--primary-200); }
+.cardMain {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  min-height: 0;
+}
+.iconTile {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+.cardText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+.cardLabel {
+  font-size: var(--font-xs);
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cardSummary {
+  font-size: var(--font-sm);
+  line-height: 1.35;
+  color: var(--neutral-500);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cardEdit {
+  font-size: var(--font-sm);
+  color: var(--primary-300);
+}
+.cardActions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-hover);
+}
+.card:hover .cardActions { opacity: 1; }
+.problemDot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-warning);
+}
+.card:hover .problemDot { opacity: 0; }
+.outcomeFooter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  height: 28px;
+  flex-shrink: 0;
+  border: 0;
+  border-top: 1px solid var(--neutral-100);
+  background: transparent;
+  color: var(--neutral-300);
+  font-size: var(--font-2xs);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+/* Stats (node level, member trace) */
+.cardWithStats .cardMain { padding-left: 0; }
+.statBlock {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 88px;
+  flex-shrink: 0;
+  padding: 0 var(--space-2);
+  border-radius: 7px 0 0 7px;
+  margin: calc(var(--space-3) * -1) 0;
+}
+.statValue { font-size: var(--font-sm); font-weight: 500; }
+.statSub { font-size: var(--font-2xs); opacity: 0.85; }
+.stat_success { background: var(--status-success-light); color: var(--status-success-dark); }
+.stat_error { background: var(--status-error-light); color: var(--status-error-dark); }
+.stat_in_progress { background: var(--status-warning-light); color: var(--status-warning-dark); }
+.stat_not_run { background: var(--neutral-50); color: var(--neutral-300); }
+
+/* States */
+.isSelected { border-color: var(--primary-300); background: var(--primary-25); }
+.isFlagged { border-color: var(--status-error); }
+.isCurrent { border-color: var(--primary-300); }
+.isRunning {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--neutral-0), var(--neutral-0)) padding-box,
+    var(--ai-gradient) border-box;
+}
+.isSuccess { border-color: var(--status-success); }
+.isError { border-color: var(--status-error); }
+.isSkipped { opacity: 0.6; }
+.isPending { opacity: 0.45; }
+.isWaiting { border-color: var(--status-warning); }
+.statusBadge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--neutral-0);
+}
+.badgeSuccess { color: var(--status-success); }
+.badgeError { color: var(--status-error); }
+.badgeSkipped { color: var(--neutral-300); }
+.badgeRunning {
+  color: var(--primary-300);
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .badgeRunning { animation: none; }
+}
+
+/* ── Pills (delay, repeat, AND, OR) ── */
+.pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  padding: 0 var(--space-3);
+  background: var(--neutral-0);
+  border: 1px dashed var(--status-warning);
+  border-radius: 8px;
+  color: var(--neutral-400);
+  font-size: var(--font-sm);
+  cursor: pointer;
+}
+.pillLogic { border-style: solid; border-color: var(--neutral-150); font-weight: 500; }
+.pillText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pillCount {
+  margin-left: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: 10px;
+  background: var(--neutral-50);
+  font-size: var(--font-xs);
+}
+.pillDelete {
+  display: none;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--neutral-0);
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.pill:hover .pillDelete,
+.groupHeader:hover .pillDelete { display: inline-flex; }
+
+/* ── Micro automation ── */
+.groupBox {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--primary-100);
+  background: var(--ai-gradient-light);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.groupHeader {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  color: var(--primary-300);
+  font-size: var(--font-2xs);
+  cursor: pointer;
+}
+.groupLabel { text-transform: uppercase; letter-spacing: 0.04em; }
+.groupTitle {
+  color: var(--neutral-400);
+  font-size: var(--font-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.groupTitle::before { content: '·'; margin: 0 var(--space-1); color: var(--neutral-200); }
+
+/* ── Outcome chips ── */
+.chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  color: var(--neutral-400);
+  font-size: var(--font-xs);
+  white-space: nowrap;
+}
+.chip :global(svg) { color: var(--accent-amber); }
+.chipCount {
+  padding: 0 var(--space-2);
+  border-radius: 10px;
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+}
+
+/* ── "+" slots ── */
+.slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1px dashed var(--neutral-200);
+  border-radius: 50%;
+  background: var(--neutral-0);
+  color: var(--neutral-300);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-hover), transform var(--duration-fast) var(--ease-out);
+}
+.slot:hover { border-color: var(--primary-300); color: var(--primary-300); }
+.slotSelected { border-style: solid; border-color: var(--primary-300); color: var(--neutral-0); background: var(--primary-300); }
+.slotLive { border-color: var(--primary-200); color: var(--primary-300); }
+.slotOver { transform: scale(1.25); border-style: solid; border-color: var(--primary-300); background: var(--primary-50); }
+
+/* ── Annotation (AI duplicate card) ── */
+.annotation {
+  background: var(--neutral-0);
+  border: 1px solid var(--neutral-100);
+  border-radius: 12px;
+  box-shadow: var(--shadow-popover);
+  cursor: default;
+}
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.controlBtn,
+.zoomGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 30px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  color: var(--neutral-400);
+  font-size: var(--font-xs);
+}
+.controlBtn { cursor: pointer; }
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.iconBtn:hover { color: var(--neutral-500); }
+.zoomValue {
+  min-width: 28px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

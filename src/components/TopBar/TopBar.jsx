@@ -267,7 +267,7 @@ const SETTINGS_BREADCRUMB = {
   account: 'Account',
   calendar: 'Calendar',
   billing: 'Billing',
-  automations: 'Automation Rules',
+  automations: 'Automations',
 };
 
 export function TopBar() {
@@ -353,6 +353,13 @@ export function TopBar() {
   const isTasks = activePage === 'tasks';
   const isCampaign = activePage === 'campaign';
   const settingsNavItem = useAppStore(s => s.settingsNavItem);
+  // Settings / Automations / <name> while an automation is open.
+  const automationTitle = useAppStore(s => {
+    const v = s.automationsView;
+    if (!v || v.screen === 'list' || !v.id) return null;
+    if (v.id === 'new') return s.automationNew?.name || 'New Automation';
+    return s.automations.find(a => a.id === v.id)?.name || null;
+  });
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const pgRuleBuilder = useAppStore(s => s.pgRuleBuilder);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
@@ -531,6 +538,14 @@ export function TopBar() {
             </>
           ) : isCampaign ? (
             <span className={styles.breadcrumbCurrent}>Campaign</span>
+          ) : isSettings && settingsNavItem === 'automations' && automationTitle ? (
+            <>
+              <span className={styles.breadcrumbLink}>Settings</span>
+              <span className={styles.sep}>/</span>
+              <button type="button" className={styles.breadcrumbLink} onClick={() => useAppStore.getState().openAutomationsList()}>Automations</button>
+              <span className={styles.sep}>/</span>
+              <span className={styles.breadcrumbCurrent}>{automationTitle}</span>
+            </>
           ) : isSettings ? (
             <>
               <span className={styles.breadcrumbLink}>Settings</span>

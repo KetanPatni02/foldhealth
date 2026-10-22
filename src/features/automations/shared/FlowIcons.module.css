@@ -1,0 +1,21 @@
+.flow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+.arrow {
+  width: 16px;
+  border-top: 1px dashed var(--neutral-200);
+}
+.more {
+  font-size: var(--font-xs);
+  color: var(--neutral-300);
+}
