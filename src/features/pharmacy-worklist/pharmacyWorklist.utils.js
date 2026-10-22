@@ -216,10 +216,12 @@ function workedThisCycle(x, member) {
 //                 (covered in Fold) and Adherent / 1 fill left / Excluded
 //                 (settled by the plan file) set `done`
 // A status someone set by hand on the gap (`statusManual`) wins, as long as
-// it is still one of the two.
+// it is still one of the two. A manual Open puts the gap back in play even
+// when the fill looks covered, so it clears `done`.
 export function measureStatus(x, member) {
   const auto = autoMeasureStatus(x, member);
-  return x.statusManual && GAP_STATUSES.includes(x.status) ? { ...auto, gap: x.status, manual: true } : auto;
+  if (!x.statusManual || !GAP_STATUSES.includes(x.status)) return auto;
+  return { ...auto, gap: x.status, manual: true, done: x.status === 'Open' ? false : auto.done };
 }
 
 function autoMeasureStatus(x, member) {

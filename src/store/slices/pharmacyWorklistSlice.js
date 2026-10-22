@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { detachSaved } from '../lib/worklistListFilters';
+import { detachSaved, hydrateListFilters } from '../lib/worklistListFilters';
 import { applyPendingPickup, applyPickup, applyRecentFill, recomputeMeasure, withManualRecentFill } from '../../features/pharmacy-worklist/fillEvents';
 import { CLAIM_LAG_DAYS, enrichPharmacyMember, reconcileMeasure, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
 
@@ -150,14 +150,15 @@ export function createPharmacyWorklistSlice(set, get) {
     // across gaps (`items`: [{ code, medId }]). One activity entry.
     setPharmacyRecentFillBulk: (id, items, date) => {
       const row = get().pharmacyWorklistMembers.find(m => m.id === id);
-      if (!row || !items.length) return;
-      const names = items.map(({ code, medId }) => {
-        const d = row.measures.find(y => y.code === code)?.medications.find(x => x.id === medId);
-        return d ? `${code} ${d.name}` : null;
-      }).filter(Boolean);
+      if (!row) return;
+      const found = items
+        .map(it => ({ ...it, d: row.measures.find(y => y.code === it.code)?.medications.find(x => x.id === it.medId) }))
+        .filter(it => it.d);
+      if (!found.length) return;
+      const names = found.map(({ code, d }) => `${code} ${d.name}`);
       update(id, m => ({
         ...m,
-        measures: m.measures.map(y => items.filter(it => it.code === y.code)
+        measures: m.measures.map(y => found.filter(it => it.code === y.code)
           .reduce((x, it) => withManualRecentFill(x, it.medId, date || null), y)),
       }), ['measures'], {
         t: 'note', title: `Recent fill ${date ? `set to ${date}` : 'cleared'} for ${names.length} drug${names.length === 1 ? '' : 's'}`, note: names.join(', '),
@@ -333,7 +334,7 @@ export function createPharmacyWorklistSlice(set, get) {
     }),
     closePharmacyGapDrawer: () => set({ pharmacyGapDrawer: null }),
 
-    pharmacyFilters: {},
+    pharmacyFilters: hydrateListFilters('Pharmacy'),
     setPharmacyFilter: (k, vals) => set(s => {
       const next = { ...s.pharmacyFilters };
       if (!vals?.length) delete next[k];

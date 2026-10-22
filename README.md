@@ -46,7 +46,8 @@ build requires esbuild ≥ 0.28 on Node 26.
   next to Outreach. Other Care Gaps is now Open Care Gaps, and each gap in its
   hover card opens Care Gap Details (the pharmacy patients were added to
   HEDIS). The Pharmacy worklist gets Saved Filters like the other worklists.
-  Migration: `supabase/pharmacy_worklist_sample_refresh_migration.sql`.
+  Migrations: `supabase/pharmacy_worklist_sample_refresh_migration.sql`, then
+  `supabase/pharmacy_hedis_patients_migration.sql`.
 
 - **Pharmacy worklist, HEDIS layout.** Each patient row stacks one sub-row
   per pharmacy gap (MAD / MAH / MAC) with its own status, start date, PDC,

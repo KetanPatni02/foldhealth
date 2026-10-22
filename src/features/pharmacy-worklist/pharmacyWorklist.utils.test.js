@@ -28,6 +28,16 @@ describe('measureStatus: matched claim', () => {
     expect(st.gap).toBe('Open');
     expect(st.label).toBe('Refill overdue');
   });
+
+  it('puts a covered gap back in play when someone sets it to Open by hand', () => {
+    const x = { ...matchedMeasure({ pickedUpDaysAgo: 10, supply: 30 }), status: 'Open', statusManual: true };
+    const st = measureStatus(x, { callHistory: [] });
+    expect(st.gap).toBe('Open');
+    expect(st.done).toBe(false);
+    const m = enrichPharmacyMember({ id: 'm', memberId: 'm', measures: [x] });
+    expect(m.progress.closed).toBe(0);
+    expect(m.urgentOpen).toBe(true);
+  });
 });
 
 describe('enrichPharmacyMember: other care gaps', () => {

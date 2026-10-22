@@ -15,6 +15,7 @@ import { useWorklistColumns } from '../../components/WorklistColumns/useWorklist
 import { PharmacyWorklistRow } from './PharmacyWorklistRow';
 import { PharmacyGapDetailDrawer } from './PharmacyGapDetailDrawer';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
+import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
 import { CareGapDetailDrawer } from '../hedis-worklist/CareGapDetailDrawer';
 import { PHARMACY_MIDDLE_COLUMNS, PHARMACY_HIDDEN_BY_DEFAULT } from './pharmacyColumns';
 import { isActiveGap, daysFromToday, daysLeftBucket, enrichPharmacyMember, measureDrugs, normMemberId, otherGapsCountBucket } from './pharmacyWorklist.utils';
@@ -112,6 +113,9 @@ export function PharmacyWorklistTable() {
   const filters = useAppStore(s => s.pharmacyFilters);
   const setFilter = useAppStore(s => s.setPharmacyFilter);
   const clearFilters = useAppStore(s => s.clearPharmacyFilters);
+  const saveSavedFilter = useAppStore(s => s.saveSavedFilter);
+  // A selected saved filter stays selected while edited: Go Back / Save Changes / Copy Filter.
+  const savedActions = useSavedFilterActions('Pharmacy', filters, clearFilters);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);
@@ -119,6 +123,13 @@ export function PharmacyWorklistTable() {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  // Any filter change goes back to page 1, including a saved filter applied
+  // or reset from the chip (outside onFilterChange).
+  const [pageFilters, setPageFilters] = useState(filters);
+  if (pageFilters !== filters) {
+    setPageFilters(filters);
+    setPage(1);
+  }
   // Care Gap Details for an Open Care Gap picked from a row's hover card.
   const [careGap, setCareGap] = useState(null); // { hedisMemberId, code }
   const careGapMember = careGap ? (hedisMembers || []).find(h => h.id === careGap.hedisMemberId) : null;
@@ -237,8 +248,14 @@ export function PharmacyWorklistTable() {
         <FilterBar
           filterDefs={FILTER_KEYS}
           filters={filters}
-          onFilterChange={(k, vals) => { setFilter(k, vals); setPage(1); }}
-          onClearAll={clearFilters}
+          onFilterChange={(k, vals) => setFilter(k, vals)}
+          onClearAll={savedActions.onClearAll}
+          clearAllLabel={savedActions.clearAllLabel}
+          saveLabel={savedActions.saveLabel}
+          saveMenuItems={savedActions.saveMenuItems}
+          onSaveMenuSelect={savedActions.onSaveMenuSelect}
+          hasActive={savedActions.edited || undefined}
+          onSaveFilter={(name) => saveSavedFilter('Pharmacy', name)}
           getOptions={(def) => filterOptions[def.key] || []}
           multiSelect
           visibleKeys={visibleKeys}

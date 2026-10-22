@@ -10,8 +10,7 @@
 -- statuses, confirmed fills); call history and barrier logs are kept.
 --
 -- The matching HEDIS rows (ph-<id>, for each member with other care gaps)
--- are new and come from
--- `bun run seed` (src/features/hedis-worklist/data/mock.js).
+-- and the Fold ID member_id are in pharmacy_hedis_patients_migration.sql.
 
 begin;
 

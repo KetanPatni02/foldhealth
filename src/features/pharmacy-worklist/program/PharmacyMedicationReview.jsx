@@ -227,6 +227,14 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
   const setRecentFillBulk = useAppStore(s => s.setPharmacyRecentFillBulk);
   const [picked, setPicked] = useState(() => new Set());
   const [bulkDate, setBulkDate] = useState('');
+  // Picks belong to one patient: drop them when another patient opens on
+  // this step (the step is not remounted).
+  const [pickedFor, setPickedFor] = useState(member?.id);
+  if (pickedFor !== member?.id) {
+    setPickedFor(member?.id);
+    setPicked(new Set());
+    setBulkDate('');
+  }
   const pickKey = (code, medId) => `${code}|${medId}`;
   const togglePick = (key) => setPicked(prev => {
     const next = new Set(prev);
