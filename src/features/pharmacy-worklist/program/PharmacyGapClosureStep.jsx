@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
+import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
+import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
 import {
@@ -16,6 +18,45 @@ function Fact({ label, children, tone }) {
     <div className={styles.fact}>
       <span className={styles.factLabel}>{label}</span>
       <span className={`${styles.factValue} ${TONE_CLASS[tone] || ''}`}>{children ?? '—'}</span>
+    </div>
+  );
+}
+
+// MM/DD/YYYY (stored) ↔ YYYY-MM-DD (date input).
+const toIso = (mdy) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(mdy || '');
+  return m ? `${m[3]}-${m[1]}-${m[2]}` : '';
+};
+const fromIso = (iso) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : '';
+};
+
+const latestDate = (dates) => dates.filter(Boolean).reduce((max, d) => (!max || parseMdy(d) > parseMdy(max) ? d : max), null);
+
+// Recent Fill, per active drug: set by an outreach outcome (pickup confirmed /
+// refill approval received) and editable here while closing the gap.
+function RecentFill({ member, x }) {
+  const setRecentFill = useAppStore(s => s.setPharmacyRecentFill);
+  const active = x.medications.filter(d => d.status !== 'Discontinued');
+  const hintOf = (d) => (!d.recentFill ? 'Set by a pickup or refill-approved outreach'
+    : d.recentFillSource?.manual ? `Edited ${d.recentFillSource.date}`
+    : d.recentFillSource?.outcome ? `From ${d.recentFillSource.outcome.split(' · ').pop()}`
+    : null);
+  return (
+    <div className={`${styles.fact} ${styles.recentFills}`}>
+      <span className={styles.factLabel}>Recent Fill Date</span>
+      {active.map(d => (
+        <div key={d.id} className={styles.recentFillRow}>
+          {active.length > 1 && <span className={styles.factValue}>{d.name} {d.strength} {d.unit}</span>}
+          <DatePicker
+            value={toIso(d.recentFill)}
+            onSelect={(iso) => setRecentFill(member.id, x.code, d.id, fromIso(iso) || null)}
+            aria-label={`${d.name} recent fill date`}
+          />
+          {hintOf(d) && <span className={styles.factHint}>{hintOf(d)}</span>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -82,10 +123,13 @@ export function PharmacyGapClosureStep() {
             <div className={styles.facts}>
               <Fact label="PDC (Plan)" tone={risk(pdcTone(x.pdc))}>{x.pdc == null ? 'Not sent' : `${x.pdc}%`}</Fact>
               <Fact label="PDC (Claims)" tone={risk(pdcTone(x.calcPdc))}>{x.calcPdc == null ? null : `${x.calcPdc}%`}</Fact>
+              {x.pdcProjected != null && <Fact label="PDC (Projected, with recent fill)" tone={risk(pdcTone(x.pdcProjected))}>{`${x.pdcProjected}%`}</Fact>}
               <Fact label="Next Fill Due" tone={risk(fillDueTone(x.nextFillDue))}>{x.nextFillDue}</Fact>
               <Fact label="Fail (Hopeless) Date" tone={risk(failIn != null && failIn <= 14 ? 'error' : null)}>
                 {x.failDate ? `${x.failDate}${failIn != null ? ` · ${failIn}d` : ''}` : null}
               </Fact>
+              <Fact label="Last Fill Date">{latestDate(x.medications.filter(d => d.status !== 'Discontinued').map(d => d.lastFill))}</Fact>
+              <RecentFill member={member} x={x} />
               <Fact label="Allowable Days Left">{x.daysLeft}</Fact>
               <Fact label="Pickup Confirmed">{x.pickupConfirmed}</Fact>
               <Fact label="Reopens On">{st.reopensOn}</Fact>

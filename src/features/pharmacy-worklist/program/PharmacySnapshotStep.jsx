@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
@@ -30,6 +31,12 @@ export function PharmacySnapshotStep({ member }) {
   const fromProfile = usePharmacyProgramMember();
   const row = member || fromProfile;
   const logActivity = useAppStore(s => s.logPharmacyDial);
+  const [expanded, setExpanded] = useState(() => new Set());
+  const toggle = (code) => setExpanded(prev => {
+    const next = new Set(prev);
+    if (next.has(code)) next.delete(code); else next.add(code);
+    return next;
+  });
 
   if (!row) {
     return (
@@ -53,17 +60,43 @@ export function PharmacySnapshotStep({ member }) {
           // low PDC or past fill date is history.
           const open = OPEN_GAPS.has(g.status.gap);
           const tone = (t) => (open ? TONE_CLASS[t] || '' : '');
+          const isOpen = expanded.has(g.code);
           return (
-            <div key={g.code} className={styles.gapRow}>
-              <MeasureCode code={g.code} />
+            <div key={g.code} className={styles.gapItem}>
+            <button type="button" className={styles.gapRow} onClick={() => toggle(g.code)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${g.code} medications`}>
+              <span className={styles.gapCode}>
+                <Icon name={isOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={14} color="var(--neutral-300)" />
+                <MeasureCode code={g.code} />
+              </span>
               <span className={styles.gapStatus}>
                 <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap]} label={g.status.gap} />
                 <SubStatus label={g.status.label} />
               </span>
-              <Field label="PDC"><span className={tone(pdcTone(g.pdc))}>{g.pdc == null ? 'Not sent' : `${g.pdc}%`}</span></Field>
+              <Field label={g.pdcProjected != null ? 'PDC (projected)' : 'PDC'}><span className={tone(pdcTone(g.pdc))}>{g.pdc == null ? 'Not sent' : `${g.pdc}%`}</span></Field>
               <Field label="Fail Date">{g.failDate || '—'}</Field>
               <Field label="Next Fill Due"><span className={tone(fillDueTone(g.nextFillDue))}>{g.nextFillDue || '—'}</span></Field>
               <Field label="Claim">{g.recon?.status || '—'}</Field>
+            </button>
+            {isOpen && (
+              <table className={styles.medTable}>
+                <thead>
+                  <tr><th>Medication</th><th>Last Fill</th><th>Recent Fill</th><th>Next Fill</th><th>DS</th><th>Quantity</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  {g.medications.map(d => (
+                    <tr key={d.id}>
+                      <td>{d.name} {d.strength} {d.unit}</td>
+                      <td>{d.lastFill}</td>
+                      <td>{d.recentFill || '—'}</td>
+                      <td className={tone(fillDueTone(d.nextFill))}>{d.nextFill}</td>
+                      <td>{d.daysSupply}</td>
+                      <td>{d.qty}</td>
+                      <td>{d.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
             </div>
           );
         })}

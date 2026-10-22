@@ -7,13 +7,26 @@
   border-top: 0.5px solid var(--neutral-150);
 }
 .row { display: flex; flex-direction: column; gap: var(--space-2); }
+.gapItem + .gapItem { border-top: 0.5px solid var(--neutral-150); }
+/* The row header toggles the gap's medications. */
 .gapRow {
   display: grid;
   /* Columns shrink with the panel; values wrap rather than overflow. */
-  grid-template-columns: 48px minmax(112px, 1.3fr) repeat(4, minmax(0, 1fr));
+  grid-template-columns: 4.25rem minmax(112px, 1.3fr) repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
 }
+.gapRow:hover { background: var(--neutral-50); }
+.gapCode { display: inline-flex; align-items: center; gap: var(--space-1); }
+.medTable { width: 100%; border-collapse: collapse; font-size: var(--font-md); color: var(--neutral-400); margin-bottom: var(--space-2); }
+.medTable th { text-align: left; font-weight: 500; color: var(--neutral-300); padding: var(--space-1) var(--space-2); background: var(--neutral-50); }
+.medTable td { padding: var(--space-2); border-top: 0.5px solid var(--neutral-150); }
 .gapStatus { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
 .gapStatus > * { align-self: flex-start; }
 

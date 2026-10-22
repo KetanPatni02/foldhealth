@@ -71,7 +71,6 @@ function PharmacyGapDrawerBody({ target, row }) {
   const platformUsers = useAppStore(s => s.platformUsers);
   const setPharmacyAssignee = useAppStore(s => s.setPharmacyAssignee);
   const setPharmacyGapStatus = useAppStore(s => s.setPharmacyGapStatus);
-  const navigateToPatient = useAppStore(s => s.navigateToPatient);
 
   const [tab, setTab] = useState('snapshot');
   const [workspace, setWorkspace] = useState(null); // 'outreach' | 'verify' | 'barriers' | { med }
@@ -244,16 +243,11 @@ function PharmacyGapDrawerBody({ target, row }) {
                 <MenuPopover
                   anchorRect={moreRect}
                   items={[
-                    { key: 'program', label: 'Open PHARM program', icon: 'solar:eye-linear' },
                     { key: 'activity', label: 'Activity log', icon: 'solar:history-linear' },
                   ]}
                   onSelect={(key) => {
                     setMoreRect(null);
                     if (key === 'activity') setTab('activity');
-                    if (key === 'program') {
-                      close();
-                      navigateToPatient(m.patientId || m.id, { profileTab: 'Care Programs', programCode: 'PHARM' });
-                    }
                   }}
                   onClose={() => setMoreRect(null)}
                   width={220}

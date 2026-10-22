@@ -20,7 +20,6 @@ const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese'
 
 export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, onSelect }) {
   const openQuickView = useAppStore(s => s.openQuickView);
-  const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const requestAddTask = useAppStore(s => s.requestAddTask);
   const runPatientRowAction = useAppStore(s => s.runPatientRowAction);
@@ -59,10 +58,6 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
     ...(menuGap.status.manual ? [{ key: AUTO_STATUS, label: 'Use status from data' }] : []),
   ] : [];
 
-  const openInCareProgram = (e) => {
-    e?.stopPropagation?.();
-    navigateToPatient(m.patientId || m.id, { profileTab: 'Care Programs', programCode: 'PHARM' });
-  };
   const handleNameClick = (e) => {
     e.stopPropagation();
     openQuickView?.({ id: m.patientId || m.id, name: m.name, initials: m.initials, gender: m.gender, age: m.age, memberId: m.memberId, language: m.language });
@@ -73,12 +68,10 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   };
 
   const menuItems = buildPatientRowMenuItems([
-    { key: 'View Program', icon: 'solar:eye-linear', label: 'View Program' },
     { key: 'Activity Log', icon: 'solar:history-linear', label: 'Activity Log' },
   ]);
   const handleMenuSelect = (key) => {
     if (runPatientRowAction(key, m)) return;
-    if (key === 'View Program') { openInCareProgram(); return; }
     if (key === 'Activity Log') { setShowActivity(true); return; }
     if (key === 'Add Task') { requestAddTask?.({ member: m.name }); return; }
     showToast(`${key} – coming soon`);
@@ -127,8 +120,6 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
 
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
-          <ActionButton icon="solar:eye-linear" size="L" tooltip="View Program" onClick={openInCareProgram} />
-          <span className={styles.actionDivider} />
           <ActionButton ref={callBtnRef} icon="solar:phone-linear" size="L" tooltip="Call patient" onClick={handleCallClick} />
           <span className={styles.actionDivider} />
           <div className={styles.relative}>

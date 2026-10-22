@@ -87,19 +87,25 @@ export function ProgressCell({ progress }) {
 
 // PDC of the row's focus measure, named so it is never ambiguous. Below the
 // 80% threshold on an open gap is said in words, not only in color.
-export function PdcValue({ pdc, code, open }) {
+// `projectedFrom`: the plan PDC, when `pdc` is projected with a recent fill.
+export function PdcValue({ pdc, code, open, projectedFrom }) {
   if (pdc == null) return <span className={styles.subText}>Not sent</span>;
   const below = open && pdcTone(pdc) === 'error';
-  return (
+  const projected = projectedFrom !== undefined;
+  const label = (
     <span className={styles.stack}>
       <span className={styles.pdc}>{pdc}%</span>
-      {(code || below) && (
+      {(code || below || projected) && (
         <span className={styles.subText}>
-          {code}{code && below ? ' · ' : ''}{below && <span className={styles.toneError}>Below 80%</span>}
+          {[code, projected ? 'Projected' : null].filter(Boolean).join(' · ')}
+          {(code || projected) && below ? ' · ' : ''}{below && <span className={styles.toneError}>Below 80%</span>}
         </span>
       )}
     </span>
   );
+  return projected
+    ? <Tooltip label={`Projected for the year with the recent fill · plan PDC ${projectedFrom == null ? 'not sent' : `${projectedFrom}%`}`} placement="bottom">{label}</Tooltip>
+    : label;
 }
 
 export function ClaimReconCell({ recon, showCode, followUpTask }) {
