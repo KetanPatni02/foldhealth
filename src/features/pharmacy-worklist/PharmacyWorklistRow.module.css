@@ -128,3 +128,23 @@
   color: var(--primary-300);
 }
 .gapBadgeButton:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; }
+
+/* Open Care Gaps hover card: one row per gap, each opening its Care Gap Details. */
+.gapLinks { display: flex; flex-direction: column; }
+.gapLink, .gapLinkStatic {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: none;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+.gapLink { cursor: pointer; }
+.gapLink:hover { background: var(--primary-50); color: var(--primary-300); }
+.gapLinkName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gapLinkStatus { color: var(--neutral-300); }

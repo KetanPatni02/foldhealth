@@ -97,19 +97,19 @@ function member(base, buildMeasures) {
   return { ...base, measures: buildMeasures(base), activityLog: seedActivity(base) };
 }
 
-const CHOI = { name: 'Dr. Alan Choi', phone: '(626) 555-0142', fax: '(626) 555-0143', address1: '1798 N Garey Ave', city: 'Pomona', state: 'CA', zip: '91767' };
-const PARK = { name: 'Dr. Helen Park', phone: '(213) 555-0177', fax: '(213) 555-0178', address1: '1866 N Orange Grove Ave Suite 202', city: 'Pomona', state: 'CA', zip: '91767' };
-const OKAFOR = { name: 'Dr. Samuel Okafor', phone: '(562) 555-0164', fax: '(562) 555-0165', address1: '2801 Atlantic Ave', city: 'Long Beach', state: 'CA', zip: '90806' };
-const LIN = { name: 'Dr. Grace Lin', phone: '(626) 555-0188', fax: '(626) 555-0189', address1: '440 E Huntington Dr', city: 'Arcadia', state: 'CA', zip: '91006' };
-const ORTIZ = { name: 'Dr. Rafael Ortiz', phone: '(714) 555-0122', fax: '(714) 555-0123', address1: '1100 W Stewart Dr', city: 'Orange', state: 'CA', zip: '92868' };
-const SHAH = { name: 'Dr. Vikram Shah', phone: '(818) 555-0131', fax: '(818) 555-0132', address1: '18300 Roscoe Blvd', city: 'Northridge', state: 'CA', zip: '91325' };
+const CHOI = { npi: '1427053961', name: 'Dr. Alan Choi', phone: '(626) 555-0142', fax: '(626) 555-0143', address1: '1798 N Garey Ave', city: 'Pomona', state: 'CA', zip: '91767' };
+const PARK = { npi: '1316940827', name: 'Dr. Helen Park', phone: '(213) 555-0177', fax: '(213) 555-0178', address1: '1866 N Orange Grove Ave Suite 202', city: 'Pomona', state: 'CA', zip: '91767' };
+const OKAFOR = { npi: '1659384012', name: 'Dr. Samuel Okafor', phone: '(562) 555-0164', fax: '(562) 555-0165', address1: '2801 Atlantic Ave', city: 'Long Beach', state: 'CA', zip: '90806' };
+const LIN = { npi: '1083617254', name: 'Dr. Grace Lin', phone: '(626) 555-0188', fax: '(626) 555-0189', address1: '440 E Huntington Dr', city: 'Arcadia', state: 'CA', zip: '91006' };
+const ORTIZ = { npi: '1932105748', name: 'Dr. Rafael Ortiz', phone: '(714) 555-0122', fax: '(714) 555-0123', address1: '1100 W Stewart Dr', city: 'Orange', state: 'CA', zip: '92868' };
+const SHAH = { npi: '1508762391', name: 'Dr. Vikram Shah', phone: '(818) 555-0131', fax: '(818) 555-0132', address1: '18300 Roscoe Blvd', city: 'Northridge', state: 'CA', zip: '91325' };
 
-const CVS_9921 = { name: 'CVS Pharmacy #9921', phone: '(626) 555-0190', address1: '255 W Foothill Blvd', city: 'Claremont', state: 'CA', zip: '91711' };
-const WAG_4410 = { name: 'Walgreens #4410', phone: '(213) 555-0120', address1: '1501 W Holt Ave', city: 'Pomona', state: 'CA', zip: '91768' };
-const RITE_5532 = { name: 'Rite Aid #5532', phone: '(562) 555-0101', address1: '3901 Atlantic Ave', city: 'Long Beach', state: 'CA', zip: '90807' };
-const CVS_3301 = { name: 'CVS Pharmacy #3301', phone: '(714) 555-0102', address1: '1501 W Chapman Ave', city: 'Orange', state: 'CA', zip: '92868' };
-const COSTCO_112 = { name: 'Costco Pharmacy #112', phone: '(818) 555-0108', address1: '8810 Tampa Ave', city: 'Northridge', state: 'CA', zip: '91324' };
-const WAG_2219 = { name: 'Walgreens #2219', phone: '(626) 555-0175', address1: '1 W Duarte Rd', city: 'Arcadia', state: 'CA', zip: '91007' };
+const CVS_9921 = { ncpdp: '0598214', name: 'CVS Pharmacy #9921', phone: '(626) 555-0190', address1: '255 W Foothill Blvd', city: 'Claremont', state: 'CA', zip: '91711' };
+const WAG_4410 = { ncpdp: '1462037', name: 'Walgreens #4410', phone: '(213) 555-0120', address1: '1501 W Holt Ave', city: 'Pomona', state: 'CA', zip: '91768' };
+const RITE_5532 = { ncpdp: '0532186', name: 'Rite Aid #5532', phone: '(562) 555-0101', address1: '3901 Atlantic Ave', city: 'Long Beach', state: 'CA', zip: '90807' };
+const CVS_3301 = { ncpdp: '0587731', name: 'CVS Pharmacy #3301', phone: '(714) 555-0102', address1: '1501 W Chapman Ave', city: 'Orange', state: 'CA', zip: '92868' };
+const COSTCO_112 = { ncpdp: '0391445', name: 'Costco Pharmacy #112', phone: '(818) 555-0108', address1: '8810 Tampa Ave', city: 'Northridge', state: 'CA', zip: '91324' };
+const WAG_2219 = { ncpdp: '1459912', name: 'Walgreens #2219', phone: '(626) 555-0175', address1: '1 W Duarte Rd', city: 'Arcadia', state: 'CA', zip: '91007' };
 
 const BASE_MEMBERS = [
   member({
@@ -417,4 +417,95 @@ const SOURCE_FIELDS = {
   19410: { otherCareGaps: [gap('COL', 'Colorectal Cancer Screening', 'Open'), gap('CBP', 'Controlling Blood Pressure', 'Open')] },
 };
 
-export const PHARMACY_WORKLIST_MEMBERS = BASE_MEMBERS.map(m => ({ sourcePriority: null, ...m, ...SOURCE_FIELDS[m.id] }));
+// ── Fuller sample: every member carries all three gaps, open, with at
+// least two drugs each, and claim details on every claims row ──
+//
+// The plan-file closures (excluded / already adherent / one fill to
+// invincible) are cleared so every gap is still being worked.
+const TEMPLATES = {
+  MAD: [
+    { name: 'Metformin ER', generic: 'metformin', strength: '500', sig: 'Take 1 tablet by mouth daily with evening meal', condition: 'Type 2 diabetes' },
+    { name: 'Glipizide', generic: 'glipizide', strength: '5', sig: 'Take 1 tablet by mouth before breakfast', condition: 'Type 2 diabetes' },
+    { name: 'Januvia', generic: 'sitagliptin', strength: '100', sig: 'Take 1 tablet by mouth once daily', condition: 'Type 2 diabetes', brand: true },
+    { name: 'Pioglitazone', generic: 'pioglitazone', strength: '30', sig: 'Take 1 tablet by mouth once daily', condition: 'Type 2 diabetes' },
+  ],
+  MAH: [
+    { name: 'Lisinopril', generic: 'lisinopril', strength: '10', sig: 'Take 1 tablet by mouth once daily', condition: 'Hypertension' },
+    { name: 'Losartan', generic: 'losartan', strength: '50', sig: 'Take 1 tablet by mouth once daily', condition: 'Hypertension' },
+    { name: 'Olmesartan', generic: 'olmesartan', strength: '20', sig: 'Take 1 tablet by mouth once daily', condition: 'Hypertension' },
+    { name: 'Valsartan', generic: 'valsartan', strength: '80', sig: 'Take 1 tablet by mouth once daily', condition: 'Hypertension' },
+  ],
+  MAC: [
+    { name: 'Atorvastatin', generic: 'atorvastatin', strength: '40', sig: 'Take 1 tablet by mouth at bedtime', condition: 'Hyperlipidemia' },
+    { name: 'Rosuvastatin', generic: 'rosuvastatin', strength: '20', sig: 'Take 1 tablet by mouth once daily', condition: 'Hyperlipidemia' },
+    { name: 'Simvastatin', generic: 'simvastatin', strength: '20', sig: 'Take 1 tablet by mouth in the evening', condition: 'Hyperlipidemia' },
+    { name: 'Pravastatin', generic: 'pravastatin', strength: '40', sig: 'Take 1 tablet by mouth at bedtime', condition: 'Hyperlipidemia' },
+  ],
+};
+const AS_OF = '10/22/2026';
+const PDCS = [84, 76, 91, 79, 86, 73, 88, 81, 90, 77];
+
+// A template drug for member `i`, its `k`th added drug: fill dates and day
+// supplies vary so some are due soon, some overdue, some covered.
+function sampleMed(t, i, k, base, code, extra = {}) {
+  const daysSupply = (i + k) % 2 === 0 ? 30 : 90;
+  const back = 12 + ((i * 11 + k * 17) % (daysSupply === 30 ? 40 : 75));
+  return rx({
+    id: `${base.id}-${code.toLowerCase()}-${k + 2}`,
+    ...t, brand: undefined,
+    mpr: PDCS[(i + k) % 10] - 1, pdc: PDCS[(i + k) % 10],
+    qty: daysSupply, daysSupply, lastFill: addDays(AS_OF, -back), gaps: [3 + ((i + k) % 5), 6],
+    ...extra,
+  }, base);
+}
+
+function completeMeasures(base, i) {
+  const measures = ['MAD', 'MAH', 'MAC'].map((code, c) => {
+    let x = base.measures.find(y => y.code === code);
+    if (!x) {
+      const pdc = PDCS[(i + c * 3) % 10];
+      const first = sampleMed(TEMPLATES[code][(i + c) % 4], i, 0, base, code);
+      x = measure({
+        code, pdc, calcPdc: pdc - 1, failDate: addDays(AS_OF, 25 + ((i * 7 + c * 13) % 50)), daysLeft: 20 + ((i + c) % 30),
+        priorYearNonCompliant: (i + c) % 4 === 0, excluded: false, projectedStatus: null, drugInteraction: false,
+        pickupConfirmed: null, claim: { status: 'Paid', date: first.lastFill, rxNumber: `RX-${base.id}${c}01` },
+      }, [], base);
+      x = { ...x, medications: [first] };
+    }
+    x = { ...x, excluded: false, oneFillToInvincible: false, projectedStatus: x.projectedStatus === 'Already adherent' ? null : x.projectedStatus };
+    const used = new Set(x.medications.map(d => d.generic));
+    const add = TEMPLATES[code].filter(t => !used.has(t.generic)).slice(0, Math.max(0, 2 - x.medications.length));
+    let medications = [...x.medications, ...add.map((t, k) => sampleMed(t, i, k + 1, base, code))];
+    // One drug switch: an ARB stopped for a newer one in the same class.
+    if (i === 4 && code === 'MAH') {
+      medications = [...medications, sampleMed(TEMPLATES.MAH[1], i, 5, base, code, { status: 'Discontinued', lastFill: addDays(AS_OF, -160) })];
+    }
+    const nextFillDue = medications.filter(d => d.status !== 'Discontinued').map(d => d.nextFill)
+      .reduce((min, d) => (!min || toUtc(d) < toUtc(min) ? d : min), null);
+    return { ...x, medications: withClaims(base, x, medications), nextFillDue };
+  });
+  return { ...base, status: 'In Progress', measures };
+}
+
+// Claim details on each claims row (rows with a `source` are fills confirmed
+// in Fold, not claims). A reversed plan claim is its own claim line.
+function withClaims(base, x, medications) {
+  return medications.map((d, k) => {
+    const brand = TEMPLATES[x.code].find(t => t.generic === d.generic)?.brand || d.name === 'Januvia';
+    const refills = (d.refills || []).map((r, j) => (r.source ? r : {
+      ...r,
+      claimId: k === 0 && j === 0 && x.claim?.status === 'Paid' ? x.claim.rxNumber : `CLM-${base.id}-${x.code}${k + 1}-${String(j + 1).padStart(2, '0')}`,
+      claimStatus: 'Paid',
+      planPaid: brand ? 412.6 : 18.4 + k * 3,
+      copay: brand ? 47 : (k % 2 ? 4 : 0),
+    }));
+    const reversed = k === 0 && x.claim?.status === 'Reversed'
+      ? [{ date: x.claim.date, qty: d.qty, daysSupply: d.daysSupply, pharmacy: d.pharmacy?.name, prescriber: d.prescriber?.name, prescriberAddress: d.refills?.[0]?.prescriberAddress || '', claimId: x.claim.rxNumber, claimStatus: 'Reversed', planPaid: 0, copay: 0 }]
+      : [];
+    return { ...d, refills: [...reversed, ...refills].toSorted((a, b) => toUtc(b.date) - toUtc(a.date)) };
+  });
+}
+
+export const PHARMACY_WORKLIST_MEMBERS = BASE_MEMBERS
+  .map((m, i) => completeMeasures(m, i))
+  .map(m => ({ sourcePriority: null, ...m, ...SOURCE_FIELDS[m.id] }));

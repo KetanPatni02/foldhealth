@@ -31,7 +31,8 @@ export const effectiveFill = (d) => later(d.lastFill, latestConfirmed(d)?.date);
 // Claims plus confirmed fills, minus confirmed fills that duplicate a claim
 // or each other, oldest first.
 function countedFills(d) {
-  const claims = (d.refills || []).filter(r => !r.source && parseMdy(r.date) != null);
+  // A reversed claim was never dispensed, so it isn't a fill.
+  const claims = (d.refills || []).filter(r => !r.source && r.claimStatus !== 'Reversed' && parseMdy(r.date) != null);
   const claimAt = claims.map(r => parseMdy(r.date));
   const seen = new Set();
   const confirmed = confirmedFills(d).filter(r => {

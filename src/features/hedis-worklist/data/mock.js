@@ -1,4 +1,6 @@
-export const HEDIS_MEMBERS = [
+import { PHARMACY_WORKLIST_MEMBERS } from '../../pharmacy-worklist/data/mock';
+
+const BASE_HEDIS_MEMBERS = [
   {
     id: 'ap-001', in: 'CH', name: 'Carlos Hernandez',
     gender: 'M', age: '69y', memberId: '10023', language: 'es',
@@ -746,3 +748,23 @@ export const HEDIS_MEMBERS = [
     ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
   },
 ];
+
+// The Pharmacy worklist's patients (19401-19410) are on HEDIS too, so each
+// Open Care Gap on a pharmacy row opens its Care Gap Details. Built from the
+// pharmacy record so name, demographics and contract stay in step.
+const HEDIS_STATUS = { 'In Progress': 'Engaged', 'Closed-Data': 'Closed - Data' };
+const PHARMACY_PATIENT_HEDIS_ROWS = PHARMACY_WORKLIST_MEMBERS
+  .filter(m => (m.otherCareGaps || []).length)
+  .map(m => ({
+    id: `ph-${m.id}`, in: m.initials, name: m.name,
+    gender: m.gender, age: m.age.split(' ')[0], memberId: m.memberId, language: m.language,
+    gaps: m.otherCareGaps.map(g => ({ code: g.code, status: HEDIS_STATUS[g.status] || g.status, startDate: '09/15/2026' })),
+    assignee: m.assigneeName, assigneeInitials: m.assigneeInitials,
+    startDate: '09/15/2026',
+    advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
+    outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
+    memberStatus: 'Active', phone: m.phones?.[0]?.number || null, dob: m.dob,
+    ipa: m.ipa, hpCode: 'HP-001', zip: null, city: null, state: 'CA',
+  }));
+
+export const HEDIS_MEMBERS = [...BASE_HEDIS_MEMBERS, ...PHARMACY_PATIENT_HEDIS_ROWS];

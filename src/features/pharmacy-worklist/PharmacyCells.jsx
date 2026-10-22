@@ -1,5 +1,6 @@
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
+import { HoverCard } from '../../components/HoverCard/HoverCard';
 import { GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, medLabel, pdcTone } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
 
@@ -61,16 +62,38 @@ export function DrugsCount({ meds }) {
   );
 }
 
-// Count of the member's non-pharmacy care gaps; hover lists them.
-export function OtherGapsCount({ gaps }) {
+// Count of the member's open non-pharmacy care gaps. The hover card lists
+// them; each one opens its Care Gap Details when the member has a HEDIS row.
+export function OpenCareGaps({ gaps, onOpen }) {
+  if (!gaps.length) return <Dash />;
   return (
-    <CountWithList count={gaps.length} label="gap">
-      {gaps.map(g => (
-        <span key={g.code} className={styles.hoverItem}>
-          <b>{g.code}</b>{g.name ? ` ${g.name}` : ''} · {g.status}
+    <HoverCard
+      ariaLabel="Open care gaps"
+      trigger={<span className={styles.countLink}>{gaps.length} gap{gaps.length === 1 ? '' : 's'}</span>}
+    >
+      {(close) => (
+        <span className={styles.gapLinks}>
+          {gaps.map(g => (g.hedisMemberId ? (
+            <button
+              key={g.code}
+              type="button"
+              className={styles.gapLink}
+              onClick={() => { close(); onOpen?.(g.hedisMemberId, g.code); }}
+            >
+              <b>{g.code}</b>
+              <span className={styles.gapLinkName}>{g.name || g.code}</span>
+              <span className={styles.gapLinkStatus}>{g.status}</span>
+            </button>
+          ) : (
+            <span key={g.code} className={styles.gapLinkStatic}>
+              <b>{g.code}</b>
+              <span className={styles.gapLinkName}>{g.name || g.code}</span>
+              <span className={styles.gapLinkStatus}>{g.status}</span>
+            </span>
+          )))}
         </span>
-      ))}
-    </CountWithList>
+      )}
+    </HoverCard>
   );
 }
 

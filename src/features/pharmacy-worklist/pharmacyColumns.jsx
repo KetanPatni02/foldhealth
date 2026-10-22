@@ -3,9 +3,9 @@ import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { GAP_STATUS_TONE, MEASURE_NAMES, OPEN_GAPS, daysFromToday } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
-import { ClaimReconCell, Dash, DateOnly, DateWithDays, DrugsCount, OtherGapsCount, PdcValue, ProgressCell, SubStatus } from './PharmacyCells';
+import { ClaimReconCell, Dash, DateOnly, DateWithDays, DrugsCount, OpenCareGaps, PdcValue, ProgressCell, SubStatus } from './PharmacyCells';
 import styles from './PharmacyWorklistRow.module.css';
 
 // Only top priority carries color; the rest stay neutral so red keeps meaning "act now".
@@ -80,18 +80,18 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   },
   {
     key: 'pdc', label: 'PDC', sortKey: 'pdc', sortType: 'number', getTdClassName: gapTd(false),
-    renderCell: perGap((g) => <PdcValue pdc={g.pdc} open={OPEN_GAPS.has(g.status.gap)} projectedFrom={g.pdcProjected != null ? g.pdcPlan : undefined} />),
+    renderCell: perGap((g) => <PdcValue pdc={g.pdc} open={isActiveGap(g.status)} projectedFrom={g.pdcProjected != null ? g.pdcPlan : undefined} />),
   },
   {
     key: 'failDate', label: 'Fail Date', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
     renderCell: perGap((g) => {
       const d = daysFromToday(g.failDate);
-      return <DateOnly date={g.failDate} alert={OPEN_GAPS.has(g.status.gap) && d != null && d <= 14} />;
+      return <DateOnly date={g.failDate} alert={isActiveGap(g.status) && d != null && d <= 14} />;
     }),
   },
   {
     key: 'nextFillDue', label: 'Next Fill Due', sortKey: 'nextFillDueSort', sortType: 'date', getTdClassName: gapTd(false),
-    renderCell: perGap((g) => <DateOnly date={g.nextFillDue} alert={OPEN_GAPS.has(g.status.gap) && isOverdue(g.nextFillDue)} />),
+    renderCell: perGap((g) => <DateOnly date={g.nextFillDue} alert={isActiveGap(g.status) && isOverdue(g.nextFillDue)} />),
   },
   {
     key: 'claimRecon', label: 'Claim Reconciliation', sortKey: 'reconRank', sortType: 'number', getTdClassName: gapTd(true),
@@ -102,8 +102,8 @@ export const PHARMACY_MIDDLE_COLUMNS = [
     renderCell: (m) => <ProgressCell progress={m.progress} />,
   },
   {
-    key: 'otherCareGaps', label: 'Other Care Gaps', sortKey: 'otherCareGapsCount', sortType: 'number',
-    renderCell: (m) => <OtherGapsCount gaps={m.otherCareGaps} />,
+    key: 'otherCareGaps', label: 'Open Care Gaps', sortKey: 'otherCareGapsCount', sortType: 'number', stopRowClickPropagation: true,
+    renderCell: (m, ctx) => <OpenCareGaps gaps={m.otherCareGaps} onOpen={ctx.openCareGap} />,
   },
   {
     key: 'outreach', label: 'Outreach', sortKey: 'outreachSort', sortType: 'date',
@@ -113,6 +113,17 @@ export const PHARMACY_MIDDLE_COLUMNS = [
         title={m.outreach ? `${m.outreach.contact}: ${m.outreach.outcome} · ${m.outreach.attempts} attempt${m.outreach.attempts === 1 ? '' : 's'}` : undefined}
       />
     ),
+  },
+  {
+    key: 'leadNote', label: 'Internal Note',
+    renderCell: (m) => (m.leadNote ? (
+      <Tooltip label={m.leadNote} placement="bottom">
+        <span className={styles.leadNote}>
+          <Icon name="solar:notes-linear" size={14} color="var(--neutral-300)" />
+          <span className={styles.truncate}>{m.leadNote}</span>
+        </span>
+      </Tooltip>
+    ) : <Dash />),
   },
   {
     key: 'followUpDue', label: 'Follow-up Due', sortKey: 'followUpDueSort', sortType: 'date',
@@ -140,17 +151,6 @@ export const PHARMACY_MIDDLE_COLUMNS = [
         />
       )
     ),
-  },
-  {
-    key: 'leadNote', label: 'Lead Note',
-    renderCell: (m) => (m.leadNote ? (
-      <Tooltip label={m.leadNote} placement="bottom">
-        <span className={styles.leadNote}>
-          <Icon name="solar:notes-linear" size={14} color="var(--neutral-300)" />
-          <span className={styles.truncate}>{m.leadNote}</span>
-        </span>
-      </Tooltip>
-    ) : <Dash />),
   },
   {
     key: 'priorYear', label: 'Prior-Year Non-Compliant',

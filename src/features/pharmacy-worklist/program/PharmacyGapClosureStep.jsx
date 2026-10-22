@@ -5,7 +5,7 @@ import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
 import {
-  GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, addDaysMdy, daysFromToday, fillDueTone, measureStatus, parseMdy, pdcTone,
+  GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, isActiveGap, addDaysMdy, daysFromToday, fillDueTone, measureStatus, parseMdy, pdcTone,
 } from '../pharmacyWorklist.utils';
 import { MeasureCode, SubStatus } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -109,7 +109,7 @@ export function PharmacyGapClosureStep() {
         const cycles = closureCycles(member, x);
         const failIn = daysFromToday(x.failDate);
         // Red only for an open gap's risk; a closed gap's numbers are history.
-        const open = OPEN_GAPS.has(st.gap);
+        const open = isActiveGap(st);
         const risk = (tone) => (open ? tone : null);
         return (
           <DashboardCard

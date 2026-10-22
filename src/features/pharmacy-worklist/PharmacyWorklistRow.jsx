@@ -18,7 +18,7 @@ const AUTO_STATUS = '__auto';
 const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
 
-export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, onSelect }) {
+export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, onSelect, onOpenCareGap }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const requestAddTask = useAppStore(s => s.requestAddTask);
@@ -49,6 +49,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   const cellCtx = {
     setPharmacyAssignee,
     openGap: (code) => openPharmacyGapDrawer(m.id, code),
+    openCareGap: onOpenCareGap,
     eligibleUsers,
     openGapStatusMenu: (code, rect) => setGapStatusMenu(cur => (cur?.code === code ? null : { code, rect })),
   };

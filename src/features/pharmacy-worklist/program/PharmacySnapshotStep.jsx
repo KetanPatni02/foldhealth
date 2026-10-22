@@ -5,7 +5,7 @@ import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
 import { PhoneLink } from '../../../components/PhoneLink/PhoneLink';
 import {
-  GAP_STATUS_TONE, OPEN_GAPS, enrichPharmacyMember, fillDueTone, pdcTone, pharmaciesUsed, prescribersOf,
+  GAP_STATUS_TONE, isActiveGap, enrichPharmacyMember, fillDueTone, pdcTone, pharmaciesUsed, prescribersOf,
 } from '../pharmacyWorklist.utils';
 import { MeasureCode, SubStatus } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -58,7 +58,7 @@ export function PharmacySnapshotStep({ member }) {
         {m.gaps.map(g => {
           // Red only where someone has to act: an open gap. A closed gap's
           // low PDC or past fill date is history.
-          const open = OPEN_GAPS.has(g.status.gap);
+          const open = isActiveGap(g.status);
           const tone = (t) => (open ? TONE_CLASS[t] || '' : '');
           const isOpen = expanded.has(g.code);
           return (

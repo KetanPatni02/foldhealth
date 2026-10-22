@@ -39,15 +39,17 @@ export function daysFromToday(mdy) {
   return t == null ? null : Math.round((t - todayUtc()) / DAY_MS);
 }
 
-// Gaps still being worked. Only these may drive a row's headline numbers:
-// a Completed MAD must not paint the row red while MAH is the real gap.
-export const OPEN_GAPS = new Set(['Open', 'In Progress']);
+// A gap still needs work unless its sub-status says the current fill is
+// covered or the plan settled it (`done`). Only these drive a row's
+// headline numbers and red risk: a picked-up MAD must not paint the row red
+// while MAH is the real gap.
+export const isActiveGap = (st) => !!st && !st.done;
 
 // Earliest fail date wins; lower PDC breaks ties. Open gaps compete first,
 // then non-excluded measures, then everything.
 export function mostUrgentMeasure(measures, statuses) {
   const list = measures || [];
-  const open = statuses ? list.filter(x => OPEN_GAPS.has(statuses[x.code]?.gap)) : [];
+  const open = statuses ? list.filter(x => isActiveGap(statuses[x.code])) : [];
   const live = list.filter(x => !x.excluded);
   const pool = open.length ? open : live.length ? live : list;
   return pool.toSorted((a, b) => {
@@ -137,14 +139,16 @@ function worstRecon(measures) {
 // pickup with no reversal after the shelf window is "Safe". Safe is the
 // confirmed label — the others are proposals pending the team's sign-off.
 export const REVERSAL_WINDOW_DAYS = 14;
-// Gap status (first line) — the four statuses every program's gaps use.
-export const GAP_STATUSES = ['Open', 'In Progress', 'Completed', 'Closed-Data'];
+// Gap status (first line): Open until someone works it, then In Progress.
+// Pharmacy gaps never close here; whether the current fill is covered is
+// the sub-status (Picked up, Safe, Claim matched, …) with `done` set.
+export const GAP_STATUSES = ['Open', 'In Progress'];
 export const GAP_STATUS_TONE = {
   'Open': 'white',
   'In Progress': 'primary',
-  'Completed': 'success',
-  'Closed-Data': 'grey',
 };
+// Sub-statuses that mean nothing is owed on the gap right now.
+const DONE_SUB_STATUSES = new Set(['Picked up', 'Safe', 'Claim matched', 'Adherent', '1 fill left', 'Excluded']);
 
 // Sub-status (second line): a fixed list of short labels, most urgent first.
 export const MEASURE_STATUSES = [
@@ -207,33 +211,32 @@ function workedThisCycle(x, member) {
 }
 
 // Gap status + sub-status for one measure:
-//   Closed-Data — closed by plan / claims data (Claim matched, Excluded,
-//                 Adherent, 1 fill left)
-//   Completed   — pickup confirmed in Fold (sub: Picked up / Safe)
-//   In Progress — worked this fill cycle
-//   Open        — not worked yet
-// A status someone set by hand on the gap (`statusManual`) wins.
+//   status      — Open (not worked this fill cycle) or In Progress (worked)
+//   sub-status  — where the fill stands; Picked up / Safe / Claim matched
+//                 (covered in Fold) and Adherent / 1 fill left / Excluded
+//                 (settled by the plan file) set `done`
+// A status someone set by hand on the gap (`statusManual`) wins, as long as
+// it is still one of the two.
 export function measureStatus(x, member) {
   const auto = autoMeasureStatus(x, member);
-  return x.statusManual && x.status ? { ...auto, gap: x.status, manual: true } : auto;
+  return x.statusManual && GAP_STATUSES.includes(x.status) ? { ...auto, gap: x.status, manual: true } : auto;
 }
 
 function autoMeasureStatus(x, member) {
-  const sub = measureSubStatus(x, member?.callHistory);
-  if (sub.label === 'Excluded') return { gap: 'Closed-Data', ...sub };
-  // A pickup only covers its fill: once the supply runs out the gap reopens,
-  // whether or not the claim matched (sub-status is no longer Picked up / Safe).
+  let sub = measureSubStatus(x, member?.callHistory);
+  // A pickup only covers its fill: once the supply runs out the gap needs
+  // work again, whether or not the claim matched.
   const covered = sub.label === 'Picked up' || sub.label === 'Safe';
   if (covered && reconcileMeasure(x)?.status === 'Matched') {
-    return { gap: 'Closed-Data', label: 'Claim matched', detail: `Pickup ${x.pickupConfirmed} matched by claim ${x.claim.date} · reopens ${sub.reopensOn}`, reopensOn: sub.reopensOn };
+    sub = { label: 'Claim matched', detail: `Pickup ${x.pickupConfirmed} matched by claim ${x.claim.date} · reopens ${sub.reopensOn}`, reopensOn: sub.reopensOn };
+  } else if (!covered && sub.label !== 'Excluded' && x.oneFillToInvincible) {
+    sub = { label: '1 fill left', detail: 'Plan file: one more fill guarantees 80% PDC for the year' };
+  } else if (!covered && sub.label !== 'Excluded' && x.projectedStatus === 'Already adherent') {
+    sub = { label: 'Adherent', detail: 'Plan file: projected adherent for the year' };
   }
-  if (covered) return { gap: 'Completed', ...sub };
-  if (x.oneFillToInvincible) return { gap: 'Closed-Data', label: '1 fill left', detail: 'Plan file: one more fill guarantees 80% PDC for the year' };
-  if (x.projectedStatus === 'Already adherent') return { gap: 'Closed-Data', label: 'Adherent', detail: 'Plan file: projected adherent for the year' };
-  return { gap: member && workedThisCycle(x, member) ? 'In Progress' : 'Open', ...sub };
+  const worked = covered || (member && workedThisCycle(x, member));
+  return { gap: worked ? 'In Progress' : 'Open', ...sub, done: DONE_SUB_STATUSES.has(sub.label) };
 }
-
-export const CLOSED_GAPS = new Set(['Completed', 'Closed-Data']);
 
 // Gap start date: from the plan file when it sends one, otherwise the first
 // fill of the measure year.
@@ -248,7 +251,7 @@ export function gapStartDate(x) {
 export const PROGRESS_LEVELS = ['Not started', 'In progress', 'Partially complete', 'Complete'];
 export function gapProgress(statuses) {
   const gaps = Object.values(statuses).map(s => s.gap);
-  const closed = gaps.filter(g => CLOSED_GAPS.has(g)).length;
+  const closed = Object.values(statuses).filter(st => st.done).length;
   const label = !gaps.length || closed === gaps.length ? 'Complete'
     : closed > 0 ? 'Partially complete'
     : gaps.some(g => g === 'In Progress') ? 'In progress'
@@ -279,8 +282,6 @@ export function daysLeftBucket(mdy) {
 export function rollupGapStatus(statuses) {
   const gaps = Object.values(statuses).map(s => s.gap);
   if (!gaps.length) return 'Open';
-  if (gaps.every(g => g === 'Closed-Data')) return 'Closed-Data';
-  if (gaps.every(g => g === 'Completed' || g === 'Closed-Data')) return 'Completed';
   if (gaps.some(g => g !== 'Open')) return 'In Progress';
   return 'Open';
 }
@@ -315,13 +316,15 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
   // One focus measure drives priority, PDC, dates and the sub-status, so the
   // row never mixes numbers from different measures.
   const urgent = mostUrgentMeasure(m.measures, statuses);
-  const urgentOpen = OPEN_GAPS.has(statuses[urgent?.code]?.gap);
+  const urgentOpen = isActiveGap(statuses[urgent?.code]);
   const recon = worstRecon(m.measures);
   const outreach = outreachSummary(m.callHistory);
   const measureCodes = MEASURE_ORDER.filter(c => (m.measures || []).some(x => x.code === c));
   const priority = SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3');
   const progress = gapProgress(statuses);
-  const otherCareGaps = hedisGapsByMember?.get(normMemberId(m.memberId || m.id)) ?? m.otherCareGaps ?? [];
+  // Open Care Gaps: the member's non-pharmacy gaps still being worked.
+  const otherCareGaps = (hedisGapsByMember?.get(normMemberId(m.memberId || m.id)) ?? m.otherCareGaps ?? [])
+    .filter(g => g.status !== 'Completed' && !String(g.status || '').startsWith('Closed'));
   const gaps = measureCodes.map(code => {
     const x = m.measures.find(y => y.code === code);
     return { ...x, medications: x.medications || [], pdcPlan: x.pdc, pdc: effectivePdc(x), startDate: gapStartDate(x), status: statuses[code], recon: reconcileMeasure(x) };
