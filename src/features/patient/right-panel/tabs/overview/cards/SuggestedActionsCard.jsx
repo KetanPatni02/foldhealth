@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState } from 'react';
 import { DashboardCard, DashboardCardBody } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { CappedRows } from './CappedRows';
@@ -6,15 +7,17 @@ import { Icon } from '../../../../../../components/Icon/Icon';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import styles from './overviewCards.module.css';
 
+const AddMedicationsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddMedicationsDrawer/AddMedicationsDrawer').then(m => ({ default: m.AddMedicationsDrawer })));
+
 const COMING_SOON = {
   'order-lab': 'Ordering labs',
   'send-form': 'Sending forms',
-  review: 'Medication review',
 };
 
-export function SuggestedActionsCard({ memberId, overview, actions }) {
+export function SuggestedActionsCard({ memberId, patientId, overview, actions }) {
   const setStatus = useAppStore(s => s.setSuggestedActionStatus);
   const showToast = useAppStore(s => s.showToast);
+  const [medsOpen, setMedsOpen] = useState(false);
   const open = (overview?.suggestedActions || []).filter(a => a.status === 'open');
 
   const run = (a) => {
@@ -22,6 +25,7 @@ export function SuggestedActionsCard({ memberId, overview, actions }) {
       actions.schedule({ onSaved: () => setStatus(memberId, a.id, 'accepted') });
       return;
     }
+    if (a.action === 'review') { setMedsOpen(true); return; }
     showToast(`${COMING_SOON[a.action] || a.cta} is coming soon`);
   };
 
@@ -49,26 +53,36 @@ export function SuggestedActionsCard({ memberId, overview, actions }) {
           <CappedRows
             items={open}
             render={a => (
-              <PanelSectionItem
-                key={a.id}
-                inset
-                alignTop
-                title={a.title}
-                meta={a.reason}
-                wrapTitle
-                trailing={(
-                  <span className={`${styles.trail} ${styles.suggestTrail}`}>
-                    <Button variant="secondary" size="S" className={`${styles.ctaButton} ${styles.suggestCta}`} onClick={() => run(a)}>{a.cta}</Button>
-                    <button type="button" className={styles.suggestClose} aria-label="Dismiss" onClick={() => dismiss(a)}>
-                      <Icon name="solar:close-linear" size={12} />
+              <div key={a.id} className={styles.clickRow}>
+                <PanelSectionItem
+                  inset
+                  alignTop
+                  title={(
+                    <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => run(a)}>
+                      {a.title}
                     </button>
-                  </span>
-                )}
-              />
+                  )}
+                  meta={a.reason}
+                  wrapTitle
+                  trailing={(
+                    <span className={`${styles.trail} ${styles.suggestTrail} ${styles.aboveStretch}`}>
+                      <Button variant="secondary" size="S" className={`${styles.ctaButton} ${styles.suggestCta}`} onClick={() => run(a)}>{a.cta}</Button>
+                      <button type="button" className={styles.suggestClose} aria-label="Dismiss" onClick={() => dismiss(a)}>
+                        <Icon name="solar:close-linear" size={12} />
+                      </button>
+                    </span>
+                  )}
+                />
+              </div>
             )}
           />
         )}
       </DashboardCardBody>
+      {medsOpen && (
+        <Suspense fallback={null}>
+          <AddMedicationsDrawer patientId={patientId} onClose={() => setMedsOpen(false)} />
+        </Suspense>
+      )}
     </DashboardCard>
   );
 }

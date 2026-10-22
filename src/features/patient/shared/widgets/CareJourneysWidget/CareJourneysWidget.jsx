@@ -91,10 +91,11 @@ export function CareJourneysWidget() {
             return (
               <PanelSectionItem
                 key={j.id}
+                alignTop
                 leading={<Avatar type="icon" variant="patient" iconName="solar:routing-2-linear" size="M" />}
                 title={j.name}
                 meta={[j.date, j.type]}
-                titleAside={<Badge variant={j.badgeVariant} label={j.status} />}
+                trailing={<Badge variant={j.badgeVariant} label={j.status} />}
               >
                 <div className={styles.progressRow}>
                   <div

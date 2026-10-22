@@ -1,12 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_PROJECTS } from './supabaseConfig';
+import { supabaseTarget } from './supabaseConfig';
 
-// Env vars win; the fallback is the dev project in dev builds, production in
-// production builds (see supabaseConfig.js).
-const FALLBACK = import.meta.env.DEV ? SUPABASE_PROJECTS.dev : SUPABASE_PROJECTS.prod;
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || FALLBACK.url;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || FALLBACK.anonKey;
+// Vite bakes __DEPLOY_TARGET__ at build time: "dev" on Vercel preview,
+// empty otherwise. Local `vite` dev also uses Foldhealth Dev.
+// eslint-disable-next-line no-undef
+const previewBuild = typeof __DEPLOY_TARGET__ !== 'undefined' && __DEPLOY_TARGET__ === 'dev';
+const { url: supabaseUrl, anonKey: supabaseAnonKey } = supabaseTarget({
+  useDev: import.meta.env.DEV || previewBuild,
+  url: import.meta.env.VITE_SUPABASE_URL,
+  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+});
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   db: { schema: 'public' },

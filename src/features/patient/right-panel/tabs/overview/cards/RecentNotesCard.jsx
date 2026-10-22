@@ -33,6 +33,7 @@ function formatDate(iso) {
 export function RecentNotesCard({ patientId, actions }) {
   const notes = useAppStore(s => s.clinicalNotesByPatient[patientId]);
   const fetchNotes = useAppStore(s => s.fetchClinicalNotesForPatient);
+  const openNotePreview = useAppStore(s => s.openNotePreview);
   const setPatientProfileTab = useAppStore(s => s.setPatientProfileTab);
   const [fetched, setFetched] = useState(false);
 
@@ -60,19 +61,25 @@ export function RecentNotesCard({ patientId, actions }) {
         </>
       )}
     >
-      <DashboardCardBody className={styles.notesBody}>
+      <DashboardCardBody className={styles.listBody}>
         {list.length === 0 ? (
           <p className={styles.empty}>No clinical notes yet.</p>
         ) : list.slice(0, VISIBLE).map(n => {
           const status = noteStatus(n.status);
           return (
-            <PanelSectionItem
-              key={n.id}
-              leading={<span className={styles.tile}><Icon name="solar:notes-linear" size={16} /></span>}
-              title={<button type="button" className={styles.titleButton} onClick={openNotes}>{noteTitle(n)}</button>}
-              meta={[n.authorName, formatDate(n.updatedAt || n.createdAt)]}
-              trailing={<span className={styles.statusSlotWide}><Badge tone={status.tone} size="S" label={status.label} /></span>}
-            />
+            <div key={n.id} className={styles.clickRow}>
+              <PanelSectionItem
+                inset
+                leading={<span className={styles.tile}><Icon name="solar:notes-linear" size={16} /></span>}
+                title={(
+                  <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => openNotePreview(n)}>
+                    {noteTitle(n)}
+                  </button>
+                )}
+                meta={[n.authorName, formatDate(n.updatedAt || n.createdAt)]}
+                trailing={<span className={styles.statusSlotWide}><Badge tone={status.tone} size="S" label={status.label} /></span>}
+              />
+            </div>
           );
         })}
       </DashboardCardBody>

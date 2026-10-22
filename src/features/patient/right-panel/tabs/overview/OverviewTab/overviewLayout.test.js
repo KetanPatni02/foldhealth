@@ -37,7 +37,7 @@ describe('normalizeOverviewLayout', () => {
   });
 
   it('keeps every widget in exactly one lane, dropping unknown and duplicate keys', () => {
-    const l = normalizeOverviewLayout({ revision: 2, lanes: [['synopsis', 'nope', 'synopsis'], ['tasks'], []], hidden: ['tasks', 'nope'] });
+    const l = normalizeOverviewLayout({ revision: 3, lanes: [['synopsis', 'nope', 'synopsis'], ['tasks'], []], hidden: ['tasks', 'nope'] });
     placedOnce(l);
     expect(l.lanes[0][0]).toBe('synopsis');
     expect(l.lanes[1][0]).toBe('tasks');
@@ -46,22 +46,24 @@ describe('normalizeOverviewLayout', () => {
   });
 
   it('keeps a hidden widget in its lane', () => {
-    const l = normalizeOverviewLayout({ revision: 2, lanes: [['synopsis', 'tasks'], [], []], hidden: ['tasks'] });
+    const l = normalizeOverviewLayout({ revision: 3, lanes: [['synopsis', 'tasks'], [], []], hidden: ['tasks'] });
     expect(l.lanes[0].slice(0, 2)).toEqual(['synopsis', 'tasks']);
     expect(l.hidden).toContain('tasks');
   });
 
   it('places widgets the user has never seen in their default lane with default visibility', () => {
-    const l = normalizeOverviewLayout({ revision: 2, lanes: [['synopsis'], [], []], hidden: [] });
+    const l = normalizeOverviewLayout({ revision: 3, lanes: [['synopsis'], [], []], hidden: [] });
     expect(l.lanes[2]).toContain('quickActions');
     expect(l.hidden).not.toContain('quickActions');
     expect(l.lanes[0]).toContain('insurance');
-    expect(l.hidden).toContain('insurance');
+    expect(l.hidden).not.toContain('insurance');
+    expect(l.lanes[1]).toContain('programProgress');
+    expect(l.hidden).toContain('programProgress');
   });
 
   it('moves widgets from the old Hidden list back into their lanes, still hidden', () => {
     // Saved before hidden widgets kept their lane: hidden ones were in no lane.
-    const l = normalizeOverviewLayout({ revision: 2, lanes: [['synopsis'], ['carePlan'], ['tasks']], hidden: ['vitals'] });
+    const l = normalizeOverviewLayout({ revision: 3, lanes: [['synopsis'], ['carePlan'], ['tasks']], hidden: ['vitals'] });
     placedOnce(l);
     expect(l.lanes[1]).toContain('vitals');
     expect(l.hidden).toContain('vitals');
@@ -77,7 +79,8 @@ describe('normalizeOverviewLayout', () => {
     expect(l.lanes[1][0]).toBe('vitals');
     expect(l.lanes[2][0]).toBe('quickActions');
     expect(l.hidden).not.toContain('vitals');
-    expect(l.hidden).toContain('medications');
+    expect(l.hidden).not.toContain('medications');
+    expect(l.hidden).toContain('programProgress');
   });
 });
 
