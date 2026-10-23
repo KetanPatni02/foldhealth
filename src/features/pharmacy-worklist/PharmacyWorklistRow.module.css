@@ -193,3 +193,8 @@
 .reworkLink:hover { text-decoration: underline; }
 .subStatusBtn { background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
 .subStatusBtn:hover { text-decoration: underline; }
+
+/* Chevrons are DownChevronIcon, turned for right (collapsed) and up. */
+.chevron { flex-shrink: 0; transition: transform 0.15s ease; }
+.chevronRight { transform: rotate(-90deg); }
+.chevronUp { transform: rotate(180deg); }

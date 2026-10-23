@@ -115,3 +115,8 @@
   font-size: var(--font-md);
 }
 .empty p { margin: 0; }
+
+/* Chevrons are DownChevronIcon, turned for right (collapsed) and up. */
+.chevron { flex-shrink: 0; transition: transform 0.15s ease; }
+.chevronRight { transform: rotate(-90deg); }
+.chevronUp { transform: rotate(180deg); }

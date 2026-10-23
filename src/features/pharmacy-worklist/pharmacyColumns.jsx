@@ -35,7 +35,7 @@ const perGap = (render, footer) => (m, ctx) => (
 const viewMoreButton = (ctx) => (
   <button type="button" className={styles.viewMoreBtn} onClick={ctx.toggleExpanded} aria-expanded={ctx.expanded}>
     {ctx.expanded ? 'View Less' : `View More ${ctx.extraCount}`}
-    <Icon name={ctx.expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-300)" />
+    <DownChevronIcon size={12} color="currentColor" className={`${styles.chevron} ${ctx.expanded ? styles.chevronUp : ''}`} />
   </button>
 );
 

@@ -3,6 +3,7 @@ import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { PhoneLink } from '../../../components/PhoneLink/PhoneLink';
 import {
   GAP_STATUS_TONE, isActiveGap, enrichPharmacyMember, pharmaciesUsed, prescribersOf,
@@ -70,7 +71,7 @@ export function PharmacySnapshotStep({ member }) {
             <div key={g.code} className={styles.gapItem}>
               <button type="button" className={`${styles.gapGrid} ${styles.gapRow}`} onClick={() => toggle(g.code)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Hide' : 'Show'} ${g.code} medications`}>
                 <span className={styles.gapCode}>
-                  <Icon name={isOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={14} color="var(--neutral-300)" />
+                  <DownChevronIcon size={14} className={`${styles.chevron} ${isOpen ? '' : styles.chevronRight}`} />
                   <MeasureCode code={g.code} />
                 </span>
                 <span className={styles.gapStatus}>
