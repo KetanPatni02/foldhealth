@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { CappedRows } from './CappedRows';
+import { MedChangesSection } from './MedChangesSection';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Avatar } from '../../../../../../components/Avatar/Avatar';
 import { Icon } from '../../../../../../components/Icon/Icon';
@@ -11,6 +12,7 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { findWorklistMember, icdFromText } from './overviewItemActions';
 import { useP360Profile } from './useP360Profile';
 import styles from './overviewCards.module.css';
+import { isProgramClosed } from '../../../../data/programStatus';
 
 const AddMedicationsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddMedicationsDrawer/AddMedicationsDrawer').then(m => ({ default: m.AddMedicationsDrawer })));
 const AddProblemsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddProblemsDrawer/AddProblemsDrawer').then(m => ({ default: m.AddProblemsDrawer })));
@@ -119,7 +121,7 @@ export function CareTeamCard({ patientId }) {
   return (
     <ProfileCard patientId={patientId} icon="solar:users-group-rounded-linear" title="Care Team" count={p => list(p.care_team).length || null} bodyClassName={styles.listBody}>
       {(p) => {
-        const active = (programs || []).filter(pr => pr.status !== 'Closed');
+        const active = (programs || []).filter(pr => !isProgramClosed(pr.status));
         const owned = {};
         active.forEach((pr) => {
           if (pr.assignee && pr.assignee !== 'Unassigned') (owned[pr.assignee] ||= []).push(pr.code);
@@ -233,8 +235,16 @@ export function MedicationsCard({ patientId }) {
       <ProfileCard patientId={patientId} icon="solar:pill-linear" title="Medications" count={p => list(p.medication_orders).length || null} bodyClassName={styles.listBody}>
         {(p) => {
           const meds = list(p.medication_orders);
-          if (meds.length === 0) return <p className={styles.empty}>No active medications on file.</p>;
+          if (meds.length === 0) {
+            return (
+              <>
+                <p className={styles.empty}>No active medications on file.</p>
+                <MedChangesSection patientId={patientId} />
+              </>
+            );
+          }
           return (
+            <>
             <CappedRows
               items={meds}
               render={m => (
@@ -251,6 +261,8 @@ export function MedicationsCard({ patientId }) {
                 </div>
               )}
             />
+            <MedChangesSection patientId={patientId} />
+            </>
           );
         }}
       </ProfileCard>

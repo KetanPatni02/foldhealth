@@ -8,12 +8,10 @@ import { BannerExpandIcon } from '../../../../../../../components/Icon/BannerExp
 import { ProgressRing } from '../../../../../../hcc/DiagPanel/ReviewProgressPopover';
 import { ProgramStatusRing } from '../shared/ProgramStatusRing/ProgramStatusRing.jsx';
 import { ProgramBadges } from '../shared/ProgramBadges/ProgramBadges.jsx';
-import { statusColorFor } from '../../../../../data/programStatus';
+import { statusColorFor, isProgramClosed } from '../../../../../data/programStatus';
 import { useRightPanelMenuOption } from '../../../../../hooks/useProgramPanelSplitActive';
 import { ProgramDetailExpandPanel } from './ProgramDetailViewParts';
 import styles from './ProgramDetailView.module.css';
-
-const ENDED = new Set(['Closed', 'Completed']);
 
 export function ProgramDetailViewHeader({
   program,
@@ -43,7 +41,7 @@ export function ProgramDetailViewHeader({
     { key: 'history', icon: 'solar:history-linear', label: 'History' },
     { key: 'report', icon: 'solar:download-minimalistic-linear', label: 'Download Report' },
     { divider: true },
-    { key: 'end', icon: 'solar:close-circle-linear', label: 'End Program', danger: true, disabled: ENDED.has(status) },
+    { key: 'end', icon: 'solar:close-circle-linear', label: 'End Program', danger: true, disabled: isProgramClosed(status) },
   ];
   return (
     <>
@@ -92,7 +90,7 @@ export function ProgramDetailViewHeader({
           )}
           {otherPrograms.length > 0 && (
             <>
-              <ProgramBadges programs={otherPrograms} progressFor={progressFor} />
+              <ProgramBadges programs={otherPrograms} progressFor={progressFor} onSelect={onSwitchProgram} />
               <span className={styles.headerDivider} />
             </>
           )}

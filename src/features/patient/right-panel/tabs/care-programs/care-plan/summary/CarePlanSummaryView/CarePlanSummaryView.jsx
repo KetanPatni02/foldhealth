@@ -44,6 +44,7 @@ import styles from './CarePlanSummaryView.module.css';
 import { localDateMs } from '../../../../../../../../lib/localDate';
 import { apiFetch } from '../../../../../../../../lib/apiFetch';
 import { useSignedCarePlans } from '../../lib/useSignedCarePlans';
+import { isProgramClosed } from '../../../../../../data/programStatus';
 
 const PRIORITIES = ['high', 'medium', 'low'];
 
@@ -873,9 +874,8 @@ export function CarePlanSummaryView({
     return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
   };
   const activeProgramRows = useMemo(() => {
-    const past = new Set(['Completed', 'Closed']);
     return (programs || [])
-      .filter(p => !past.has(p.status))
+      .filter(p => !isProgramClosed(p.status))
       .map(p => {
         const key = `${patientId}::${p.id}`;
         const plan = patientCarePlans[key];

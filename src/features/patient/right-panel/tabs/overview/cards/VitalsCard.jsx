@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { DashboardCard, DashboardCardBody } from '../../../../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { OVERVIEW_SEED } from '../../../../data/overviewData';
+import {
+  ResponsiveContainer, AreaChart, Area, YAxis, Tooltip, ReferenceLine,
+} from '../../../../../../components/LazyRecharts/LazyRecharts';
+import { goalTarget } from './vitalGoal';
 import styles from './overviewCards.module.css';
 
 const TONE_COLOR = {
@@ -28,32 +32,80 @@ function ageLabel(measuredAt) {
   return `${days} d`;
 }
 
-function VitalTrend({ values, color }) {
-  if (!Array.isArray(values) || values.length < 2) return <div className={styles.vitalTrend} />;
-  const width = 100;
-  const height = 75;
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const span = max - min || 1;
-  const points = values.map((value, i) => {
-    const x = (i / (values.length - 1)) * width;
-    const y = 6 + (1 - (value - min) / span) * (height - 14);
-    return [x, y];
-  });
-  const line = points.map(point => point.join(',')).join(' ');
+// One reading under the cursor, with the goal. Only the latest reading has a
+// date and the full value (e.g. 142/88); earlier BP readings carry a
+// diastolic only when the data has a `diastolicSeries`.
+function VitalTooltip({ active, payload, unit, measuredAt, latestValue, goal, dual, total }) {
+  if (!active || !payload?.length) return null;
+  const { value, dia, index } = payload[0].payload;
+  const latest = index === total - 1;
+  const reading = latest && latestValue ? latestValue : dia != null ? `${value}/${dia}` : value;
+  const systolicOnly = dual && !(latest && latestValue) && dia == null;
+  // "120/80" or "25" take the unit; "7%" and "140 mg/dL" already carry one.
+  const goalText = goal && (/[a-z%]/i.test(goal) ? goal : `${goal} ${unit}`);
   return (
-    <div className={styles.vitalTrend} aria-hidden="true">
-      <svg className={styles.vitalTrendSvg} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-        <polygon points={`0,${height} ${line} ${width},${height}`} fill={color} opacity="0.16" />
-        <polyline points={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      </svg>
-      {points.map(([x, y], i) => (
-        <span
-          key={i}
-          className={styles.vitalDot}
-          style={{ left: `${x}%`, top: `${(y / height) * 100}%`, borderColor: color }}
-        />
-      ))}
+    <div className={styles.vitalTooltip}>
+      <span className={styles.vitalTooltipLabel}>
+        {latest ? `Latest${measuredAt ? ` · ${measuredAt}` : ''}` : `Reading ${index + 1} of ${total}`}
+      </span>
+      <span className={styles.vitalTooltipValue}>
+        {systolicOnly ? 'Systolic ' : ''}{reading} {unit}
+      </span>
+      {systolicOnly && <span className={styles.vitalTooltipLabel}>Diastolic not on file</span>}
+      {goalText && <span className={styles.vitalTooltipLabel}>Goal {goalText}</span>}
+    </div>
+  );
+}
+
+function VitalTrend({ values, diastolic, color, target, unit, measuredAt, latestValue, goal, dual }) {
+  if (!Array.isArray(values) || values.length < 2) return <div className={styles.vitalTrend} />;
+  const hasDia = Array.isArray(diastolic) && diastolic.length === values.length;
+  const data = values.map((value, index) => ({ index, value, dia: hasDia ? diastolic[index] : null }));
+  // The scale stretches to include the target, so its line is always on the chart.
+  const all = [...values, ...(hasDia ? diastolic : []), ...(target != null ? [target] : [])];
+  const min = Math.min(...all);
+  const max = Math.max(...all);
+  const pad = (max - min || 1) * 0.12;
+  return (
+    <div className={styles.vitalTrend}>
+      <ResponsiveContainer width="100%" height="100%" minHeight={48}>
+        {/* Edge to edge: the area meets the card's sides and bottom. */}
+        <AreaChart data={data} margin={{ top: 6, right: 0, bottom: 0, left: 0 }}>
+          <YAxis hide domain={[min - pad, max + pad]} />
+          {target != null && <ReferenceLine y={target} stroke="var(--neutral-300)" strokeDasharray="3 3" ifOverflow="extendDomain" />}
+          <Tooltip
+            cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: '2 2' }}
+            content={(
+              <VitalTooltip unit={unit} measuredAt={measuredAt} latestValue={latestValue} goal={goal} dual={dual} total={values.length} />
+            )}
+            wrapperStyle={{ zIndex: 2 }}
+          />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={color}
+            strokeWidth={1.5}
+            fill={color}
+            fillOpacity={0.16}
+            dot={{ r: 2.5, fill: 'var(--neutral-0)', stroke: color, strokeWidth: 1 }}
+            activeDot={{ r: 4, fill: color, stroke: 'var(--neutral-0)', strokeWidth: 1.5 }}
+            isAnimationActive={false}
+          />
+          {hasDia && (
+            <Area
+              type="monotone"
+              dataKey="dia"
+              stroke={color}
+              strokeWidth={1}
+              strokeDasharray="4 2"
+              fill="none"
+              dot={false}
+              activeDot={{ r: 3, fill: color, stroke: 'var(--neutral-0)', strokeWidth: 1 }}
+              isAnimationActive={false}
+            />
+          )}
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -66,6 +118,8 @@ export function VitalsCard({ overview, memberId }) {
       ...v,
       goalFrom: v.goalFrom || sample?.goalFrom,
       goalTo: v.goalTo || sample?.goalTo,
+      // Sample diastolic history (BP), like the goals, until the row carries its own.
+      diastolicSeries: v.diastolicSeries || sample?.diastolicSeries,
       sourceIcon: v.sourceIcon || sample?.sourceIcon,
     };
   });
@@ -154,7 +208,17 @@ export function VitalsCard({ overview, memberId }) {
                       </p>
                     )}
                   </div>
-                  <VitalTrend values={v.series} color={color} />
+                  <VitalTrend
+                    values={v.series}
+                    diastolic={v.diastolicSeries}
+                    color={color}
+                    target={goalTarget(v.goalTo)}
+                    goal={v.goalTo}
+                    unit={v.unit}
+                    measuredAt={v.measuredAt}
+                    latestValue={v.value}
+                    dual={v.key === 'bp'}
+                  />
                 </article>
               );
             })}

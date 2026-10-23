@@ -3,7 +3,13 @@ import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevro
 import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
 import { Button } from '../../../../../../../components/Button/Button';
 import { focusCarePlanPanel, closeCarePlanPanel } from '../../../../../hooks/useProgramPanelSplitActive';
+import { useAppStore } from '../../../../../../../store/useAppStore';
+import { resolvePatientStoreId } from '../../../../../../../lib/resolvePatientStoreId';
+import { closureReasonLabel, isProgramClosed } from '../../../../../data/programStatus';
+import { instanceLabel, previousInstances } from '../../../../../data/programLifecycle';
 import styles from './ProgramDetailView.module.css';
+
+const EMPTY = [];
 
 // The Care Plan step while its plan is open as its own panel in the split,
 // so the plan isn't edited in two places at once.
@@ -92,9 +98,60 @@ export function SectionHeader({ name, expanded, onToggle }) {
   );
 }
 
+// Enrollment facts for this instance, and the program's other instances
+// with how each ended.
+function EnrollmentColumns({ program }) {
+  const programs = useAppStore(s => s.careProgramsByPatient[resolvePatientStoreId(s, s.selectedPatientId)]) || EMPTY;
+  const live = programs.find(p => p.id === program.id) || program;
+  const previous = previousInstances(live, programs);
+  const trigger = [live.triggerType, live.triggerDate].filter(Boolean).join(' · ');
+  const closed = isProgramClosed(live.status);
+  return (
+    <>
+      <div className={styles.expandCol}>
+        <div className={styles.expandColTitle}>Enrollment</div>
+        <div className={styles.expandRows}>
+          <DetailRow icon="solar:hashtag-linear" label="Instance:" value={instanceLabel(live, programs)} />
+          <DetailRow icon="solar:calendar-add-linear" label="Started:" value={live.startDate || '—'} />
+          <DetailRow icon="solar:calendar-mark-linear" label="Planned End:" value={live.plannedEndDate || 'Not set'} />
+          <DetailRow icon="solar:user-check-linear" label="Enrolled By:" value={live.enrolledBy || 'Not recorded'} />
+          {trigger && <DetailRow icon="solar:bolt-linear" label="Trigger:" value={trigger} />}
+          {closed && (
+            <DetailRow
+              icon="solar:close-circle-linear"
+              label="Closed:"
+              value={[live.endDate !== '—' && live.endDate, closureReasonLabel(live.closureReason) || live.status].filter(Boolean).join(' · ')}
+            />
+          )}
+        </div>
+      </div>
+      {previous.length > 0 && (
+        <div className={styles.expandCol}>
+          <div className={styles.expandColTitle}>Previous Enrollments</div>
+          <div className={styles.expandRows}>
+            {previous.map(p => (
+              <DetailRow
+                key={p.id}
+                icon="custom:history"
+                label={`${instanceLabel(p, programs)}:`}
+                value={[
+                  [p.status, closureReasonLabel(p.closureReason)].filter(Boolean).join(' · '),
+                  [p.startDate, p.endDate].filter(v => v && v !== '—').join(' to '),
+                  p.assignee && p.assignee !== 'Unassigned' ? p.assignee : null,
+                ].filter(Boolean).join(' · ')}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function ProgramDetailExpandPanel({ program }) {
   return (
     <div className={styles.expandPanel}>
+      <EnrollmentColumns program={program} />
       <div className={styles.expandCol}>
         <div className={styles.expandColTitle}>Assessment &amp; Documentation</div>
         <div className={styles.expandRows}>
