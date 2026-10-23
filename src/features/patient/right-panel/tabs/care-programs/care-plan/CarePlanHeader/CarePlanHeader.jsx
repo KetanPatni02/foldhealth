@@ -50,6 +50,8 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
   const requestCarePlanPanel = useAppStore(s => s.requestCarePlanPanel);
   const carePlanBulkMode = useAppStore(s => s.carePlanBulkMode);
   const toggleCarePlanBulkMode = useAppStore(s => s.toggleCarePlanBulkMode);
+  const carePlanLayout = useAppStore(s => s.carePlanLayout);
+  const setCarePlanLayout = useAppStore(s => s.setCarePlanLayout);
   const carePlanSearchText = useAppStore(s => s.carePlanSearchText);
   const setCarePlanSearchText = useAppStore(s => s.setCarePlanSearchText);
   const carePlanFiltersOpen = useAppStore(s => s.carePlanFiltersOpen);
@@ -135,6 +137,9 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
   const carePlanMoreItems = useMemo(() => {
     const items = [
       ...rightPanelItems,
+      carePlanLayout === 'linkage'
+        ? { key: 'layout', icon: 'solar:list-linear', label: 'Table View' }
+        : { key: 'layout', icon: 'solar:link-linear', label: 'Linkage View' },
       { key: 'ai-plan', iconElement: <Icon name="custom:ai" size={16} />, label: 'Draft Individualized Plan' },
       ...(canPause ? [planPaused
         ? { key: 'resume', icon: 'solar:play-circle-linear', label: 'Resume Care Plan' }
@@ -152,13 +157,14 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
       }] : []),
     ];
     return items;
-  }, [rightPanelItems, canPause, planPaused, carePlanDraft.canDiscard, viewedVersion]);
+  }, [rightPanelItems, carePlanLayout, canPause, planPaused, carePlanDraft.canDiscard, viewedVersion]);
 
   const handleCarePlanMoreSelect = (key) => {
     setCarePlanMoreMenu(null);
     if (rightPanel.select(key)) return;
     if (key === 'discard') setDiscardOpen(true);
     else if (key === 'bulk') toggleCarePlanBulkMode();
+    else if (key === 'layout') setCarePlanLayout(carePlanLayout === 'linkage' ? 'tables' : 'linkage');
     else if (key === 'preview') requestCarePlanShare('preview');
     else requestCarePlanPanel(key);
   };

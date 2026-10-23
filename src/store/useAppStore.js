@@ -4217,6 +4217,10 @@ export const useAppStore = create((set, get) => ({
   carePlanBulkMode: false,
   toggleCarePlanBulkMode: () => set(s => ({ carePlanBulkMode: !s.carePlanBulkMode })),
   setCarePlanBulkMode: (on) => set({ carePlanBulkMode: on }),
+  // 'tables' lists goals, interventions and barriers apart; 'linkage' nests
+  // them under their goals. Switched from the content header's More menu.
+  carePlanLayout: 'tables',
+  setCarePlanLayout: (layout) => set({ carePlanLayout: layout }),
   // Care plan search text and filter-bar visibility. Same split as bulk
   // mode: the Search / Filter buttons live in the content header, and
   // CarePlanView filters the GBI tables with them.

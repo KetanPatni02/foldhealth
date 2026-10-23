@@ -53,9 +53,9 @@ build requires esbuild ≥ 0.28 on Node 26.
   default lanes now lead with what moves (risk, care plan, gaps, suggested
   actions, tasks), and sample-only reference cards start hidden; layouts
   people already arranged are kept.
-- **Care plan Linkage view.** The care plan header has a Tables / Linkage
-  switch. Linkage nests each goal's interventions and barriers beneath it
-  with connecting lines, and lists anything not linked to a goal under
+- **Care plan Linkage view.** The care plan's More menu switches between
+  Table View and Linkage View. Linkage nests each goal's interventions and
+  barriers beneath it with connecting lines, and lists anything not linked to a goal under
   Unlinked at the bottom. Drag a row to another goal to move its link (or
   onto Unlinked to drop it), or use a row's "Link to goal" and "Unlink from
   goal" actions. A barrier linked to two goals shows under both; "Link to
