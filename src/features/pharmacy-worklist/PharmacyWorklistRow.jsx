@@ -11,8 +11,10 @@ import { useAppStore } from '../../store/useAppStore';
 import { worklistMemberCallId } from '../../lib/patientCall';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
 import { PharmacyActivityDrawer } from './program/PharmacyActivityLog';
-import { MANUAL_GAP_STATUSES } from './pharmacyWorklist.utils';
+import { MANUAL_GAP_STATUSES, isActiveGap } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
+
+const MAX_INLINE_GAPS = 2;
 
 const AUTO_STATUS = '__auto';
 const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
@@ -33,6 +35,14 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [gapStatusMenu, setGapStatusMenu] = useState(null); // { code, rect }
+  const [expanded, setExpanded] = useState(false);
+
+  // HEDIS pattern: show 2 gaps, the rest behind "View More N". Gaps still
+  // being worked come first so a collapsed row never hides one behind a
+  // closed gap.
+  const orderedGaps = [...m.gaps].sort((a, b) => isActiveGap(b.status) - isActiveGap(a.status));
+  const visibleGaps = expanded ? orderedGaps : orderedGaps.slice(0, MAX_INLINE_GAPS);
+  const extraCount = Math.max(0, orderedGaps.length - MAX_INLINE_GAPS);
   const [showActivity, setShowActivity] = useState(false);
   const dropBtnRef = useRef(null);
   const callBtnRef = useRef(null);
@@ -53,6 +63,10 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
     openCareGap: onOpenCareGap,
     eligibleUsers,
     openGapStatusMenu: (code, rect) => setGapStatusMenu(cur => (cur?.code === code ? null : { code, rect })),
+    visibleGaps,
+    extraCount,
+    expanded,
+    toggleExpanded: () => setExpanded(v => !v),
   };
   const menuGap = gapStatusMenu && m.gaps.find(g => g.code === gapStatusMenu.code);
   const gapStatusItems = menuGap ? [
@@ -80,7 +94,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   };
 
   return (
-    <tr className={`${styles.row} ${m.gaps.length > 1 ? styles.rowMultiGap : ''}`} onClick={() => { if (m.gaps.length) openPharmacyGapDrawer(m.id, m.urgent?.code || m.gaps[0].code); }}>
+    <tr className={`${styles.row} ${visibleGaps.length > 1 ? styles.rowMultiGap : ''}`} onClick={() => { if (m.gaps.length) openPharmacyGapDrawer(m.id, m.urgent?.code || m.gaps[0].code); }}>
       <td className={`${styles.checkTd} ${styles.stickyLeft}`} style={{ left: 0 }} onClick={e => e.stopPropagation()}>
         <Checkbox checked={isSelected} onCheckedChange={() => onSelect(m.id)} aria-label={`Select ${m.name}`} />
       </td>
@@ -113,7 +127,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
         <td
           key={col.key}
           data-col-key={col.key}
-          className={col.getTdClassName ? col.getTdClassName(m) : styles.td}
+          className={col.getTdClassName ? col.getTdClassName(m, cellCtx) : styles.td}
           onClick={col.stopRowClickPropagation ? (e) => e.stopPropagation() : undefined}
         >
           {col.renderCell(m, cellCtx)}

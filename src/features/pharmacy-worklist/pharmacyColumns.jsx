@@ -20,18 +20,29 @@ const failDateHint = (d) => {
   return `In ${days(d)}: after this date the member can no longer reach 80% PDC this year`;
 };
 
-// Gap-level columns stack one item per pharmacy gap, HEDIS style; the last
-// one draws the divider between per-gap and per-member columns.
-const gapTd = (last) => (m) => [
+// Gap-level columns stack one item per visible pharmacy gap, HEDIS style
+// (the row collapses to 2 with "View More N"); the last one draws the divider
+// between per-gap and per-member columns.
+const gapTd = (last) => (m, ctx) => [
   styles.tdGap,
-  m.gaps.length === 1 ? styles.tdGapCenter : '',
+  ctx.visibleGaps.length === 1 ? styles.tdGapCenter : '',
   last ? styles.tdGapDivide : '',
 ].filter(Boolean).join(' ');
 
-const perGap = (render) => (m, ctx) => (
+// `footer` fills the row under the gaps when some are collapsed; the other
+// gap columns leave it empty so every column stays aligned.
+const perGap = (render, footer) => (m, ctx) => (
   <div className={styles.gapItems}>
-    {m.gaps.map(g => <div key={g.code} className={styles.gapItem}>{render(g, m, ctx)}</div>)}
+    {ctx.visibleGaps.map(g => <div key={g.code} className={styles.gapItem}>{render(g, m, ctx)}</div>)}
+    {ctx.extraCount > 0 && <div className={styles.gapFooter}>{footer?.(ctx)}</div>}
   </div>
+);
+
+const viewMoreButton = (ctx) => (
+  <button type="button" className={styles.viewMoreBtn} onClick={ctx.toggleExpanded} aria-expanded={ctx.expanded}>
+    {ctx.expanded ? 'View Less' : `View More ${ctx.extraCount}`}
+    <Icon name={ctx.expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-300)" />
+  </button>
 );
 
 /**
@@ -56,7 +67,7 @@ export const PHARMACY_MIDDLE_COLUMNS = [
           <Badge size="M" variant="compliance-na" label={g.code} />
         </button>
       </Tooltip>
-    )),
+    ), viewMoreButton),
   },
   {
     key: 'drugs', label: 'Drugs', getTdClassName: gapTd(false),
