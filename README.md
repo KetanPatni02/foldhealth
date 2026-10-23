@@ -37,6 +37,27 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Patient consent and preferences (Phase 2A.1, 2A.2).** Patient consent is now
+  a record, not a "2/4" count: `patient_consents` keeps an append-only
+  history per program (CCM, APCM, RPM, BHI) and channel (call, SMS, email,
+  TCPA) with status, method, who captured it, expiry, witness and the signed
+  artifact, stored in a private `patient-consents` bucket and read through
+  signed URLs. `patient_preferences` holds channel per program, language,
+  interpreter need, health literacy and contact validity. The rules in
+  `src/features/patient/data/consentRules.js` decide whether billable work
+  can be recorded (a hard block without current consent), whether a patient
+  can be contacted on a channel (TCPA for texts and autodialed calls), and
+  whether they're eligible to enroll. Store: `fetchPatientConsents`,
+  `capturePatientConsent`, `savePatientPreferences`. A guided Capture
+  Consent drawer (consent for, decision, method, the script to read, then a
+  witness, a drawn signature through the new `SignaturePad` component, or an
+  uploaded form) opens from the banner's consent popover, which now shows
+  each consent's live state and an audit log, and from the Overview Consent
+  card. The banner count covers the patient's open billable enrollments.
+  The billing gates follow in 2A.3. Needs
+  `supabase/patient_consents_migration.sql` then
+  `supabase/patient_consents_seed.sql` (consent reads as missing and
+  captures stay session-only until then).
 - **Overview: Unity insights and Recap.** Each Overview widget now carries
   its own Unity layer (Figma Reports pattern): a purple strip with the
   widget's headline ("Missed Annual Wellness Visit on 04/10/2026 is not

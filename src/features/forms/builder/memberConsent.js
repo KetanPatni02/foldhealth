@@ -3,7 +3,7 @@
 // Required switch was removed, so every default ships non-mandatory. A consent
 // question the member is forced to tick isn't consent; the top-level "Is this
 // field required?" still governs whether the component itself must be present.
-const DEFAULT_ITEMS = [
+export const DEFAULT_ITEMS = [
   {
     id: 'ccm',
     name: 'CCM',
