@@ -1,5 +1,8 @@
 import { SettingsSubNav } from './SettingsSubNav';
 import { SECTION_LABELS } from './settingsNavItems';
+import { useCan } from '../../lib/useCan';
+import { settingsPermissionKey } from '../../lib/accessControl';
+import { EmptyState } from '../../components/EmptyState/EmptyState';
 import { AgentsTable } from './agents/AgentsTable';
 import { MessagesSettings } from './messages/MessagesSettings';
 import { EmbeddedComponentsSettings } from './embedded-components/EmbeddedComponentsSettings';
@@ -65,6 +68,7 @@ export function SettingsLayout() {
   const setCarePlanTab = useAppStore(s => s.setCarePlanTab);
   const showToast = useAppStore(s => s.showToast);
   const automationsView = useAppStore(s => s.automationsView);
+  const can = useCan();
 
   // Editing a template owns the whole Settings area, same as New Care Plan.
   if (carePlanTemplateScreen) {
@@ -97,6 +101,21 @@ export function SettingsLayout() {
             setCarePlanTab(values.status === 'draft' ? 'drafts' : 'template');
             setCarePlanCreateOpen(false);
           }}
+        />
+      </div>
+    );
+  }
+
+  // Access Control hides sections in the sub-nav; this covers a link or a
+  // typed URL that opens one anyway.
+  if (!can(settingsPermissionKey(settingsNavItem))) {
+    return (
+      <div className={styles.layout}>
+        <SettingsSubNavSlot activeItem={settingsNavItem} onItemClick={setSettingsNavItem} />
+        <EmptyState
+          icon="solar:shield-cross-linear"
+          title="You don't have access to this section"
+          description="Your role doesn't include it. Ask your practice administrator if you need it."
         />
       </div>
     );

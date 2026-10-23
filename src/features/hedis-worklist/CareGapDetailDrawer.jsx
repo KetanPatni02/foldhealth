@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useCan } from '../../lib/useCan';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
@@ -648,6 +649,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   // the newest saved note for that gap so nothing extra is needed on the
   // editable path.
   const [amendNoteId, setAmendNoteId] = useState(null);
+  const canAmendNotes = useCan()('notes:sign');
   const openNoteInWorkspace = (dc) => {
     if (!dc?.gapCode && !dc?.noteId && !dc?.id) return;
     if (dc.gapCode) {
@@ -1663,18 +1665,20 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                           else showToast('No PDF for this version');
                         }}
                       />
-                      <Button
-                        variant="tertiary"
-                        size="M"
-                        leadingIcon="solar:lock-keyhole-minimalistic-linear"
-                        onClick={() => {
-                          const note = selectedNoteId ? memberNotes.find(n => n.id === selectedNoteId) : memberNotes.find(n => (n.gapCodes || []).includes(currentCode));
-                          if (note?.id) setAmendNoteId(note.id);
-                          setLeftWorkspace('clinical-note');
-                        }}
-                      >
-                        Amend
-                      </Button>
+                      {canAmendNotes && (
+                        <Button
+                          variant="tertiary"
+                          size="M"
+                          leadingIcon="solar:lock-keyhole-minimalistic-linear"
+                          onClick={() => {
+                            const note = selectedNoteId ? memberNotes.find(n => n.id === selectedNoteId) : memberNotes.find(n => (n.gapCodes || []).includes(currentCode));
+                            if (note?.id) setAmendNoteId(note.id);
+                            setLeftWorkspace('clinical-note');
+                          }}
+                        >
+                          Amend
+                        </Button>
+                      )}
                     </>
                   )
                 ) : leftWorkspace === 'clinical-note-consolidated' ? (

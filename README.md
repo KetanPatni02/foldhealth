@@ -92,6 +92,14 @@ build requires esbuild ≥ 0.28 on Node 26.
   `supabase/automations_migration.sql` and `bun run seed`; until then the
   screens use in-memory sample data. Design review and decisions:
   `docs/features/automations-design-review.md`.
+- **Access Control.** Settings > Account > Access Control lists the roles
+  with their user counts and, for the selected role, Platform Access (nav bar
+  pages, Patient Details, Sign and Amend EHR Notes) and Settings Access
+  switches that save as they change. Roles can be created, duplicated,
+  renamed, deleted and have their permissions copied to others; built-in
+  roles keep their names. What a role can't see is hidden in the app (side
+  nav, Settings menu, the patient page, note signing); admins always see
+  everything. Saved in `access_roles` (`supabase/access_roles_migration.sql`).
 - **Verify ID on patient sends (VBC-25597).** Compose Email, New SMS, Send
   Content, Send Assessment and the thread's new Send Forms / Send Article
   drawers can protect their links. Ticking "Verify ID" applies the default

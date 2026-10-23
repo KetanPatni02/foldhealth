@@ -30,12 +30,14 @@ import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { BulkSelectToggle } from '../../../components/BulkSelect/BulkSelectToggle';
 import { useBulkSelect } from '../../../components/BulkSelect/useBulkSelect';
 import { OrgPanel } from './OrgPanel';
+import { AccessControlTab } from './access-control/AccessControlTab';
+import { useRoleOptions } from './access-control/useRoleOptions';
 import { UsersTab } from './users/UsersTab';
 import { LocationsTab } from './locations/LocationsTab';
 import { HolidaysTab } from '../calendar/HolidaysTab';
 import { HCC_ROLES, ROLE_COLORS, getInitials } from './AccountPanel.constants';
 import { useLocationNames, AddColumnDropdown } from './AccountPanelParts';
-import { ADMIN_ROLES, GENDER_OPTIONS, LANGUAGE_OPTIONS, MOCK_ROLES, isCapitalizedName } from './InviteUserDrawer.utils';
+import { ADMIN_ROLES, GENDER_OPTIONS, LANGUAGE_OPTIONS, isCapitalizedName } from './InviteUserDrawer.utils';
 import { MEDICAL_SPECIALTIES, PHYSICIAN_ROLE } from '../../../data/medicalSpecialties';
 import styles from './AccountPanel.module.css';
 
@@ -121,6 +123,8 @@ export function AccountPanel() {
         <div className={styles.tableWrap}>
           {activeTab === 'Org' ? (
             <OrgPanel />
+          ) : activeTab === 'Access Control' ? (
+            <AccessControlTab />
           ) : activeTab === 'Insurance Plans' ? (
             <InsurancePlansTab
               plans={plans}
@@ -505,6 +509,7 @@ const US_STATES = [
 const toOptions = (arr) => arr.map(v => ({ value: v, label: v }));
 
 export function EditUserDrawer({ user, onClose, onSave }) {
+  const roleOptions = useRoleOptions();
   const uid = useId();
   const locationNames = useLocationNames();
   const raw = user._raw || {};
@@ -691,7 +696,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
             <Select
               label="Clinical & Operational Roles"
               multiple checkboxes searchable
-              options={toOptions(MOCK_ROLES)}
+              options={toOptions(roleOptions)}
               value={form.clinical_roles}
               onChange={v => { set('clinical_roles', v); if (v.length > 0) set('role', v[0]); }}
               placeholder="Select..."

@@ -34,7 +34,8 @@ const VARIANT_DEFAULTS = {
  * @param {string}   props.title       – Dialog heading.
  * @param {string}   props.description – Supporting text.
  * @param {string}   props.confirmLabel – Label for the primary action button.
- * @param {string}   props.cancelLabel  – Label for the cancel button.
+ * @param {string|null} props.cancelLabel – Label for the cancel button. `null` leaves it out,
+ *   for a notice with a single acknowledge button ("Okay, understood").
  * @param {function} props.onConfirm   – Called when user clicks the primary action.
  * @param {function} props.onCancel    – Called when user clicks cancel or overlay.
  * @param {boolean}  props.loading     – If true, disable buttons and show loading text.
@@ -119,9 +120,11 @@ export function ConfirmDialog({
   );
   const footerEl = (
     <AlertDialogFooter className="flex-row justify-center w-full gap-2 mt-0">
-      <Button variant="secondary" size={buttonSize} onClick={onCancel} disabled={loading} className="flex-1">
-        {cancelLabel}
-      </Button>
+      {cancelLabel != null && (
+        <Button variant="secondary" size={buttonSize} onClick={onCancel} disabled={loading} className="flex-1">
+          {cancelLabel}
+        </Button>
+      )}
       <Button variant={preset.button} size={buttonSize} onClick={onConfirm} disabled={loading} className="flex-1">
         {loading ? 'Processing…' : confirmLabel}
       </Button>

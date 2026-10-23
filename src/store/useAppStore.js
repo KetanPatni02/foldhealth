@@ -90,6 +90,7 @@ import { resolvePatientForCall } from '../lib/patientCall';
 
 import { reportPersistFailure } from './lib/reportPersistFailure';
 import { createResyncGate, isRealUserId } from './lib/resyncGate';
+import { BUILT_IN_ROLES } from '../lib/accessControl';
 import { isPastDate, parseDuration, formatDuration } from './lib/taskDateUtils';
 import {
   campaignSendRowToJs,
@@ -10034,7 +10035,7 @@ export const useAppStore = create((set, get) => ({
         .from('profiles')
         // locations: the departments (practice locations) each person works
         // at, for picking covering providers when reassigning appointments.
-        .select('id, full_name, first_name, last_name, email, clinical_roles, locations')
+        .select('id, full_name, first_name, last_name, email, clinical_roles, locations, admin_role, status')
         .order('full_name', { ascending: true });
       if (error) throw error;
       const raw = data || [];
@@ -10049,6 +10050,7 @@ export const useAppStore = create((set, get) => ({
       }));
       let me = null;
       let meRoles = [];
+      let meIsAdmin = false;
       if (authUser) {
         const meRow = raw.find(p => p.id === authUser.id)
           || raw.find(p => p.email && authUser.email
@@ -10061,6 +10063,9 @@ export const useAppStore = create((set, get) => ({
             email: meRow.email || '',
           };
           meRoles = meRow.clinical_roles || [];
+          meIsAdmin = meRow.status === 'Active'
+            && (['Admin/Practice Manager', 'Business/Practice Owner'].includes(meRow.admin_role)
+              || meRoles.includes('Admin/Practice Manager'));
         } else {
           const meta = authUser.user_metadata || {};
           const meName = (meta.full_name || meta.first_name
@@ -10143,6 +10148,7 @@ export const useAppStore = create((set, get) => ({
         taskProfiles,
         currentUserProfile: me,
         currentUserClinicalRoles: meRoles,
+        currentUserIsAdmin: meIsAdmin,
       });
       // If the HCC worklist already applied a role-scoped default filter
       // using a dev-fallback, backfill it once the real user is known.
@@ -15416,6 +15422,21 @@ export const useAppStore = create((set, get) => ({
   // returns to #/settings/content/emails.
   openContentEmailBuilder: async (campaignOrNull) => {
     let campaign = campaignOrNull;
+    // A template listed from code (not in the database yet): save it now,
+    // as New Email does, then open the saved copy.
+    if (campaign?.local && campaign.dbRow) {
+      set({ campaignBuilderSaving: true });
+      const { data, error } = await supabase.from('campaigns').insert(campaign.dbRow).select('*').single();
+      set({ campaignBuilderSaving: false });
+      if (error) {
+        console.error('openContentEmailBuilder local template insert error:', error);
+        get().showToast?.('Could not save the template');
+        return null;
+      }
+      campaign = campaignRowToJs(data);
+      set(s => ({ campaigns: [...s.campaigns, campaign] }));
+      invalidateContentEmailsCache();
+    }
     // Slim-list optimisation: if we were passed a row from the list (no
     // emailTemplate because we excluded it from the list select), fetch the
     // full row now so the email builder gets the saved doc instead of a
@@ -17294,6 +17315,144 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // ── Access Control (Settings > Account > Access Control) ──
+  // One row per role: { id, name, builtIn, permissions: { key: false } }.
+  // See src/lib/accessControl.js for the keys and how they're read.
+  accessRoles: [],
+  accessRolesLoading: false,
+  accessRolesDidFetch: false,
+  // True while the table is missing (migration not run): edits stay in this
+  // tab so the screen still works, and nothing is written.
+  accessRolesLocalOnly: false,
+  fetchAccessRoles: async () => {
+    if (get().accessRolesDidFetch) return;
+    set({ accessRolesDidFetch: true, accessRolesLoading: true });
+    const { data, error } = await supabase
+      .from('access_roles')
+      .select('id, name, built_in, permissions, created_at')
+      .order('created_at', { ascending: true });
+    const builtIns = BUILT_IN_ROLES.map(name => ({ id: `builtin:${name}`, name, builtIn: true, permissions: {} }));
+    if (error) {
+      console.warn('[store] access_roles fetch failed, using built-in roles:', error.message);
+      set({ accessRoles: builtIns, accessRolesLoading: false, accessRolesLocalOnly: true });
+      return;
+    }
+    const rows = (data || []).map(r => ({ id: r.id, name: r.name, builtIn: !!r.built_in, permissions: r.permissions || {} }));
+    // Built-in roles the table doesn't have yet still show, allowed everywhere.
+    const missing = builtIns.filter(b => !rows.some(r => r.name === b.name));
+    set({ accessRoles: [...rows, ...missing], accessRolesLoading: false, accessRolesLocalOnly: false });
+  },
+
+  // Writes one role's row (insert when it only exists locally). Resolves to
+  // true on success; on failure the caller's optimistic change is rolled back.
+  _saveAccessRole: async (role) => {
+    if (get().accessRolesLocalOnly) return true;
+    const row = { name: role.name, built_in: role.builtIn, permissions: role.permissions, updated_at: new Date().toISOString() };
+    const isLocal = String(role.id).startsWith('builtin:') || String(role.id).startsWith('local:');
+    const q = isLocal
+      ? supabase.from('access_roles').upsert(row, { onConflict: 'name' }).select('id').single()
+      : supabase.from('access_roles').update(row).eq('id', role.id).select('id').single();
+    const { data, error } = await q;
+    if (error) {
+      get().showToast?.(`Couldn't save ${role.name}. ${error.message}`);
+      return false;
+    }
+    if (isLocal && data?.id) {
+      set(s => ({ accessRoles: s.accessRoles.map(r => (r.id === role.id ? { ...r, id: data.id } : r)) }));
+    }
+    return true;
+  },
+
+  setRolePermissions: async (roleId, patch) => {
+    const prev = get().accessRoles;
+    const role = prev.find(r => r.id === roleId);
+    if (!role) return;
+    const next = { ...role, permissions: { ...role.permissions, ...patch } };
+    set({ accessRoles: prev.map(r => (r.id === roleId ? next : r)) });
+    if (!(await get()._saveAccessRole(next))) set({ accessRoles: prev });
+  },
+
+  createAccessRole: async (name, permissions = {}) => {
+    const clean = String(name || '').trim();
+    if (!clean) return null;
+    if (get().accessRoles.some(r => r.name.toLowerCase() === clean.toLowerCase())) {
+      get().showToast?.(`A role named ${clean} already exists.`);
+      return null;
+    }
+    const role = { id: `local:${crypto.randomUUID()}`, name: clean, builtIn: false, permissions };
+    const prev = get().accessRoles;
+    set({ accessRoles: [role, ...prev] });
+    if (!(await get()._saveAccessRole(role))) { set({ accessRoles: prev }); return null; }
+    return get().accessRoles.find(r => r.name === clean)?.id || role.id;
+  },
+
+  duplicateAccessRole: async (roleId) => {
+    const role = get().accessRoles.find(r => r.id === roleId);
+    if (!role) return null;
+    const taken = new Set(get().accessRoles.map(r => r.name.toLowerCase()));
+    let name = `${role.name} (COPY)`;
+    for (let n = 2; taken.has(name.toLowerCase()); n += 1) name = `${role.name} (COPY ${n})`;
+    return get().createAccessRole(name, { ...role.permissions });
+  },
+
+  copyRolePermissions: async (fromId, toIds) => {
+    const from = get().accessRoles.find(r => r.id === fromId);
+    if (!from) return;
+    await Promise.all(toIds.map(id => {
+      const target = get().accessRoles.find(r => r.id === id);
+      if (!target) return null;
+      // Replace, not merge: the target ends up with exactly the source's switches.
+      const prev = get().accessRoles;
+      const next = { ...target, permissions: { ...from.permissions } };
+      set({ accessRoles: prev.map(r => (r.id === id ? next : r)) });
+      return get()._saveAccessRole(next).then(ok => { if (!ok) set(s => ({ accessRoles: s.accessRoles.map(r => (r.id === id ? target : r)) })); });
+    }));
+  },
+
+  // Renaming and deleting also update everyone who holds the role, so they
+  // go through admin-only database functions (profiles.clinical_roles is
+  // guarded against direct writes).
+  renameAccessRole: async (roleId, newName) => {
+    const role = get().accessRoles.find(r => r.id === roleId);
+    const clean = String(newName || '').trim();
+    if (!role || role.builtIn || !clean || clean === role.name) return false;
+    if (get().accessRoles.some(r => r.id !== roleId && r.name.toLowerCase() === clean.toLowerCase())) {
+      get().showToast?.(`A role named ${clean} already exists.`);
+      return false;
+    }
+    const prev = get().accessRoles;
+    set({ accessRoles: prev.map(r => (r.id === roleId ? { ...r, name: clean } : r)) });
+    if (get().accessRolesLocalOnly || String(roleId).startsWith('local:')) return true;
+    const { error } = await supabase.rpc('admin_rename_access_role', { p_id: roleId, p_name: clean });
+    if (error) {
+      set({ accessRoles: prev });
+      get().showToast?.(`Couldn't rename ${role.name}. ${error.message}`);
+      return false;
+    }
+    set(s => ({
+      platformPeople: (s.platformPeople || []).map(p => ({ ...p, clinicalRoles: (p.clinicalRoles || []).map(x => (x === role.name ? clean : x)) })),
+    }));
+    return true;
+  },
+
+  deleteAccessRole: async (roleId) => {
+    const role = get().accessRoles.find(r => r.id === roleId);
+    if (!role || role.builtIn) return false;
+    const prev = get().accessRoles;
+    set({ accessRoles: prev.filter(r => r.id !== roleId) });
+    if (get().accessRolesLocalOnly || String(roleId).startsWith('local:')) return true;
+    const { error } = await supabase.rpc('admin_delete_access_role', { p_id: roleId });
+    if (error) {
+      set({ accessRoles: prev });
+      get().showToast?.(`Couldn't delete ${role.name}. ${error.message}`);
+      return false;
+    }
+    set(s => ({
+      platformPeople: (s.platformPeople || []).map(p => ({ ...p, clinicalRoles: (p.clinicalRoles || []).filter(x => x !== role.name) })),
+    }));
+    return true;
+  },
+
   // ── Task Profiles (assignees from Settings → Users / profiles table) ──
   taskProfiles: [],
   currentUserProfile: null,
@@ -17301,6 +17460,7 @@ export const useAppStore = create((set, get) => ({
   // switcher used to issue its own `select clinical_roles` for the signed-in
   // user; that is a third GET of the same table on every page.
   currentUserClinicalRoles: [],
+  currentUserIsAdmin: false,
   // Display name to stamp on things the signed-in user just did (activity
   // entries, audit lines). `currentUserProfile` only resolves once
   // fetchTaskProfiles has run against a real session, so fall back to the
