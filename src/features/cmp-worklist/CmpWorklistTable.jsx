@@ -112,7 +112,32 @@ export function CmpWorklistTable() {
     return rows.filter(m => dobInRange(m.dob, m.age, filters.dob));
   }, [enriched, searchQuery, filters]);
 
-  const { sorted, sortKey, sortDir, requestSort } = useTableSort(filtered, 'nextActionDueSort', 'asc');
+  // One row per member: their matching enrollments (one per CMP
+  // sub-program), soonest Next Action Due first. Member columns come from
+  // the first; sorting on an enrollment column uses the member's first one.
+  const grouped = useMemo(() => {
+    const byMember = new Map();
+    for (const e of filtered) {
+      const key = String(e.memberId || e.patientId || e.id);
+      if (!byMember.has(key)) byMember.set(key, []);
+      byMember.get(key).push(e);
+    }
+    const minOf = (list, k) => Math.min(...list.map(e => e[k] ?? Infinity));
+    return [...byMember.entries()].map(([key, list]) => {
+      const enrollments = list.toSorted((a, b) => (a.nextActionDueSort ?? Infinity) - (b.nextActionDueSort ?? Infinity));
+      return {
+        ...enrollments[0],
+        id: key,
+        enrollments,
+        task: list.reduce((n, e) => n + (e.task || 0), 0),
+        nextActionDueSort: minOf(list, 'nextActionDueSort'),
+        programStartSort: minOf(list, 'programStartSort'),
+        programDueSort: minOf(list, 'programDueSort'),
+      };
+    });
+  }, [filtered]);
+
+  const { sorted, sortKey, sortDir, requestSort } = useTableSort(grouped, 'nextActionDueSort', 'asc');
 
   const pageRows = useMemo(() => {
     const start = (page - 1) * perPage;
@@ -199,7 +224,7 @@ export function CmpWorklistTable() {
           hiddenSet={ctx.hiddenSet}
           selected={selectedIds.includes(m.id)}
           onToggle={() => selectMember(m.id)}
-          onView={() => navigateToPatient(m.patientId || m.id, { profileTab: 'Care Programs', programCode: 'CMP', subProgram: m.subProgram })}
+          onView={(e) => navigateToPatient(e.patientId || e.id, { profileTab: 'Care Programs', programCode: 'CMP', subProgram: e.subProgram })}
           showToast={showToast}
         />
       )}
@@ -210,7 +235,7 @@ export function CmpWorklistTable() {
       onClearSelection={clearSelected}
       page={page}
       perPage={perPage}
-      totalItems={filtered.length}
+      totalItems={grouped.length}
       onPageChange={setPage}
       onPageSizeChange={(p) => { setPerPage(p); setPage(1); }}
       minTableWidth={1700}

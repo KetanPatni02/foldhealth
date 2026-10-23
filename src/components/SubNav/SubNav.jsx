@@ -109,8 +109,9 @@ export function SubNav({ collapsed, width = 200 }) {
       else if (list.view === 'ccm') counts[list.label] = pick(ccmWorklistMembers, wc?.ccm);
       else if (list.view === 'snp') counts[list.label] = pick(snpWorklistMembers, wc?.snp);
       else if (list.view === 'jsa') counts[list.label] = pick(jsaMembers, wc?.jsa);
-      // Until cmp_members is in the badge counts, the mock (also the seed) gives the number.
-      else if (list.view === 'cmp') counts[list.label] = cmpMembers.length || CMP_MEMBERS.length;
+      // Members, not enrollments (one per CMP sub-program). Until cmp_members
+      // is in the badge counts, the mock (also the seed) gives the number.
+      else if (list.view === 'cmp') counts[list.label] = new Set((cmpMembers.length ? cmpMembers : CMP_MEMBERS).map(m => m.memberId || m.id)).size;
       else if (list.label === 'Annual Visit') counts[list.label] = pick(awvMembers, wc?.awv);
       else if (list.label === 'TCM') counts[list.label] = pick(patients, wc?.tcm);
       else if (list.label === 'TOC IP') {
