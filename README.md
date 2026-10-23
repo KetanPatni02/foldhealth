@@ -37,6 +37,15 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **One Outreach cell across worklists.** TOC IP, TCM, HEDIS, SNP, Annual
+  Visit, JSA and CMP render outreach with the shared `OutreachStatus`
+  component (Figma SNP-Story 8602:333343): the channel's icon (call, in-person,
+  video, SMS, app, email, letter), the result (Attended / Success in green;
+  Failed / Followup / Remove in red), the last attempt's date (M/D/YY) and
+  three attempt dots (earlier attempts peach, the latest in the result's
+  colour, all red once three attempts failed). `outreachStatusModel.js`
+  adapts each worklist's outreach data. The CMP worklist also has a View
+  Program button on each sub-program line.
 - **Automations (Settings > Automations).** Replaces Automation Rules with the
   full automation experience from Figma: template library (grid and table,
   preview, Use Template), My Automations by status with Run, History,

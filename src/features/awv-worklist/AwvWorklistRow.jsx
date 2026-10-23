@@ -13,6 +13,8 @@ import { useAppStore } from '../../store/useAppStore';
 import { worklistMemberCallId } from '../../lib/patientCall';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import styles from './AwvWorklistRow.module.css';
+import { OutreachStatus } from '../../components/OutreachStatus/OutreachStatus';
+import { outreachFromCount } from '../../components/OutreachStatus/outreachStatusModel';
 
 /**
  * Map AWV Program Sub Status → shared Badge variant. Uses the awv-*
@@ -331,57 +333,7 @@ export function AwvWorklistRow({ member, columns, hiddenSet, selected, onToggle,
   );
 }
 
-// AWV Outreach cell — status icon+label stacked over 3-dot history.
-// Ported from TOC's OutreachCell so both worklists render identical UI.
+// Outreach: the shared worklist outreach status (icon, result, date, attempt dots).
 function AwvOutreachCell({ member }) {
-  const n = member.outreach || 0;
-  const isEngaged = member.progSubStatus === 'Engaged' || member.progSubStatus === 'Engaged - Requires Follow Up';
-  const isUnableToReach = member.progSubStatus === 'Unable to Reach';
-  const dots = (() => {
-    if (n === 0) return ['pending', 'pending', 'pending'];
-    if (isEngaged) return ['success', 'success', n >= 3 ? 'success' : 'pending'];
-    if (isUnableToReach) return ['failed', 'failed', n >= 3 ? 'failed' : 'pending'];
-    return [
-      n >= 1 ? 'failed' : 'pending',
-      n >= 2 ? 'failed' : 'pending',
-      n >= 3 ? 'failed' : 'pending',
-    ];
-  })();
-  const hasSuccess = dots.includes('success');
-  const hasFailed = dots.includes('failed') && !hasSuccess;
-  return (
-    <div className={styles.outreachWl}>
-      <div className={styles.outreachWlMain}>
-        {hasSuccess ? (
-          <>
-            <Icon name="solar:phone-calling-bold" size={15} color="var(--status-success)" />
-            <div>
-              <div className={styles.outreachWlText}>Attended</div>
-              {member.lastOutreach && (
-                <div className={styles.outreachWlDate}>{member.lastOutreach}</div>
-              )}
-            </div>
-          </>
-        ) : hasFailed ? (
-          <>
-            <Icon name="solar:phone-bold" size={15} color="var(--status-error)" />
-            <div>
-              <div className={styles.outreachWlFailed}>Failed</div>
-              {member.lastOutreach && (
-                <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{member.lastOutreach}</div>
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            <Icon name="solar:phone-linear" size={15} color="var(--neutral-200)" />
-            <div className={styles.outreachWlNone}>—</div>
-          </>
-        )}
-      </div>
-      <div className={styles.dotsRow}>
-        {dots.map((d, i) => <span key={i} className={`${styles.dot} ${styles[d]}`} />)}
-      </div>
-    </div>
-  );
+  return <OutreachStatus {...outreachFromCount(member.outreach, member.progSubStatus, member.lastOutreach)} />;
 }
