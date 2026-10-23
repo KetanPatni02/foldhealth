@@ -1,6 +1,6 @@
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ReactFlow, Background, BackgroundVariant, Panel, ReactFlowProvider, useReactFlow, useStore } from '@xyflow/react';
+import { ReactFlow, Background, BackgroundVariant, MarkerType, Panel, ReactFlowProvider, useReactFlow, useStore } from '@xyflow/react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { layoutGraph, nodeSummary } from '../lib/graph';
@@ -60,7 +60,7 @@ function CanvasInner({
 
   // Drop targets show only while a palette item is dragged (the Figma has no
   // "+" buttons); a click on a palette item adds under the selected step.
-  const slotFilter = editing && dragging;
+  const slotFilter = false;
   const layout = useMemo(() => layoutGraph(graph, { slots: slotFilter, collapsed, statBlock: mode === 'stats' }), [graph, slotFilter, collapsed, mode]);
 
   const toggleCollapse = useCallback((id) => setCollapsed(prev => {
@@ -120,8 +120,9 @@ function CanvasInner({
     sourceHandle: e.loop ? 'right' : undefined,
     targetHandle: e.loop ? 'right' : undefined,
     animated: false,
-    // Figma connectors: 1px grey, elbows rounded at 15px.
+    // Figma connectors: 1px grey, elbows rounded at 15px, an arrowhead at the step.
     pathOptions: { borderRadius: 15 },
+    markerEnd: e.loop ? undefined : { type: MarkerType.ArrowClosed, color: 'var(--placeholder-text)', width: 14, height: 14 },
     style: { stroke: 'var(--placeholder-text)', strokeWidth: 1, strokeDasharray: e.dashed ? '4 4' : undefined },
   })), [layout]);
 

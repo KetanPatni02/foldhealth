@@ -334,6 +334,7 @@
 
 /* ── Outcome chips ── */
 .chip {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -421,4 +422,36 @@
   min-width: 28px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Add point (Figma "Node": Add / Add Hover) ── */
+.addHandle {
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1.5px solid var(--status-info);
+  border-radius: 5px;
+  background: var(--neutral-0);
+  color: var(--status-info);
+  transform: translateX(-50%);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-hover), background var(--duration-fast) var(--ease-hover);
+}
+.card:hover > .addHandle,
+.pill:hover > .addHandle,
+.chip:hover > .addHandle,
+.addHandleLive { opacity: 1; }
+.addHandle:hover,
+.addHandleOn {
+  opacity: 1;
+  background: var(--status-info);
+  color: var(--neutral-0);
 }

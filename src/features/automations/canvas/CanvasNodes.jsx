@@ -84,6 +84,44 @@ function StatBlock({ id }) {
   );
 }
 
+/**
+ * The Figma "Node" add point: a 24px square on the bottom edge of a step (or
+ * chip). Shows on hover and while a palette item is dragged. Click picks the
+ * spot for the next palette click; dropping a palette item on it inserts there.
+ */
+function AddHandle({ parentId, branch }) {
+  const ctx = useCanvas();
+  const [over, setOver] = useState(false);
+  if (ctx.mode !== 'edit') return null;
+  const slot = { parentId, branch };
+  const selected = ctx.selectedSlot && ctx.selectedSlot.parentId === parentId && ctx.selectedSlot.branch === branch;
+  return (
+    <button
+      type="button"
+      className={[styles.addHandle, selected || over ? styles.addHandleOn : '', ctx.dragging ? styles.addHandleLive : ''].filter(Boolean).join(' ')}
+      aria-label="Add a step here"
+      title="Add a step here"
+      onClick={(e) => { e.stopPropagation(); ctx.onSelectSlot?.(selected ? null : slot); }}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setOver(false);
+        const type = e.dataTransfer.getData(DRAG_TYPE);
+        if (type) ctx.onDropType?.(type, slot);
+      }}
+    >
+      <Icon name="solar:add-linear" size={12} />
+    </button>
+  );
+}
+
 function CardNode({ data }) {
   const ctx = useCanvas();
   const { node, outcomeCount, folded, helper } = data;
@@ -137,6 +175,7 @@ function CardNode({ data }) {
       {helper && (
         <div className={styles.helperFooter}>Trigger will run when the applied conditions match the member.</div>
       )}
+      {!outcomeCount && node.type && <AddHandle parentId={node.id} branch="next" />}
       {outcomeCount > 0 && (
         <button
           type="button"
@@ -165,6 +204,7 @@ function PillNode({ data }) {
       onClick={(e) => { e.stopPropagation(); ctx.onSelectNode?.(node.id); }}
     >
       <Handles loop={node.type === 'repeat'} />
+      {node.type !== 'repeat' && <AddHandle parentId={node.id} branch="next" />}
       <Icon name={def?.icon} size={14} />
       <span className={styles.pillText}>{text}</span>
       {count != null && <span className={styles.pillCount}>{count}</span>}
@@ -212,6 +252,7 @@ function ChipNode({ data }) {
   return (
     <div className={styles.chip}>
       <Handles />
+      <AddHandle parentId={data.parentId} branch={data.branch.key} />
       {data.branch.icon && <Icon name={data.branch.icon} size={14} />}
       <span>{data.branch.label}</span>
       {ctx.mode === 'stats' && <span className={styles.chipCount}>{count || 0}</span>}

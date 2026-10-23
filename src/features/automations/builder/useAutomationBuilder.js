@@ -125,7 +125,15 @@ export function useAutomationBuilder(id) {
       setPanel({ kind: 'micro', slot: target });
       return null;
     }
-    const { graph: next, node } = insertNode(graph, { ...target, type });
+    // A plain step takes one continuation: adding under a step that already
+    // has one puts the new step in between. Conditions, micro automations and
+    // AND/OR hold parallel branches, so there the new step goes alongside.
+    const parent = getNode(graph, target.parentId);
+    const parallel = nodeDef(parent?.type)?.kind === 'condition' || ['microAutomation', 'and', 'or'].includes(parent?.type);
+    const below = childrenOf(graph, target.parentId, target.branch);
+    const { graph: next, node } = below.length && !parallel
+      ? insertBetween(graph, below[0].id, type)
+      : insertNode(graph, { ...target, type });
     setGraph(next);
     setSelectedSlot(null);
     setSelectedId(node.id);

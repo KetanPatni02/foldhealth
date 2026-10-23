@@ -433,9 +433,25 @@ export function layoutGraph(graph, { slots = false, collapsed = new Set(), statB
   // subtree's); a node with chips also needs room for the chip row itself.
   const measure = (t) => {
     t.kids.forEach(measure);
+    if (t.chipW) {
+      // Each chip's branch hangs straight under the chip (Figma), pushed
+      // right only as far as it must to clear the branch before it.
+      const rowW = t.kids.length * t.chipW + (t.kids.length - 1) * CHIP_GAP;
+      let prevRight = -Infinity;
+      t.cols = t.kids.map((chip, i) => {
+        const chipCenter = -rowW / 2 + i * (t.chipW + CHIP_GAP) + t.chipW / 2;
+        const l = Math.max(chipCenter - chip.span / 2, prevRight + GAP_X);
+        prevRight = l + chip.span;
+        return l;
+      });
+      const extL = Math.min(-t.w / 2, -rowW / 2, t.cols[0] ?? 0);
+      const extR = Math.max(t.w / 2, rowW / 2, prevRight === -Infinity ? 0 : prevRight);
+      t.center = -extL;
+      t.span = extR - extL;
+      return;
+    }
     const kidsW = rowWidth(t.kids, GAP_X);
-    const chipRow = t.chipW ? t.kids.length * t.chipW + (t.kids.length - 1) * CHIP_GAP : 0;
-    t.span = Math.max(t.w, kidsW, chipRow) + (t.group ? GROUP_PAD * 2 : 0);
+    t.span = Math.max(t.w, kidsW) + (t.group ? GROUP_PAD * 2 : 0);
   };
   const tree = build(root);
   measure(tree);
@@ -443,7 +459,8 @@ export function layoutGraph(graph, { slots = false, collapsed = new Set(), statB
   // Pass 2: positions (left = left edge of the subtree span).
   const place = (t, left, top, parentItemId, dashed = false) => {
     const pad = t.group ? GROUP_PAD : 0;
-    const x = left + (t.span - t.w) / 2;
+    const center = left + (t.center ?? t.span / 2);
+    const x = center - t.w / 2;
     const item = { id: t.id, kind: t.kind, x, y: top, w: t.w, h: t.h, node: t.node, parentId: t.parentId, branch: t.branch, outcomeCount: t.outcomeCount, folded: t.folded, helper: t.helper };
     if (t.group) Object.assign(item, { x: left + pad, y: top + 8, w: t.span - pad * 2 });
     items.push(item);
@@ -457,17 +474,17 @@ export function layoutGraph(graph, { slots = false, collapsed = new Set(), statB
       // own column below, joined by an elbow connector.
       const rowW = t.kids.length * t.chipW + (t.kids.length - 1) * CHIP_GAP;
       const chipTop = top + t.h + CHIP_GAP;
-      let chipX = x + t.w / 2 - rowW / 2;
+      let chipX = center - rowW / 2;
       const childTop = chipTop + SIZES.chip.h + GAP_Y;
-      t.kids.forEach(chip => {
-        items.push({ id: chip.id, kind: 'chip', x: chipX, y: chipTop, w: t.chipW, h: SIZES.chip.h, parentId: chip.parentId, branch: chip.branch });
+      t.kids.forEach((chip, i) => {
+        items.push({ id: chip.id, kind: 'chip', x: chipX, y: chipTop, w: t.chipW, h: SIZES.chip.h, parentId: chip.parentId, branch: chip.branch, hasKids: chip.kids.length > 0 });
+        const colLeft = center + t.cols[i];
         const colW = rowWidth(chip.kids, GAP_X);
-        let c = cursor + (chip.span - colW) / 2;
+        let c = colLeft + (chip.span - colW) / 2;
         chip.kids.forEach(k => {
           place(k, c, childTop, chip.id);
           c += k.span + GAP_X;
         });
-        cursor += chip.span + GAP_X;
         chipX += t.chipW + CHIP_GAP;
       });
     } else {

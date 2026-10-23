@@ -182,7 +182,10 @@ export function createAutomationsSlice(set, get) {
         .gte('started_at', since).order('started_at', { ascending: false }).limit(2000),
     ]);
     const missing = [a, t, r].some(x => x.error && MISSING.has(x.error.code));
-    if (missing) {
+    // Tables there but never seeded (no templates, no automations), or hidden
+    // by RLS from this session: show the sample records rather than nothing.
+    const unseeded = !missing && !a.error && !t.error && !(t.data || []).length && !(a.data || []).length;
+    if (missing || unseeded) {
       const l = await ensureLocal();
       set({
         automationsLocal: true,
