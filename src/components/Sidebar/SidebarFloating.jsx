@@ -1,4 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCan } from '../../lib/useCan';
+import { navPermissionKey } from '../../lib/accessControl';
 import { FloatingSidebar } from '../FloatingSidebar/FloatingSidebar';
 import { SubNav } from '../SubNav/SubNav';
 import { setFloatingSubNavSlot } from '../FloatingSidebar/floatingSubNavSlot';
@@ -96,7 +98,8 @@ export function SidebarFloating() {
     ensureFeaturebaseJwt();
   }, [fetchChangelog, ensureFeaturebaseJwt]);
 
-  const items = NAV_ITEMS.map(item => ({
+  const can = useCan();
+  const items = NAV_ITEMS.filter(item => can(navPermissionKey(item.page))).map(item => ({
     ...item,
     badge:
       item.page === 'tasks' ? taskNotificationsUnread

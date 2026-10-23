@@ -1,4 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
+import { useCan } from '../lib/useCan';
+import { navPermissionKey } from '../lib/accessControl';
+import { EmptyState } from '../components/EmptyState/EmptyState';
 import { AppSidebar } from '../components/Sidebar/AppSidebar';
 import { SubNav } from '../components/SubNav/SubNav';
 import { TopBar } from '../components/TopBar/TopBar';
@@ -119,6 +122,7 @@ function PopulationView() {
   const sidebarShape = useAppStore(s => s.sidebarShape);
 
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
+  const canSeePatient = useCan()('patient:details');
   const pgRuleBuilder = useAppStore(s => s.pgRuleBuilder);
   const setHccFilter = useAppStore(s => s.setHccFilter);
   const programSplit = useProgramPanelSplitActive();
@@ -145,6 +149,14 @@ function PopulationView() {
   // right panel" the page is two cards (see PatientDetailView), so this
   // wrapper drops its own card chrome and the TopBar gives way to the
   // patient card's breadcrumb header.
+  if (selectedPatientId && !canSeePatient) {
+    return (
+      <div className={styles.main}>
+        <TopBar />
+        <div className={styles.content}><NoAccessView /></div>
+      </div>
+    );
+  }
   if (selectedPatientId) {
     return (
       <div className={styles.main} data-floating-split={programSplit || undefined}>
@@ -267,6 +279,18 @@ function CalendarViewPage() {
   );
 }
 
+function NoAccessView() {
+  return (
+    <div className={styles.noAccess}>
+      <EmptyState
+        icon="solar:shield-cross-linear"
+        title="You don't have access to this page"
+        description="Your role doesn't include it. Ask your practice administrator if you need it."
+      />
+    </div>
+  );
+}
+
 export function AppLayout() {
   const activePage = useAppStore(s => s.activePage);
   const builderAgent = useAppStore(s => s.builderAgent);
@@ -278,6 +302,11 @@ export function AppLayout() {
   useNotificationsFeed();
 
   useEffect(() => { fetchOrgFeatures(); }, [fetchOrgFeatures]);
+
+  // Access Control: which pages and Settings sections this user's roles see.
+  const fetchAccessRoles = useAppStore(s => s.fetchAccessRoles);
+  useEffect(() => { fetchAccessRoles(); }, [fetchAccessRoles]);
+  const can = useCan();
 
   // Out of Office records drive the avatar badge everywhere, so they load
   // with the app rather than with any one screen.
@@ -579,7 +608,11 @@ export function AppLayout() {
   // Wraps the active page in a single Suspense boundary so chart/grid/canvas
   // chunks load without dropping the whole shell. PopulationView is eager
   // (default landing area) so its fallback is a no-op.
-  const activeView = activePage === 'home' ? <HomeView />
+  // The sidebar already hides pages a role can't see; this covers a link,
+  // a keyboard shortcut or a typed URL that lands on one anyway.
+  const pageAllowed = can(navPermissionKey(activePage === 'builder' ? 'settings' : activePage));
+  const activeView = !pageAllowed ? <NoAccessView />
+    : activePage === 'home' ? <HomeView />
     : activePage === 'messages' ? <MessagesView />
     : activePage === 'calls' ? <CallsView />
     : activePage === 'tasks' ? <TasksView />

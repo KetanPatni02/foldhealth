@@ -75,3 +75,6 @@
   flex-direction: column;
   overflow: hidden;
 }
+
+/* Access Control: a page this user's roles can't see. */
+.noAccess { flex: 1; min-width: 0; display: flex; background: var(--neutral-0); }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNativeDialog } from '../../../hooks/useNativeDialog';
 import { Icon } from '../../../components/Icon/Icon';
@@ -23,6 +23,9 @@ import { ActivityLog } from '../../../components/ActivityLog/ActivityLog';
 import { formShareLink, copyToClipboard } from '../../forms/formLink';
 import { MEASURE_NAMES } from '../../hedis-worklist/ClinicalNotePanel.utils';
 import { toActivityLogEntries } from '../../hedis-worklist/CareGapDetailDrawer.utils';
+import { supabase } from '../../../lib/supabase';
+import { campaignRowToJs } from '../../../store/lib/campaignStoreMappers';
+import { ACCOUNT_SECURITY_EMAIL_TEMPLATES, accountSecurityEmailTemplateToRow } from '../../email-builder/accountSecurityEmailTemplates';
 import styles from './ContentSettings.module.css';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -247,6 +250,26 @@ function EmailsTab({
     fetchContentEmails?.({ page, perPage, search: searchVal, status: statusFilter });
   }, [fetchContentEmails, page, perPage, searchVal, statusFilter]);
 
+  // The account security templates defined in code show here before they're
+  // in the database (until seeded, or until one is opened, which saves it).
+  // Rechecked whenever the list reloads, so a saved one stops showing twice.
+  const [savedKeys, setSavedKeys] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    supabase.from('campaigns').select('system_key')
+      .in('system_key', ACCOUNT_SECURITY_EMAIL_TEMPLATES.map(t => t.systemKey))
+      .then(({ data, error }) => { if (alive && !error) setSavedKeys(new Set((data || []).map(r => r.system_key))); });
+    return () => { alive = false; };
+  }, [emails]);
+  const localRows = useMemo(() => (savedKeys
+    ? ACCOUNT_SECURITY_EMAIL_TEMPLATES.filter(t => !savedKeys.has(t.systemKey)).map((t) => {
+      const dbRow = accountSecurityEmailTemplateToRow(t);
+      return { ...campaignRowToJs({ ...dbRow, id: `local:${t.systemKey}` }), local: true, dbRow };
+    })
+    : []), [savedKeys]);
+  const showLocal = page === 1 && !searchVal && localRows.length > 0;
+  const rows = showLocal ? [...localRows, ...emails] : emails;
+
   const renderRow = (campaign) => {
     const isSelected = bulkMode && selectedIds.has(campaign.id);
     const handleNameClick = () => {
@@ -317,7 +340,9 @@ function EmailsTab({
         </td>
         <td className={styles.tdUpdatedBy}>
           <span className={styles.cellText}>
-            {campaign.updatedByName || <span className={styles.cellMuted}>—</span>}
+            {campaign.local
+              ? <span className={styles.cellMuted}>Not saved yet</span>
+              : campaign.updatedByName || <span className={styles.cellMuted}>—</span>}
           </span>
         </td>
         <td className={styles.tdAction}>
@@ -338,8 +363,9 @@ function EmailsTab({
             <div className={styles.vDivider} />
             <RowMenu
               onPreview={() => onPreview(campaign)}
-              onDuplicate={() => onDuplicate(campaign)}
-              onDelete={() => onDelete(campaign)}
+              // Not in the database yet: nothing to copy or delete until it's opened (which saves it).
+              onDuplicate={() => (campaign.local ? showToast('Open the template once to save it, then duplicate it') : onDuplicate(campaign))}
+              onDelete={() => (campaign.local ? showToast('This template isn’t saved yet, so there’s nothing to delete') : onDelete(campaign))}
             />
           </div>
         </td>
@@ -352,7 +378,7 @@ function EmailsTab({
       <WorklistShell
         header={null}
         columns={EMAIL_COLUMNS}
-        rows={emails}
+        rows={rows}
         renderRow={renderRow}
         loading={loading}
         emptyState={
@@ -363,7 +389,7 @@ function EmailsTab({
         }
         page={page}
         perPage={perPage}
-        totalItems={total}
+        totalItems={total + (showLocal ? localRows.length : 0)}
         onPageChange={setPage}
         onPageSizeChange={(n) => { setPerPage(n); setPage(1); }}
         minTableWidth={1200}

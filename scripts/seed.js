@@ -25,6 +25,7 @@ import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comm
 import { sampleFaxes, faxToRow } from '../src/features/messages/efax/efaxData.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
 import { CMP_MEMBERS } from '../src/features/cmp-worklist/data/mock.js';
+import { BUILT_IN_ROLES } from '../src/lib/accessControl.js';
 import { snpSnapshotFormRow } from '../src/features/forms/templates/snpSnapshotForm.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
@@ -47,6 +48,7 @@ import { AUTOMATION_EMAILS, automationEmailToRow } from '../src/features/automat
 import { SEED_TEMPLATES, SEED_AUTOMATIONS, SEED_EDIT_LOG, buildSeedActivity, wireTemplateIds } from '../src/features/automations/data/automationSeed.js';
 import { automationJsToRow, templateJsToRow, runJsToRow, runMemberJsToRow, messageJsToRow } from '../src/features/automations/lib/mappers.js';
 import { SAMPLE_MEMBERS } from '../src/features/automations/data/sampleMembers.js';
+import { ACCOUNT_SECURITY_EMAIL_TEMPLATES, accountSecurityEmailTemplateToRow } from '../src/features/email-builder/accountSecurityEmailTemplates.js';
 import { sampleAvailability, blockToRow } from '../src/features/settings/calendar/availability/availabilityUtils.js';
 import { careTeamJsToDb } from '../src/store/lib/careTeamMappers.js';
 import { sampleContactsFor, contactToRow } from '../src/features/messages/comms/sendTo.js';
@@ -940,6 +942,14 @@ async function main() {
     .from('cmp_members')
     .upsert(CMP_MEMBERS.map(cmpToRow), { onConflict: 'id' });
   if (cmpErr) { console.error('  ✗', cmpErr.message, '(run supabase/cmp_members_migration.sql first)'); } else { console.log(`  ✓ ${CMP_MEMBERS.length} members`); }
+
+  // Built-in roles for Access Control, everything allowed. By name, so the
+  // permissions an admin has since switched off are left alone.
+  console.log('Seeding access_roles...');
+  const { error: arErr } = await supabase
+    .from('access_roles')
+    .upsert(BUILT_IN_ROLES.map(name => ({ name, built_in: true })), { onConflict: 'name', ignoreDuplicates: true });
+  if (arErr) { console.error('  ✗', arErr.message, '(run supabase/access_roles_migration.sql first)'); } else { console.log(`  ✓ ${BUILT_IN_ROLES.length} built-in roles`); }
 
   // Added once, by name: later edits in the Form builder are kept.
   console.log('Seeding SNP Snapshot form...');
@@ -2045,6 +2055,18 @@ async function main() {
       if (aetErr.code === '42703' || aetErr.code === '42P10') console.log('  ⚠ campaigns.system_key missing — run supabase/account_email_templates_migration.sql');
       else console.error('  ✗', aetErr.message);
     } else console.log(`  ✓ ${rows.length} account email templates`);
+  }
+
+  // The redesigned account security emails: new templates next to the ones
+  // above (their own `_v2` system keys), so nothing existing is replaced.
+  console.log('Seeding account security email templates (new design)...');
+  {
+    const rows = ACCOUNT_SECURITY_EMAIL_TEMPLATES.map(accountSecurityEmailTemplateToRow);
+    const { error: asetErr } = await supabase
+      .from('campaigns')
+      .upsert(rows, { onConflict: 'system_key', ignoreDuplicates: true });
+    if (asetErr) console.error('  ✗', asetErr.message);
+    else console.log(`  ✓ ${rows.length} account security email templates`);
   }
 
   // ── Audience segments (CampaignBuilder Include/Exclude options) ──

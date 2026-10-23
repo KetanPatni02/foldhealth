@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { useRoleOptions } from './access-control/useRoleOptions';
 import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { Button } from '../../../components/Button/Button';
 import { Drawer } from '../../../components/Drawer/Drawer';
@@ -10,12 +11,12 @@ import {
   ADMIN_ROLES,
   GENDER_OPTIONS,
   LANGUAGE_OPTIONS,
-  MOCK_ROLES,
 } from './InviteUserDrawer.utils';
 import { useLocationNames, TagInput, MultiSelectField } from './AccountPanelParts';
 import styles from './AccountPanel.module.css';
 
 export function InviteUserFormStep({ onClose, form, set, showAdditional, setShowAdditional, sending, onSendInvite }) {
+  const roleOptions = useRoleOptions();
   const uid = useId();
   const locationNames = useLocationNames();
 
@@ -59,7 +60,7 @@ export function InviteUserFormStep({ onClose, form, set, showAdditional, setShow
         <div className={styles.formSection}>
           <span className={styles.formLabel}>Clinical & Operational Roles <span className={styles.required}>*</span></span>
           <p className={styles.formHint}>Select at least one role if the user interacts with patients or schedules appointments.</p>
-          <MultiSelectField label="" options={MOCK_ROLES} value={form.clinical_roles} onChange={v => set('clinical_roles', v)} />
+          <MultiSelectField label="" options={roleOptions} value={form.clinical_roles} onChange={v => set('clinical_roles', v)} />
         </div>
 
         <button className={styles.additionalToggle} onClick={() => setShowAdditional(v => !v)}>
