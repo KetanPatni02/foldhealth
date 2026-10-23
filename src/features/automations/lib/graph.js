@@ -337,19 +337,23 @@ export function orderedSteps(graph, { includeLogic = false } = {}) {
 // ── Layout ──
 // A tidy top-down tree with fixed card sizes (card text clamps to two lines,
 // as in the Figma), so positions are deterministic and need no DOM measuring.
+// Sizes from the Figma canvas (frames 64 and 145): cards are 250 wide; a card
+// with a two-line summary is 70 tall, the trigger 56; outcome chips sit in a
+// row 8px under their card; rows are 50px apart.
 export const SIZES = {
-  start: { w: 120, h: 32 },
-  trigger: { w: 248, h: 72 },
-  card: { w: 248, h: 92 },
-  pill: { w: 148, h: 32 },
-  chip: { w: 120, h: 28 },
-  outcomeHeader: { w: 200, h: 26 },
-  group: { w: 248, h: 30 },
-  slot: { w: 32, h: 32 },
+  start: { w: 120, h: 40 },
+  trigger: { w: 250, h: 56 },
+  card: { w: 250, h: 70 },
+  pill: { w: 150, h: 30 },
+  chip: { w: 121, h: 30 },
+  group: { w: 250, h: 20 },
+  slot: { w: 250, h: 56 },
 };
-const GAP_X = 36;
-const GAP_Y = 44;
-const GROUP_PAD = 24;
+const GAP_X = 50;
+const GAP_Y = 50;
+const CHIP_GAP = 8;
+const GROUP_PAD = 12;
+const GROUP_HEAD = 28;
 
 export const sizeOf = (node) => {
   if (!node) return SIZES.card;
@@ -359,17 +363,20 @@ export const sizeOf = (node) => {
   return SIZES.card;
 };
 
+export const OUTCOME_FOOTER_H = 32;
+export const HELPER_FOOTER_H = 44;
+export const STAT_BLOCK_W = 96;
+
+const chipWidth = (n) => (n <= 2 ? 121 : 130);
+
 /**
  * Positions for every visible element:
  *   items: [{ id, kind: 'start'|'node'|'chip'|'slot'|'groupBox', x, y, w, h, … }]
  *   edges: [{ id, source, target, dashed }]
- * `slots` adds "+" targets on open branches (edit mode): true for all, or a
- * (parentId) => boolean filter.
+ * `slots` adds drop targets on open branches (edit mode, while dragging): true
+ * for all, or a (parentId) => boolean filter.
  * `collapsed` is a Set of node ids whose outcome branches are folded.
  */
-export const OUTCOME_FOOTER_H = 28;
-export const STAT_BLOCK_W = 96;
-
 export function layoutGraph(graph, { slots = false, collapsed = new Set(), statBlock = false } = {}) {
   const items = [];
   const edges = [];
@@ -381,25 +388,27 @@ export function layoutGraph(graph, { slots = false, collapsed = new Set(), statB
     return { items, edges, width: SIZES.start.w, height: SIZES.start.h + 24 };
   }
 
-  // `slots`: true for every open branch, or (parentId) => boolean.
   const wantSlots = typeof slots === 'function' ? slots : () => !!slots;
 
-  // Build a render tree: node → [chip → children] or node → children.
+  // Build a render tree: node → chips (outcomes) → children, or node → children.
   const build = (node) => {
     const size = sizeOf(node);
     const isCard = size === SIZES.card || size === SIZES.trigger;
     const t = { id: node.id, kind: 'node', node, w: size.w + (statBlock && isCard ? STAT_BLOCK_W : 0), h: size.h, kids: [] };
     if (node.type === 'repeat') return t;
     const branches = branchesOf(node);
-    const folded = collapsed.has(node.id);
     const hasOutcomes = branches.length && branches[0].key !== 'next';
+    // Conditions that filter (no outcome split) carry the Figma's helper line.
+    if (nodeDef(node.type)?.kind === 'condition' && !hasOutcomes) { t.h += HELPER_FOOTER_H; t.helper = true; }
     if (hasOutcomes) {
+      const folded = collapsed.has(node.id);
       t.outcomeCount = branches.length;
       t.h += OUTCOME_FOOTER_H;
       t.folded = folded;
       if (!folded) {
+        t.chipW = chipWidth(branches.length);
         branches.forEach(b => {
-          const chip = { id: `${node.id}::${b.key}`, kind: 'chip', parentId: node.id, branch: b, w: SIZES.chip.w, h: SIZES.chip.h, kids: [] };
+          const chip = { id: `${node.id}::${b.key}`, kind: 'chip', parentId: node.id, branch: b, w: t.chipW, h: SIZES.chip.h, kids: [] };
           childrenOf(graph, node.id, b.key).forEach(c => chip.kids.push(build(c)));
           if (wantSlots(node.id)) chip.kids.push(slotFor(node.id, b.key, chip.kids.length));
           t.kids.push(chip);
@@ -408,7 +417,7 @@ export function layoutGraph(graph, { slots = false, collapsed = new Set(), statB
     } else if (branches.length || node.id === 'trigger') {
       childrenOf(graph, node.id, 'next').forEach(c => t.kids.push(build(c)));
       // A plain node takes one continuation; a container (micro automation)
-      // or a splitter-like condition can hold parallel children.
+      // or a condition can hold parallel children.
       const canAdd = node.type === 'microAutomation' || nodeDef(node.type)?.kind === 'condition' || node.id === 'trigger' || ['and', 'or'].includes(node.type)
         || t.kids.length === 0;
       if (wantSlots(node.id) && node.type && canAdd) t.kids.push(slotFor(node.id, 'next', t.kids.length));
@@ -418,43 +427,67 @@ export function layoutGraph(graph, { slots = false, collapsed = new Set(), statB
   };
   const slotFor = (parentId, branch, index) => ({ id: `slot::${parentId}::${branch}::${index}`, kind: 'slot', parentId, branch, w: SIZES.slot.w, h: SIZES.slot.h, kids: [] });
 
-  const tree = build(root);
+  const rowWidth = (list, gap) => list.reduce((s, k) => s + k.span, 0) + Math.max(0, list.length - 1) * gap;
 
-  // Pass 1: subtree widths.
+  // Pass 1: subtree widths. A chip's span is its column (its own width or its
+  // subtree's); a node with chips also needs room for the chip row itself.
   const measure = (t) => {
     t.kids.forEach(measure);
-    const kidsW = t.kids.reduce((s, k) => s + k.span, 0) + Math.max(0, t.kids.length - 1) * GAP_X;
-    t.span = Math.max(t.w, kidsW) + (t.group ? GROUP_PAD * 2 : 0);
+    const kidsW = rowWidth(t.kids, GAP_X);
+    const chipRow = t.chipW ? t.kids.length * t.chipW + (t.kids.length - 1) * CHIP_GAP : 0;
+    t.span = Math.max(t.w, kidsW, chipRow) + (t.group ? GROUP_PAD * 2 : 0);
   };
+  const tree = build(root);
   measure(tree);
 
-  // Pass 2: positions (x = left edge of the subtree span).
+  // Pass 2: positions (left = left edge of the subtree span).
   const place = (t, left, top, parentItemId, dashed = false) => {
     const pad = t.group ? GROUP_PAD : 0;
     const x = left + (t.span - t.w) / 2;
-    const item = { id: t.id, kind: t.kind, x, y: top, w: t.w, h: t.h, node: t.node, parentId: t.parentId, branch: t.branch, outcomeCount: t.outcomeCount, folded: t.folded };
-    // A micro automation's header spans its container.
-    if (t.group) Object.assign(item, { x: left + pad, w: t.span - pad * 2 });
+    const item = { id: t.id, kind: t.kind, x, y: top, w: t.w, h: t.h, node: t.node, parentId: t.parentId, branch: t.branch, outcomeCount: t.outcomeCount, folded: t.folded, helper: t.helper };
+    if (t.group) Object.assign(item, { x: left + pad, y: top + 8, w: t.span - pad * 2 });
     items.push(item);
     if (parentItemId) edges.push({ id: `e:${parentItemId}->${t.id}`, source: parentItemId, target: t.id, dashed: dashed || t.kind === 'slot' });
-    const kidsW = t.kids.reduce((s, k) => s + k.span, 0) + Math.max(0, t.kids.length - 1) * GAP_X;
-    let cursor = left + pad + (t.span - pad * 2 - kidsW) / 2;
-    const nextTop = top + t.h + (t.kind === 'chip' ? GAP_Y * 0.6 : GAP_Y);
     const startIdx = items.length;
-    t.kids.forEach(k => {
-      place(k, cursor, nextTop, t.id, t.node?.type === 'delay');
-      cursor += k.span + GAP_X;
-    });
+    const kidsW = rowWidth(t.kids, GAP_X);
+    let cursor = left + pad + (t.span - pad * 2 - kidsW) / 2;
+
+    if (t.chipW) {
+      // Chips in a row right under the card; each chip's subtree hangs in its
+      // own column below, joined by an elbow connector.
+      const rowW = t.kids.length * t.chipW + (t.kids.length - 1) * CHIP_GAP;
+      const chipTop = top + t.h + CHIP_GAP;
+      let chipX = x + t.w / 2 - rowW / 2;
+      const childTop = chipTop + SIZES.chip.h + GAP_Y;
+      t.kids.forEach(chip => {
+        items.push({ id: chip.id, kind: 'chip', x: chipX, y: chipTop, w: t.chipW, h: SIZES.chip.h, parentId: chip.parentId, branch: chip.branch });
+        const colW = rowWidth(chip.kids, GAP_X);
+        let c = cursor + (chip.span - colW) / 2;
+        chip.kids.forEach(k => {
+          place(k, c, childTop, chip.id);
+          c += k.span + GAP_X;
+        });
+        cursor += chip.span + GAP_X;
+        chipX += t.chipW + CHIP_GAP;
+      });
+    } else {
+      const nextTop = (t.group ? top + GROUP_HEAD : top + t.h) + GAP_Y * (t.group ? 0.5 : 1);
+      t.kids.forEach(k => {
+        place(k, cursor, nextTop, t.group ? null : t.id, t.node?.type === 'delay');
+        cursor += k.span + GAP_X;
+      });
+      // Inside a micro automation the first steps hang off the container's top.
+      if (t.group) t.kids.forEach(k => edges.push({ id: `e:${t.id}->${k.id}`, source: t.id, target: k.id }));
+    }
     if (t.group) {
-      // The container box wraps the header and every step inside it.
+      // The container box wraps the label and every step inside it.
       const inside = items.slice(startIdx);
-      const bottom = Math.max(top + t.h, ...inside.map(i => i.y + i.h));
-      items.push({ id: `${t.id}::box`, kind: 'groupBox', x: left, y: top - 12, w: t.span, h: bottom - top + 12 + GROUP_PAD, node: t.node });
+      const bottom = Math.max(top + GROUP_HEAD, ...inside.map(i => i.y + i.h));
+      items.push({ id: `${t.id}::box`, kind: 'groupBox', x: left, y: top, w: t.span, h: bottom - top + GROUP_PAD, node: t.node });
     }
   };
-  const startH = SIZES.start.h;
-  items.push({ id: 'start', kind: 'start', x: (tree.span - SIZES.start.w) / 2, y: 0, w: SIZES.start.w, h: startH });
-  place(tree, 0, startH + GAP_Y, 'start');
+  items.push({ id: 'start', kind: 'start', x: (tree.span - SIZES.start.w) / 2, y: 0, w: SIZES.start.w, h: SIZES.start.h });
+  place(tree, 0, SIZES.start.h + GAP_Y, 'start');
 
   // Repeat loops back (dashed) to the message it repeats.
   for (const it of items) {

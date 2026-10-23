@@ -1,10 +1,13 @@
+/* Canvas styles follow the Figma canvas (frames 64 and 145): 0.5px grey
+   hairlines, 12px radius cards, 12px text, 1px connectors. */
+
 .canvas {
   position: relative;
   width: 100%;
   height: 100%;
   min-height: 0;
   background: var(--neutral-25);
-  border: 1px solid var(--neutral-100);
+  border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -25,33 +28,58 @@
   flex-direction: column;
   align-items: center;
   position: relative;
+  width: 100%;
+  height: 100%;
 }
 .start {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  height: 32px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--primary-200);
-  border-radius: 8px;
-  background: var(--primary-50);
+  width: 100%;
+  height: 100%;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 12px;
+  background: var(--primary-100);
   color: var(--primary-300);
   font-size: var(--font-sm);
   white-space: nowrap;
 }
+/* Sits on the connector, 11px under "Starts here". */
 .collapseAll {
   position: absolute;
-  top: 40px;
+  top: 51px;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--neutral-150);
-  border-radius: 4px;
-  background: var(--neutral-0);
-  color: var(--neutral-300);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  color: var(--placeholder-text);
   cursor: pointer;
+}
+.collapseAll:hover { color: var(--neutral-400); }
+/* Before a trigger is chosen: a short connector ending in a dot. */
+.looseEnd {
+  position: absolute;
+  top: 40px;
+  width: 1px;
+  height: 20px;
+  background: var(--placeholder-text);
+}
+.looseEnd::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--placeholder-text);
 }
 
 /* ── Cards ── */
@@ -62,19 +90,18 @@
   width: 100%;
   height: 100%;
   background: var(--neutral-0);
-  border: 1px solid var(--neutral-150);
-  border-radius: 8px;
-  box-shadow: var(--shadow-card);
+  border: 0.5px solid var(--placeholder-text);
+  border-radius: 12px;
   cursor: pointer;
   transition: border-color var(--duration-fast) var(--ease-hover), opacity var(--duration-base) var(--ease-out);
 }
-.card:hover { border-color: var(--primary-200); }
+.card:hover { border-color: var(--primary-300); }
 .cardMain {
   position: relative;
   flex: 1;
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   padding: var(--space-3);
   min-height: 0;
 }
@@ -85,7 +112,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 .cardText {
   display: flex;
@@ -95,16 +122,17 @@
   flex: 1;
 }
 .cardLabel {
-  font-size: var(--font-xs);
-  color: var(--neutral-300);
+  font-size: var(--font-sm);
+  line-height: var(--leading-tight);
+  color: var(--placeholder-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .cardSummary {
   font-size: var(--font-sm);
-  line-height: 1.35;
-  color: var(--neutral-500);
+  line-height: var(--leading-tight);
+  color: var(--neutral-400);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -112,40 +140,53 @@
   overflow: hidden;
 }
 .cardEdit {
-  font-size: var(--font-sm);
+  font-size: var(--font-base);
+  line-height: var(--leading-tight);
   color: var(--primary-300);
 }
 .cardActions {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: var(--space-1);
+  right: var(--space-1);
   opacity: 0;
   transition: opacity var(--duration-fast) var(--ease-hover);
 }
 .card:hover .cardActions { opacity: 1; }
 .problemDot {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: var(--space-2);
+  right: var(--space-2);
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--status-warning);
 }
 .card:hover .problemDot { opacity: 0; }
+.helperFooter {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: var(--space-2);
+  border-top: 0.5px solid var(--placeholder-text);
+  font-size: var(--font-sm);
+  line-height: var(--leading-tight);
+  color: var(--placeholder-text);
+}
 .outcomeFooter {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  height: 28px;
-  flex-shrink: 0;
+  height: 32px;
   border: 0;
-  border-top: 1px solid var(--neutral-100);
-  background: transparent;
-  color: var(--neutral-300);
+  border-top: 0.5px solid var(--placeholder-text);
+  border-radius: 0 0 12px 12px;
+  background: var(--neutral-0);
+  color: var(--placeholder-text);
   font-size: var(--font-2xs);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   cursor: pointer;
 }
 
@@ -160,7 +201,7 @@
   width: 88px;
   flex-shrink: 0;
   padding: 0 var(--space-2);
-  border-radius: 7px 0 0 7px;
+  border-radius: 11px 0 0 11px;
   margin: calc(var(--space-3) * -1) 0;
 }
 .statValue { font-size: var(--font-sm); font-weight: 500; }
@@ -170,21 +211,26 @@
 .stat_in_progress { background: var(--status-warning-light); color: var(--status-warning-dark); }
 .stat_not_run { background: var(--neutral-50); color: var(--neutral-300); }
 
-/* States */
-.isSelected { border-color: var(--primary-300); background: var(--primary-25); }
-.isFlagged { border-color: var(--status-error); }
-.isCurrent { border-color: var(--primary-300); }
+/* States. A step just dropped (nothing set up yet) and the selected step
+   both get the Figma's lavender fill and purple hairline. */
+.isSelected,
+.isUnset { border-color: var(--primary-300); background: var(--primary-100); }
+.isSelected .outcomeFooter,
+.isUnset .outcomeFooter,
+.isSelected .helperFooter { background: var(--primary-100); border-top-color: var(--primary-200); }
+.isFlagged { border: 1px solid var(--status-error); }
+.isCurrent { border: 1px solid var(--primary-300); }
 .isRunning {
-  border-color: transparent;
+  border: 1px solid transparent;
   background:
     linear-gradient(var(--neutral-0), var(--neutral-0)) padding-box,
     var(--ai-gradient) border-box;
 }
-.isSuccess { border-color: var(--status-success); }
-.isError { border-color: var(--status-error); }
+.isSuccess { border: 1px solid var(--status-success); }
+.isError { border: 1px solid var(--status-error); }
 .isSkipped { opacity: 0.6; }
 .isPending { opacity: 0.45; }
-.isWaiting { border-color: var(--status-warning); }
+.isWaiting { border: 1px solid var(--status-warning); }
 .statusBadge {
   position: absolute;
   top: -8px;
@@ -220,13 +266,14 @@
   height: 100%;
   padding: 0 var(--space-3);
   background: var(--neutral-0);
-  border: 1px dashed var(--status-warning);
+  border: 0.5px solid var(--placeholder-text);
   border-radius: 8px;
-  color: var(--neutral-400);
+  color: var(--placeholder-text);
   font-size: var(--font-sm);
   cursor: pointer;
 }
-.pillLogic { border-style: solid; border-color: var(--neutral-150); font-weight: 500; }
+.pill:hover { border-color: var(--primary-300); }
+.pillLogic { color: var(--neutral-400); font-weight: 500; }
 .pillText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pillCount {
   margin-left: var(--space-1);
@@ -254,10 +301,11 @@
 .groupBox {
   width: 100%;
   height: 100%;
-  border-radius: 12px;
-  border: 1px solid var(--primary-100);
-  background: var(--ai-gradient-light);
-  opacity: 0.7;
+  border: 0.5px solid transparent;
+  border-radius: 16px;
+  background:
+    var(--ai-gradient-light) padding-box,
+    var(--ai-gradient) border-box;
   pointer-events: none;
 }
 .groupHeader {
@@ -265,23 +313,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-1);
   width: 100%;
   height: 100%;
-  border-radius: 6px;
-  color: var(--primary-300);
-  font-size: var(--font-2xs);
   cursor: pointer;
 }
-.groupLabel { text-transform: uppercase; letter-spacing: 0.04em; }
-.groupTitle {
-  color: var(--neutral-400);
-  font-size: var(--font-xs);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.groupLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
-.groupTitle::before { content: '·'; margin: 0 var(--space-1); color: var(--neutral-200); }
+.groupLabelText {
+  font-size: var(--font-2xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--ai-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 
 /* ── Outcome chips ── */
 .chip {
@@ -291,11 +340,12 @@
   gap: var(--space-1);
   width: 100%;
   height: 100%;
-  border: 1px solid var(--neutral-150);
-  border-radius: 6px;
+  padding: var(--space-1);
+  border: 0.5px solid var(--placeholder-text);
+  border-radius: 8px;
   background: var(--neutral-0);
-  color: var(--neutral-400);
-  font-size: var(--font-xs);
+  color: var(--placeholder-text);
+  font-size: var(--font-sm);
   white-space: nowrap;
 }
 .chip :global(svg) { color: var(--accent-amber); }
@@ -306,7 +356,7 @@
   color: var(--neutral-400);
 }
 
-/* ── "+" slots ── */
+/* ── Drop targets (only while dragging from the palette) ── */
 .slot {
   display: inline-flex;
   align-items: center;
@@ -314,22 +364,22 @@
   width: 100%;
   height: 100%;
   padding: 0;
-  border: 1px dashed var(--neutral-200);
-  border-radius: 50%;
-  background: var(--neutral-0);
-  color: var(--neutral-300);
-  cursor: pointer;
-  transition: border-color var(--duration-fast) var(--ease-hover), transform var(--duration-fast) var(--ease-out);
+  border: 1px dashed var(--primary-200);
+  border-radius: 12px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font-size: var(--font-sm);
+  cursor: copy;
+  transition: background var(--duration-fast) var(--ease-hover), border-color var(--duration-fast) var(--ease-hover);
 }
-.slot:hover { border-color: var(--primary-300); color: var(--primary-300); }
-.slotSelected { border-style: solid; border-color: var(--primary-300); color: var(--neutral-0); background: var(--primary-300); }
-.slotLive { border-color: var(--primary-200); color: var(--primary-300); }
-.slotOver { transform: scale(1.25); border-style: solid; border-color: var(--primary-300); background: var(--primary-50); }
+.slotSelected,
+.slotLive { border-color: var(--primary-300); }
+.slotOver { border-style: solid; border-color: var(--primary-300); background: var(--primary-100); }
 
 /* ── Annotation (AI duplicate card) ── */
 .annotation {
   background: var(--neutral-0);
-  border: 1px solid var(--neutral-100);
+  border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
   box-shadow: var(--shadow-popover);
   cursor: default;
@@ -348,7 +398,7 @@
   gap: var(--space-1);
   height: 30px;
   padding: 0 var(--space-2);
-  border: 1px solid var(--neutral-150);
+  border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
   background: var(--neutral-0);
   color: var(--neutral-400);
@@ -371,23 +421,4 @@
   min-width: 28px;
   text-align: center;
   font-variant-numeric: tabular-nums;
-}
-
-/* Before a trigger is chosen: a short connector ending in a dot. */
-.looseEnd {
-  position: absolute;
-  top: 32px;
-  width: 1px;
-  height: 20px;
-  background: var(--neutral-200);
-}
-.looseEnd::after {
-  content: '';
-  position: absolute;
-  bottom: -3px;
-  left: -2px;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--neutral-200);
 }

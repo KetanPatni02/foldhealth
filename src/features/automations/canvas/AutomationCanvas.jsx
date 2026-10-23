@@ -58,14 +58,9 @@ function CanvasInner({
   const zoom = useStore(zoomSelector);
   const editing = mode === 'edit';
 
-  // "+" slots show while a palette item is dragged, under the selected node,
-  // and under a trigger with nothing after it; otherwise the flow stays clean.
-  const slotFilter = useMemo(() => {
-    if (!editing) return false;
-    if (dragging) return true;
-    const triggerEmpty = !(graph?.nodes || []).some(n => n.parentId === 'trigger');
-    return (pid) => pid === selectedId || pid === selectedSlot?.parentId || (pid === 'trigger' && triggerEmpty);
-  }, [editing, dragging, graph, selectedId, selectedSlot]);
+  // Drop targets show only while a palette item is dragged (the Figma has no
+  // "+" buttons); a click on a palette item adds under the selected step.
+  const slotFilter = editing && dragging;
   const layout = useMemo(() => layoutGraph(graph, { slots: slotFilter, collapsed, statBlock: mode === 'stats' }), [graph, slotFilter, collapsed, mode]);
 
   const toggleCollapse = useCallback((id) => setCollapsed(prev => {
@@ -125,7 +120,9 @@ function CanvasInner({
     sourceHandle: e.loop ? 'right' : undefined,
     targetHandle: e.loop ? 'right' : undefined,
     animated: false,
-    style: { stroke: 'var(--neutral-200)', strokeWidth: 1, strokeDasharray: e.dashed ? '4 4' : undefined },
+    // Figma connectors: 1px grey, elbows rounded at 15px.
+    pathOptions: { borderRadius: 15 },
+    style: { stroke: 'var(--placeholder-text)', strokeWidth: 1, strokeDasharray: e.dashed ? '4 4' : undefined },
   })), [layout]);
 
   // Follow a node (test run / trace) into view.
@@ -160,6 +157,26 @@ function CanvasInner({
   useEffect(() => {
     if (focusId && didFit.current) focus(focusId, 400);
   }, [focusId, focus]);
+
+  // When a side panel opens or closes the canvas narrows or widens; keep the
+  // flow centered on "Starts here" (Figma 64 → 65).
+  const startRef = useRef(null);
+  useEffect(() => { startRef.current = layout.items.find(i => i.id === 'start') || null; }, [layout]);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!editing || !el || typeof ResizeObserver === 'undefined') return undefined;
+    let last = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      const w = el.clientWidth;
+      const start = startRef.current;
+      if (w === last || !start || !didFit.current) { last = w; return; }
+      const { y, zoom } = rf.getViewport();
+      rf.setViewport({ x: w / 2 - (start.x + start.w / 2) * zoom, y, zoom });
+      last = w;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [rf, editing]);
 
   // Palette drags light up every "+" slot.
   useEffect(() => {

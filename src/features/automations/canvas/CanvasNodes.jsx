@@ -63,7 +63,7 @@ function StartNode({ data }) {
       {data?.dangling ? <span className={styles.looseEnd} aria-hidden="true" /> : (
       <Tooltip label={ctx.anyCollapsed ? 'Expand All Nodes' : 'Collapse All Nodes'}>
         <button type="button" className={styles.collapseAll} onClick={ctx.toggleAll} aria-label={ctx.anyCollapsed ? 'Expand all nodes' : 'Collapse all nodes'}>
-          <Icon name={ctx.anyCollapsed ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-up-linear'} size={12} />
+          <Icon name={ctx.anyCollapsed ? 'solar:square-double-alt-arrow-down-linear' : 'solar:square-double-alt-arrow-up-linear'} size={16} />
         </button>
       </Tooltip>
       )}
@@ -86,7 +86,7 @@ function StatBlock({ id }) {
 
 function CardNode({ data }) {
   const ctx = useCanvas();
-  const { node, outcomeCount, folded } = data;
+  const { node, outcomeCount, folded, helper } = data;
   const isTrigger = node.id === 'trigger';
   const def = isTrigger ? triggerDef(node.type) : nodeDef(node.type);
   const family = FAMILY[isTrigger ? 'trigger' : def?.family] || FAMILY.add;
@@ -99,7 +99,7 @@ function CardNode({ data }) {
 
   return (
     <div
-      className={nodeClasses(ctx, node.id, `${styles.card} ${ctx.mode === 'stats' ? styles.cardWithStats : ''}`)}
+      className={nodeClasses(ctx, node.id, [styles.card, ctx.mode === 'stats' ? styles.cardWithStats : '', editing && !summary ? styles.isUnset : ''].filter(Boolean).join(' '))}
       onClick={(e) => { e.stopPropagation(); ctx.onSelectNode?.(node.id); }}
       role={ctx.onSelectNode ? 'button' : undefined}
       tabIndex={ctx.onSelectNode ? 0 : undefined}
@@ -134,6 +134,9 @@ function CardNode({ data }) {
         )}
         <StatusBadge state={ctx.nodeState?.[node.id]} />
       </div>
+      {helper && (
+        <div className={styles.helperFooter}>Trigger will run when the applied conditions match the member.</div>
+      )}
       {outcomeCount > 0 && (
         <button
           type="button"
@@ -148,6 +151,7 @@ function CardNode({ data }) {
     </div>
   );
 }
+
 
 function PillNode({ data }) {
   const ctx = useCanvas();
@@ -183,9 +187,12 @@ function GroupHeaderNode({ data }) {
       onClick={(e) => { e.stopPropagation(); ctx.onSelectNode?.(node.id); }}
     >
       <Handles />
-      <Icon name="solar:bolt-linear" size={12} />
-      <span className={styles.groupLabel}>Micro automation</span>
-      <span className={styles.groupTitle}>{node.config?.title}</span>
+      <Tooltip label={node.config?.title || 'Micro automation'}>
+        <span className={styles.groupLabel}>
+          <Icon name="solar:bolt-linear" size={12} color="var(--ai-gradient-from)" />
+          <span className={styles.groupLabelText}>Micro automation</span>
+        </span>
+      </Tooltip>
       {ctx.mode === 'edit' && (
         <button type="button" className={styles.pillDelete} aria-label="Delete micro automation" onClick={(e) => { e.stopPropagation(); ctx.onDeleteNode?.(node.id); }}>
           <Icon name="solar:close-circle-linear" size={14} />
@@ -218,11 +225,11 @@ function SlotNode({ data }) {
   const selected = ctx.selectedSlot && ctx.selectedSlot.parentId === data.parentId && ctx.selectedSlot.branch === data.branch;
   const slot = { parentId: data.parentId, branch: data.branch };
   return (
-    <Tooltip label="Add a step here">
+    <Tooltip label="Drop the step here">
       <button
         type="button"
         className={[styles.slot, selected ? styles.slotSelected : '', ctx.dragging ? styles.slotLive : '', over ? styles.slotOver : ''].filter(Boolean).join(' ')}
-        aria-label="Add a step here"
+        aria-label="Drop the step here"
         onClick={(e) => { e.stopPropagation(); ctx.onSelectSlot?.(selected ? null : slot); }}
         onDragOver={(e) => {
           if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
@@ -239,7 +246,7 @@ function SlotNode({ data }) {
         }}
       >
         <Handle type="target" position={Position.Top} className={styles.handle} isConnectable={false} />
-        <Icon name="solar:add-circle-linear" size={16} />
+        Drop here
       </button>
     </Tooltip>
   );
