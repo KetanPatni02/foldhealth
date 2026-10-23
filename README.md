@@ -37,7 +37,7 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
-- **Consent and preferences data layer (Phase 2A.1).** Patient consent is now
+- **Patient consent and preferences (Phase 2A.1, 2A.2).** Patient consent is now
   a record, not a "2/4" count: `patient_consents` keeps an append-only
   history per program (CCM, APCM, RPM, BHI) and channel (call, SMS, email,
   TCPA) with status, method, who captured it, expiry, witness and the signed
@@ -48,8 +48,13 @@ build requires esbuild ≥ 0.28 on Node 26.
   can be recorded (a hard block without current consent), whether a patient
   can be contacted on a channel (TCPA for texts and autodialed calls), and
   whether they're eligible to enroll. Store: `fetchPatientConsents`,
-  `capturePatientConsent`, `savePatientPreferences`. No UI yet; the capture
-  drawer and the billing gates follow in 2A.2 and 2A.3. Needs
+  `capturePatientConsent`, `savePatientPreferences`. A guided Capture
+  Consent drawer (consent for, decision, method, the script to read, then a
+  witness, a drawn signature through the new `SignaturePad` component, or an
+  uploaded form) opens from the banner's consent popover, which now shows
+  each consent's live state and an audit log, and from the Overview Consent
+  card. The banner count covers the patient's open billable enrollments.
+  The billing gates follow in 2A.3. Needs
   `supabase/patient_consents_migration.sql` then
   `supabase/patient_consents_seed.sql` (consent reads as missing and
   captures stay session-only until then).

@@ -81,6 +81,7 @@ const HccAddDosDrawer      = lz(() => import('../features/hcc/HccAddDosDrawer'),
 const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 const EditPatientDrawer    = lz(() => import('../features/patient/left-panel/tabs/profile/EditPatientDrawer/EditPatientDrawer'), 'EditPatientDrawer');
+const CaptureConsentDrawer = lz(() => import('../features/patient/shared/CaptureConsentDrawer/CaptureConsentDrawer'), 'CaptureConsentDrawer');
 const AssessmentDrawer     = lz(() => import('../features/toc/queue/AssessmentDrawer'),                    'AssessmentDrawer');
 const OutreachStatusDrawer = lz(() => import('../features/toc/queue/OutreachStatusDrawer'),                'OutreachStatusDrawer');
 const AiTasksDrawer        = lz(() => import('../features/toc/AiTasksDrawer'),                             'AiTasksDrawer');
@@ -474,6 +475,8 @@ export function AppLayout() {
   const patientEditPatient = useAppStore(s => s.patientEditPatient);
   const closePatientEdit = useAppStore(s => s.closePatientEdit);
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
+  const consentCapture = useAppStore(s => s.consentCapture);
+  const closeConsentCapture = useAppStore(s => s.closeConsentCapture);
   const assessmentDrawerPatientId = useAppStore(s => s.assessmentDrawerPatientId);
   const outreachStatusDrawerPatientId = useAppStore(s => s.outreachStatusDrawerPatientId);
   const aiTasksDrawerPatientId = useAppStore(s => s.aiTasksDrawerPatientId);
@@ -624,6 +627,13 @@ export function AppLayout() {
           />
         )}
         {quickViewPatient && <QuickViewDrawer />}
+        {consentCapture && (
+          <CaptureConsentDrawer
+            key={`${consentCapture.patientId}:${consentCapture.scopeType || ''}:${consentCapture.scope || ''}`}
+            {...consentCapture}
+            onClose={closeConsentCapture}
+          />
+        )}
         {assessmentDrawerPatientId && <AssessmentDrawer />}
         {outreachStatusDrawerPatientId && <OutreachStatusDrawer />}
         {aiTasksDrawerPatientId && <AiTasksDrawer />}

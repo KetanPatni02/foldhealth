@@ -8477,6 +8477,12 @@ export const useAppStore = create((set, get) => ({
   patientConsentsLoadedFor: {},
   patientPreferences: {},
   patientConsentTableMissing: false,
+  // Capture Consent drawer, mounted once in AppLayout so the banner, the
+  // Overview card and (2A.3) billing gates can all open it.
+  // { patientId, scopeType?, scope?, programId? } | null
+  consentCapture: null,
+  openConsentCapture: (patientId, preset = {}) => { if (patientId) set({ consentCapture: { patientId: String(patientId), ...preset } }); },
+  closeConsentCapture: () => set({ consentCapture: null }),
   fetchPatientConsents: async (patientId, { force = false } = {}) => {
     if (!patientId || (!force && get().patientConsentsLoadedFor[patientId])) return;
     set(s => ({ patientConsentsLoadedFor: { ...s.patientConsentsLoadedFor, [patientId]: true } }));

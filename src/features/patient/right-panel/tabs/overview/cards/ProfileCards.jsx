@@ -13,6 +13,9 @@ import { findWorklistMember, icdFromText } from './overviewItemActions';
 import { useP360Profile } from './useP360Profile';
 import styles from './overviewCards.module.css';
 import { isProgramClosed } from '../../../../data/programStatus';
+import { consentSections } from '../../../../data/consentDisplay';
+import { usePatientConsent } from '../../../../hooks/usePatientConsent';
+import { Button } from '../../../../../../components/Button/Button';
 
 const AddMedicationsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddMedicationsDrawer/AddMedicationsDrawer').then(m => ({ default: m.AddMedicationsDrawer })));
 const AddProblemsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddProblemsDrawer/AddProblemsDrawer').then(m => ({ default: m.AddProblemsDrawer })));
@@ -195,19 +198,27 @@ export function CaregiversCard({ patientId }) {
 }
 
 export function ConsentCard({ patientId }) {
+  const openConsentCapture = useAppStore(s => s.openConsentCapture);
+  const { consents, programs, summary, loaded } = usePatientConsent(patientId);
+  const title = 'Consent';
+  if (!loaded) return <DashboardCardSkeleton icon="solar:shield-check-linear" title={title} rows={2} />;
+  const required = consentSections(consents, programs)[0].items.filter(i => summary.byScope[i.scope]);
+  const missing = summary.total - summary.given;
+  const pct = summary.total ? Math.round((summary.given / summary.total) * 100) : 0;
   return (
-    <ProfileCard patientId={patientId} icon="solar:shield-check-linear" title="Consent" bodyClassName={styles.listBody}>
-      {(p) => {
-        const given = Number(p.consent_given) || 0;
-        const total = Number(p.consent_total) || 0;
-        if (!total) return <p className={styles.empty}>No consents required on file.</p>;
-        const missing = Math.max(0, total - given);
-        const pct = Math.round((given / total) * 100);
-        return (
+    <DashboardCard
+      icon="solar:shield-check-linear"
+      title={title}
+      actions={<Button variant="ghost" size="S" onClick={() => openConsentCapture(patientId)}>Capture consent</Button>}
+    >
+      <DashboardCardBody className={styles.listBody}>
+        {!summary.total ? (
+          <p className={styles.empty}>No open program needs consent.</p>
+        ) : (
           <>
             <div className={styles.consentBlock}>
               <div className={styles.progressRow}>
-                <span className={styles.muted}>{given} of {total} on file</span>
+                <span className={styles.muted}>{summary.given} of {summary.total} on file</span>
                 <span className={styles.bar} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Consents on file">
                   <span className={styles.barFill} style={{ width: `${pct}%` }} />
                 </span>
@@ -218,13 +229,22 @@ export function ConsentCard({ patientId }) {
                   : 'All required consents are on file.'}
               </p>
             </div>
-            {list(p.programs).length > 0 && (
-              <PanelSectionItem inset title="Enrolled programs" meta={list(p.programs).join(' • ')} />
-            )}
+            {required.map(item => (
+              <PanelSectionItem
+                key={item.id}
+                inset
+                leading={<Icon name={item.icon} size={16} color={item.color} />}
+                title={item.label}
+                meta={item.status}
+                trailing={item.state !== 'given' && (
+                  <Button variant="ghost" size="S" onClick={() => openConsentCapture(patientId, { scopeType: 'program', scope: item.scope })}>Capture</Button>
+                )}
+              />
+            ))}
           </>
-        );
-      }}
-    </ProfileCard>
+        )}
+      </DashboardCardBody>
+    </DashboardCard>
   );
 }
 

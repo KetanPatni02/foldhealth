@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Icon } from '../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../components/Icon/DownChevronIcon';
 import { PatientAppActiveIndicator } from '../../../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
-import { ConsentPopover } from '../../../../components/ConsentPopover/ConsentPopover';
+import { PatientConsentPopover } from '../../shared/PatientConsentPopover/PatientConsentPopover';
+import { usePatientConsent } from '../../hooks/usePatientConsent';
+import { consentPopoverPos, consentSummaryLabel } from './consentBadge';
 import { ScheduleDrawer } from '../../../../components/ScheduleDrawer/ScheduleDrawer';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../store/useAppStore';
@@ -60,6 +62,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
   const display = usePatientDisplay(patient);
+  const { summary: consent } = usePatientConsent(patient.id);
 
   const noop = (label) => () => showToast(`${label} — coming soon`);
   // Shared by the row buttons and their overflow menu entries. An overflowed
@@ -77,13 +80,9 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
 
   const handleConsentClick = () => {
     if (consentPos) { setConsentPos(null); return; }
-    const rect = consentBadgeRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const popW = 320;
-    let left = rect.left;
-    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
-    setConsentPos({ top: rect.bottom + 4, left });
+    setConsentPos(consentPopoverPos(consentBadgeRef.current));
   };
+  const closeConsent = useCallback(() => setConsentPos(null), []);
 
   // The dropdown's scrim is aria-hidden, so Escape is the keyboard dismiss path.
   // Before this there was none at all.
@@ -125,7 +124,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
               <span className={styles.drawerMetaText}>{display.gender} • {display.dob || '—'} ({display.age})</span>
               <span className={styles.drawerMetaDot}>•</span>
               <button ref={consentBadgeRef} className={styles.drawerConsentBadge} onClick={handleConsentClick}>
-                Consent: 2/4
+                Consent: {consentSummaryLabel(consent)}
                 <DownChevronIcon size={12} color="var(--status-warning)" />
               </button>
             </div>
@@ -236,7 +235,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
       )}
 
       {showScheduleDrawer && <ScheduleDrawer initialPatientId={patient.id} source="patient_banner" onClose={() => setShowScheduleDrawer(false)} />}
-      {consentPos && <ConsentPopover pos={consentPos} onClose={() => setConsentPos(null)} />}
+      {consentPos && <PatientConsentPopover patientId={patient.id} pos={consentPos} onClose={closeConsent} />}
       {showProfileDropdown && drawerDropdownStyle && (
         <>
           <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setShowProfileDropdown(false); setDrawerDropdownStyle(null); }} />
