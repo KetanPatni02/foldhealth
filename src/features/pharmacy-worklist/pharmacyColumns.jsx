@@ -53,6 +53,8 @@ const viewMoreButton = (ctx) => (
 export const PHARMACY_MIDDLE_COLUMNS = [
   {
     key: 'priority', label: 'Priority', sortKey: 'priorityRank', sortType: 'number',
+    // Divider before the per-gap block, like the one after it.
+    getTdClassName: () => `${styles.td} ${styles.tdGapDivide}`,
     renderCell: (m) => (
       <Tooltip label={m.sourcePriority && m.sourcePriority !== m.priority ? `Plan file: ${m.sourcePriority}` : ''} placement="bottom">
         <span><Badge size="S" tone={PRIORITY_TONE[m.priority] || 'grey'} label={m.priority} /></span>
