@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Care plan Linkage view.** The care plan header has a Tables / Linkage
+  switch. Linkage nests each goal's interventions and barriers beneath it
+  with connecting lines, and lists anything not linked to a goal under
+  Unlinked at the bottom. Drag a row to another goal to move its link (or
+  onto Unlinked to drop it), or use a row's "Link to goal" and "Unlink from
+  goal" actions. A barrier linked to two goals shows under both; "Link to
+  goal" adds a goal to a barrier, while an intervention (one goal each)
+  moves. Writes reuse the existing save calls, so link history is logged as
+  before. The tree is the reusable `src/components/LinkageTree`.
+
 - **Patient Timeline.** The right panel's Timeline tab is the patient's
   full timeline: labs (with range flags), ADT events, visits, diagnoses,
   device readings, patient-reported outcomes, medication starts and stops,

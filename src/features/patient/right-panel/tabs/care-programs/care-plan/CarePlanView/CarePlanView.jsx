@@ -51,6 +51,8 @@ import { CarePlanDuplicatePopover } from '../DuplicateFlag/CarePlanDuplicatePopo
 import { CarePlanViewDrawers } from './CarePlanViewDrawers';
 import { CarePlanViewOverlays } from './CarePlanViewOverlays';
 import { AppliedTemplateStrip } from './AppliedTemplateStrip';
+import { CarePlanLinkageSection } from './CarePlanLinkageSection';
+import { SubTabs } from '@/components/SubTabs/SubTabs';
 import { addGoalsFromPicker, addBarriersFromPicker } from './carePlanPickerHandlers';
 import { formatInstanceDate } from '../lib/templateRenewal';
 import {
@@ -105,6 +107,8 @@ export function CarePlanView({ patientId, program }) {
     savePatientCarePlanConditions,
   } = useCarePlanViewData(patientId, program);
   const [linkOwner, setLinkOwner] = useState(null); // null | { kind, item }
+  // 'tables' lists goals, interventions and barriers apart; 'linkage' nests them under their goals.
+  const [layout, setLayout] = useState('tables');
   // Linked-items preview data (Figma SNP-Story 2632:112808). A goal links its
   // interventions/barriers/automations (by goalId); a child row links its goal.
   const programBadge = program?.name ? [program.name] : (program?.code ? [program.code] : []);
@@ -930,6 +934,11 @@ export function CarePlanView({ patientId, program }) {
           readOnly={!!viewedVersion}
           trailing={(
             <span className={styles.stripActions}>
+              <SubTabs
+                tabs={[{ key: 'tables', label: 'Tables' }, { key: 'linkage', label: 'Linkage' }]}
+                activeKey={layout}
+                onChange={setLayout}
+              />
               <span className={styles.stripDivider} aria-hidden="true" />
               <Button
                 variant="ghost"
@@ -1129,6 +1138,40 @@ export function CarePlanView({ patientId, program }) {
         />
       )}
 
+      {layout === 'linkage' ? (
+        <div className={styles.section}>
+          <GbiSectionHead
+            title="Goals and Linked Items"
+            count={filteredGoals.length}
+            open={openSections.linkage}
+            onToggle={() => toggleSection('linkage')}
+            addButton={(
+              <ActionButton size="S" tooltip="Add goal" onClick={() => setAddGoalsDrawerOpen(true)} disabled={!canEdit}>
+                <AddIconMinimalist size={16} color="var(--neutral-300)" />
+              </ActionButton>
+            )}
+          />
+          {openSections.linkage && (
+            <CarePlanLinkageSection
+              goals={filteredGoals}
+              interventions={filteredInterventions}
+              barriers={plainBarriers}
+              allGoals={viewData.goals}
+              loading={carePlanLoading}
+              canEdit={canEdit}
+              patientId={patientId}
+              program={program}
+              saveIntervention={savePatientCarePlanIntervention}
+              saveBarrier={savePatientCarePlanBarrier}
+              showToast={showToast}
+              onOpenGoal={setPreviewGoal}
+              onOpenIntervention={setPreviewIntervention}
+              onOpenBarrier={setPreviewBarrier}
+            />
+          )}
+        </div>
+      ) : (
+      <>
       {/* Goals */}
       <div className={styles.section}>
         <GbiSectionHead
@@ -1314,6 +1357,8 @@ export function CarePlanView({ patientId, program }) {
           />
         ))}
       </div>
+      </>
+      )}
 
       {/* Social Needs (SDOH): barriers with a domain, and their referrals */}
       <div className={styles.section}>
