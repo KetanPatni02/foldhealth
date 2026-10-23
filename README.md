@@ -37,6 +37,22 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Automations (Settings > Automations).** Replaces Automation Rules with the
+  full automation experience from Figma: template library (grid and table,
+  preview, Use Template), My Automations by status with Run, History,
+  Duplicate and Delete, and a builder (triggers, conditions, actions, outcome
+  branches, delays, repeats, micro automations, duplicate-action warning,
+  autosaved working copy, Save and publish). A step-by-step test run checks
+  each step without touching real data. Analytics (Global and Node Level),
+  overview, email and SMS drilldowns and a per-member trace with Re-trigger
+  read run records, so every total adds up. Runs are simulated
+  (`src/features/automations/lib/simulate.js`); nothing is delivered. Content
+  > Emails warns before deleting an email an automation sends. Enrollment
+  rules became automations with the "enrolled in a care program" trigger and
+  keep auto-applying care plan templates. Needs
+  `supabase/automations_migration.sql` and `bun run seed`; until then the
+  screens use in-memory sample data. Design review and decisions:
+  `docs/features/automations-design-review.md`.
 - **Verify ID on patient sends (VBC-25597).** Compose Email, New SMS, Send
   Content, Send Assessment and the thread's new Send Forms / Send Article
   drawers can protect their links. Ticking "Verify ID" applies the default
@@ -65,10 +81,11 @@ build requires esbuild ≥ 0.28 on Node 26.
   Management, Coordination of Care, Maternity Program or Pediatrics Program.
   Picking CMP under New Program on a member opens that list; sub-programs the
   member already has are greyed out. Population > Worklists has a CMP
-  worklist, one row per enrollment: Sub Program, Program Sub Status
-  (editable), Care Plan Status, Next Action Due, Outreach, Assignee, Program
-  Start / Due Dates, Risk IQ and Tasks, with the shared filter bar and saved
-  filters. Backed by `cmp_members` (`supabase/cmp_members_migration.sql`,
+  worklist, one row per member: like HEDIS's gaps, a member's sub-programs
+  stack inside the row (Sub Program, Program Sub Status (editable), Care Plan
+  Status, Assignee, Outreach, Next Action Due, Start Date, Due Date; View More
+  past two), while Member, Risk IQ and Tasks show once. Shared filter bar and
+  saved filters. Backed by `cmp_members` (`supabase/cmp_members_migration.sql`,
   seeded by `bun run seed`) and a `sub_program` column on
   `patient_care_programs` (`supabase/patient_care_programs_sub_program_migration.sql`).
 - **Consistent worklist filters.** Gender (Male, Female, Other), Language

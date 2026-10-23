@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Icon } from '../../components/Icon/Icon';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
@@ -11,21 +12,36 @@ import { useAppStore } from '../../store/useAppStore';
 import { CMP_MIDDLE_COLUMNS } from './cmpColumns';
 import styles from './CmpWorklistRow.module.css';
 
+// Sub-programs shown before "View More N".
+const MAX_INLINE = 2;
+
+/**
+ * One member, with every CMP sub-program they're enrolled in
+ * (`member.enrollments`). Per-enrollment columns stack a line per
+ * sub-program; the rest show once. `onView(enrollment)` opens one.
+ */
 export function CmpWorklistRow({ member, columns, hiddenSet, selected, onToggle, onView, showToast }) {
   const updateCmpMemberStatus = useAppStore(s => s.updateCmpMemberStatus);
   const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const callBtnRef = useRef(null);
   const [statusAnchor, setStatusAnchor] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const language = member.language || 'en';
+  const enrollments = member.enrollments || [member];
+  const shown = expanded ? enrollments : enrollments.slice(0, MAX_INLINE);
+  const extraCount = Math.max(0, enrollments.length - MAX_INLINE);
+  const multi = enrollments.length > 1;
 
-  const middleCols = (columns || CMP_MIDDLE_COLUMNS).filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
+  const middleCols = (columns || CMP_MIDDLE_COLUMNS).filter(c => !c.sticky && !c.showCheckbox && (c.renderCell || c.renderItem));
   const visibleMiddle = hiddenSet ? middleCols.filter(c => !hiddenSet.has(c.key)) : middleCols;
-  const cellCtx = { statusAnchor, setStatusAnchor, updateCmpMemberStatus, showToast };
+  // "View More N" sits in the first stacked column; the others get a spacer.
+  const toggleKey = visibleMiddle.find(c => c.perEnrollment)?.key;
+  const cellCtx = { statusAnchor, setStatusAnchor, updateCmpMemberStatus, showToast, onOpenEnrollment: onView };
   const dobLabel = formatDobDisplay(member.dob) || deriveDob(member.age, member.name);
 
   return (
-    <tr className={[styles.row, selected ? styles.rowSelected : ''].filter(Boolean).join(' ')}>
+    <tr className={[styles.row, selected ? styles.rowSelected : '', multi ? styles.rowMulti : ''].filter(Boolean).join(' ')}>
       <td className={`${styles.checkTd} ${styles.stickyLeft}`} style={{ left: 0 }}>
         <Checkbox checked={selected} onCheckedChange={onToggle} aria-label={`Select ${member.name}`} />
       </td>
@@ -63,7 +79,27 @@ export function CmpWorklistRow({ member, columns, hiddenSet, selected, onToggle,
         </div>
       </td>
 
-      {visibleMiddle.map(col => (
+      {visibleMiddle.map(col => (col.perEnrollment ? (
+        <td
+          key={col.key}
+          data-col-key={col.key}
+          className={[styles.td, styles.tdStack, shown.length === 1 ? styles.tdStackCenter : ''].filter(Boolean).join(' ')}
+        >
+          <div className={styles.stackItems}>
+            {shown.map(e => <div key={e.id} className={styles.stackItem}>{col.renderItem(e, cellCtx)}</div>)}
+            {extraCount > 0 && (
+              <div className={styles.stackFooter}>
+                {col.key === toggleKey && (
+                  <button type="button" className={styles.viewMoreBtn} onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}>
+                    {expanded ? 'View Less' : `View More ${extraCount}`}
+                    <Icon name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-300)" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </td>
+      ) : (
         <td
           key={col.key}
           data-col-key={col.key}
@@ -72,11 +108,11 @@ export function CmpWorklistRow({ member, columns, hiddenSet, selected, onToggle,
         >
           {col.renderCell(member, cellCtx)}
         </td>
-      ))}
+      )))}
 
       <td className={`${styles.td} ${styles.stickyRight}`}>
         <div className={styles.actionsCell}>
-          <ActionButton icon="solar:document-text-linear" size="L" tooltip="View Program" onClick={onView} />
+          <ActionButton icon="solar:document-text-linear" size="L" tooltip="View Program" onClick={() => onView(enrollments[0])} />
           <span className={styles.actionDivider} />
           <ActionButton
             ref={callBtnRef}

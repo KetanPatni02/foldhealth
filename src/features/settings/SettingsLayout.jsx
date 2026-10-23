@@ -9,7 +9,8 @@ import { BillingPanel } from './billing/BillingPanel';
 import { CalendarSettings } from './calendar/CalendarSettings';
 import { MemberLeadsPanel } from './member-leads/MemberLeadsPanel';
 import { CarePlanLibraryPanel } from './care-plan-library/panel/CarePlanLibraryPanel/CarePlanLibraryPanel';
-import { AutomationRulesPanel } from './automation-rules/AutomationRulesPanel';
+import { AutomationsPanel } from '../automations/AutomationsPanel';
+import { isAutomationsTakeover } from '../automations/automationsView';
 import { CarePlanCreateView } from './care-plan-library/create/CarePlanCreateView/CarePlanCreateView';
 import { CarePlanTemplateView } from './care-plan-library/templates';
 import { CareProgramConfigPanel } from './care-program-config/CareProgramConfigPanel';
@@ -63,6 +64,7 @@ export function SettingsLayout() {
   const saveCarePlanTemplate = useAppStore(s => s.saveCarePlanTemplate);
   const setCarePlanTab = useAppStore(s => s.setCarePlanTab);
   const showToast = useAppStore(s => s.showToast);
+  const automationsView = useAppStore(s => s.automationsView);
 
   // Editing a template owns the whole Settings area, same as New Care Plan.
   if (carePlanTemplateScreen) {
@@ -100,6 +102,15 @@ export function SettingsLayout() {
     );
   }
 
+  // An open automation (builder, analytics, member trace) owns the whole Settings area.
+  if (settingsNavItem === 'automations' && isAutomationsTakeover(automationsView)) {
+    return (
+      <div className={styles.layout}>
+        <AutomationsPanel />
+      </div>
+    );
+  }
+
   if (!IMPLEMENTED.has(settingsNavItem)) {
     return (
       <div className={styles.layout}>
@@ -129,7 +140,7 @@ export function SettingsLayout() {
       ) : settingsNavItem === 'care-plan-library' ? (
         <CarePlanLibraryPanel />
       ) : settingsNavItem === 'automations' ? (
-        <AutomationRulesPanel />
+        <AutomationsPanel />
       ) : settingsNavItem === 'care-program-config' ? (
         <CareProgramConfigPanel />
       ) : (

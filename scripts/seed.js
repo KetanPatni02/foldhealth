@@ -43,6 +43,10 @@ import { sampleOooRecords, demoOooForUser, oooToRow } from '../src/features/ooo/
 import { sampleOnCallSchedules, onCallToRow } from '../src/features/ooo/onCallSeed.js';
 import { sampleHolidays, holidayToRow } from '../src/features/holidays/holidaySeed.js';
 import { ACCOUNT_EMAIL_TEMPLATES, accountEmailTemplateToRow } from '../src/features/email-builder/accountEmailTemplates.js';
+import { AUTOMATION_EMAILS, automationEmailToRow } from '../src/features/automations/data/automationEmails.js';
+import { SEED_TEMPLATES, SEED_AUTOMATIONS, SEED_EDIT_LOG, buildSeedActivity, wireTemplateIds } from '../src/features/automations/data/automationSeed.js';
+import { automationJsToRow, templateJsToRow, runJsToRow, runMemberJsToRow, messageJsToRow } from '../src/features/automations/lib/mappers.js';
+import { SAMPLE_MEMBERS } from '../src/features/automations/data/sampleMembers.js';
 import { sampleAvailability, blockToRow } from '../src/features/settings/calendar/availability/availabilityUtils.js';
 import { careTeamJsToDb } from '../src/store/lib/careTeamMappers.js';
 import { sampleContactsFor, contactToRow } from '../src/features/messages/comms/sendTo.js';
@@ -2065,6 +2069,74 @@ async function main() {
 
   // campaign_sends has no seed — it is the delivery log, populated when a
   // campaign is actually run from the CampaignBuilder.
+
+  // ── Automations (Settings → Automations; automations migration) ──
+  // Shared emails first (campaigns, by system_key; a copy already edited in
+  // the email builder is kept), then templates and automations wired to
+  // their ids, then run history simulated over all_patients.
+  console.log('Seeding automations...');
+  {
+    const emailRows = AUTOMATION_EMAILS.map(automationEmailToRow);
+    const { error: emErr } = await supabase.from('campaigns').upsert(emailRows, { onConflict: 'system_key', ignoreDuplicates: true });
+    const { data: emails } = await supabase.from('campaigns').select('id, system_key').like('system_key', 'automation:%');
+    const emailId = new Map((emails || []).map(r => [r.system_key.replace('automation:', ''), r.id]));
+    console.log(emErr ? `  ✗ automation emails: ${emErr.message}` : `  ✓ ${emailRows.length} automation emails`);
+
+    const { data: tplRows, error: tplErr } = await supabase.from('automation_templates')
+      .upsert(SEED_TEMPLATES.map(t => templateJsToRow({ ...t, graph: wireTemplateIds(t.graph, k => emailId.get(k)) })), { onConflict: 'slug' })
+      .select('id, slug');
+    if (tplErr) {
+      if (tplErr.code === '42P01' || tplErr.code === 'PGRST205') console.log('  ⚠ automation tables missing: run supabase/automations_migration.sql');
+      else console.error('  ✗ automation_templates:', tplErr.message);
+    } else {
+      console.log(`  ✓ ${tplRows.length} automation templates`);
+      const tplId = new Map(tplRows.map(r => [r.slug, r.id]));
+      const automations = SEED_AUTOMATIONS.map(a => ({ ...a, graph: wireTemplateIds(a.graph, k => emailId.get(k)) }));
+      const { error: autoErr } = await supabase.from('automations').upsert(automations.map(a => ({
+        id: a.id,
+        ...automationJsToRow({ ...a, templateId: tplId.get(a.templateSlug) || null }),
+        created_by: a.createdBy, updated_by: a.updatedBy, created_at: a.createdAt, updated_at: a.updatedAt,
+      })), { onConflict: 'id' });
+      console.log(autoErr ? `  ✗ automations: ${autoErr.message}` : `  ✓ ${automations.length} automations`);
+
+      // Re-seeding replaces the seeded automations' history (cascades to members and messages).
+      const ids = automations.map(a => a.id);
+      await supabase.from('automation_runs').delete().in('automation_id', ids);
+      await supabase.from('automation_edit_log').delete().in('automation_id', ids);
+      const { data: pts } = await supabase.from('all_patients')
+        .select('id, name, email, phone, gender, age, tags, city, state, language, coverage_type, ccm_consent, apcm_consent, active_care_program, last_visit, patient_app_active')
+        .limit(400);
+      const patients = (pts || []).map(p => ({
+        id: p.id, name: p.name, email: p.email, phone: p.phone, gender: p.gender, age: p.age, tags: p.tags || [],
+        city: p.city, state: p.state, language: p.language, coverageType: p.coverage_type, ccmConsent: p.ccm_consent,
+        apcmConsent: p.apcm_consent, activeCareProgram: p.active_care_program, lastVisit: p.last_visit,
+        patientAppActive: p.patient_app_active,
+      }));
+      // An empty all_patients (fresh dev database) falls back to the sample members.
+      const act = buildSeedActivity(automations, patients.length ? patients : SAMPLE_MEMBERS, { newId: () => crypto.randomUUID() });
+      const insertAll = async (table, rows) => {
+        for (let i = 0; i < rows.length; i += 500) {
+          const { error } = await supabase.from(table).insert(rows.slice(i, i + 500));
+          if (error) { console.error(`  ✗ ${table}: ${error.message}`); return false; }
+        }
+        return true;
+      };
+      if (await insertAll('automation_runs', act.runs.map(runJsToRow))
+        && await insertAll('automation_run_members', act.members.map(runMemberJsToRow))
+        && await insertAll('automation_messages', act.messages.map(messageJsToRow))) {
+        console.log(`  ✓ ${act.runs.length} runs, ${act.members.length} member executions, ${act.messages.length} messages`);
+      }
+      for (const a of automations) {
+        const last = act.runs.filter(r => r.automationId === a.id).sort((x, y) => new Date(y.startedAt) - new Date(x.startedAt))[0];
+        if (last) await supabase.from('automations').update({ last_executed_at: last.startedAt, last_run_status: last.failedCount ? 'errors' : 'ok' }).eq('id', a.id);
+      }
+      const { error: logErr } = await supabase.from('automation_edit_log').insert(SEED_EDIT_LOG.map(e => ({
+        automation_id: e.automationId, actor: e.actor, summary: e.summary,
+        created_at: new Date(Date.now() - e.daysAgo * 86400000).toISOString(),
+      })));
+      console.log(logErr ? `  ✗ automation_edit_log: ${logErr.message}` : `  ✓ ${SEED_EDIT_LOG.length} history edits`);
+    }
+  }
 
   // De-duplicate worklist rows (best-effort). Seeding synthetic-id rows on top
   // of reident's canonical `id = member_id` rows can leave duplicates; this
