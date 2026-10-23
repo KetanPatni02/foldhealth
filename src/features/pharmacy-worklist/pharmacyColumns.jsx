@@ -6,19 +6,13 @@ import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { GAP_STATUS_TONE, MEASURE_NAMES, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
 import { fillsToStayCompliant } from './fillEvents';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
-import { ClaimReconCell, Dash, DateOnly, DateWithDays, DrugsCount, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SubStatus } from './PharmacyCells';
+import { ClaimReconCell, Dash, DateWithDays, DrugsCount, FailDateValue, NextFillDueValue, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SubStatus } from './PharmacyCells';
 import styles from './PharmacyWorklistRow.module.css';
 
 // Only top priority carries color; the rest stay neutral so red keeps meaning "act now".
 const PRIORITY_TONE = { P1: 'error' };
 
 const isOverdue = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
-const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
-const failDateHint = (d) => {
-  if (d < 0) return `Passed ${days(-d)} ago: the member can no longer reach 80% PDC this year`;
-  if (d === 0) return 'Today is the last day the member can still reach 80% PDC this year';
-  return `In ${days(d)}: after this date the member can no longer reach 80% PDC this year`;
-};
 
 // Gap-level columns stack one item per visible pharmacy gap, HEDIS style
 // (the row collapses to 2 with "View More N"); the last one draws the divider
@@ -110,19 +104,11 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   },
   {
     key: 'failDate', label: 'Fail Date (Absolute)', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
-    renderCell: perGap((g) => {
-      const d = daysFromToday(g.failDate);
-      const alert = isActiveGap(g.status) && d != null && d <= 14;
-      return <DateOnly date={g.failDate} projected={g.failDateSource === 'Projected'} medications={g.medications} alertHint={alert ? failDateHint(d) : null} />;
-    }),
+    renderCell: perGap((g) => <FailDateValue gap={g} />),
   },
   {
     key: 'nextFillDue', label: 'Next Fill Due', sortKey: 'nextFillDueSort', sortType: 'date', getTdClassName: gapTd(false),
-    renderCell: perGap((g) => {
-      const d = daysFromToday(g.nextFillDue);
-      const overdue = isActiveGap(g.status) && d != null && d < 0;
-      return <DateOnly date={g.nextFillDue} projected={g.nextFillDueSource === 'Projected'} medications={g.medications} alertHint={overdue ? `Overdue by ${days(-d)}` : null} />;
-    }),
+    renderCell: perGap((g) => <NextFillDueValue gap={g} />),
   },
   {
     key: 'claimRecon', label: 'Claim Reconciliation', sortKey: 'reconRank', sortType: 'number', getTdClassName: gapTd(false), stopRowClickPropagation: true,

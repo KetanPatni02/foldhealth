@@ -1,7 +1,7 @@
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { HoverCard } from '../../components/HoverCard/HoverCard';
-import { GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, medLabel, pdcTone } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, isActiveGap, medLabel, pdcTone } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
 
 // The measure code (MAD / MAH / MAC) as a neutral chip with its full name on
@@ -60,6 +60,43 @@ export function DateOnly({ date, projected, medications, alertHint }) {
   if (!date) return <Dash />;
   if (projected) return <FlagValue className={styles.dateText} tone="projected" hint={projectedHint(medications)}>{date}</FlagValue>;
   return <FlagValue className={styles.dateText} tone={alertHint ? 'alert' : null} hint={alertHint}>{date}</FlagValue>;
+}
+
+const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
+const failDateHint = (d) => {
+  if (d < 0) return `Passed ${days(-d)} ago: the member can no longer reach 80% PDC this year`;
+  if (d === 0) return 'Today is the last day the member can still reach 80% PDC this year';
+  return `In ${days(d)}: after this date the member can no longer reach 80% PDC this year`;
+};
+
+// "Overdue by N days" for a date in the past, else null.
+function overdueHint(mdy) {
+  const d = daysFromToday(mdy);
+  return d != null && d < 0 ? `Overdue by ${days(-d)}` : null;
+}
+
+// A plain date, red with "Overdue by N days" when it has passed and `alert`.
+export function DueDate({ date, alert = true }) {
+  return <DateOnly date={date} alertHint={alert ? overdueHint(date) : null} />;
+}
+
+// A gap's fail date: red within 14 days on an open gap, saying why.
+export function FailDateValue({ gap }) {
+  const d = daysFromToday(gap.failDate);
+  const alert = isActiveGap(gap.status) && d != null && d <= 14;
+  return <DateOnly date={gap.failDate} projected={gap.failDateSource === 'Projected'} medications={gap.medications} alertHint={alert ? failDateHint(d) : null} />;
+}
+
+// A gap's next fill due: red when overdue on an open gap.
+export function NextFillDueValue({ gap }) {
+  return (
+    <DateOnly
+      date={gap.nextFillDue}
+      projected={gap.nextFillDueSource === 'Projected'}
+      medications={gap.medications}
+      alertHint={isActiveGap(gap.status) ? overdueHint(gap.nextFillDue) : null}
+    />
+  );
 }
 
 // A count with the full list in a hover card. `label` adds a noun ("3
