@@ -37,6 +37,14 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Patient Timeline.** The right panel's Timeline tab is the patient's
+  full timeline: labs (with range flags), ADT events, visits, diagnoses,
+  device readings, patient-reported outcomes, medication starts and stops,
+  notes, assessments, touchpoints (calls, messages, visits, appointments)
+  and program updates, newest first, filterable by category, type and
+  program. One stream (`data/patientStream.js`) reads the tables that already
+  hold each record. Touchpoints carry their program, billing program,
+  duration and vendor. Needs `supabase/patient_event_stream_migration.sql`.
 - **One Outreach cell across worklists.** TOC IP, TCM, HEDIS, SNP, Annual
   Visit, JSA and CMP render outreach with the shared `OutreachStatus`
   component (Figma SNP-Story 8602:333343): the channel's icon (call, in-person,

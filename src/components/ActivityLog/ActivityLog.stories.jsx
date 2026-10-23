@@ -9,7 +9,7 @@ export default {
     docs: {
       description: {
         component:
-          'Shared per-record activity feed. Each entry\'s `t` selects a variant: `outreach` renders the full OutreachTab card (call details + transcript behind "View Note"), `status_change` renders transition pills, `clinical_note` / `task` render a nested "View Details" card, `assignee_change` renders a from → to avatar transition, `upload` renders a file card, and `comment` renders an inline paragraph. Entries of `t: "group"` are collapsible month headers. Used by the HEDIS Care Gap Details drawer.',
+          'Shared per-record activity feed. Each entry\'s `t` selects a variant: `outreach` renders the full OutreachTab card (call details + transcript behind "View Note", or a `details` field list behind "View details"), `status_change` renders transition pills, `clinical_note` / `task` render a nested "View Details" card, `assignee_change` renders a from → to avatar transition, `upload` renders a file card, and `comment` renders an inline paragraph. Entries of `t: "group"` are collapsible month headers. Used by the HEDIS Care Gap Details drawer.',
       },
     },
   },
@@ -163,7 +163,13 @@ const EXAMPLES = {
       DELETE,
     ],
   },
-  'outreach': { entries: [OUTREACH] },
+  'outreach': {
+    entries: [OUTREACH, {
+      t: 'outreach', ...meta, title: 'HbA1c 9.4 %', outcome: 'Out of range', outcomeColor: 'var(--status-error)',
+      details: [{ label: 'Type', value: 'Lab' }, { label: 'Range', value: '4.0–5.6 %' }, { label: 'Source', value: 'Quest' }],
+      note: 'Rising since January; flagged for the diabetes goal.',
+    }],
+  },
   'status-change': { entries: [STATUS_CHANGE] },
   'assignee-change': {
     entries: [ASSIGNEE_CHANGE, { ...ASSIGNEE_CHANGE, title: 'Assignee Changed (from unassigned)', fromAssignee: null }],
