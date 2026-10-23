@@ -9,7 +9,6 @@ import { Toggle } from '../../../components/Toggle/Toggle';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { FilterChip } from '../../../components/FilterChip/FilterChip';
-import { InfoBar } from '../../../components/InfoBar/InfoBar';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { CardSkeleton } from '../../../components/CardSkeleton/CardSkeleton';
 import { TableSkeleton } from '../../../components/TableSkeleton/TableSkeleton';
@@ -50,7 +49,6 @@ const LAYOUTS = [
 export function AutomationsList() {
   const automations = useAppStore(s => s.automations);
   const status = useAppStore(s => s.automationsStatus);
-  const isLocal = useAppStore(s => s.automationsLocal);
   const templates = useAppStore(s => s.automationTemplates);
   const allRuns = useAppStore(s => s.automationRuns);
   const view = useAppStore(s => s.automationsView);
@@ -339,11 +337,6 @@ export function AutomationsList() {
     <div className={styles.wrapper}>
       {header}
       {tab === 'mine' ? mineSubBar : templatesSubBar}
-      {isLocal && (
-        <InfoBar className={styles.banner}>
-          Showing sample automations. Ask Alok Kumar to run supabase/automations_migration.sql to save changes.
-        </InfoBar>
-      )}
       <div className={`${styles.content} ${layout === 'list' && !loading ? styles.contentTable : ''}`}>{body}</div>
 
       {quick && (
