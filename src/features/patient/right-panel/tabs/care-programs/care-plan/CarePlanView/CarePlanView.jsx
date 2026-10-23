@@ -52,7 +52,6 @@ import { CarePlanViewDrawers } from './CarePlanViewDrawers';
 import { CarePlanViewOverlays } from './CarePlanViewOverlays';
 import { AppliedTemplateStrip } from './AppliedTemplateStrip';
 import { CarePlanLinkageSection } from './CarePlanLinkageSection';
-import { SubTabs } from '@/components/SubTabs/SubTabs';
 import { addGoalsFromPicker, addBarriersFromPicker } from './carePlanPickerHandlers';
 import { formatInstanceDate } from '../lib/templateRenewal';
 import {
@@ -107,8 +106,7 @@ export function CarePlanView({ patientId, program }) {
     savePatientCarePlanConditions,
   } = useCarePlanViewData(patientId, program);
   const [linkOwner, setLinkOwner] = useState(null); // null | { kind, item }
-  // 'tables' lists goals, interventions and barriers apart; 'linkage' nests them under their goals.
-  const [layout, setLayout] = useState('tables');
+  const layout = useAppStore(s => s.carePlanLayout);
   // Linked-items preview data (Figma SNP-Story 2632:112808). A goal links its
   // interventions/barriers/automations (by goalId); a child row links its goal.
   const programBadge = program?.name ? [program.name] : (program?.code ? [program.code] : []);
@@ -934,11 +932,6 @@ export function CarePlanView({ patientId, program }) {
           readOnly={!!viewedVersion}
           trailing={(
             <span className={styles.stripActions}>
-              <SubTabs
-                tabs={[{ key: 'tables', label: 'Tables' }, { key: 'linkage', label: 'Linkage' }]}
-                activeKey={layout}
-                onChange={setLayout}
-              />
               <span className={styles.stripDivider} aria-hidden="true" />
               <Button
                 variant="ghost"
