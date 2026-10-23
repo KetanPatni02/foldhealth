@@ -96,7 +96,11 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   return (
     <tr className={`${styles.row} ${visibleGaps.length > 1 ? styles.rowMultiGap : ''}`} onClick={() => { if (m.gaps.length) openPharmacyGapDrawer(m.id, m.urgent?.code || m.gaps[0].code); }}>
       <td className={`${styles.checkTd} ${styles.stickyLeft}`} style={{ left: 0 }} onClick={e => e.stopPropagation()}>
-        <Checkbox checked={isSelected} onCheckedChange={() => onSelect(m.id)} aria-label={`Select ${m.name}`} />
+        {/* Same height as the avatar + name block, so the checkbox lines up with
+            the avatar even when a multi-gap row top-aligns (HEDIS / HCC). */}
+        <div className={styles.checkAlign}>
+          <Checkbox checked={isSelected} onCheckedChange={() => onSelect(m.id)} aria-label={`Select ${m.name}`} />
+        </div>
       </td>
 
       <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: 36 }}>

@@ -27,8 +27,10 @@
   vertical-align: middle;
 }
 .checkTd { padding: var(--space-2) 0.625rem; vertical-align: middle; }
+.checkAlign { display: flex; align-items: center; height: 35px; }
+/* 4px on the left keeps the avatar next to the checkbox (shared worklist rule). */
 .membersTd {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-1);
   border-right: 0.5px solid var(--neutral-150);
   vertical-align: middle;
 }
