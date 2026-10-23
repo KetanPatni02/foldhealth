@@ -1,34 +1,79 @@
 .wrap { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 
 /* Cards are DashboardCards: title in the header, rows edge to edge with the
-   card's 16px inset, a hairline between header and each row. */
-.row, .gapRow {
+   card's 16px inset, a hairline between rows. */
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border-top: 0.5px solid var(--neutral-150);
 }
-.row { display: flex; flex-direction: column; gap: var(--space-2); }
-.gapItem + .gapItem { border-top: 0.5px solid var(--neutral-150); }
-/* The row header toggles the gap's medications. */
-.gapRow {
+
+/* Pharmacy Gaps: one header row, then a row per gap on the same grid, so
+   every value sits under its column name. Inset 16px like the card title. */
+.gapGrid {
   display: grid;
-  /* Columns shrink with the panel; values wrap rather than overflow. */
-  grid-template-columns: 4.25rem minmax(112px, 1.3fr) repeat(4, minmax(0, 1fr));
+  grid-template-columns: 5.25rem minmax(7.5rem, 1.4fr) minmax(3.5rem, 0.7fr) repeat(2, minmax(5.5rem, 1fr)) minmax(4.5rem, 1fr);
   align-items: center;
-  gap: var(--space-3);
+  column-gap: var(--space-3);
+  padding: 0 var(--space-4);
+}
+.gapHead {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  background: var(--neutral-25);
+  border-top: 0.5px solid var(--neutral-150);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.gapItem + .gapItem { border-top: 0.5px solid var(--neutral-150); }
+/* The whole row toggles the gap's medications. */
+.gapRow {
   width: 100%;
-  padding: var(--space-2) 0;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
   border: none;
   background: none;
+  font-size: var(--font-md);
+  color: var(--neutral-400);
   text-align: left;
   cursor: pointer;
 }
-.gapRow:hover { background: var(--neutral-50); }
+.gapRow:hover { background: var(--neutral-25); }
+.gapRow:focus-visible { outline: 2px solid var(--primary-200); outline-offset: -2px; }
 .gapCode { display: inline-flex; align-items: center; gap: var(--space-1); }
-.medTable { width: 100%; border-collapse: collapse; font-size: var(--font-md); color: var(--neutral-400); margin-bottom: var(--space-2); }
-.medTable th { text-align: left; font-weight: 500; color: var(--neutral-300); padding: var(--space-1) var(--space-2); background: var(--neutral-50); }
-.medTable td { padding: var(--space-2); border-top: 0.5px solid var(--neutral-150); }
 .gapStatus { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
 .gapStatus > * { align-self: flex-start; }
+.value { font-size: var(--font-md); color: var(--neutral-400); }
+
+/* An open gap: a stroke under its row, then its medications full width in a
+   neutral-50 well with 12px around the table. */
+.gapRow[aria-expanded="true"] { border-bottom: 0.5px solid var(--neutral-150); }
+.medNest { padding: var(--space-3); background: var(--neutral-50); }
+.medPanel {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  overflow-x: auto;
+}
+.medTable { width: 100%; border-collapse: collapse; font-size: var(--font-md); color: var(--neutral-400); }
+.medTable th {
+  text-align: left;
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+  padding: var(--space-2);
+  background: var(--neutral-25);
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+}
+.medTable td { padding: var(--space-2); white-space: nowrap; }
+.medTable th:first-child, .medTable td:first-child { padding-left: var(--space-3); }
+.medTable th:last-child, .medTable td:last-child { padding-right: var(--space-3); }
+.medTable tbody tr + tr td { border-top: 0.5px solid var(--neutral-150); }
+.medName { font-weight: 500; }
 
 .muted { font-size: var(--font-md); color: var(--neutral-300); }
 .field { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
@@ -72,3 +117,8 @@
   font-size: var(--font-md);
 }
 .empty p { margin: 0; }
+
+/* Chevrons are DownChevronIcon, turned for right (collapsed) and up. */
+.chevron { flex-shrink: 0; transition: transform 0.15s ease; }
+.chevronRight { transform: rotate(-90deg); }
+.chevronUp { transform: rotate(180deg); }

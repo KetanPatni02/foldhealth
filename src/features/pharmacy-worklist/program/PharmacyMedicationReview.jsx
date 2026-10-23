@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { PhoneLink } from '../../../components/PhoneLink/PhoneLink';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
@@ -357,7 +358,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
           <section key={x.code} className={`${styles.gapCard} ${x.code === focusCode ? styles.gapCardFocus : ''}`}>
             <button type="button" className={styles.gapCardToggle} onClick={() => toggle(x.code)} aria-expanded={expanded}>
               <span className={styles.gapCardHead}>
-                <Icon name={expanded ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={14} color="var(--neutral-300)" />
+                <DownChevronIcon size={14} className={`${styles.chevron} ${expanded ? '' : styles.chevronRight}`} />
                 <MeasureCode code={x.code} />
                 <span className={styles.groupName}>{MEASURE_NAMES[x.code]}</span>
                 {x.code === focusCode && <span className={styles.groupMeta}>Opened from worklist</span>}
@@ -443,7 +444,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                               <td>{d.prescriber?.name || '—'}</td>
                               <td>{d.pharmacy?.name || '—'}</td>
                               <td className={styles.openCell}>
-                                <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-300)" />
+                                <DownChevronIcon size={14} className={`${styles.chevron} ${styles.chevronRight}`} />
                               </td>
                             </tr>
                           ))}

@@ -5,6 +5,8 @@
   composes: row from '../../components/WorklistShell/WorklistRow.module.css';
   cursor: pointer;
 }
+/* Rows open the gap drawer from the keyboard too (Enter / Space). */
+.row:focus-visible { outline: 2px solid var(--primary-200); outline-offset: -2px; }
 
 .stickyLeft {
   position: sticky;
@@ -27,8 +29,10 @@
   vertical-align: middle;
 }
 .checkTd { padding: var(--space-2) 0.625rem; vertical-align: middle; }
+.checkAlign { display: flex; align-items: center; height: 35px; }
+/* 4px on the left keeps the avatar next to the checkbox (shared worklist rule). */
 .membersTd {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-1);
   border-right: 0.5px solid var(--neutral-150);
   vertical-align: middle;
 }
@@ -189,3 +193,8 @@
 .reworkLink:hover { text-decoration: underline; }
 .subStatusBtn { background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
 .subStatusBtn:hover { text-decoration: underline; }
+
+/* Chevrons are DownChevronIcon, turned for right (collapsed) and up. */
+.chevron { flex-shrink: 0; transition: transform 0.15s ease; }
+.chevronRight { transform: rotate(-90deg); }
+.chevronUp { transform: rotate(180deg); }

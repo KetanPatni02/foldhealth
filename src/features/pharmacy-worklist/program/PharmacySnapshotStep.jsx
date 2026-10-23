@@ -3,15 +3,14 @@ import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { PhoneLink } from '../../../components/PhoneLink/PhoneLink';
 import {
-  GAP_STATUS_TONE, isActiveGap, enrichPharmacyMember, fillDueTone, pdcTone, pharmaciesUsed, prescribersOf,
+  GAP_STATUS_TONE, isActiveGap, enrichPharmacyMember, pharmaciesUsed, prescribersOf,
 } from '../pharmacyWorklist.utils';
-import { MeasureCode, SubStatus } from '../PharmacyCells';
+import { Dash, DueDate, FailDateValue, MeasureCode, NextFillDueValue, PdcValue, SubStatus } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacySnapshotStep.module.css';
-
-const TONE_CLASS = { error: styles.toneError };
 
 function Field({ label, children }) {
   return (
@@ -21,6 +20,9 @@ function Field({ label, children }) {
     </div>
   );
 }
+
+// Days supply and quantity in one cell: "90 days • Qty 90".
+const supplyLabel = (d) => [d.daysSupply != null && `${d.daysSupply} days`, d.qty != null && `Qty ${d.qty}`].filter(Boolean).join(' • ') || '—';
 
 const addressOf = (o) => [o.address1, o.city, o.state, o.zip].filter(Boolean).join(', ') || '—';
 
@@ -54,49 +56,56 @@ export function PharmacySnapshotStep({ member }) {
 
   return (
     <div className={styles.wrap}>
-      <DashboardCard title="Pharmacy Gaps" count={`${m.progress.closed} of ${m.progress.total} closed · ${m.progress.label}`}>
+      <DashboardCard title="Pharmacy Gaps" count={`${m.progress.closed} of ${m.progress.total} closed • ${m.progress.label}`}>
+        {/* Column names once, not on every row; rows share its grid. */}
+        <div className={`${styles.gapGrid} ${styles.gapHead}`} aria-hidden="true">
+          <span>Gap</span><span>Status</span><span>PDC</span><span>Fail Date</span><span>Next Fill Due</span><span>Claim</span>
+        </div>
         {m.gaps.map(g => {
           // Red only where someone has to act: an open gap. A closed gap's
           // low PDC or past fill date is history.
           const open = isActiveGap(g.status);
-          const tone = (t) => (open ? TONE_CLASS[t] || '' : '');
           const isOpen = expanded.has(g.code);
+          const claimFlagged = g.recon?.status === 'Claim not matched';
           return (
             <div key={g.code} className={styles.gapItem}>
-            <button type="button" className={styles.gapRow} onClick={() => toggle(g.code)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${g.code} medications`}>
-              <span className={styles.gapCode}>
-                <Icon name={isOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={14} color="var(--neutral-300)" />
-                <MeasureCode code={g.code} />
-              </span>
-              <span className={styles.gapStatus}>
-                <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap]} label={g.status.gap} />
-                <SubStatus label={g.status.label} />
-              </span>
-              <Field label={g.pdcProjected != null ? 'PDC (projected)' : 'PDC'}><span className={tone(pdcTone(g.pdc))}>{g.pdc == null ? 'Not sent' : `${g.pdc}%`}</span></Field>
-              <Field label="Fail Date">{g.failDate || '—'}</Field>
-              <Field label="Next Fill Due"><span className={tone(fillDueTone(g.nextFillDue))}>{g.nextFillDue || '—'}</span></Field>
-              <Field label="Claim">{g.recon?.status || '—'}</Field>
-            </button>
-            {isOpen && (
-              <table className={styles.medTable}>
-                <thead>
-                  <tr><th>Medication</th><th>Last Fill</th><th>Recent Fill</th><th>Next Fill</th><th>DS</th><th>Quantity</th><th>Status</th></tr>
-                </thead>
-                <tbody>
-                  {g.medications.map(d => (
-                    <tr key={d.id}>
-                      <td>{d.name} {d.strength} {d.unit}</td>
-                      <td>{d.lastFill}</td>
-                      <td>{d.recentFill || '—'}</td>
-                      <td className={tone(fillDueTone(d.nextFill))}>{d.nextFill}</td>
-                      <td>{d.daysSupply}</td>
-                      <td>{d.qty}</td>
-                      <td>{d.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+              <button type="button" className={`${styles.gapGrid} ${styles.gapRow}`} onClick={() => toggle(g.code)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Hide' : 'Show'} ${g.code} medications`}>
+                <span className={styles.gapCode}>
+                  <DownChevronIcon size={14} className={`${styles.chevron} ${isOpen ? '' : styles.chevronRight}`} />
+                  <MeasureCode code={g.code} />
+                </span>
+                <span className={styles.gapStatus}>
+                  <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap]} label={g.status.gap} />
+                  <SubStatus label={g.status.label} />
+                </span>
+                <PdcValue pdc={g.pdc} open={open} source={g.pdcSource} medications={g.medications} />
+                <FailDateValue gap={g} />
+                <NextFillDueValue gap={g} />
+                {g.recon ? <span className={claimFlagged && open ? styles.toneError : styles.value}>{g.recon.status}</span> : <Dash />}
+              </button>
+              {isOpen && (
+                <div className={styles.medNest}>
+                  <div className={styles.medPanel}>
+                    <table className={styles.medTable}>
+                      <thead>
+                        <tr><th>Medication</th><th>Last Fill</th><th>Recent Fill</th><th>Next Fill</th><th>Supply</th><th>Status</th></tr>
+                      </thead>
+                      <tbody>
+                        {g.medications.map(d => (
+                          <tr key={d.id}>
+                            <td className={styles.medName}>{d.name} {d.strength} {d.unit}</td>
+                            <td>{d.lastFill || '—'}</td>
+                            <td>{d.recentFill || '—'}</td>
+                            <td><DueDate date={d.nextFill} alert={open && d.status !== 'Discontinued'} /></td>
+                            <td>{supplyLabel(d)}</td>
+                            <td className={d.status === 'Discontinued' ? styles.muted : ''}>{d.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}

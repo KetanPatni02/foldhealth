@@ -283,7 +283,7 @@ export function PharmacyWorklistTable() {
                   activeKey={sortKey}
                   activeDir={sortDir}
                   onSort={handleSort}
-                  style={{ ...thStyle, padding: '8px 12px', left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}
+                  style={{ ...thStyle, padding: '8px 12px 8px 4px', left: 36, zIndex: 4, borderRight: '0.5px solid var(--neutral-150)' }}
                 />
                 {visibleMiddle.map(col => (
                   col.sortKey
