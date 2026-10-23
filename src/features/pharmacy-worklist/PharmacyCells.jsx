@@ -125,23 +125,35 @@ export function ProgressCell({ progress }) {
   );
 }
 
-// PDC of the row's focus measure, named so it is never ambiguous. Below the
-// 80% threshold on an open gap is said in words, not only in color.
-// `source`: Plan, Calculated (ours, from claims) or Projected (with a fill
-// confirmed in Fold); `planPdc` is shown on hover when it differs.
+// Separator between parts of one line (year • PDC, source • Below 80%).
+function Sep() {
+  return <span className={styles.sep} aria-hidden="true">•</span>;
+}
+
+// PDC of the row's focus measure, named so it is never ambiguous. A projected
+// PDC (a fill confirmed in Fold, no claim yet) is styled as an estimate and
+// never red; once a claim confirms it, below 80% on an open gap is red and
+// said in words. `source`: Plan, Calculated (ours, from claims) or Projected;
+// `planPdc` is shown on hover when it differs.
 export function PdcValue({ pdc, code, open, source, planPdc }) {
   if (pdc == null) return <span className={styles.subText}>Not sent</span>;
+  const projected = source === 'Projected';
   const below = open && pdcTone(pdc) === 'error';
-  const value = <span className={styles.pdc}>{pdc}%</span>;
+  const alert = below && !projected;
+  const value = (
+    <span className={[styles.pdc, projected ? styles.pdcProjected : '', alert ? styles.toneError : ''].filter(Boolean).join(' ')}>
+      {pdc}%
+    </span>
+  );
   return (
     <span className={styles.stack}>
       {source !== 'Plan' && planPdc !== undefined
         ? <Tooltip label={`Plan PDC ${planPdc == null ? 'not sent' : `${planPdc}%`}`} placement="bottom">{value}</Tooltip>
         : value}
       <span className={styles.subText}>
-        {code ? `${code} · ` : ''}
+        {code && <>{code}<Sep /></>}
         <SourceTag source={source} />
-        {below && <span className={styles.toneError}> · Below 80%</span>}
+        {below && <><Sep /><span className={alert ? styles.toneError : ''}>Below 80%</span></>}
       </span>
     </span>
   );
@@ -175,7 +187,8 @@ export function PriorYearPdc({ years, nonCompliant }) {
     <span className={styles.stack}>
       {years.map(y => (
         <span key={y.year} className={styles.cellText}>
-          <span className={styles.subText}>{y.year} </span>
+          <span className={styles.subText}>{y.year}</span>
+          <Sep />
           <span className={pdcTone(y.pdc) === 'error' ? styles.toneError : ''}>{y.pdc}%</span>
         </span>
       ))}

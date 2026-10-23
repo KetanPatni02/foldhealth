@@ -56,6 +56,13 @@
 .dateText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 .mutedDash { color: var(--neutral-200); font-size: var(--font-base); }
 .pdc { font-size: var(--font-base); font-weight: 500; }
+/* An estimate until a claim confirms it: same treatment as the Projected tag. */
+.pdcProjected {
+  color: var(--neutral-400);
+  font-style: italic;
+  border-bottom: 1px dashed var(--neutral-300);
+}
+.sep { margin: 0 var(--space-1); color: var(--neutral-300); }
 
 .toneError { color: var(--status-error); }
 
