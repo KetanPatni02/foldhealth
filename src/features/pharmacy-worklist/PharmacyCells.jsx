@@ -1,7 +1,7 @@
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { HoverCard } from '../../components/HoverCard/HoverCard';
-import { DATA_SOURCE_HINT, GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, medLabel, pdcTone } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, medLabel, pdcTone } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
 
 // The measure code (MAD / MAH / MAC) as a neutral chip with its full name on
@@ -32,27 +32,34 @@ export function DateWithDays({ date, alert = false }) {
   );
 }
 
-// Where a number comes from (Plan, Calculated, Projected), on hover.
-export function SourceTag({ source }) {
-  if (!source) return null;
+// A value that needs explaining is underlined and explained on hover:
+// `projected` (an estimate until a claim confirms it, never red) or `alert`
+// (red: act on it). Anything else is the plain value.
+function FlagValue({ className, tone, hint, children }) {
+  if (!tone) return <span className={className}>{children}</span>;
   return (
-    <Tooltip label={DATA_SOURCE_HINT[source]} placement="bottom">
-      <span className={`${styles.sourceTag} ${source === 'Projected' ? styles.sourceProjected : ''}`}>{source}</span>
+    <Tooltip label={hint} placement="bottom">
+      <span className={`${className} ${tone === 'projected' ? styles.projected : styles.alert}`}>{children}</span>
     </Tooltip>
   );
 }
 
-// Date alone; red when the caller says it needs action. `source` adds the
-// Plan / Calculated / Projected tag below; `hint` explains the date.
-export function DateOnly({ date, alert = false, source, hint }) {
+// What a projected value rests on: the latest fill confirmed in Fold.
+function projectedHint(medications) {
+  const fill = (medications || [])
+    .filter(d => d.status !== 'Discontinued' && d.recentFill)
+    .map(d => ({ date: d.recentFill, how: d.recentFillSource?.outcome }))
+    .sort((x, y) => new Date(y.date) - new Date(x.date))[0];
+  if (!fill) return 'Projected from a fill confirmed in Fold, pending a matching claim';
+  return `Projected from the fill confirmed on ${fill.date}${fill.how ? ` (${fill.how})` : ''}, pending a matching claim`;
+}
+
+// A date alone. Projected dates show their evidence; `alertHint` makes it red
+// and says why.
+export function DateOnly({ date, projected, medications, alertHint }) {
   if (!date) return <Dash />;
-  const text = <span className={`${styles.dateText} ${alert ? styles.toneError : ''}`}>{date}</span>;
-  return (
-    <span className={styles.stack}>
-      {hint ? <Tooltip label={hint} placement="bottom">{text}</Tooltip> : text}
-      <SourceTag source={source} />
-    </span>
-  );
+  if (projected) return <FlagValue className={styles.dateText} tone="projected" hint={projectedHint(medications)}>{date}</FlagValue>;
+  return <FlagValue className={styles.dateText} tone={alertHint ? 'alert' : null} hint={alertHint}>{date}</FlagValue>;
 }
 
 // A count with the full list in a hover card. `label` adds a noun ("3
@@ -125,26 +132,22 @@ export function ProgressCell({ progress }) {
   );
 }
 
-// PDC of the row's focus measure, named so it is never ambiguous. Below the
-// 80% threshold on an open gap is said in words, not only in color.
-// `source`: Plan, Calculated (ours, from claims) or Projected (with a fill
-// confirmed in Fold); `planPdc` is shown on hover when it differs.
-export function PdcValue({ pdc, code, open, source, planPdc }) {
+// Separator between parts of one line (year • PDC, source • Below 80%).
+function Sep() {
+  return <span className={styles.sep} aria-hidden="true">•</span>;
+}
+
+// PDC of the gap: the number alone. Projected (a fill confirmed in Fold, no
+// claim yet) is underlined with its evidence on hover and never red; a
+// confirmed PDC below 80% on an open gap is red and underlined, so the
+// threshold is said on hover and not only in color.
+export function PdcValue({ pdc, open, source, medications }) {
   if (pdc == null) return <span className={styles.subText}>Not sent</span>;
+  if (source === 'Projected') {
+    return <FlagValue className={styles.pdc} tone="projected" hint={projectedHint(medications)}>{pdc}%</FlagValue>;
+  }
   const below = open && pdcTone(pdc) === 'error';
-  const value = <span className={styles.pdc}>{pdc}%</span>;
-  return (
-    <span className={styles.stack}>
-      {source !== 'Plan' && planPdc !== undefined
-        ? <Tooltip label={`Plan PDC ${planPdc == null ? 'not sent' : `${planPdc}%`}`} placement="bottom">{value}</Tooltip>
-        : value}
-      <span className={styles.subText}>
-        {code ? `${code} · ` : ''}
-        <SourceTag source={source} />
-        {below && <span className={styles.toneError}> · Below 80%</span>}
-      </span>
-    </span>
-  );
+  return <FlagValue className={styles.pdc} tone={below ? 'alert' : null} hint="Below the 80% PDC target">{pdc}%</FlagValue>;
 }
 
 // Claim match for the gap's confirmed fills. "Claim not matched" is a rework
@@ -161,7 +164,9 @@ export function ClaimReconCell({ recon, showCode, followUpTask, onRework }) {
           </button>
         </Tooltip>
       ) : (
-        <span className={styles.subText}>{recon.detail}</span>
+        <Tooltip label={recon.detail} placement="bottom">
+          <span className={`${styles.subText} ${styles.reconDetail}`}>{recon.detail}</span>
+        </Tooltip>
       )}
     </span>
   );
@@ -175,7 +180,8 @@ export function PriorYearPdc({ years, nonCompliant }) {
     <span className={styles.stack}>
       {years.map(y => (
         <span key={y.year} className={styles.cellText}>
-          <span className={styles.subText}>{y.year} </span>
+          <span className={styles.subText}>{y.year}</span>
+          <Sep />
           <span className={pdcTone(y.pdc) === 'error' ? styles.toneError : ''}>{y.pdc}%</span>
         </span>
       ))}
@@ -188,7 +194,7 @@ export function SubStatus({ label, suffix }) {
   if (!label) return null;
   return (
     <span className={`${styles.subStatus} ${URGENT_SUB_STATUSES.has(label) ? styles.toneError : ''}`}>
-      {label}{suffix ? <span className={styles.subSuffix}> · {suffix}</span> : null}
+      {label}{suffix ? <span className={styles.subSuffix}><Sep />{suffix}</span> : null}
     </span>
   );
 }

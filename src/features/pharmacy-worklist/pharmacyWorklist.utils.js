@@ -18,11 +18,6 @@ export const effectiveFailDate = (x) => x?.failDateProjected ?? x?.failDate ?? n
 
 // Where each headline number comes from: the plan file, our calculation from
 // claims, or projected from a fill confirmed in Fold (pending its claim).
-export const DATA_SOURCE_HINT = {
-  Plan: 'Sent by the plan',
-  Calculated: 'Calculated by Fold from claims',
-  Projected: 'Projected from a fill confirmed in Fold, pending a matching claim',
-};
 export const pdcSource = (x) => (x.pdcProjected != null ? 'Projected' : x.pdc != null ? 'Plan' : x.calcPdc != null ? 'Calculated' : null);
 export const failDateSource = (x) => (x.failDateProjected != null ? 'Projected' : x.failDate ? 'Plan' : null);
 export const nextFillDueSource = (x) => (!x.nextFillDue ? null : x.pdcProjected != null ? 'Projected' : 'Calculated');
@@ -452,7 +447,6 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
     return {
       ...x,
       medications: x.medications || [],
-      pdcPlan: x.pdc,
       pdc: effectivePdc(x),
       pdcSource: pdcSource(x),
       failDatePlan: x.failDate,

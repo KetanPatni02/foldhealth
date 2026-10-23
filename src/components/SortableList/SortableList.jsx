@@ -64,7 +64,8 @@ const REMEASURE = { droppable: { strategy: MeasuringStrategy.Always } };
 
 /**
  * @param {string[]} ids
- * @param {(ids: string[]) => void} onReorder
+ * @param {(ids: string[], movedId: string, overId: string) => void} onReorder
+ *   – the new order, plus the moved id and the id whose place it took
  * @param {() => void} [onDragStart]   – A drag began
  * @param {() => void} [onDragFinish]  – It ended (dropped or cancelled)
  */
@@ -80,7 +81,7 @@ export function SortableList({ ids, onReorder, onDragStart, onDragFinish, childr
       onDragEnd={({ active, over }) => {
         onDragFinish?.();
         if (!over || active.id === over.id) return;
-        onReorder(arrayMove(ids, ids.indexOf(active.id), ids.indexOf(over.id)));
+        onReorder(arrayMove(ids, ids.indexOf(active.id), ids.indexOf(over.id)), active.id, over.id);
       }}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
