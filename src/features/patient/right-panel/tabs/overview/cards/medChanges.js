@@ -1,5 +1,6 @@
 import { parseLocalDate } from '../../../../../../lib/localDate';
 import { programForLastKey } from '../../care-programs/CareProgramsTab/CareProgramsTab.utils';
+import { isProgramClosed } from '../../../../data/programStatus';
 
 /**
  * The program whose start the Overview measures from: the one the user last
@@ -10,7 +11,7 @@ export function programContext(programs, lastKey) {
   const fromLast = programForLastKey(programs, lastKey);
   if (fromLast && parseLocalDate(fromLast.startDate)) return fromLast;
   return (programs || [])
-    .filter(p => p.status !== 'Closed' && parseLocalDate(p.startDate))
+    .filter(p => !isProgramClosed(p.status) && parseLocalDate(p.startDate))
     .sort((a, b) => parseLocalDate(a.startDate) - parseLocalDate(b.startDate))[0] || null;
 }
 

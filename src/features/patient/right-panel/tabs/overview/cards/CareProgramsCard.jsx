@@ -6,6 +6,7 @@ import { Button } from '../../../../../../components/Button/Button';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { programUrlKey } from '../../care-programs/CareProgramsTab/CareProgramsTab.utils';
 import styles from './overviewCards.module.css';
+import { isProgramClosed } from '../../../../data/programStatus';
 
 const VISIBLE = 3;
 
@@ -24,7 +25,7 @@ export function CareProgramsCard({ patientId }) {
 
   // Active = every enrollment that isn't closed; the full list lives on the
   // Care Programs tab.
-  const programs = (careProgramsByPatient[patientId] || []).filter(p => p.status !== 'Closed');
+  const programs = (careProgramsByPatient[patientId] || []).filter(p => !isProgramClosed(p.status));
   const goToCarePrograms = () => setPatientProfileTab('Care Programs');
   const openProgram = (prog) => {
     setPatientProfileTab('Care Programs');

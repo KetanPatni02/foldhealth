@@ -24,7 +24,8 @@ import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/Con
 import { ProgramHistoryDrawer } from '../ProgramHistoryDrawer/ProgramHistoryDrawer.jsx';
 import { useProgramHistory } from '../ProgramHistoryDrawer/useProgramHistory';
 import { toast } from '../../../../../../../components/Toast/sonnerToast';
-import { PROGRAM_STATUS_OPTIONS, statusColorFor } from '../../../../../data/programStatus';
+import { CloseProgramDialog } from '../shared/CloseProgramDialog/CloseProgramDialog.jsx';
+import { PROGRAM_STATUS_OPTIONS } from '../../../../../data/programStatus';
 import { useProgramDetailView } from './useProgramDetailView';
 import { StepItem, SectionHeader, StepPlaceholder, CarePlanInPanelNotice } from './ProgramDetailViewParts';
 import { useCarePlanPanelOpen } from '../../../../../hooks/useProgramPanelSplitActive';
@@ -45,7 +46,8 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
 
   const [programHistoryOpen, setProgramHistoryOpen] = useState(false);
-  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
+  const [closing, setClosing] = useState(null); // { status } while the Close Program dialog is open
+  const closeCareProgramInstance = useAppStore(s => s.closeCareProgramInstance);
   const [reportOpen, setReportOpen] = useState(false);
   const reportProgram = useMemo(
     () => ({ ...program, ...(v.liveProgram || {}), status: v.status, assignee: v.assignee }),
@@ -57,18 +59,18 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
     if (programHistory.patientId) fetchPatientProgramActivity(programHistory.patientId);
   }, [programHistory.patientId, fetchPatientProgramActivity]);
 
-  const endProgram = () => {
-    const d = new Date();
-    const today = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
-    v.updateCareProgram(v.patientId, program.id, { status: 'Closed', statusColor: statusColorFor('Closed'), endDate: today });
-    setEndConfirmOpen(false);
-    toast.success(`${program.name} ended`);
+  // End Program, or Completed / Discontinued picked as the status: close the
+  // enrollment with a reason.
+  const closeProgram = ({ reason, note, status }) => {
+    closeCareProgramInstance(v.patientId, program.id, { reason, note, status });
+    setClosing(null);
+    toast.success(`${program.name} closed`);
   };
 
   const onMoreAction = (key) => {
     if (key === 'history') setProgramHistoryOpen(true);
     else if (key === 'report') setReportOpen(true);
-    else if (key === 'end') setEndConfirmOpen(true);
+    else if (key === 'end') setClosing({ status: null });
   };
 
   const assigneePicker = (
@@ -313,7 +315,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
             key: s,
             label: <span style={{ color: 'var(--neutral-400)' }}>{s}</span>,
           }))}
-          onSelect={(newStatus) => v.changeStatus(newStatus)}
+          onSelect={(newStatus) => (newStatus === 'Completed' || newStatus === 'Discontinued'
+            ? setClosing({ status: newStatus })
+            : v.changeStatus(newStatus))}
           onClose={() => v.setStatusMenu(null)}
         />
       )}
@@ -332,14 +336,12 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           onClose={() => setReportOpen(false)}
         />
       )}
-      {endConfirmOpen && (
-        <ConfirmDialog
-          variant="warning"
-          title={`End ${program.name}?`}
-          description="The program will be marked Closed with today as its end date and move to Past Care Programs."
-          confirmLabel="End Program"
-          onConfirm={endProgram}
-          onCancel={() => setEndConfirmOpen(false)}
+      {closing && (
+        <CloseProgramDialog
+          program={program}
+          status={closing.status}
+          onSubmit={closeProgram}
+          onCancel={() => setClosing(null)}
         />
       )}
     </div>

@@ -26,6 +26,8 @@ import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper'
 import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch, normalizeWorklistLabel } from '../lib/worklistDefaults';
 import { MONITORING_SEED, mapMonitoringRow } from '../features/patient/right-panel/tabs/monitoring/monitoringData';
 import { OVERVIEW_SEED, mapOverviewRow } from '../features/patient/data/overviewData';
+import { CLOSURE_REASONS, closureReasonLabel, statusColorFor as programStatusColor } from '../features/patient/data/programStatus';
+import { nextEnrollment, plannedEndDate } from '../features/patient/data/programLifecycle';
 import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
@@ -2100,6 +2102,14 @@ export const useAppStore = create((set, get) => ({
       medReconSignedBy:   r.med_recon_signed_by || null,
       medReconSignedRole: r.med_recon_signed_role || null,
       medReconSignedAt:   r.med_recon_signed_at || null,
+      // Lifecycle (patient_care_program_lifecycle_migration.sql).
+      instance:       r.instance || null,
+      plannedEndDate: r.planned_end_date || null,
+      enrolledBy:     r.enrolled_by || null,
+      closureReason:  r.closure_reason || null,
+      closureNote:    r.closure_note || null,
+      closedAt:       r.closed_at || null,
+      closedBy:       r.closed_by || null,
     }));
     // `trigger` is derived (not stored): the 1-based position among same-code
     // enrollments in created_at order. SNP can be enrolled repeatedly, so its
@@ -2127,15 +2137,21 @@ export const useAppStore = create((set, get) => ({
       // (SPD, Maternity Program, …). Every other program stays single-instance.
       const isTriggerable = entry.code === 'SNP';
       const subProgram = entry.subProgram || null;
-      if (subProgram) {
-        if (existing.some((p) => p.code === entry.code && p.subProgram === subProgram)) return {};
-      } else if (!isTriggerable && existing.some((p) => p.code === entry.code)) return {};
+      // A program can be enrolled again once its earlier enrollment ended
+      // (instance 2, 3 …), and is then Re-enrolled.
+      const next = nextEnrollment(existing, entry.code, subProgram, { triggerable: isTriggerable });
+      if (!next.allowed) return {};
       const trigger = existing.filter((p) => p.code === entry.code).length + 1;
       const subSlug = subProgram ? subProgram.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null;
+      const again = next.instance > 1 ? `-${next.instance}` : '';
+      const maxDays = (state.careProgramTypes || []).find(t => t.code === entry.code)?.completion?.maxDurationDays;
       program = {
         id: subSlug
-          ? `pcp-${patientId}-${entry.code}-${subSlug}`
-          : isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}`,
+          ? `pcp-${patientId}-${entry.code}-${subSlug}${again}`
+          : isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}${again}`,
+        instance: next.instance,
+        enrolledBy: state.currentUserProfile?.name || null,
+        plannedEndDate: plannedEndDate(createdStamp, maxDays),
         code: entry.code,
         subProgram,
         // SNP: what triggered the enrollment and for which plan id (Create SNP Program).
@@ -2144,8 +2160,8 @@ export const useAppStore = create((set, get) => ({
         memberInfo: entry.memberInfo || null,
         name: subProgram ? `${subProgram} (${entry.code})` : `${entry.name} (${entry.code})`,
         acuity: null,
-        status: 'New',
-        statusColor: 'var(--primary-300)',
+        status: next.reEnrolled ? 'Re-enrolled' : 'New',
+        statusColor: programStatusColor(next.reEnrolled ? 'Re-enrolled' : 'New'),
         startDate: createdStamp,
         endDate: '—',
         lastUpdated: createdStamp,
@@ -2212,10 +2228,18 @@ export const useAppStore = create((set, get) => ({
       const upsertLegacy = (extra) => supabase.from('patient_care_programs')
         .upsert({ ...row, ...extra }, { onConflict: 'patient_id, code', ignoreDuplicates: true })
         .select('id');
+      // patient_care_program_lifecycle_migration.sql keys rows per instance
+      // and adds who enrolled / the planned end; tried first, then the older keys.
+      const lifecycle = Object.fromEntries(Object.entries({
+        enrolled_by: program.enrolledBy, planned_end_date: program.plannedEndDate,
+      }).filter(([, v]) => v));
+      const upsertInstance = () => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...trigger, ...lifecycle, sub_program: program.subProgram || '', instance: program.instance }, { onConflict: 'patient_id, code, sub_program, instance', ignoreDuplicates: true })
+        .select('id');
       const keyOrder = program.subProgram ? [upsertSubProgram, upsertLegacy] : [upsertLegacy, upsertSubProgram];
-      const tries = Object.keys(trigger).length
+      const tries = [upsertInstance, ...(Object.keys(trigger).length
         ? [...keyOrder.map(fn => () => fn(trigger)), ...keyOrder.map(fn => () => fn({}))]
-        : keyOrder.map(fn => () => fn({}));
+        : keyOrder.map(fn => () => fn({})))];
       tries.reduce((p, attempt) => p.then(res => (res && !res.error ? res : attempt())), Promise.resolve(null)).then(({ data, error }) => {
         if (error) { console.warn('addCareProgram — insert failed:', error.message); return; }
         // Enrolling is program activity, but only when it really enrolled: a
@@ -2225,9 +2249,9 @@ export const useAppStore = create((set, get) => ({
         get().logProgramActivity({
           patientId,
           programCode: program.code,
-          title: `${program.code} Program Enrolled`,
+          title: `${program.code} Program ${program.status === 'Re-enrolled' ? 'Re-enrolled' : 'Enrolled'}`,
           activityKind: 'status',
-          statusLabel: 'New',
+          statusLabel: program.status,
           statusType: 'success',
         });
         // Enrollment automations run on a real enrollment only (Settings > Automations).
@@ -5032,6 +5056,23 @@ export const useAppStore = create((set, get) => ({
     },
   })),
 
+  // End an enrollment with a reason (Close Program): Completed for "Goal met",
+  // else Discontinued, unless the user picked the status; today is the end date.
+  closeCareProgramInstance: (patientId, programId, { reason, note = '', status } = {}) => {
+    const d = new Date();
+    const today = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    const finalStatus = status || CLOSURE_REASONS.find(r => r.value === reason)?.status || 'Discontinued';
+    get().updateCareProgram(patientId, programId, {
+      status: finalStatus,
+      statusColor: programStatusColor(finalStatus),
+      endDate: today,
+      closureReason: reason || 'other',
+      closureNote: note || null,
+      closedAt: d.toISOString(),
+      closedBy: get().currentUserProfile?.name || null,
+    });
+  },
+
   updateCareProgram: (patientId, programId, patch) => {
     if (!patientId || !programId) return;
     const now = new Date();
@@ -5083,12 +5124,13 @@ export const useAppStore = create((set, get) => ({
       });
     }
     if (updated && patch.status && patch.status !== prevStatus) {
+      const reason = closureReasonLabel(patch.closureReason);
       get().logProgramActivity({
         patientId,
         programCode: updated.code,
-        title: `${updated.code} Program Status Change`,
+        title: reason ? `${updated.code} Program Closed` : `${updated.code} Program Status Change`,
         activityKind: 'status',
-        statusLabel: patch.status,
+        statusLabel: reason ? `${patch.status} · ${reason}` : patch.status,
         statusType: 'warning',
       });
     }
@@ -5110,6 +5152,12 @@ export const useAppStore = create((set, get) => ({
         med_recon_signed_by:   updated.medReconSignedBy || null,
         med_recon_signed_role: updated.medReconSignedRole || null,
         med_recon_signed_at:   updated.medReconSignedAt || null,
+        // Lifecycle columns only once set, so saves still work before
+        // patient_care_program_lifecycle_migration.sql has run.
+        ...Object.fromEntries(Object.entries({
+          closure_reason: updated.closureReason, closure_note: updated.closureNote,
+          closed_at: updated.closedAt, closed_by: updated.closedBy,
+        }).filter(([, v]) => v)),
       }, { onConflict: 'id' }).then(({ error }) => {
         if (error) console.warn('updateCareProgram — update failed:', error.message);
       });
