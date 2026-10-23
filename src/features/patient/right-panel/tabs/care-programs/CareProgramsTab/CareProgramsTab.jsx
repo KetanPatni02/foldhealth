@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
-import { statusColorFor } from '../../../../data/programStatus';
+import { statusColorFor, isProgramClosed } from '../../../../data/programStatus';
 import { CARE_PROGRAM_CATALOG } from '../../../../data/careProgramCatalog';
 import { CMP_SUB_PROGRAMS } from '../../../../data/cmpSubPrograms';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { ProgramDetailView } from '../program-detail/ProgramDetailView/ProgramDetailView.jsx';
 import { ProgramDetailSkeleton } from '../program-detail/shared/ProgramDetailSkeleton/ProgramDetailSkeleton.jsx';
+import { CloseProgramDialog } from '../program-detail/shared/CloseProgramDialog/CloseProgramDialog.jsx';
 import { CarePlanSummaryView } from '../care-plan/summary/CarePlanSummaryView/CarePlanSummaryView.jsx';
 import { CarePlanReportView } from '../care-plan/report/CarePlanReportView/CarePlanReportView.jsx';
 import { stepsFor, flatSteps } from '../program-detail/ProgramDetailView/ProgramDetailView.utils';
@@ -32,7 +33,6 @@ import { CP_FILTERS } from '../../../../data/programActivityMock';
 import styles from './CareProgramsTab.module.css';
 
 // Programs move to the "Past" section once completed or closed.
-const PAST_STATUSES = new Set(['Completed', 'Closed']);
 
 /** Collapsible "Active" / "Past" grouping header for the programs list. */
 function ProgramSection({ title, open, onToggle, children }) {
@@ -90,6 +90,9 @@ export function CareProgramsTab({ header }) {
   const openCareProgram = useAppStore(s => s.openCareProgram);
   const closeCareProgram = useAppStore(s => s.closeCareProgram);
   const setCareProgramStep = useAppStore(s => s.setCareProgramStep);
+  const closeCareProgramInstance = useAppStore(s => s.closeCareProgramInstance);
+  // { program, status } while the Close Program dialog is open.
+  const [closing, setClosing] = useState(null);
 
   useEffect(() => {
     if (patientId) fetchCareProgramsForPatient(patientId);
@@ -228,6 +231,8 @@ export function CareProgramsTab({ header }) {
   };
 
   const changeStatus = (program, status) => {
+    // Completed / Discontinued end the enrollment, so they ask for a reason.
+    if (status === 'Completed' || status === 'Discontinued') { setClosing({ program: program, status: status }); return; }
     const patch = { status, statusColor: statusColorFor(status) };
     if (status === 'Enrolled' && (!program.startDate || program.startDate === '—')) {
       patch.startDate = todayStr();
@@ -244,7 +249,7 @@ export function CareProgramsTab({ header }) {
     } else if (key === 'print') {
       showToast?.(`Preparing ${program.name} summary…`);
     } else if (key === 'close') {
-      updateCareProgram(patientId, program.id, { status: 'Closed', statusColor: statusColorFor('Closed') });
+      setClosing({ program, status: null });
     }
   };
 
@@ -278,8 +283,8 @@ export function CareProgramsTab({ header }) {
   }, [programs, filters, searchText]);
 
   // A program is "Past" once it's completed or closed; everything else is Active.
-  const activePrograms = useMemo(() => visible.filter(p => !PAST_STATUSES.has(p.status)), [visible]);
-  const pastPrograms = useMemo(() => visible.filter(p => PAST_STATUSES.has(p.status)), [visible]);
+  const activePrograms = useMemo(() => visible.filter(p => !isProgramClosed(p.status)), [visible]);
+  const pastPrograms = useMemo(() => visible.filter(p => isProgramClosed(p.status)), [visible]);
 
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const visibleIds = visible.map(p => p.id);
@@ -447,6 +452,18 @@ export function CareProgramsTab({ header }) {
         rowMenu={rowMenu} setRowMenu={setRowMenu}
         visible={visible} changeStatus={changeStatus} handleRowAction={handleRowAction}
       />
+      {closing && (
+        <CloseProgramDialog
+          program={closing.program}
+          status={closing.status}
+          onCancel={() => setClosing(null)}
+          onSubmit={({ reason, note, status }) => {
+            closeCareProgramInstance(patientId, closing.program.id, { reason, note, status });
+            showToast?.(`${closing.program.name} closed`);
+            setClosing(null);
+          }}
+        />
+      )}
     </div>
   );
 }

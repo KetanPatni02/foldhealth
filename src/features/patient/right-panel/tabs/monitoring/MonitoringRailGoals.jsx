@@ -11,6 +11,7 @@ import { normalizeCategory } from '../../../../settings/care-plan-library/lib';
 import { GoalPreviewDrawer } from '../care-programs/care-plan/drawers/GoalPreviewDrawer/GoalPreviewDrawer';
 import { useSignedCarePlans } from '../care-programs/care-plan/lib/useSignedCarePlans';
 import styles from './MonitoringRailGoals.module.css';
+import { isProgramClosed } from '../../../data/programStatus';
 
 const PRIORITIES = ['high', 'medium', 'low'];
 
@@ -36,7 +37,7 @@ export function MonitoringRailGoals({ patient }) {
   const programs = useMemo(
     () => carePlanSources(
       carePlanMode,
-      patientId ? (careProgramsByPatient[patientId] || []).filter((p) => p.status !== 'Closed') : [],
+      patientId ? (careProgramsByPatient[patientId] || []).filter((p) => !isProgramClosed(p.status)) : [],
       patientId,
     ),
     [careProgramsByPatient, patientId, carePlanMode],

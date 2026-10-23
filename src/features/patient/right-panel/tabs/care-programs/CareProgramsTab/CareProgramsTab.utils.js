@@ -1,3 +1,5 @@
+import { isProgramClosed } from '../../../../data/programStatus';
+
 
 // URL key for a program row — code slug plus the trigger ordinal past 1
 // ('awv', 'toc-ip', 'snp-2'). Trigger is derived deterministically from
@@ -14,7 +16,7 @@ export const programUrlKey = (p) => {
  */
 export function programForLastKey(programs, lastKey) {
   if (!lastKey) return null;
-  const open = (programs || []).filter(p => p.status !== 'Closed');
+  const open = (programs || []).filter(p => !isProgramClosed(p.status));
   const exact = open.find(p => programUrlKey(p) === lastKey);
   if (exact) return exact;
   const slug = lastKey.replace(/-\d+$/, '');

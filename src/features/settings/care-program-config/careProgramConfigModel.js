@@ -111,7 +111,7 @@ export const ASSIGNMENT_MODES = [
   { value: 'care-team', label: 'Care team', hint: 'The patient’s Care Manager from the care team mapping.' },
 ];
 
-export const COMPLETION_STATUSES = ['Completed', 'Closed'];
+export const COMPLETION_STATUSES = ['Completed', 'Discontinued', 'Closed'];
 
 export const DEFAULT_COMPLETION = {
   requireMandatorySteps: true,

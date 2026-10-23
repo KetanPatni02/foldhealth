@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../../../../../../store/useAppStore';
 import { toast } from '../../../../../../../components/Toast/sonnerToast';
 import { PROGRAM_LETTERS_MOCK } from '../../../../../data/programActivityMock';
-import { statusColorFor } from '../../../../../data/programStatus';
+import { statusColorFor, isProgramClosed } from '../../../../../data/programStatus';
 import {
   ASSESSMENT_STEPS,
   DEFAULT_LETTER_NAMES,
@@ -164,7 +164,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
     [patientPrograms],
   );
   const otherPrograms = useMemo(
-    () => (patientPrograms || []).filter(p => p.id !== program.id && p.status !== 'Closed'),
+    () => (patientPrograms || []).filter(p => p.id !== program.id && !isProgramClosed(p.status)),
     [patientPrograms, program.id],
   );
 

@@ -37,6 +37,18 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Care program lifecycle.** Program status is one list: New, Engaged,
+  Attempted, Unable to Reach, Declined, Enrolled, Active, Paused, Completed,
+  Discontinued, Re-enrolled (`data/programStatus.js`, `isProgramClosed`).
+  Closing a program (End Program, the row menu, or picking Completed /
+  Discontinued) asks for a reason (goal met, lost to follow-up, opt-out,
+  transferred, other) and logs it. A program can be enrolled again once its
+  last enrollment ended: the new instance is numbered (WLCP #2), starts as
+  Re-enrolled, and records who enrolled it and a planned end from the program
+  type's max duration. The program details panel shows the enrollment and
+  the previous enrollments with how each ended. Needs
+  `supabase/patient_care_program_lifecycle_migration.sql` (adds the columns
+  and keys rows per instance; the app falls back to the old key until then).
 - **Automations (Settings > Automations).** Replaces Automation Rules with the
   full automation experience from Figma: template library (grid and table,
   preview, Use Template), My Automations by status with Run, History,

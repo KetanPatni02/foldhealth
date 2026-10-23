@@ -14,7 +14,7 @@ import { ASSIGNMENT_MODES, newId } from '../careProgramConfigModel';
 import { usePlatformUserOptions } from './usePlatformUserOptions';
 import styles from '../CareProgramConfig.module.css';
 
-const STATUS_OPTIONS = ['New', ...PROGRAM_STATUS_OPTIONS, 'Completed', 'Closed'];
+const STATUS_OPTIONS = [...new Set([...PROGRAM_STATUS_OPTIONS, 'Closed'])];
 
 function WorklistDrawer({ worklist, programName, userOptions, onSave, onClose }) {
   const [w, setW] = useState(worklist);
