@@ -15,14 +15,36 @@ export const SUPABASE_PROJECTS = {
   },
 };
 
+const DEV_REF = 'uwswpbiyhlmpnubxtipc';
 const PRODUCTION_REF = 'osnihfqqrcchsaqhagcx';
+
+// Anon keys are JWTs. The `ref` claim is the project they belong to.
+function jwtProjectRef(token) {
+  if (!token || typeof token !== 'string') return null;
+  const part = token.split('.')[1];
+  if (!part) return null;
+  try {
+    const body = part.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = body + '='.repeat((4 - (body.length % 4)) % 4);
+    const json = JSON.parse(atob(padded));
+    return typeof json.ref === 'string' ? json.ref : null;
+  } catch {
+    return null;
+  }
+}
 
 // Local dev and every Vercel preview deployment use Foldhealth Dev. A
 // production URL that leaked into those environments is replaced, so a
-// preview build cannot reach the production project by accident.
+// preview build cannot reach the production project by accident. A dev URL
+// paired with another project's anon key (the production key left in `.env`)
+// is replaced too: every request would fail, worklists would fall back to
+// mocks, and the overview row would never match.
 export function supabaseTarget({ useDev, url, anonKey }) {
   const fallback = useDev ? SUPABASE_PROJECTS.dev : SUPABASE_PROJECTS.prod;
   const resolvedUrl = url || fallback.url;
-  if (useDev && resolvedUrl.includes(PRODUCTION_REF)) return SUPABASE_PROJECTS.dev;
+  if (!useDev) return { url: resolvedUrl, anonKey: anonKey || fallback.anonKey };
+  if (resolvedUrl.includes(PRODUCTION_REF)) return SUPABASE_PROJECTS.dev;
+  const keyRef = jwtProjectRef(anonKey);
+  if (resolvedUrl.includes(DEV_REF) && keyRef && keyRef !== DEV_REF) return SUPABASE_PROJECTS.dev;
   return { url: resolvedUrl, anonKey: anonKey || fallback.anonKey };
 }
