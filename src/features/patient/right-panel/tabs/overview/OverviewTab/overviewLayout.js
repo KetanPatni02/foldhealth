@@ -69,17 +69,21 @@ const KNOWN = new Set(OVERVIEW_WIDGET_KEYS);
 // Customize, skipped on the Overview), so showing one again puts it back
 // where it was.
 //
-// Overview is who the patient is. Care Management is the clinical record
-// (the wide column). Actionables is what to do next, with Quick Actions
-// directly above Suggested Actions and Upcoming Appointments.
+// Needs Attention sits above the lanes, so each lane leads with what moves:
+// Overview is who the patient is (synopsis and risk first, reference cards
+// last). Care Management is the clinical record (the wide column), with
+// vitals, care plan and gaps on top. Actionables is what to do next, led by
+// Suggested Actions, Tasks and Appointments. Sample-only reference cards
+// (population groups, insurance, subscription) start hidden. Unchanged
+// revision: a layout someone already arranged stays as they left it.
 export const DEFAULT_OVERVIEW_LAYOUT = {
   revision: OVERVIEW_LAYOUT_REVISION,
   lanes: [
-    ['synopsis', 'healthChart', 'riskAcuity', 'highlights', 'careTeam', 'contact', 'caregivers', 'consent', 'populationGroups', 'insurance', 'subscription'],
-    ['vitals', 'carePlan', 'carePrograms', 'gaps', 'notes', 'medications', 'conditions', 'careUtilization', 'priorAuth', 'careJourneys', 'programProgress'],
-    ['quickActions', 'suggestedActions', 'appointments', 'tasks', 'awaitingReply', 'sinceLastTouch', 'automations'],
+    ['synopsis', 'riskAcuity', 'healthChart', 'careTeam', 'caregivers', 'highlights', 'contact', 'consent', 'populationGroups', 'insurance', 'subscription'],
+    ['vitals', 'carePlan', 'gaps', 'carePrograms', 'medications', 'conditions', 'notes', 'programProgress', 'careUtilization', 'priorAuth', 'careJourneys'],
+    ['suggestedActions', 'tasks', 'appointments', 'awaitingReply', 'quickActions', 'sinceLastTouch', 'automations'],
   ],
-  hidden: ['programProgress'],
+  hidden: ['programProgress', 'populationGroups', 'insurance', 'subscription'],
 };
 
 const DEFAULT_LANE_OF = Object.fromEntries(

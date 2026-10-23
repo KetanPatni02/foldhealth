@@ -374,6 +374,47 @@ export const useAppStore = create((set, get) => ({
     }));
   },
 
+  // Needs Attention reviews on the Overview (patient_signal_reviews), keyed
+  // by member id → { [signalId]: { reviewedBy, reviewedByName, reviewedAt } }.
+  // Shared by the team. Read once per patient; `{}` when the table is missing
+  // (reviews then live for the session only).
+  patientSignalReviews: {},
+  fetchPatientSignalReviews: async (memberId) => {
+    if (!memberId) return;
+    const key = String(memberId);
+    if (get().patientSignalReviews[key] !== undefined) return;
+    set(st => ({ patientSignalReviews: { ...st.patientSignalReviews, [key]: {} } }));
+    const { data, error } = await supabase
+      .from('patient_signal_reviews')
+      .select('signal_id, reviewed_by, reviewed_by_name, reviewed_at')
+      .eq('member_id', key);
+    if (error) {
+      console.warn('[store] patient_signal_reviews fetch failed (run supabase/patient_signal_reviews_migration.sql):', error.message);
+      return;
+    }
+    const map = Object.fromEntries((data || []).map(r => [r.signal_id, {
+      reviewedBy: r.reviewed_by, reviewedByName: r.reviewed_by_name, reviewedAt: r.reviewed_at,
+    }]));
+    set(st => ({ patientSignalReviews: { ...st.patientSignalReviews, [key]: map } }));
+  },
+  setPatientSignalReviewed: async (memberId, signalId, reviewed) => {
+    if (!memberId || !signalId) return;
+    const key = String(memberId);
+    const userId = await get()._resolveWorklistUser();
+    const name = get().currentUserProfile?.name || 'You';
+    const entry = { reviewedBy: userId, reviewedByName: name, reviewedAt: new Date().toISOString() };
+    const prev = get().patientSignalReviews[key] || {};
+    const next = { ...prev };
+    if (reviewed) next[signalId] = entry; else delete next[signalId];
+    set(st => ({ patientSignalReviews: { ...st.patientSignalReviews, [key]: next } }));
+    const { error } = reviewed
+      ? await supabase.from('patient_signal_reviews').upsert({
+        member_id: key, signal_id: signalId, reviewed_by: userId, reviewed_by_name: name, reviewed_at: entry.reviewedAt,
+      }, { onConflict: 'member_id,signal_id' })
+      : await supabase.from('patient_signal_reviews').delete().eq('member_id', key).eq('signal_id', signalId);
+    if (error) console.warn('[store] save signal review failed (run supabase/patient_signal_reviews_migration.sql):', error.message);
+  },
+
   // Patient Overview: the Overview tab's own data (Unity synopsis, health
   // chart, highlights, suggested actions, vitals, gaps), keyed by member id.
   // Falls back to the bundled OVERVIEW_SEED until patient_overview is

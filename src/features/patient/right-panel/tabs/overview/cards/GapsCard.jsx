@@ -8,6 +8,7 @@ import { Button } from '../../../../../../components/Button/Button';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { openOverviewGap } from './overviewItemActions';
 import styles from './overviewCards.module.css';
+import { CardInsights } from '../attention/CardInsights';
 
 const CareGapDetailDrawer = lazy(() => import('../../../../../hedis-worklist/CareGapDetailDrawer').then(m => ({ default: m.CareGapDetailDrawer })));
 
@@ -101,6 +102,7 @@ export function GapsCard({ overview, actions, patient }) {
           />
         </Suspense>
       )}
+      <CardInsights />
     </DashboardCard>
   );
 }
