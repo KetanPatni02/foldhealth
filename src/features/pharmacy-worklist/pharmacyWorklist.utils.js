@@ -452,7 +452,6 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
     return {
       ...x,
       medications: x.medications || [],
-      pdcPlan: x.pdc,
       pdc: effectivePdc(x),
       pdcSource: pdcSource(x),
       failDatePlan: x.failDate,

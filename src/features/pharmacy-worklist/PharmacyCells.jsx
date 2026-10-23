@@ -130,33 +130,37 @@ function Sep() {
   return <span className={styles.sep} aria-hidden="true">•</span>;
 }
 
-// PDC of the row's focus measure, named so it is never ambiguous. A projected
-// PDC (a fill confirmed in Fold, no claim yet) is styled as an estimate and
-// never red; once a claim confirms it, below 80% on an open gap is red and
-// said in words. `source`: Plan, Calculated (ours, from claims) or Projected;
-// `planPdc` is shown on hover when it differs.
-export function PdcValue({ pdc, code, open, source, planPdc }) {
+// What a projected PDC rests on: the latest fill confirmed in Fold.
+function projectedHint(medications) {
+  const fill = (medications || [])
+    .filter(d => d.status !== 'Discontinued' && d.recentFill)
+    .map(d => ({ date: d.recentFill, how: d.recentFillSource?.outcome }))
+    .sort((x, y) => new Date(y.date) - new Date(x.date))[0];
+  if (!fill) return 'Projected from a fill confirmed in Fold, pending a matching claim';
+  return `Projected from the fill confirmed on ${fill.date}${fill.how ? ` (${fill.how})` : ''}, pending a matching claim`;
+}
+
+// PDC of the gap: the number alone. Projected (a fill confirmed in Fold, no
+// claim yet) is underlined with its evidence on hover and never red; a
+// confirmed PDC below 80% on an open gap is red and underlined, so the
+// threshold is said on hover and not only in color.
+export function PdcValue({ pdc, open, source, medications }) {
   if (pdc == null) return <span className={styles.subText}>Not sent</span>;
-  const projected = source === 'Projected';
-  const below = open && pdcTone(pdc) === 'error';
-  const alert = below && !projected;
-  const value = (
-    <span className={[styles.pdc, projected ? styles.pdcProjected : '', alert ? styles.toneError : ''].filter(Boolean).join(' ')}>
-      {pdc}%
-    </span>
-  );
-  return (
-    <span className={styles.stack}>
-      {source !== 'Plan' && planPdc !== undefined
-        ? <Tooltip label={`Plan PDC ${planPdc == null ? 'not sent' : `${planPdc}%`}`} placement="bottom">{value}</Tooltip>
-        : value}
-      <span className={styles.subText}>
-        {code && <>{code}<Sep /></>}
-        <SourceTag source={source} />
-        {below && <><Sep /><span className={alert ? styles.toneError : ''}>Below 80%</span></>}
-      </span>
-    </span>
-  );
+  if (source === 'Projected') {
+    return (
+      <Tooltip label={projectedHint(medications)} placement="bottom">
+        <span className={`${styles.pdc} ${styles.pdcProjected}`}>{pdc}%</span>
+      </Tooltip>
+    );
+  }
+  if (open && pdcTone(pdc) === 'error') {
+    return (
+      <Tooltip label="Below the 80% PDC target" placement="bottom">
+        <span className={`${styles.pdc} ${styles.pdcBelow}`}>{pdc}%</span>
+      </Tooltip>
+    );
+  }
+  return <span className={styles.pdc}>{pdc}%</span>;
 }
 
 // Claim match for the gap's confirmed fills. "Claim not matched" is a rework
@@ -173,7 +177,9 @@ export function ClaimReconCell({ recon, showCode, followUpTask, onRework }) {
           </button>
         </Tooltip>
       ) : (
-        <span className={styles.subText}>{recon.detail}</span>
+        <Tooltip label={recon.detail} placement="bottom">
+          <span className={`${styles.subText} ${styles.reconDetail}`}>{recon.detail}</span>
+        </Tooltip>
       )}
     </span>
   );

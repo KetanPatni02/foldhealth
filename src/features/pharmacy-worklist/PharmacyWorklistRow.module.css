@@ -56,12 +56,10 @@
 .dateText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 .mutedDash { color: var(--neutral-200); font-size: var(--font-base); }
 .pdc { font-size: var(--font-base); font-weight: 500; }
-/* An estimate until a claim confirms it: same treatment as the Projected tag. */
-.pdcProjected {
-  color: var(--neutral-400);
-  font-style: italic;
-  border-bottom: 1px dashed var(--neutral-300);
-}
+/* Underlined PDCs carry a tooltip: projected (an estimate until a claim
+   confirms it) and confirmed-but-below-80%. */
+.pdcProjected { color: var(--neutral-400); border-bottom: 1px dashed var(--neutral-300); }
+.pdcBelow { color: var(--status-error); border-bottom: 1px dashed var(--status-error); }
 .sep { margin: 0 var(--space-1); color: var(--neutral-300); }
 
 .toneError { color: var(--status-error); }
@@ -169,6 +167,9 @@
   font-style: italic;
   border-bottom: 1px dashed var(--neutral-300);
 }
+
+/* Claim detail is capped so the column stays narrow; full text on hover. */
+.reconDetail { display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 
 /* "Claim not matched" rework flag: opens the drug's claim history. */
 .reworkLink {

@@ -87,7 +87,7 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   },
   {
     key: 'pdc', label: 'PDC', sortKey: 'pdc', sortType: 'number', getTdClassName: gapTd(false),
-    renderCell: perGap((g) => <PdcValue pdc={g.pdc} open={isActiveGap(g.status)} source={g.pdcSource} planPdc={g.pdcPlan} />),
+    renderCell: perGap((g) => <PdcValue pdc={g.pdc} open={isActiveGap(g.status)} source={g.pdcSource} medications={g.medications} />),
   },
   {
     key: 'failDate', label: 'Fail Date (Absolute)', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
