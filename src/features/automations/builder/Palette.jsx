@@ -50,17 +50,14 @@ export function Palette({ triggerType, onPickTrigger, isAllowed, whyNot, onAdd, 
         aria-disabled={disabled}
         onKeyDown={(e) => { if (e.key === 'Enter' && !disabled) onAdd(def.type); }}
       >
-        <DragHandleIcon size={14} className={styles.dragHandle} />
-        <Icon name={def.icon} size={16} color={disabled ? 'var(--neutral-200)' : FAMILY[family]?.color} />
+        <DragHandleIcon size={16} color="var(--neutral-200)" className={styles.dragHandle} />
+        <Icon name={def.icon} size={20} color={disabled ? 'var(--neutral-200)' : FAMILY[family]?.color} />
         <span className={styles.paletteLabel}>{family === 'condition' ? `If ${def.label.charAt(0).toLowerCase()}${def.label.slice(1)}` : def.label}</span>
-        {def.help || def.helper ? (
-          <Tooltip label={def.help || def.helper} maxWidth={240}>
-            <span className={styles.paletteInfo}><Icon name="solar:info-circle-linear" size={14} /></span>
-          </Tooltip>
-        ) : null}
       </div>
     );
-    return disabled ? <Tooltip key={def.type} label={whyNot(def.type)}>{row}</Tooltip> : row;
+    if (disabled) return <Tooltip key={def.type} label={whyNot(def.type)}>{row}</Tooltip>;
+    const help = def.help || def.helper;
+    return help ? <Tooltip key={def.type} label={help} maxWidth={240}>{row}</Tooltip> : row;
   };
 
   return (
