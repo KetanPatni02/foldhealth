@@ -37,6 +37,22 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Overview: Unity insights and Recap.** Each Overview widget now carries
+  its own Unity layer (Figma Reports pattern): a purple strip with the
+  widget's headline ("Missed Annual Wellness Visit on 04/10/2026 is not
+  rebooked.") over Recommendations rows, one per open item, each with its
+  next step (Reschedule, Create Task, Review Meds, Reply, Open Tasks) and a
+  Mark reviewed check the whole team sees (`patient_signal_reviews`). Items
+  are abnormal labs, ED visits and admissions, missed or cancelled visits
+  not yet rebooked, medication changes, messages awaiting a reply, vitals
+  off goal, overdue tasks and care gaps, and RAF jumps, new ones flagged
+  since the last touch (or the last 30 days). A Recap pill at the top left
+  opens a walkthrough of them, one slide per widget, that plays on its own.
+  Rules: `overview/attention/attentionSignals.js`; shared pieces:
+  `src/components/UnityInsights` and `src/components/SlideshowDialog`. The
+  default lanes now lead with what moves (risk, care plan, gaps, suggested
+  actions, tasks), and sample-only reference cards start hidden; layouts
+  people already arranged are kept.
 - **Care plan Linkage view.** The care plan header has a Tables / Linkage
   switch. Linkage nests each goal's interventions and barriers beneath it
   with connecting lines, and lists anything not linked to a goal under

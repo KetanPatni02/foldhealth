@@ -55,8 +55,10 @@ describe('normalizeOverviewLayout', () => {
     const l = normalizeOverviewLayout({ revision: 3, lanes: [['synopsis'], [], []], hidden: [] });
     expect(l.lanes[2]).toContain('quickActions');
     expect(l.hidden).not.toContain('quickActions');
+    expect(l.lanes[0]).toContain('consent');
+    expect(l.hidden).not.toContain('consent');
     expect(l.lanes[0]).toContain('insurance');
-    expect(l.hidden).not.toContain('insurance');
+    expect(l.hidden).toContain('insurance');
     expect(l.lanes[1]).toContain('programProgress');
     expect(l.hidden).toContain('programProgress');
   });
@@ -77,7 +79,7 @@ describe('normalizeOverviewLayout', () => {
     expect(l.lanes).toEqual(DEFAULT_OVERVIEW_LAYOUT.lanes);
     expect(l.lanes[0]).toEqual(expect.arrayContaining(['synopsis', 'careTeam', 'contact']));
     expect(l.lanes[1][0]).toBe('vitals');
-    expect(l.lanes[2][0]).toBe('quickActions');
+    expect(l.lanes[2][0]).toBe('suggestedActions');
     expect(l.hidden).not.toContain('vitals');
     expect(l.hidden).not.toContain('medications');
     expect(l.hidden).toContain('programProgress');
@@ -103,15 +105,17 @@ describe('overviewColumns', () => {
     expect(overviewColumns({ ...layout, hidden: ['b', 'd'] }, 3)).toEqual([['a'], ['c'], ['e']]);
   });
 
-  it('keeps the three categories: context, clinical work, then what to do next', () => {
+  it('keeps the three categories, each led by what changes most', () => {
     const l = normalizeOverviewLayout(undefined);
     const [overview, care, actions] = overviewColumns(l, 3);
-    expect(overview.slice(0, 3)).toEqual(['synopsis', 'healthChart', 'riskAcuity']);
+    expect(overview.slice(0, 3)).toEqual(['synopsis', 'riskAcuity', 'healthChart']);
     expect(overview).toEqual(expect.arrayContaining(['careTeam', 'contact']));
-    expect(care.slice(0, 5)).toEqual(['vitals', 'carePlan', 'carePrograms', 'gaps', 'notes']);
-    expect(actions.slice(0, 4)).toEqual(['quickActions', 'suggestedActions', 'appointments', 'tasks']);
+    expect(care.slice(0, 5)).toEqual(['vitals', 'carePlan', 'gaps', 'carePrograms', 'medications']);
+    expect(actions.slice(0, 4)).toEqual(['suggestedActions', 'tasks', 'appointments', 'awaitingReply']);
+    // Sample-only reference cards start hidden.
+    expect(overview).not.toContain('insurance');
     // Two columns keep Care Management wide and stack Actionables under Overview.
-    expect(overviewColumns(l, 2)[0].slice(0, 2)).toEqual(['synopsis', 'healthChart']);
+    expect(overviewColumns(l, 2)[0].slice(0, 2)).toEqual(['synopsis', 'riskAcuity']);
     expect(overviewColumns(l, 2)[1][0]).toBe('vitals');
   });
 });

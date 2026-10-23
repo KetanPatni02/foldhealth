@@ -7,6 +7,7 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { appointmentForDrawer } from './overviewItemActions';
 import { useP360Profile } from './useP360Profile';
 import styles from './overviewCards.module.css';
+import { CardInsights } from '../attention/CardInsights';
 
 const VISIBLE = 3;
 
@@ -80,6 +81,7 @@ export function AppointmentsCard({ patientId, patient }) {
           onClose={() => setOpen(null)}
         />
       )}
+      <CardInsights />
     </DashboardCard>
   );
 }

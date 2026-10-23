@@ -13,6 +13,7 @@ import { findWorklistMember, icdFromText } from './overviewItemActions';
 import { useP360Profile } from './useP360Profile';
 import styles from './overviewCards.module.css';
 import { isProgramClosed } from '../../../../data/programStatus';
+import { CardInsights } from '../attention/CardInsights';
 
 const AddMedicationsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddMedicationsDrawer/AddMedicationsDrawer').then(m => ({ default: m.AddMedicationsDrawer })));
 const AddProblemsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddProblemsDrawer/AddProblemsDrawer').then(m => ({ default: m.AddProblemsDrawer })));
@@ -28,6 +29,7 @@ function ProfileCard({ patientId, icon, title, count, bodyClassName, children })
       <DashboardCardBody className={bodyClassName}>
         {profile ? children(profile) : <p className={styles.empty}>No profile data for this patient yet.</p>}
       </DashboardCardBody>
+      <CardInsights />
     </DashboardCard>
   );
 }

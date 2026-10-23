@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { ScheduleDrawer } from '../../../../../../components/ScheduleDrawer/ScheduleDrawer';
@@ -23,10 +23,16 @@ import {
 import { ProgramProgressCard, SinceLastTouchCard } from '../cards/MonitoringCards';
 import { AwaitingReplyCard } from '../cards/AwaitingReplyCard';
 import { SummaryWidgetCard } from '../cards/SummaryWidgetCard';
+import { RecapButton } from '../attention/RecapDialog';
+import { useAttentionSignals } from '../attention/useAttentionSignals';
+import { signalsByWidget } from '../attention/widgetInsights';
+import { OverviewInsightsContext, OverviewWidgetKeyContext } from '../attention/OverviewInsightsContext';
 import {
   OVERVIEW_COLUMN_TEMPLATE, OVERVIEW_LAYOUT_REVISION, OVERVIEW_WIDGETS, normalizeOverviewLayout, overviewColumnCount, overviewColumns,
 } from './overviewLayout';
 import styles from './OverviewTab.module.css';
+
+const AddMedicationsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddMedicationsDrawer/AddMedicationsDrawer').then(m => ({ default: m.AddMedicationsDrawer })));
 
 // Per-user arrangement, saved with the other panel layouts (user_panel_layouts).
 const LAYOUT_KEY = 'patientOverviewLayout';
@@ -72,6 +78,8 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
   const savedLayout = useAppStore(s => s.panelLayouts[LAYOUT_KEY]);
   const fetchPanelLayouts = useAppStore(s => s.fetchPanelLayouts);
   const savePanelLayout = useAppStore(s => s.savePanelLayout);
+  const goToComms = useAppStore(s => s.goToComms);
+  const setPatientSignalReviewed = useAppStore(s => s.setPatientSignalReviewed);
   const layout = useMemo(() => normalizeOverviewLayout(savedLayout), [savedLayout]);
 
   useEffect(() => { if (memberId) fetchPatientOverview(memberId); }, [memberId, fetchPatientOverview]);
@@ -90,6 +98,30 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
       setCareManagementTab('Comprehensive Care Plan');
     },
   }), [setPatientProfileTab, setCareManagementTab]);
+
+  // What changed and what is still open: shown on each widget it belongs to
+  // (CardInsights) and walked through from the Recap pill.
+  const attention = useAttentionSignals(patient, overview);
+  const attentionMemberId = attention.memberId;
+  const runSignal = useCallback((s) => {
+    switch (s.action?.key) {
+      case 'schedule': actions.schedule(); break;
+      case 'addTask': actions.addTask(); break;
+      case 'reviewMeds': setDrawer({ kind: 'meds' }); break;
+      case 'openTasks': setPatientProfileTab('Tasks'); break;
+      case 'reply': goToComms({ channel: s.conversation?.channel, conversationId: s.conversation?.id }); break;
+      default: break;
+    }
+  }, [actions, setPatientProfileTab, goToComms]);
+  const reviewSignal = useCallback(
+    (s, reviewed) => setPatientSignalReviewed(attentionMemberId, s.id, reviewed),
+    [setPatientSignalReviewed, attentionMemberId],
+  );
+  const insights = useMemo(() => ({
+    byWidget: signalsByWidget(attention.open),
+    run: runSignal,
+    review: reviewSignal,
+  }), [attention.open, runSignal, reviewSignal]);
 
   if (!patient) return null;
 
@@ -130,13 +162,25 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
   const columns = overviewColumns(layout, columnCount);
 
   return (
+    <OverviewInsightsContext.Provider value={insights}>
     <div className={styles.overview}>
+      <div className={styles.toolbar}>
+        <RecapButton
+          patient={patient}
+          attention={attention}
+          run={runSignal}
+          review={reviewSignal}
+          onOpenTimeline={() => setPatientProfileTab('Timeline')}
+        />
+      </div>
       <div ref={gridRef} className={styles.grid} style={{ gridTemplateColumns: OVERVIEW_COLUMN_TEMPLATE[columnCount] }}>
         {columns.map((column, i) => (
           // Each column scrolls on its own, so a long middle column never
           // drags the narrow ones out of view.
           <div key={i} className={styles.column}>
-            {column.map(card)}
+            {column.map(key => (
+              <OverviewWidgetKeyContext.Provider key={key} value={key}>{card(key)}</OverviewWidgetKeyContext.Provider>
+            ))}
           </div>
         ))}
       </div>
@@ -149,6 +193,11 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
         />
       )}
       {drawer?.kind === 'note' && <NonVisitNoteDrawer patient={patient} onClose={closeDrawer} />}
+      {drawer?.kind === 'meds' && (
+        <Suspense fallback={null}>
+          <AddMedicationsDrawer patientId={patient.id} onClose={closeDrawer} />
+        </Suspense>
+      )}
       {drawer?.kind === 'task' && (
         <AddTaskDrawer initialMember={patient.name} onClose={closeDrawer} onTaskCreated={closeDrawer} />
       )}
@@ -161,5 +210,6 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
         />
       )}
     </div>
+    </OverviewInsightsContext.Provider>
   );
 }

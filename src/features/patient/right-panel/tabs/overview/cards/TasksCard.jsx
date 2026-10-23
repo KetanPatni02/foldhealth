@@ -10,20 +10,12 @@ import { FilterChip } from '../../../../../../components/FilterChip/FilterChip';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { groupTasksForTab } from '../../../../left-panel/tabs/tasks/TasksTab/groupTasksForTab';
 import { TaskDetailDrawer } from '../../../../../tasks/TaskDetailDrawer';
+import { tasksForPatient } from './patientTasks';
 import styles from './overviewCards.module.css';
+import { CardInsights } from '../attention/CardInsights';
 
 const VISIBLE = 3;
 const OWNER_OPTIONS = ['Mine', 'Others'];
-
-// Same patient match as the Monitoring tab: member id, store id, or name.
-function tasksForPatient(tasks, patient) {
-  const memberKey = patient?.memberId ? String(patient.memberId) : null;
-  return (tasks || []).filter(t => !t.is_subtask && (
-    (memberKey && String(t.patient_id) === memberKey)
-    || (patient?.id && String(t.patient_id) === String(patient.id))
-    || (patient?.name && t.member === patient.name)
-  ));
-}
 
 export function TasksCard({ patient, actions }) {
   const allTasks = useAppStore(s => s.tasks);
@@ -123,6 +115,7 @@ export function TasksCard({ patient, actions }) {
           onSelectTask={next => setOpenTaskId(next?.id ?? null)}
         />
       )}
+      <CardInsights />
     </DashboardCard>
   );
 }
