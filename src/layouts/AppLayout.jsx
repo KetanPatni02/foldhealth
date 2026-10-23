@@ -225,9 +225,12 @@ function SettingsView() {
   // just the app rail beside the card (Figma Care-Plan-Creation 14108:294859).
   const carePlanCreateOpen = useAppStore(s => s.carePlanCreateOpen);
   const carePlanTemplateScreen = useAppStore(s => s.carePlanTemplateScreen);
+  // Those editors draw their own card. The floating body shell would wrap
+  // that card in a second one, so the wrapper stays bare.
+  const ownCard = carePlanCreateOpen || carePlanTemplateScreen;
   return (
-    <div className={styles.main}>
-      {!carePlanCreateOpen && !carePlanTemplateScreen && <TopBar />}
+    <div className={styles.main} data-floating-bare={ownCard || undefined}>
+      {!ownCard && <TopBar />}
       <div className={styles.content}>
         <Suspense fallback={<LazyFallback />}>
           <SettingsLayout />
