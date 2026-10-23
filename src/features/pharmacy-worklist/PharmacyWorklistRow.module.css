@@ -148,3 +148,27 @@
 .gapLink:hover { background: var(--primary-50); color: var(--primary-300); }
 .gapLinkName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gapLinkStatus { color: var(--neutral-300); }
+
+/* Plan / Calculated / Projected under a number. Projected is set apart:
+   it is not a closure until a claim matches. */
+.sourceTag {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  white-space: nowrap;
+  cursor: default;
+}
+.sourceProjected {
+  color: var(--neutral-400);
+  font-style: italic;
+  border-bottom: 1px dashed var(--neutral-300);
+}
+
+/* "Claim not matched" rework flag: opens the drug's claim history. */
+.reworkLink {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: var(--font-md); color: var(--status-error);
+  text-align: left; white-space: nowrap;
+}
+.reworkLink:hover { text-decoration: underline; }
+.subStatusBtn { background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
+.subStatusBtn:hover { text-decoration: underline; }

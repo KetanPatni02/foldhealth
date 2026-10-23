@@ -11,7 +11,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { worklistMemberCallId } from '../../lib/patientCall';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
 import { PharmacyActivityDrawer } from './program/PharmacyActivityLog';
-import { GAP_STATUSES } from './pharmacyWorklist.utils';
+import { MANUAL_GAP_STATUSES } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
 
 const AUTO_STATUS = '__auto';
@@ -49,13 +49,14 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   const cellCtx = {
     setPharmacyAssignee,
     openGap: (code) => openPharmacyGapDrawer(m.id, code),
+    openClaimRework: (code, medId) => openPharmacyGapDrawer(m.id, code, { medId, view: 'claims' }),
     openCareGap: onOpenCareGap,
     eligibleUsers,
     openGapStatusMenu: (code, rect) => setGapStatusMenu(cur => (cur?.code === code ? null : { code, rect })),
   };
   const menuGap = gapStatusMenu && m.gaps.find(g => g.code === gapStatusMenu.code);
   const gapStatusItems = menuGap ? [
-    ...GAP_STATUSES.map(s => ({ key: s, label: s, selected: s === menuGap.status.gap })),
+    ...MANUAL_GAP_STATUSES.map(s => ({ key: s, label: s, selected: s === menuGap.status.gap })),
     ...(menuGap.status.manual ? [{ key: AUTO_STATUS, label: 'Use status from data' }] : []),
   ] : [];
 

@@ -5,7 +5,7 @@ import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
 import {
-  GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, isActiveGap, addDaysMdy, daysFromToday, fillDueTone, measureStatus, parseMdy, pdcTone,
+  FAIL_DATE_HINT, GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, isActiveGap, addDaysMdy, daysFromToday, effectiveFailDate, fillDueTone, measureStatus, parseMdy, pdcTone,
 } from '../pharmacyWorklist.utils';
 import { MeasureCode, SubStatus } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -96,18 +96,17 @@ export function PharmacyGapClosureStep() {
     <div className={styles.wrap}>
       <div className={styles.banner}>
         <Icon name="solar:refresh-circle-linear" size={16} color="var(--status-info)" />
-        <span>Closure repeats every fill: a confirmed pickup closes the measure, no reversal after 14 days makes it Safe, and it reopens when the next fill comes due or the claim reverses.</span>
+        <span>Closure repeats every fill. A confirmed pickup or a fill date entered here marks the gap Completed, but only as a projection: the gap closes (Closed-Data) when a matching Part D claim arrives, and is flagged for rework if none matches. It reopens when the next fill comes due or the claim reverses.</span>
       </div>
 
       {measures.map(x => {
         const st = measureStatus(x, member);
-        const pickup = parseMdy(x.pickupConfirmed);
-        // Fold closes on pickup; the plan only sees it once the claim lands,
-        // and its report lags 1–4 weeks — flag the gap between the two.
-        const planBehind = (st.label === 'Safe' || st.label === 'Picked up')
-          && (x.claim?.status !== 'Paid' || parseMdy(x.claim.date) < pickup);
+        // A fill confirmed in Fold is only projected; the plan sees it once
+        // the claim lands, and its report lags 1–4 weeks.
+        const planBehind = st.label === 'Pending claim';
         const cycles = closureCycles(member, x);
-        const failIn = daysFromToday(x.failDate);
+        const failDate = effectiveFailDate(x);
+        const failIn = daysFromToday(failDate);
         // Red only for an open gap's risk; a closed gap's numbers are history.
         const open = isActiveGap(st);
         const risk = (tone) => (open ? tone : null);
@@ -125,16 +124,15 @@ export function PharmacyGapClosureStep() {
               <Fact label="PDC (Claims)" tone={risk(pdcTone(x.calcPdc))}>{x.calcPdc == null ? null : `${x.calcPdc}%`}</Fact>
               {x.pdcProjected != null && <Fact label="PDC (Projected, with recent fill)" tone={risk(pdcTone(x.pdcProjected))}>{`${x.pdcProjected}%`}</Fact>}
               <Fact label="Next Fill Due" tone={risk(fillDueTone(x.nextFillDue))}>{x.nextFillDue}</Fact>
-              <Fact label="Fail (Hopeless) Date" tone={risk(failIn != null && failIn <= 14 ? 'error' : null)}>
-                {x.failDate ? `${x.failDate}${failIn != null ? ` · ${failIn}d` : ''}` : null}
+              <Fact label={x.failDateProjected ? 'Fail Date (Absolute, Projected)' : 'Fail Date (Absolute, Plan)'} tone={risk(failIn != null && failIn <= 14 ? 'error' : null)}>
+                <span title={FAIL_DATE_HINT}>{failDate ? `${failDate}${failIn != null ? ` · ${failIn}d` : ''}` : null}</span>
               </Fact>
               <Fact label="Last Fill Date">{latestDate(x.medications.filter(d => d.status !== 'Discontinued').map(d => d.lastFill))}</Fact>
               <RecentFill member={member} x={x} />
               <Fact label="Allowable Days Left">{x.daysLeft}</Fact>
               <Fact label="Pickup Confirmed">{x.pickupConfirmed}</Fact>
-              <Fact label="Reopens On">{st.reopensOn}</Fact>
-              <Fact label="Latest Claim" tone={x.claim?.status === 'Reversed' ? 'error' : null}>
-                {x.claim ? `${x.claim.status} ${x.claim.date}` : null}
+              <Fact label="Claim Match" tone={st.label === 'Claim not matched' ? 'error' : null}>
+                {st.label === 'Claim not matched' || st.label === 'Pending claim' || st.label === 'Claim matched' ? st.label : null}
               </Fact>
             </div>
 
@@ -150,18 +148,18 @@ export function PharmacyGapClosureStep() {
             {planBehind && (
               <div className={styles.note}>
                 <Icon name="solar:danger-triangle-linear" size={14} color="currentColor" />
-                <span>Pickup verified in Fold, but the plan hasn’t received a paid claim for it yet. Its gap report may still show this measure open (it lags 1–4 weeks).</span>
+                <span>Fill confirmed in Fold, but no paid Part D claim has matched it yet. The PDC and dates here are projected, and the plan's gap report may still show this measure open (it lags 1–4 weeks).</span>
               </div>
             )}
 
             <div className={styles.cycles}>
               <span className={styles.signalsLabel}>Closure History</span>
               {cycles.length === 0
-                ? <span className={styles.muted}>No pickup-verified closures yet.</span>
+                ? <span className={styles.muted}>No confirmed pickups yet.</span>
                 : cycles.map((c, i) => (
                   <div key={`${c.closed}-${i}`} className={styles.cycle}>
                     <Icon name="solar:check-circle-linear" size={14} color="var(--neutral-300)" />
-                    <span>Closed {c.closed} (pickup confirmed{c.by ? ` by ${c.by}` : ''}){c.reopens ? ` · reopens ${c.reopens}` : ''}</span>
+                    <span>Pickup confirmed {c.closed}{c.by ? ` by ${c.by}` : ''}{c.reopens ? ` · supply runs to ${c.reopens}` : ''}</span>
                   </div>
                 ))}
             </div>

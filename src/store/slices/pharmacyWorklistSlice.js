@@ -1,7 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import { detachSaved, hydrateListFilters } from '../lib/worklistListFilters';
 import { applyPendingPickup, applyPickup, applyRecentFill, recomputeMeasure, withManualRecentFill } from '../../features/pharmacy-worklist/fillEvents';
-import { CLAIM_LAG_DAYS, enrichPharmacyMember, reconcileMeasure, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
+import { enrichPharmacyMember, reconcileMeasure, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
 
 function rowToMember(r) {
   return {
@@ -37,6 +37,24 @@ function rowToMember(r) {
     otherCareGaps: r.other_care_gaps || [],
   };
 }
+
+// Pickups confirmed by the pharmacy: their own records, apart from claims.
+function rowToPickup(r) {
+  return {
+    id: r.id,
+    memberRowId: r.member_row_id,
+    measureCode: r.measure_code,
+    pickupDate: r.pickup_date,
+    source: r.source,
+    loggedBy: r.logged_by,
+    loggedAt: r.logged_at,
+    note: r.note,
+  };
+}
+const pickupToRow = (p) => ({
+  id: p.id, member_row_id: p.memberRowId, measure_code: p.measureCode, pickup_date: p.pickupDate,
+  source: p.source, logged_by: p.loggedBy, logged_at: p.loggedAt, note: p.note,
+});
 
 const COLUMN_TO_FIELD = {
   status: 'status', status_manual: 'statusManual', assignee_id: 'assigneeId', assignee_name: 'assigneeName', assignee_initials: 'assigneeInitials',
@@ -89,6 +107,20 @@ export function createPharmacyWorklistSlice(set, get) {
     persist(memberRowId, patch);
   };
 
+  // One pickup record per measure. Mock rows stay local, like their members.
+  const recordPickups = (memberRowId, codes, date, source) => {
+    const loggedAt = new Date().toISOString();
+    const loggedBy = get().currentUserProfile?.name || 'You';
+    const rows = codes.map(code => ({
+      id: `pu-${memberRowId}-${code.toLowerCase()}-${date.replaceAll('/', '')}-${Date.now().toString(36)}`,
+      memberRowId, measureCode: code, pickupDate: date, source, loggedBy, loggedAt, note: null,
+    }));
+    set(s => ({ pharmacyPickups: [...rows, ...s.pharmacyPickups] }));
+    if (get().pharmacyWorklistIsMock) return;
+    supabase.from('pharmacy_pickup_confirmations').insert(rows.map(pickupToRow))
+      .then(({ error }) => { if (error) console.warn('[store] pharmacy_pickup_confirmations insert failed:', error.message); });
+  };
+
   return {
     pharmacyWorklistMembers: [],
     pharmacyWorklistLoading: false,
@@ -118,12 +150,36 @@ export function createPharmacyWorklistSlice(set, get) {
         if (import.meta.env.DEV && !get().pharmacyWorklistMembers.length) {
           const { PHARMACY_WORKLIST_MEMBERS } = await import('../../features/pharmacy-worklist/data/mock');
           set({ pharmacyWorklistMembers: PHARMACY_WORKLIST_MEMBERS, pharmacyWorklistLoading: false, pharmacyWorklistIsMock: true });
+          get().fetchPharmacyPickups();
           return;
         }
         set({ pharmacyWorklistLoading: false });
         return;
       }
       set({ pharmacyWorklistMembers: data.map(rowToMember), pharmacyWorklistLoading: false, pharmacyWorklistIsMock: false });
+      get().fetchPharmacyPickups();
+    },
+
+    pharmacyPickups: [],
+    pharmacyPickupsDidFetch: false,
+    // After the members load, so the dev mock pickups only stand in for the
+    // dev mock members.
+    fetchPharmacyPickups: async () => {
+      if (get().pharmacyPickupsDidFetch) return;
+      set({ pharmacyPickupsDidFetch: true });
+      const { data, error } = await supabase
+        .from('pharmacy_pickup_confirmations')
+        .select('*')
+        .order('logged_at', { ascending: false });
+      if (error) console.warn('fetchPharmacyPickups failed:', error.message);
+      if (data?.length) {
+        set({ pharmacyPickups: data.map(rowToPickup) });
+        return;
+      }
+      if (import.meta.env.DEV && get().pharmacyWorklistIsMock) {
+        const { PHARMACY_PICKUP_CONFIRMATIONS } = await import('../../features/pharmacy-worklist/data/mock');
+        set({ pharmacyPickups: PHARMACY_PICKUP_CONFIRMATIONS });
+      }
     },
 
     // Click-to-dial on a prescriber or pharmacy number (Snapshot).
@@ -182,29 +238,31 @@ export function createPharmacyWorklistSlice(set, get) {
       });
     },
 
-    // A confirmed pickup with no claim past the claim lag needs a call to the
-    // pharmacy. Create that follow-up task once per pickup; the marker on the
-    // measure keeps it from being created again.
+    // A fill confirmed in Fold whose claim did not match (none inside the
+    // plan's window, reversed, or billed to other coverage) needs rework.
+    // Create that follow-up task once per fill; the marker on the measure
+    // keeps it from being created again.
     // Runs when the worklist loads, in each viewer's browser; the tasks
-    // table's unique source_key keeps it to one task per pickup. Never for
+    // table's unique source_key keeps it to one task per fill. Never for
     // mock rows: those patients don't exist, but the tasks would.
     ensureClaimFollowUpTasks: async () => {
       if (get().pharmacyWorklistIsMock) return;
       for (const row of get().pharmacyWorklistMembers) {
         for (const x of row.measures || []) {
-          if (reconcileMeasure(x)?.status !== 'Claim overdue') continue;
-          const key = `pharm-claim-overdue-${row.id}-${x.code}-${x.pickupConfirmed}`;
+          const recon = reconcileMeasure(x, row.healthPlan);
+          if (recon?.status !== 'Claim not matched') continue;
+          const key = `pharm-claim-unmatched-${row.id}-${x.code}-${recon.medId}-${recon.fillDate}`;
           if (x.claimFollowUpTask?.key === key || claimTasksTried.has(key)) continue;
           claimTasksTried.add(key);
           // Another viewer may have created it already; reuse theirs instead
           // of racing the unique index.
           const { data: existing } = await supabase.from('tasks').select('id').eq('source_key', key).maybeSingle();
           const created = existing || await get().createTask({
-            name: `Follow up with pharmacy: ${x.code} claim overdue`,
+            name: `Rework: ${x.code} claim not matched`,
             status: 'pending', priority: 'high', due_date: todayMdy(),
             assigned_to: row.assigneeName || null, assigned_to_id: row.assigneeId || null, member: row.name,
             labels: [], meta: '', pool: null, mentions: [], attachments: 0, comments: 0,
-            description: `Pickup confirmed ${x.pickupConfirmed}, no paid claim after ${CLAIM_LAG_DAYS} days. Call ${row.pharmacy?.name || 'the pharmacy'}${row.pharmacy?.phone ? ` at ${row.pharmacy.phone}` : ''} to confirm the claim was submitted.`,
+            description: `${recon.detail}. Call ${row.pharmacy?.name || 'the pharmacy'}${row.pharmacy?.phone ? ` at ${row.pharmacy.phone}` : ''} to confirm the fill was billed to Part D.`,
             is_subtask: false, parent_task: null, parent_task_id: null,
             program_code: 'PHARM', patient_id: String(row.patientId || row.id), source_key: key,
           }, { auditUserName: 'Fold Automation' });
@@ -212,7 +270,7 @@ export function createPharmacyWorklistSlice(set, get) {
           update(row.id, m => ({
             ...m,
             measures: m.measures.map(y => (y.code === x.code ? { ...y, claimFollowUpTask: { key, taskId: created.id, createdAt: new Date().toISOString() } } : y)),
-          }), ['measures'], existing ? null : { t: 'system', title: `Pharmacy follow-up task created (${x.code})`, note: 'Claim overdue after a confirmed pickup' });
+          }), ['measures'], existing ? null : { t: 'system', title: `Pharmacy rework task created (${x.code})`, note: recon.detail });
         }
       }
     },
@@ -254,6 +312,7 @@ export function createPharmacyWorklistSlice(set, get) {
     // pickup-confirmed and each medication's fill dates move (applyPickup);
     // "Pending — Pick up" marks the measure pending pickup.
     logPharmacyOutreach: (memberRowId, entry, { pickupCodes = [], pendingCodes = [], recentFillCodes = [], recentFillOutcome = null } = {}) => {
+      if (pickupCodes.length) recordPickups(memberRowId, pickupCodes, entry.date, `${entry.contact || 'Pharmacy'} call`);
       update(memberRowId, m => {
         let measures = m.measures;
         let changes = [];
@@ -280,6 +339,7 @@ export function createPharmacyWorklistSlice(set, get) {
     // Outreach pickup; fills left on the shelf mark the measure pending.
     lockPharmacyVerification: (memberRowId, entry, { pickedUpCodes, pendingCodes, refillsByMed, status }) => {
       const prevStatus = get().pharmacyWorklistMembers.find(m => m.id === memberRowId)?.status;
+      if (pickedUpCodes.length) recordPickups(memberRowId, pickedUpCodes, entry.date, 'Pharmacy verification');
       update(memberRowId, m => {
         let measures = m.measures;
         let changes = [];
@@ -328,8 +388,10 @@ export function createPharmacyWorklistSlice(set, get) {
 
     // Pharmacy Gap Details drawer (worklist): which member and gap it shows.
     pharmacyGapDrawer: null,
-    openPharmacyGapDrawer: (memberId, code) => set({
-      pharmacyGapDrawer: { memberId, code },
+    // `medId` + view 'claims' opens straight to that drug's claim history,
+    // with the Outreaches tab beside it (the "Claim not matched" rework).
+    openPharmacyGapDrawer: (memberId, code, { medId = null, view = null } = {}) => set({
+      pharmacyGapDrawer: { memberId, code, medId, view },
       pharmacyFocusGap: { memberId, code },
     }),
     closePharmacyGapDrawer: () => set({ pharmacyGapDrawer: null }),

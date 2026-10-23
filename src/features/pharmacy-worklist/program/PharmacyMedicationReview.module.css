@@ -173,6 +173,7 @@
 .gapCardToggle:hover { background: var(--neutral-50); }
 .gapCard .tableScroll { border: none; border-top: 0.5px solid var(--neutral-150); border-radius: 0; }
 .dateCell { min-width: 9rem; }
+.dateCell > * + * { margin-top: var(--space-1); }
 .gapCardHead, .gapCardMeta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 
 /* Bulk Recent Fill: shows once drugs are picked, in any gap. */
@@ -192,3 +193,15 @@
 .bulkCount { font-size: var(--font-md); font-weight: 500; color: var(--neutral-500); margin-right: auto; }
 .bulkField { display: inline-flex; align-items: center; gap: var(--space-2); }
 .pickCol { width: 2.25rem; }
+
+/* Manual fill dates are projected, not a closure. */
+.helper {
+  display: flex; align-items: center; gap: var(--space-1);
+  margin: 0; font-size: var(--font-md); color: var(--neutral-300);
+}
+.sourceCell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.reworkLink {
+  border: none; background: none; padding: 0; cursor: pointer;
+  font-size: var(--font-sm); color: var(--status-error); white-space: nowrap;
+}
+.reworkLink:hover { text-decoration: underline; }

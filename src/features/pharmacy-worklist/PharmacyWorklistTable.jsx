@@ -49,7 +49,7 @@ const isPast = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 
 function overdueTags(m) {
   const tags = [];
   if (openGaps(m).some(g => isPast(g.nextFillDue))) tags.push('Refill overdue');
-  if (m.gaps.some(g => g.recon?.status === 'Claim overdue')) tags.push('Claim overdue');
+  if (m.gaps.some(g => g.recon?.status === 'Claim not matched')) tags.push('Claim not matched');
   if (isPast(m.followUpDue)) tags.push('Follow-up overdue');
   return tags.length ? tags : ['Not overdue'];
 }

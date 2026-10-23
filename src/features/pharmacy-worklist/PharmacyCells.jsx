@@ -1,7 +1,7 @@
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { HoverCard } from '../../components/HoverCard/HoverCard';
-import { GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, medLabel, pdcTone } from './pharmacyWorklist.utils';
+import { DATA_SOURCE_HINT, GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, medLabel, pdcTone } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
 
 // The measure code (MAD / MAH / MAC) as a neutral chip with its full name on
@@ -32,10 +32,27 @@ export function DateWithDays({ date, alert = false }) {
   );
 }
 
-// Date alone; red when the caller says it needs action.
-export function DateOnly({ date, alert = false }) {
+// Where a number comes from (Plan, Calculated, Projected), on hover.
+export function SourceTag({ source }) {
+  if (!source) return null;
+  return (
+    <Tooltip label={DATA_SOURCE_HINT[source]} placement="bottom">
+      <span className={`${styles.sourceTag} ${source === 'Projected' ? styles.sourceProjected : ''}`}>{source}</span>
+    </Tooltip>
+  );
+}
+
+// Date alone; red when the caller says it needs action. `source` adds the
+// Plan / Calculated / Projected tag below; `hint` explains the date.
+export function DateOnly({ date, alert = false, source, hint }) {
   if (!date) return <Dash />;
-  return <span className={`${styles.dateText} ${alert ? styles.toneError : ''}`}>{date}</span>;
+  const text = <span className={`${styles.dateText} ${alert ? styles.toneError : ''}`}>{date}</span>;
+  return (
+    <span className={styles.stack}>
+      {hint ? <Tooltip label={hint} placement="bottom">{text}</Tooltip> : text}
+      <SourceTag source={source} />
+    </span>
+  );
 }
 
 // A count with the full list in a hover card. `label` adds a noun ("3
@@ -110,40 +127,58 @@ export function ProgressCell({ progress }) {
 
 // PDC of the row's focus measure, named so it is never ambiguous. Below the
 // 80% threshold on an open gap is said in words, not only in color.
-// `projectedFrom`: the plan PDC, when `pdc` is projected with a recent fill.
-export function PdcValue({ pdc, code, open, projectedFrom }) {
+// `source`: Plan, Calculated (ours, from claims) or Projected (with a fill
+// confirmed in Fold); `planPdc` is shown on hover when it differs.
+export function PdcValue({ pdc, code, open, source, planPdc }) {
   if (pdc == null) return <span className={styles.subText}>Not sent</span>;
   const below = open && pdcTone(pdc) === 'error';
-  const projected = projectedFrom !== undefined;
-  const label = (
+  const value = <span className={styles.pdc}>{pdc}%</span>;
+  return (
     <span className={styles.stack}>
-      <span className={styles.pdc}>{pdc}%</span>
-      {(code || below || projected) && (
-        <span className={styles.subText}>
-          {[code, projected ? 'Projected' : null].filter(Boolean).join(' · ')}
-          {(code || projected) && below ? ' · ' : ''}{below && <span className={styles.toneError}>Below 80%</span>}
-        </span>
-      )}
+      {source !== 'Plan' && planPdc !== undefined
+        ? <Tooltip label={`Plan PDC ${planPdc == null ? 'not sent' : `${planPdc}%`}`} placement="bottom">{value}</Tooltip>
+        : value}
+      <span className={styles.subText}>
+        {code ? `${code} · ` : ''}
+        <SourceTag source={source} />
+        {below && <span className={styles.toneError}> · Below 80%</span>}
+      </span>
     </span>
   );
-  return projected
-    ? <Tooltip label={`Projected for the year with the recent fill · plan PDC ${projectedFrom == null ? 'not sent' : `${projectedFrom}%`}`} placement="bottom">{label}</Tooltip>
-    : label;
 }
 
-export function ClaimReconCell({ recon, showCode, followUpTask }) {
+// Claim match for the gap's confirmed fills. "Claim not matched" is a rework
+// flag: it opens that drug's claim history next to outreach logging.
+export function ClaimReconCell({ recon, showCode, followUpTask, onRework }) {
+  const flagged = recon.status === 'Claim not matched';
   return (
     <span className={styles.stack}>
       <Badge size="S" tone={RECON_TONE[recon.status]} label={showCode ? `${recon.status} · ${recon.code}` : recon.status} />
-      {recon.status === 'Claim overdue' ? (
+      {flagged ? (
         <Tooltip label={recon.detail} placement="bottom">
-          <span className={`${styles.subText} ${styles.toneError}`}>
-            {followUpTask ? 'Pharmacy follow-up task created' : 'Follow up with pharmacy'}
-          </span>
+          <button type="button" className={styles.reworkLink} onClick={onRework}>
+            {followUpTask ? 'Rework task created · open claims' : 'Rework: open claims'}
+          </button>
         </Tooltip>
       ) : (
         <span className={styles.subText}>{recon.detail}</span>
       )}
+    </span>
+  );
+}
+
+// Prior-year PDC per year when the plan sends it; Yes / No (non-compliant)
+// otherwise.
+export function PriorYearPdc({ years, nonCompliant }) {
+  if (!years?.length) return <span className={styles.cellText}>{nonCompliant ? 'Non-compliant' : 'Compliant'}</span>;
+  return (
+    <span className={styles.stack}>
+      {years.map(y => (
+        <span key={y.year} className={styles.cellText}>
+          <span className={styles.subText}>{y.year} </span>
+          <span className={pdcTone(y.pdc) === 'error' ? styles.toneError : ''}>{y.pdc}%</span>
+        </span>
+      ))}
     </span>
   );
 }

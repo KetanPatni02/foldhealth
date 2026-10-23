@@ -1,4 +1,4 @@
-import { addDaysMdy, parseMdy } from './pharmacyWorklist.utils';
+import { addDaysMdy, annotateClaims, confirmedFills, latestConfirmedFill as latestConfirmed, matchFill, parseMdy } from './pharmacyWorklist.utils';
 
 // Fill events that ripple through a pharmacy member's record.
 //
@@ -7,39 +7,37 @@ import { addDaysMdy, parseMdy } from './pharmacyWorklist.utils';
 // call or verification, a refill approval, or a date entered by hand). Last
 // Fill stays the claims date. Recent Fill is the latest confirmed fill.
 //
-// One shifted supply schedule (supplySchedule) drives both each drug's next
-// fill and the projected PDC, so the two always agree: an early refill
-// starts when the prior supply runs out, and a confirmed fill that is the
-// same fill as a claim (claim dated 7 days before to 3 days after it) is not
-// counted twice.
+// One shifted supply schedule (supplySchedule) drives each drug's next fill,
+// the projected PDC and the projected fail date, so they always agree: an
+// early refill starts when the prior supply runs out. Only claims that count
+// (current version, paid, Part D, not reversed: see annotateClaims) are
+// fills. A confirmed fill is not counted again once its claim matches, nor
+// when its claim was reversed or billed to other coverage.
 
 const earliest = (dates) => dates.reduce((min, d) => (!min || parseMdy(d) < parseMdy(min) ? d : min), null);
 const later = (a, b) => (!b ? a : !a ? b : parseMdy(b) > parseMdy(a) ? b : a);
 const DAY = 86_400_000;
-const SAME_FILL_BEFORE_DAYS = 7;
-const SAME_FILL_AFTER_DAYS = 3;
+// The measure threshold: 80% of the days from the first fill to Dec 31.
+const PDC_TARGET = 0.8;
 const pad2 = (n) => String(n).padStart(2, '0');
 const fmt = (t) => { const d = new Date(t); return `${pad2(d.getUTCMonth() + 1)}/${pad2(d.getUTCDate())}/${d.getUTCFullYear()}`; };
-
-const confirmedFills = (d) => (d.refills || []).filter(r => r.source);
-const latestConfirmed = (d) => confirmedFills(d).reduce((best, r) => (!best || parseMdy(r.date) > parseMdy(best.date) ? r : best), null);
 
 // The latest fill on record, claims or confirmed. Automations only add a
 // confirmed fill that is newer than this.
 export const effectiveFill = (d) => later(d.lastFill, latestConfirmed(d)?.date);
 
-// Claims plus confirmed fills, minus confirmed fills that duplicate a claim
-// or each other, oldest first.
+// Counting claims plus confirmed fills still waiting for theirs (or never
+// matched with no claim at all), oldest first.
 function countedFills(d) {
-  // A reversed claim was never dispensed, so it isn't a fill.
-  const claims = (d.refills || []).filter(r => !r.source && r.claimStatus !== 'Reversed' && parseMdy(r.date) != null);
-  const claimAt = claims.map(r => parseMdy(r.date));
+  const all = annotateClaims(d.refills);
+  const claims = all.filter(c => c.counts && parseMdy(c.date) != null);
   const seen = new Set();
   const confirmed = confirmedFills(d).filter(r => {
     const at = parseMdy(r.date);
     if (at == null || seen.has(at)) return false;
     seen.add(at);
-    return !claimAt.some(c => c >= at - SAME_FILL_BEFORE_DAYS * DAY && c <= at + SAME_FILL_AFTER_DAYS * DAY);
+    const { kind } = matchFill(r, all);
+    return kind === 'pending' || kind === 'no-claim';
   });
   return [...claims, ...confirmed]
     .map(r => ({ at: parseMdy(r.date), ds: r.daysSupply || d.daysSupply }))
@@ -56,10 +54,10 @@ function supplySchedule(d) {
   });
 }
 
-// Projected PDC for the measure year: days from the first fill of the year to
-// Dec 31 covered by the schedule of every drug in the measure. A drug
-// discontinued later still covered the days it was dispensed for.
-export function projectedPdc(x) {
+// Days of the measure year covered by the schedule of every drug in the
+// measure, from the first fill of the year to Dec 31. A drug discontinued
+// later still covered the days it was dispensed for.
+function yearCoverage(x) {
   const year = Number((x.failDate || '').slice(6)) || new Date().getFullYear();
   const yearStart = Date.UTC(year, 0, 1);
   const yearEnd = Date.UTC(year, 11, 31);
@@ -70,13 +68,42 @@ export function projectedPdc(x) {
   for (const i of intervals) {
     for (let t = Math.max(i.start, start); t < Math.min(i.end, yearEnd + DAY); t += DAY) covered.add(t);
   }
-  return Math.round((covered.size / ((yearEnd - start) / DAY + 1)) * 100);
+  const coverEnd = Math.min(Math.max(...intervals.map(i => i.end)), yearEnd + DAY);
+  return { start, yearEnd, covered, coverEnd, days: (yearEnd - start) / DAY + 1 };
+}
+
+// Projected PDC for the measure year.
+export function projectedPdc(x) {
+  const c = yearCoverage(x);
+  return c ? Math.round((c.covered.size / c.days) * 100) : null;
+}
+
+// Projected absolute fail date: the last day the member can be without
+// medication and still reach 80% if they never miss again. Null when the
+// fills on record already reach 80% for the year.
+export function projectedFailDate(x) {
+  const c = yearCoverage(x);
+  if (!c) return null;
+  const allowedMiss = Math.floor(c.days * (1 - PDC_TARGET));
+  const missedBeforeEnd = (c.coverEnd - c.start) / DAY - c.covered.size;
+  const t = c.coverEnd + (allowedMiss - missedBeforeEnd) * DAY;
+  return t > c.yearEnd ? null : fmt(t);
+}
+
+// Fills of the gap's usual days supply still needed to reach 80% by Dec 31.
+export function fillsToStayCompliant(x) {
+  const c = yearCoverage(x);
+  if (!c) return null;
+  const need = Math.ceil(c.days * PDC_TARGET) - c.covered.size;
+  if (need <= 0) return 0;
+  const ds = Math.max(0, ...(x.medications || []).filter(d => d.status !== 'Discontinued').map(d => d.daysSupply || 0));
+  return ds ? Math.ceil(need / ds) : null;
 }
 
 // Re-derive everything that follows from the fills: each drug's Recent Fill
 // and next fill, the gap's Next Fill Due (active drugs), and, once a drug
-// has a confirmed fill, the projected PDC. Run after any fill or medication
-// change.
+// has a confirmed fill, the projected PDC and fail date. Run after any fill,
+// claim or medication change.
 export function recomputeMeasure(x) {
   const medications = x.medications.map(d => {
     const recent = latestConfirmed(d);
@@ -92,7 +119,13 @@ export function recomputeMeasure(x) {
   const active = medications.filter(d => d.status !== 'Discontinued');
   const hasConfirmed = active.some(d => d.recentFill);
   const next = { ...x, medications, nextFillDue: earliest(active.map(d => d.nextFill)) || x.nextFillDue };
-  return { ...next, pdcProjected: hasConfirmed ? projectedPdc(next) : null };
+  // A fill confirmed in Fold moves PDC and the fail date; both stay
+  // projected until its claim matches.
+  return {
+    ...next,
+    pdcProjected: hasConfirmed ? projectedPdc(next) : null,
+    failDateProjected: hasConfirmed ? projectedFailDate(next) : null,
+  };
 }
 
 const fillRow = (d, date, source, extra = {}) => ({

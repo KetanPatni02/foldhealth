@@ -3,9 +3,10 @@ import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { GAP_STATUS_TONE, MEASURE_NAMES, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
+import { FAIL_DATE_HINT, GAP_STATUS_TONE, MEASURE_NAMES, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
+import { fillsToStayCompliant } from './fillEvents';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
-import { ClaimReconCell, Dash, DateOnly, DateWithDays, DrugsCount, OpenCareGaps, PdcValue, ProgressCell, SubStatus } from './PharmacyCells';
+import { ClaimReconCell, Dash, DateOnly, DateWithDays, DrugsCount, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SubStatus } from './PharmacyCells';
 import styles from './PharmacyWorklistRow.module.css';
 
 // Only top priority carries color; the rest stay neutral so red keeps meaning "act now".
@@ -69,7 +70,13 @@ export const PHARMACY_MIDDLE_COLUMNS = [
           <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap] || 'grey'} label={g.status.gap} trailingIconElement={<DownChevronIcon size={12} color="currentColor" />} />
         </button>
         <Tooltip label={g.status.detail} placement="bottom">
-          <span><SubStatus label={g.status.label} suffix={g.status.manual ? 'Set manually' : null} /></span>
+          {g.status.medId ? (
+            <button type="button" className={styles.subStatusBtn} onClick={() => ctx.openClaimRework(g.code, g.status.medId)}>
+              <SubStatus label={g.status.label} suffix={g.status.manual ? 'Set manually' : null} />
+            </button>
+          ) : (
+            <span><SubStatus label={g.status.label} suffix={g.status.manual ? 'Set manually' : null} /></span>
+          )}
         </Tooltip>
       </span>
     )),
@@ -80,22 +87,40 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   },
   {
     key: 'pdc', label: 'PDC', sortKey: 'pdc', sortType: 'number', getTdClassName: gapTd(false),
-    renderCell: perGap((g) => <PdcValue pdc={g.pdc} open={isActiveGap(g.status)} projectedFrom={g.pdcProjected != null ? g.pdcPlan : undefined} />),
+    renderCell: perGap((g) => <PdcValue pdc={g.pdc} open={isActiveGap(g.status)} source={g.pdcSource} planPdc={g.pdcPlan} />),
   },
   {
-    key: 'failDate', label: 'Fail Date', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
+    key: 'failDate', label: 'Fail Date (Absolute)', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
     renderCell: perGap((g) => {
       const d = daysFromToday(g.failDate);
-      return <DateOnly date={g.failDate} alert={isActiveGap(g.status) && d != null && d <= 14} />;
+      return <DateOnly date={g.failDate} alert={isActiveGap(g.status) && d != null && d <= 14} source={g.failDateSource} hint={FAIL_DATE_HINT} />;
     }),
   },
   {
     key: 'nextFillDue', label: 'Next Fill Due', sortKey: 'nextFillDueSort', sortType: 'date', getTdClassName: gapTd(false),
-    renderCell: perGap((g) => <DateOnly date={g.nextFillDue} alert={isActiveGap(g.status) && isOverdue(g.nextFillDue)} />),
+    renderCell: perGap((g) => <DateOnly date={g.nextFillDue} alert={isActiveGap(g.status) && isOverdue(g.nextFillDue)} source={g.nextFillDueSource} />),
   },
   {
-    key: 'claimRecon', label: 'Claim Reconciliation', sortKey: 'reconRank', sortType: 'number', getTdClassName: gapTd(true),
-    renderCell: perGap((g) => (g.recon ? <ClaimReconCell recon={g.recon} followUpTask={g.claimFollowUpTask} /> : <Dash />)),
+    key: 'claimRecon', label: 'Claim Reconciliation', sortKey: 'reconRank', sortType: 'number', getTdClassName: gapTd(false), stopRowClickPropagation: true,
+    renderCell: perGap((g, m, ctx) => (g.recon
+      ? <ClaimReconCell recon={g.recon} followUpTask={g.claimFollowUpTask} onRework={() => ctx.openClaimRework(g.code, g.recon.medId)} />
+      : <Dash />)),
+  },
+  // Proposed (Richard), to confirm with Monique: hidden until then.
+  {
+    key: 'fillsRemaining', label: 'Fills to Stay Compliant', optional: true, getTdClassName: gapTd(false),
+    renderCell: perGap((g) => {
+      const n = fillsToStayCompliant(g);
+      return n == null ? <Dash /> : (
+        <Tooltip label="Fills of the usual days supply still needed to reach 80% PDC by Dec 31" placement="bottom">
+          <span className={styles.cellText}>{n === 0 ? 'None needed' : n}</span>
+        </Tooltip>
+      );
+    }),
+  },
+  {
+    key: 'priorYear', label: 'Prior Year PDC', getTdClassName: gapTd(true),
+    renderCell: perGap((g) => <PriorYearPdc years={g.priorYearPdc} nonCompliant={g.priorYearNonCompliant} />),
   },
   {
     key: 'progress', label: 'Progress', sortKey: 'progressRank', sortType: 'number',
@@ -151,10 +176,6 @@ export const PHARMACY_MIDDLE_COLUMNS = [
         />
       )
     ),
-  },
-  {
-    key: 'priorYear', label: 'Prior-Year Non-Compliant',
-    renderCell: (m) => <span className={styles.cellText}>{m.priorYearNonCompliant ? 'Yes' : 'No'}</span>,
   },
   // Optional, hidden by default.
   {
