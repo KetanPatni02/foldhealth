@@ -37,6 +37,23 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Consent and preferences data layer (Phase 2A.1).** Patient consent is now
+  a record, not a "2/4" count: `patient_consents` keeps an append-only
+  history per program (CCM, APCM, RPM, BHI) and channel (call, SMS, email,
+  TCPA) with status, method, who captured it, expiry, witness and the signed
+  artifact, stored in a private `patient-consents` bucket and read through
+  signed URLs. `patient_preferences` holds channel per program, language,
+  interpreter need, health literacy and contact validity. The rules in
+  `src/features/patient/data/consentRules.js` decide whether billable work
+  can be recorded (a hard block without current consent), whether a patient
+  can be contacted on a channel (TCPA for texts and autodialed calls), and
+  whether they're eligible to enroll. Store: `fetchPatientConsents`,
+  `capturePatientConsent`, `savePatientPreferences`. No UI yet; the capture
+  drawer and the billing gates follow in 2A.2 and 2A.3. Needs
+  `supabase/patient_consents_migration.sql` then
+  `supabase/patient_consents_seed.sql` (consent reads as missing and
+  captures stay session-only until then).
+
 - **Patient Timeline.** The right panel's Timeline tab is the patient's
   full timeline: labs (with range flags), ADT events, visits, diagnoses,
   device readings, patient-reported outcomes, medication starts and stops,

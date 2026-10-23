@@ -189,6 +189,8 @@ import { REFERRAL_SENDER_LINES_MOCK } from '../features/hedis-worklist/data/refe
 import { fetchEfaxNumberRows, persistEfaxNumberInsert, persistEfaxNumberUpdate, persistEfaxNumberDelete } from './lib/efaxNumbersPersist';
 import { fetchCaregapLabRows, persistLabOrder, persistLabResult } from './lib/caregapLabsPersist';
 import { fetchStepStatusRows, persistStepStatus } from './lib/careProgramStepStatusPersist';
+import { fetchConsentRows, fetchPreferencesRow, insertConsentRow, persistPreferences, preferencesFromRow, uploadConsentArtifact } from './lib/patientConsentPersist';
+import { CONSENT_METHODS, validateCapture } from '../features/patient/data/consentRules';
 import { fetchProgramTypeRows, persistProgramType, persistProgramTypeDelete } from './lib/careProgramTypesPersist';
 import { defaultProgramTypes } from '../features/settings/care-program-config/careProgramConfigModel';
 import { fetchPatientSnapshotRow } from './lib/patientSnapshotsPersist';
@@ -8464,6 +8466,76 @@ export const useAppStore = create((set, get) => ({
     if (get().programStepStatusTableMissing) return;
     const { missing } = await persistStepStatus(patientProgramId, step, status, updatedBy);
     if (missing) set({ programStepStatusTableMissing: true });
+  },
+
+  // ── Patient consent + preferences (Supabase `patient_consents`, ──────────
+  // `patient_preferences`). Consent history is keyed by patient id, newest
+  // first; a capture prepends locally, then inserts (rows are never edited).
+  // Rules live in features/patient/data/consentRules.js. Until the migration
+  // runs, consent reads as missing and captures stay session-only.
+  patientConsents: {},
+  patientConsentsLoadedFor: {},
+  patientPreferences: {},
+  patientConsentTableMissing: false,
+  fetchPatientConsents: async (patientId, { force = false } = {}) => {
+    if (!patientId || (!force && get().patientConsentsLoadedFor[patientId])) return;
+    set(s => ({ patientConsentsLoadedFor: { ...s.patientConsentsLoadedFor, [patientId]: true } }));
+    const [{ rows, missing }, prefs] = await Promise.all([fetchConsentRows(patientId), fetchPreferencesRow(patientId)]);
+    set(s => ({
+      patientConsentTableMissing: missing || prefs.missing || s.patientConsentTableMissing,
+      patientConsents: { ...s.patientConsents, [patientId]: rows },
+      patientPreferences: { ...s.patientPreferences, [patientId]: preferencesFromRow(prefs.row) },
+    }));
+  },
+  // `capture`: { scopeType, scope, status, method, witness, expiresOn, note,
+  // programId }, plus `file` (signature PNG or signed scan) for written and
+  // e-signed consent. Returns { ok, error }.
+  capturePatientConsent: async (patientId, capture) => {
+    if (!patientId) return { ok: false, error: 'No patient' };
+    const id = `pc-${patientId}-${Date.now()}`;
+    const { file, ...fields } = capture || {};
+    let artifactPath = null;
+    if (file && !get().patientConsentTableMissing) {
+      artifactPath = await uploadConsentArtifact(patientId, id, file);
+      if (!artifactPath) return { ok: false, error: 'Could not upload the signed document' };
+    }
+    const now = new Date();
+    const record = {
+      ...fields,
+      id,
+      patientId: String(patientId),
+      artifactPath: artifactPath || (file ? `session/${id}` : null),
+      artifactKind: file ? (fields.artifactKind || 'upload') : null,
+      capturedBy: get().currentActorName(),
+      capturedByRole: get().currentUserProfile?.role || null,
+      capturedAt: now.toISOString(),
+      effectiveOn: fields.effectiveOn || now.toISOString().slice(0, 10),
+    };
+    const invalid = validateCapture(record);
+    if (invalid) return { ok: false, error: invalid };
+    set(s => ({ patientConsents: { ...s.patientConsents, [patientId]: [record, ...(s.patientConsents[patientId] || [])] } }));
+    if (!get().patientConsentTableMissing) {
+      const { missing } = await insertConsentRow(record);
+      if (missing) set({ patientConsentTableMissing: true });
+    }
+    if (record.scopeType === 'program') {
+      get().logProgramActivity({
+        patientId,
+        programCode: record.scope,
+        title: `${record.scope} Consent ${{ given: 'Captured', declined: 'Declined', withdrawn: 'Withdrawn' }[record.status]}`,
+        statusLabel: CONSENT_METHODS.find(m => m.value === record.method)?.label || '',
+        statusType: record.status === 'given' ? 'success' : 'neutral',
+      });
+    }
+    return { ok: true, error: null, record };
+  },
+  savePatientPreferences: async (patientId, patch) => {
+    if (!patientId) return;
+    const next = { ...preferencesFromRow(null), ...(get().patientPreferences[patientId] || {}), ...patch };
+    set(s => ({ patientPreferences: { ...s.patientPreferences, [patientId]: next } }));
+    if (get().patientConsentTableMissing) return;
+    const { missing } = await persistPreferences(patientId, next, get().currentActorName());
+    if (missing) set({ patientConsentTableMissing: true });
   },
 
   // ── Care Gap lab orders / results (Supabase `caregap_lab_*`) ────────────
