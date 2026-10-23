@@ -84,24 +84,26 @@ export function PharmacySnapshotStep({ member }) {
                 {g.recon ? <span className={claimFlagged && open ? styles.toneError : styles.value}>{g.recon.status}</span> : <Dash />}
               </button>
               {isOpen && (
-                <div className={styles.medPanel}>
-                  <table className={styles.medTable}>
-                    <thead>
-                      <tr><th>Medication</th><th>Last Fill</th><th>Recent Fill</th><th>Next Fill</th><th>Supply</th><th>Status</th></tr>
-                    </thead>
-                    <tbody>
-                      {g.medications.map(d => (
-                        <tr key={d.id}>
-                          <td className={styles.medName}>{d.name} {d.strength} {d.unit}</td>
-                          <td>{d.lastFill || '—'}</td>
-                          <td>{d.recentFill || '—'}</td>
-                          <td><DueDate date={d.nextFill} alert={open && d.status !== 'Discontinued'} /></td>
-                          <td>{supplyLabel(d)}</td>
-                          <td className={d.status === 'Discontinued' ? styles.muted : ''}>{d.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className={styles.medNest}>
+                  <div className={styles.medPanel}>
+                    <table className={styles.medTable}>
+                      <thead>
+                        <tr><th>Medication</th><th>Last Fill</th><th>Recent Fill</th><th>Next Fill</th><th>Supply</th><th>Status</th></tr>
+                      </thead>
+                      <tbody>
+                        {g.medications.map(d => (
+                          <tr key={d.id}>
+                            <td className={styles.medName}>{d.name} {d.strength} {d.unit}</td>
+                            <td>{d.lastFill || '—'}</td>
+                            <td>{d.recentFill || '—'}</td>
+                            <td><DueDate date={d.nextFill} alert={open && d.status !== 'Discontinued'} /></td>
+                            <td>{supplyLabel(d)}</td>
+                            <td className={d.status === 'Discontinued' ? styles.muted : ''}>{d.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>

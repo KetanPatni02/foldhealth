@@ -48,10 +48,12 @@
 .gapStatus > * { align-self: flex-start; }
 .value { font-size: var(--font-md); color: var(--neutral-400); }
 
-/* Medications open in a panel that starts under the gap code (16px inset +
-   chevron), so it reads as belonging to that gap. */
+/* An open gap: a stroke under its row, then its medications full width in a
+   neutral-50 well with 12px around the table. */
+.gapRow[aria-expanded="true"] { border-bottom: 0.5px solid var(--neutral-150); }
+.medNest { padding: var(--space-3); background: var(--neutral-50); }
 .medPanel {
-  margin: 0 var(--space-4) var(--space-3) calc(var(--space-4) + 1.125rem);
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
   overflow-x: auto;
