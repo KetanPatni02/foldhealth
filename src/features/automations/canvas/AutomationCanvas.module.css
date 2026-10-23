@@ -45,11 +45,16 @@
   font-size: var(--font-sm);
   white-space: nowrap;
 }
-/* Sits on the connector, 11px under "Starts here". */
-.collapseAll {
+/* Sits on the connector, centered, 11px under "Starts here". */
+.collapseSlot {
   position: absolute;
   top: 51px;
+  left: 50%;
   z-index: 1;
+  display: flex;
+  transform: translateX(-50%);
+}
+.collapseAll {
   display: inline-flex;
   align-items: center;
   justify-content: center;

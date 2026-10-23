@@ -23,16 +23,22 @@ const APPOINTMENT_TYPES = ['a first virtual visit', 'a virtual visit', 'an in-pe
 const LAB_TESTS = [...LAB_CATALOG.map(l => l.label), 'Lipid panel', 'Comprehensive metabolic panel', 'Urine albumin-to-creatinine ratio'].map(v => ({ value: v, label: v }));
 const TOKEN_OPTIONS = MERGE_TOKENS.filter(t => t.group === 'Patient' || t.group === 'Care team').map(t => ({ value: t.key, label: t.label }));
 
+// With maxLength the shared Textarea calls onChange(value, event); without it
+// onChange(event). Read the text either way.
+const textOf = (v) => (typeof v === 'string' ? v : v?.target?.value ?? '');
+
 /** A message body with an "insert merge tag" picker (SMS, push, IVR, preferred channel). */
-function MessageField({ label, value, onChange, error, max }) {
+function MessageField({ label, value, onChange, error, max, placeholder }) {
+  const text = value || '';
   return (
     <PanelRow label={label} required error={error}>
       <div className={styles.ruleColumn}>
-        <Textarea value={value || ''} onChange={e => onChange(e.target.value)} rows={4} maxLength={max} variant={error ? 'error' : 'default'} />
+        <Textarea value={text} onChange={v => onChange(textOf(v))} rows={4} maxLength={max} placeholder={placeholder || 'Type the message'} variant={error ? 'error' : 'default'} />
         <Select
           options={TOKEN_OPTIONS}
           value=""
-          onChange={k => onChange(`${value || ''}{{${k}}}`)}
+          // Tags go in with a space before them so they don't run together.
+          onChange={k => onChange(`${text}${text && !/\s$/.test(text) ? ' ' : ''}{{${k}}}`.slice(0, max || Infinity))}
           placeholder="Insert merge tag"
           className={styles.tokenPicker}
         />
@@ -185,7 +191,7 @@ function TaskFields({ config, onChange, errors }) {
         <Input value={config.title || ''} onChange={e => onChange({ title: e.target.value })} variant={errors.title ? 'error' : undefined} />
       </PanelRow>
       <PanelRow label="Description" required error={errors.description}>
-        <Textarea value={config.description || ''} onChange={e => onChange({ description: e.target.value })} rows={3} variant={errors.description ? 'error' : 'default'} />
+        <Textarea value={config.description || ''} onChange={v => onChange({ description: textOf(v) })} rows={3} placeholder="What should the assignee do?" variant={errors.description ? 'error' : 'default'} />
       </PanelRow>
       <PanelRow label="Assigned to" required error={errors.assignee}>
         <Select

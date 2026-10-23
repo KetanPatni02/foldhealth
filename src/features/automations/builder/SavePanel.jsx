@@ -73,7 +73,8 @@ export function SavePanel({ state, graph, problems, onSave, onClose, onShowProbl
           title="Description"
           mandatory
           value={description}
-          onChange={e => setDescription(e.target.value)}
+          // maxLength puts Textarea in its enhanced mode: onChange(value, event).
+          onChange={v => setDescription(typeof v === 'string' ? v : v?.target?.value ?? '')}
           rows={3}
           placeholder="Tell your team what this automation does"
           maxLength={DESC_MAX}

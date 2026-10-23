@@ -61,11 +61,13 @@ function StartNode({ data }) {
         Starts here
       </div>
       {data?.dangling ? <span className={styles.looseEnd} aria-hidden="true" /> : (
-      <Tooltip label={ctx.anyCollapsed ? 'Expand All Nodes' : 'Collapse All Nodes'}>
-        <button type="button" className={styles.collapseAll} onClick={ctx.toggleAll} aria-label={ctx.anyCollapsed ? 'Expand all nodes' : 'Collapse all nodes'}>
-          <Icon name={ctx.anyCollapsed ? 'solar:square-double-alt-arrow-down-linear' : 'solar:square-double-alt-arrow-up-linear'} size={16} />
-        </button>
-      </Tooltip>
+      <span className={styles.collapseSlot}>
+        <Tooltip label={ctx.anyCollapsed ? 'Expand All Nodes' : 'Collapse All Nodes'}>
+          <button type="button" className={styles.collapseAll} onClick={ctx.toggleAll} aria-label={ctx.anyCollapsed ? 'Expand all nodes' : 'Collapse all nodes'}>
+            <Icon name={ctx.anyCollapsed ? 'solar:square-double-alt-arrow-down-linear' : 'solar:square-double-alt-arrow-up-linear'} size={16} />
+          </button>
+        </Tooltip>
+      </span>
       )}
       <Handle type="source" position={Position.Bottom} className={styles.handle} isConnectable={false} />
     </div>
