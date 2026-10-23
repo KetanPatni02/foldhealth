@@ -1961,6 +1961,49 @@ export const useAppStore = create((set, get) => ({
 
   // `force` re-reads a log already loaded, so opening it shows what other
   // screens (care plans above all) have written since.
+  // ── Patient event stream sources (Timeline) ──
+  // The records the store doesn't load elsewhere: clinical events, calls,
+  // notes, appointments and completed assessments, for one patient. Medications,
+  // CRM touchpoints and program activity come from their own slices.
+  // patient_event_stream_migration.sql / data/patientStream.js.
+  patientStreamSources: {},
+  fetchPatientStreamSources: async (patientId, { force = false } = {}) => {
+    if (!patientId) return;
+    const id = String(resolvePatientStoreId(get(), patientId));
+    if (!force && get().patientStreamSources[id]) return;
+    const rows = (res, label) => {
+      if (res.error) console.warn(`fetchPatientStreamSources ${label}:`, res.error.message);
+      return res.data || [];
+    };
+    const [ce, calls, notes, appts, forms] = await Promise.all([
+      supabase.from('patient_clinical_events')
+        .select('id, event_type, code, code_system, display, effective_date, end_date, status, numeric_value, unit, reference_low, reference_high, source, raw_meta')
+        .eq('patient_id', id).order('effective_date', { ascending: false }).limit(500),
+      supabase.from('call_sessions').select('id, name, status, dir, created_at').eq('patient_id', id).limit(200),
+      supabase.from('clinical_notes').select('id, form_type, status, author_name, signed_by_name, signed_at, created_at').eq('patient_id', id).limit(200),
+      supabase.from('appointments')
+        .select('id, appointment_type_name, mode, location, primary_user, date, time_start, status, reason_for_visit')
+        .eq('patient_id', id).limit(200),
+      supabase.from('form_responses').select('id, form_id, status, completed_at, created_at').eq('patient_id', id).eq('status', 'completed').limit(200),
+    ]);
+    const assessments = rows(forms, 'form_responses');
+    const formIds = [...new Set(assessments.map(r => r.form_id).filter(v => v != null))];
+    const names = formIds.length ? rows(await supabase.from('forms').select('id, name').in('id', formIds), 'forms') : [];
+    set(s => ({
+      patientStreamSources: {
+        ...s.patientStreamSources,
+        [id]: {
+          clinicalEvents: rows(ce, 'patient_clinical_events'),
+          calls: rows(calls, 'call_sessions'),
+          notes: rows(notes, 'clinical_notes'),
+          appointments: rows(appts, 'appointments'),
+          assessments,
+          formNames: new Map(names.map(f => [String(f.id), f.name])),
+        },
+      },
+    }));
+  },
+
   fetchPatientProgramActivity: async (patientId, { force = false } = {}) => {
     if (!patientId) return;
     const resolvedId = resolvePatientStoreId(get(), patientId);

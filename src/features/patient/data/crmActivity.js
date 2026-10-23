@@ -83,4 +83,9 @@ export const rowToCrm = (r) => ({
   performedByRole: r.performed_by_role,
   occurredAt: r.occurred_at,
   note: r.note || '',
+  // patient_event_stream_migration.sql
+  programCode: r.program_code || null,
+  billingProgram: r.billing_program || null,
+  durationSeconds: r.duration_seconds || null,
+  vendorName: r.vendor_name || null,
 });

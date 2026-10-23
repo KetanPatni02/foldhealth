@@ -37,6 +37,14 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Patient Timeline.** The right panel's Timeline tab is the patient's
+  full timeline: labs (with range flags), ADT events, visits, diagnoses,
+  device readings, patient-reported outcomes, medication starts and stops,
+  notes, assessments, touchpoints (calls, messages, visits, appointments)
+  and program updates, newest first, filterable by category, type and
+  program. One stream (`data/patientStream.js`) reads the tables that already
+  hold each record. Touchpoints carry their program, billing program,
+  duration and vendor. Needs `supabase/patient_event_stream_migration.sql`.
 - **Care program lifecycle.** Program status is one list: New, Engaged,
   Attempted, Unable to Reach, Declined, Enrolled, Active, Paused, Completed,
   Discontinued, Re-enrolled (`data/programStatus.js`, `isProgramClosed`).

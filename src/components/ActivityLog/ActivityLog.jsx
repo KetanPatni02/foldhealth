@@ -444,7 +444,11 @@ function OutreachEntryBody({ entry }) {
   const [expanded, setExpanded] = useState(false);
   const hasNote = Boolean(entry.note && entry.note.trim());
   const hasCall = !!entry.callDetails;
-  const expandable = hasNote || hasCall;
+  // `details`: [{ label, value }] shown as a field list behind "View details"
+  // (empty values are skipped).
+  const details = (entry.details || []).filter(d => d && d.value != null && d.value !== '');
+  const hasDetails = details.length > 0;
+  const expandable = hasNote || hasCall || hasDetails;
 
   return (
     <>
@@ -466,13 +470,13 @@ function OutreachEntryBody({ entry }) {
             onClick={() => setExpanded(v => !v)}
           >
             {entry.outcome && <span className={styles.viewNoteDot} aria-hidden="true">•</span>}
-            View more
+            {hasDetails ? 'View details' : 'View more'}
             <DownChevronIcon size={11} color="currentColor" className={expanded ? styles.viewMoreChevronOpen : undefined} />
           </button>
         )}
       </div>
 
-      {expanded && (hasCall || hasNote) && (
+      {expanded && (hasCall || hasNote || hasDetails) && (
         <div className={styles.expandedCard}>
           {hasCall && (
             <>
@@ -520,6 +524,16 @@ function OutreachEntryBody({ entry }) {
                 )}
               </div>
             </>
+          )}
+          {!hasCall && hasDetails && (
+            <dl className={styles.detailsGrid}>
+              {details.map(d => (
+                <Fragment key={d.label}>
+                  <dt className={styles.detailsLabel}>{d.label}</dt>
+                  <dd className={styles.detailsValue}>{d.value}</dd>
+                </Fragment>
+              ))}
+            </dl>
           )}
           {!hasCall && hasNote && (
             <>
