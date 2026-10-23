@@ -5,7 +5,7 @@ import { useAppStore } from '../../../../../../../store/useAppStore';
 import { OutreachTab } from '../../../../../left-panel/tabs/outreach/OutreachTab/OutreachTab.jsx';
 import { CcmBillingReview } from '../billing/CcmBillingReview/CcmBillingReview.jsx';
 import { SendLetterDrawer } from '../letters/SendLetterDrawer/SendLetterDrawer.jsx';
-import { PreVisitStep } from '../steps/PreVisitStep/PreVisitStep.jsx';
+import { PreVisitStep, ProgramSnapshotStep } from '../steps/PreVisitStep/PreVisitStep.jsx';
 import { AssessmentFormView } from '../steps/AssessmentFormView/AssessmentFormView.jsx';
 import { CarePlanView } from '../../care-plan/CarePlanView/CarePlanView.jsx';
 import { AppointmentStep } from '../steps/AppointmentStep/AppointmentStep.jsx';
@@ -95,10 +95,11 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
       );
     }
     if (stepFlags.isPreVisitStep) return <PreVisitStep programCode={program.code} />;
+    if (stepFlags.isSnapshotStep) return <ProgramSnapshotStep programCode={program.code} patientId={v.patientId} programId={program.id} triggerType={program.triggerType} triggerDate={program.triggerDate} />;
     if (stepFlags.isCarePlanStep) {
       return carePlanInPanel ? <CarePlanInPanelNotice /> : <CarePlanView patientId={v.patientId} program={program} />;
     }
-    if (stepFlags.isAppointmentStep) return <AppointmentStep patientId={v.currentPatient?.id} programCode={program.code} stepName={v.stepName} />;
+    if (stepFlags.isAppointmentStep) return <AppointmentStep patientId={v.currentPatient?.id} programCode={program.code} stepName={v.screenName} />;
     if (stepFlags.isOpenCareGapsStep) return <OpenCareGaps />;
     if (stepFlags.isMedReconStep) return <MedicationReconciliation programCode={program.code} />;
     if (stepFlags.isProgramTasksStep) {
@@ -109,7 +110,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
     if (v.assessmentCfg) {
       return v.assessmentCfg.checklist
         ? <PostVisitChecklist />
-        : <AssessmentFormView formName={v.assessmentCfg.formName} />;
+        : <AssessmentFormView formId={v.assessmentCfg.formId} formName={v.assessmentCfg.formName} />;
     }
     if (stepFlags.isLettersStep) {
       return (

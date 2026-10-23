@@ -331,3 +331,25 @@
   pointer-events: none;
   flex-shrink: 0;
 }
+
+/* Open multi-pick with chips: one line, the chip row (with its "+N") takes
+   what the search input leaves. */
+.triggerBadgesOpen {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+.triggerBadgesOpenRow {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+.triggerInputInline {
+  flex: 0 0 6rem;
+  min-width: 0;
+  width: 6rem;
+}

@@ -11,6 +11,7 @@ export const SETTINGS_MENU_ITEMS = [
   { icon: 'solar:chat-square-linear', label: 'Messages', key: 'messages' },
   { icon: 'solar:phone-linear', label: 'Calls', key: 'calls' },
   { icon: 'solar:clipboard-list-linear', label: 'Care Plan Library', key: 'care-plan-library' },
+  { icon: 'solar:health-linear', label: 'Care Program Configuration', key: 'care-program-config' },
   { icon: 'solar:widget-add-linear', label: 'CRM Widgets', key: 'crm-widgets' },
   { icon: 'solar:code-square-linear', label: 'Embed', key: 'embedded-components' },
   { icon: 'solar:documents-linear', label: 'Content', key: 'content' },

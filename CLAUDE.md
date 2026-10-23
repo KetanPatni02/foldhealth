@@ -10,7 +10,9 @@ keep entries short and specific. Newest at the top.
   explicit ask.** Production is Supabase project `osnihfqqrcchsaqhagcx`.
   Local dev, dev servers, browser previews, seeds and migrations go to the
   dev project (`.env.development.local`, see
-  `docs/getting-started/dev-database.mdx`). Before
+  `docs/getting-started/dev-database.mdx`). Vercel preview deployments,
+  including the `preview` Git branch, use that same Foldhealth Dev project.
+  Production deployments stay on production. Before
   running a migration, a seed, `supabase db query --linked`, or starting a
   dev server, check which project the env points at; if it is production,
   stop and ask. On 2026-10-21 dev sessions made 88% of production API

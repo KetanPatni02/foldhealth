@@ -144,3 +144,34 @@ export const Playground = {
     errorText: '',
   },
 };
+
+/**
+ * Multi-pick with chips, searchable: the field stays one line, open or
+ * closed. Chips that don't fit fold into "+N"; while open the search is
+ * typed after the chips, and removing a chip keeps the menu open. Each
+ * chip's `triggerLabel` names the pick and `badgeTooltip` shows on hover.
+ */
+export const MultiChipsSearchable = {
+  render: () => (
+    <div style={{ width: 420 }}>
+      <MultiWrapper
+        label="Send To"
+        showLabel
+        showInfo
+        infoText="You can select the member and their contacts (caregiver, decision maker etc.) here."
+        searchable
+        checkboxes
+        badges
+        searchPlaceholder="Search by name"
+        placeholder="Select member and their contacts"
+        initial={['amy', 'maria', 'daniel']}
+        options={[
+          { value: 'amy', label: 'Amy Phillips', triggerLabel: 'Amy Phillips (Member)', badgeTooltip: 'Patient' },
+          { value: 'maria', label: 'Maria Lopez', triggerLabel: 'Maria Lopez · Care Giver, Decision Maker', badgeTooltip: 'Care Giver, Decision Maker' },
+          { value: 'daniel', label: 'Daniel Lopez', triggerLabel: 'Daniel Lopez · Emergency Contact', badgeTooltip: 'Emergency Contact' },
+          { value: 'rosa', label: 'Rosa Alvarez', triggerLabel: 'Rosa Alvarez · Alternate Decision Maker' },
+        ]}
+      />
+    </div>
+  ),
+};

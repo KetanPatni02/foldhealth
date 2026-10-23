@@ -20,9 +20,12 @@ import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../sr
 import { HCC_MEMBER_BY_NAME, HCC_MEMBERS } from '../src/features/hcc/data/mock.js';
 import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
 import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmActivity.js';
+import { SAMPLE_VITALS } from '../src/features/patient/left-panel/tabs/vitals-labs/vitalsConfig.js';
 import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comms/educationLibrary.js';
 import { sampleFaxes, faxToRow } from '../src/features/messages/efax/efaxData.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
+import { CMP_MEMBERS } from '../src/features/cmp-worklist/data/mock.js';
+import { snpSnapshotFormRow } from '../src/features/forms/templates/snpSnapshotForm.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
 import { CARE_PLAN_MOCK } from '../src/features/patient/data/carePlanMock.js';
@@ -34,6 +37,7 @@ import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src
 import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
 import { OVERVIEW_SEED, overviewToRow } from '../src/features/patient/data/overviewData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
+import { defaultProgramTypes, programTypeToRow } from '../src/features/settings/care-program-config/careProgramConfigModel.js';
 import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows, employerImpactExportRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
 import { sampleOooRecords, demoOooForUser, oooToRow } from '../src/features/ooo/oooSeed.js';
 import { sampleOnCallSchedules, onCallToRow } from '../src/features/ooo/onCallSeed.js';
@@ -133,7 +137,9 @@ CREATE TABLE IF NOT EXISTS hedis_members (
   state             text,
   created_at        timestamptz DEFAULT now()
 );
-ALTER TABLE hedis_members DISABLE ROW LEVEL SECURITY;
+ALTER TABLE hedis_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all" ON hedis_members;
+CREATE POLICY "Allow all" ON hedis_members FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const APCM_DDL = `
@@ -159,7 +165,9 @@ CREATE TABLE IF NOT EXISTS apcm_patients (
   program_id                  text,
   created_at                  timestamptz DEFAULT now()
 );
-ALTER TABLE apcm_patients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE apcm_patients ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all" ON apcm_patients;
+CREATE POLICY "Allow all" ON apcm_patients FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const PATIENT_PROBLEMS_DDL = `
@@ -179,7 +187,7 @@ CREATE TABLE IF NOT EXISTS patient_problems (
 CREATE INDEX IF NOT EXISTS patient_problems_patient_id_idx ON patient_problems (patient_id);
 ALTER TABLE patient_problems ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_problems" ON patient_problems;
-CREATE POLICY "Allow all on patient_problems" ON patient_problems FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_problems" ON patient_problems FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const PATIENT_ALLERGIES_DDL = `
@@ -202,7 +210,7 @@ CREATE TABLE IF NOT EXISTS patient_allergies (
 CREATE INDEX IF NOT EXISTS patient_allergies_patient_id_idx ON patient_allergies (patient_id);
 ALTER TABLE patient_allergies ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_allergies" ON patient_allergies;
-CREATE POLICY "Allow all on patient_allergies" ON patient_allergies FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_allergies" ON patient_allergies FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const SOCIAL_HISTORY_DDL = `
@@ -212,7 +220,7 @@ CREATE TABLE IF NOT EXISTS patient_social_history (
 );
 ALTER TABLE patient_social_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_social_history" ON patient_social_history;
-CREATE POLICY "Allow all on patient_social_history" ON patient_social_history FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_social_history" ON patient_social_history FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 const PAMI_HISTORY_DDL = `
@@ -227,7 +235,7 @@ CREATE TABLE IF NOT EXISTS patient_history_entries (
 CREATE INDEX IF NOT EXISTS patient_history_entries_patient_id_idx ON patient_history_entries (patient_id);
 ALTER TABLE patient_history_entries ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_history_entries" ON patient_history_entries;
-CREATE POLICY "Allow all on patient_history_entries" ON patient_history_entries FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_history_entries" ON patient_history_entries FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 // The History cards' sample rows, on the demo patient only
@@ -291,7 +299,7 @@ CREATE TABLE IF NOT EXISTS patient_immunizations (
 CREATE INDEX IF NOT EXISTS patient_immunizations_patient_id_idx ON patient_immunizations (patient_id);
 ALTER TABLE patient_immunizations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_immunizations" ON patient_immunizations;
-CREATE POLICY "Allow all on patient_immunizations" ON patient_immunizations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on patient_immunizations" ON patient_immunizations FOR ALL TO authenticated USING (true) WITH CHECK (true);
 `;
 
 
@@ -313,7 +321,7 @@ CREATE INDEX IF NOT EXISTS idx_icd_codes_title ON icd_codes USING gin (to_tsvect
 ALTER TABLE icd_codes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on icd_codes" ON icd_codes;
 DROP POLICY IF EXISTS "Read icd_codes" ON icd_codes;
-CREATE POLICY "Read icd_codes" ON icd_codes FOR SELECT USING (true);
+CREATE POLICY "Read icd_codes" ON icd_codes FOR SELECT TO authenticated USING (true);
 `;
 
 const POS_DDL = `
@@ -325,7 +333,7 @@ CREATE TABLE IF NOT EXISTS pos_codes (
 ALTER TABLE pos_codes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on pos_codes" ON pos_codes;
 DROP POLICY IF EXISTS "Read pos_codes" ON pos_codes;
-CREATE POLICY "Read pos_codes" ON pos_codes FOR SELECT USING (true);
+CREATE POLICY "Read pos_codes" ON pos_codes FOR SELECT TO authenticated USING (true);
 `;
 
 // CCM Billing tables — mirrored in supabase/ccm_billing_migration.sql. Keep
@@ -348,7 +356,7 @@ CREATE TABLE IF NOT EXISTS ccm_billing_periods (
 );
 ALTER TABLE ccm_billing_periods ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for ccm_billing_periods" ON ccm_billing_periods;
-CREATE POLICY "Allow all for ccm_billing_periods" ON ccm_billing_periods FOR ALL USING (true);
+CREATE POLICY "Allow all for ccm_billing_periods" ON ccm_billing_periods FOR ALL TO authenticated USING (true);
 `;
 
 const CCM_ACTIVITIES_DDL = `
@@ -367,7 +375,7 @@ CREATE TABLE IF NOT EXISTS ccm_billable_activities (
 );
 ALTER TABLE ccm_billable_activities ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for ccm_billable_activities" ON ccm_billable_activities;
-CREATE POLICY "Allow all for ccm_billable_activities" ON ccm_billable_activities FOR ALL USING (true);
+CREATE POLICY "Allow all for ccm_billable_activities" ON ccm_billable_activities FOR ALL TO authenticated USING (true);
 `;
 
 const CCM_WORKLIST_DDL = `
@@ -408,7 +416,7 @@ CREATE TABLE IF NOT EXISTS ccm_worklist_members (
 );
 ALTER TABLE ccm_worklist_members ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for ccm_worklist_members" ON ccm_worklist_members;
-CREATE POLICY "Allow all for ccm_worklist_members" ON ccm_worklist_members FOR ALL USING (true);
+CREATE POLICY "Allow all for ccm_worklist_members" ON ccm_worklist_members FOR ALL TO authenticated USING (true);
 `;
 
 const SNP_WORKLIST_DDL = `
@@ -440,7 +448,7 @@ CREATE TABLE IF NOT EXISTS snp_worklist_members (
 );
 ALTER TABLE snp_worklist_members ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for snp_worklist_members" ON snp_worklist_members;
-CREATE POLICY "Allow all for snp_worklist_members" ON snp_worklist_members FOR ALL USING (true);
+CREATE POLICY "Allow all for snp_worklist_members" ON snp_worklist_members FOR ALL TO authenticated USING (true);
 `;
 
 // Self-heal duplicate worklist rows after seeding. The mock data still keys
@@ -477,7 +485,7 @@ CREATE TABLE IF NOT EXISTS caregap_activity (
 );
 ALTER TABLE caregap_activity ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for caregap_activity" ON caregap_activity;
-CREATE POLICY "Allow all for caregap_activity" ON caregap_activity FOR ALL USING (true);
+CREATE POLICY "Allow all for caregap_activity" ON caregap_activity FOR ALL TO authenticated USING (true);
 CREATE INDEX IF NOT EXISTS idx_caregap_activity_member ON caregap_activity (member_id, at DESC);
 `;
 
@@ -500,7 +508,7 @@ CREATE TABLE IF NOT EXISTS ccm_billing_reports (
 );
 ALTER TABLE ccm_billing_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for ccm_billing_reports" ON ccm_billing_reports;
-CREATE POLICY "Allow all for ccm_billing_reports" ON ccm_billing_reports FOR ALL USING (true);
+CREATE POLICY "Allow all for ccm_billing_reports" ON ccm_billing_reports FOR ALL TO authenticated USING (true);
 `;
 
 const PRACTICE_LOCATIONS_DDL = `
@@ -523,7 +531,7 @@ CREATE TABLE IF NOT EXISTS practice_locations (
 );
 ALTER TABLE practice_locations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for practice_locations" ON practice_locations;
-CREATE POLICY "Allow all for practice_locations" ON practice_locations FOR ALL USING (true);
+CREATE POLICY "Allow all for practice_locations" ON practice_locations FOR ALL TO authenticated USING (true);
 `;
 
 // ── Row mappers (JS shape → DB columns) ───────────────────────────────────────
@@ -625,6 +633,32 @@ function practiceLocationToRow(l) {
     google_map_link: l.googleMapLink ?? null,
     default_phone:   l.defaultPhone ?? null,
     business_hours:  l.businessHours ?? [],
+  };
+}
+
+function cmpToRow(m) {
+  return {
+    id:                 m.id,
+    patient_id:         m.patientId ?? null,
+    member_id:          m.memberId,
+    sub_program:        m.subProgram ?? null,
+    name:               m.name,
+    initials:           m.in,
+    gender:             m.g,
+    age:                m.age,
+    dob:                m.dob ?? null,
+    language:           m.language || 'en',
+    program_sub_status: m.progSubStatus,
+    care_plan_status:   m.carePlanStatus,
+    next_action_due:    m.nextActionDue ?? null,
+    program_start_date: m.programStartDate ?? null,
+    program_due_date:   m.programDueDate ?? null,
+    outreach:           m.outreach ?? 0,
+    last_outreach:      m.lastOutreach ?? null,
+    assignee:           m.assignee ?? null,
+    assignee_initials:  m.assigneeIn ?? null,
+    risk_level:         m.ri ?? null,
+    tasks:              m.task ?? 0,
   };
 }
 
@@ -840,6 +874,9 @@ async function main() {
     await db.query(PAMI_HISTORY_DDL);
     await db.query(SOCIAL_HISTORY_DDL);
     await db.query(readFileSync(new URL('../supabase/patient_crm_activities_migration.sql', import.meta.url), 'utf8'));
+    await db.query(readFileSync(new URL('../supabase/patient_vitals_migration.sql', import.meta.url), 'utf8'));
+    await db.query(readFileSync(new URL('../supabase/patient_contacts_gender_migration.sql', import.meta.url), 'utf8'));
+    await db.query(readFileSync(new URL('../supabase/patient_contacts_one_per_role_migration.sql', import.meta.url), 'utf8'));
     console.log('  ✓ patient_crm_activities: created / already exists');
     // Run the migration itself rather than a copy of it, so the two can't drift.
     await db.query(readFileSync(new URL('../supabase/employer_impact_migration.sql', import.meta.url), 'utf8'));
@@ -898,6 +935,25 @@ async function main() {
     .upsert(hedisRows, { onConflict: 'id' });
   if (he) { console.error('  ✗', he.message); } else { console.log(`  ✓ ${hedisRows.length} new members (${HEDIS_MEMBERS.length - hedisRows.length} already present)`); }
 
+  console.log('Seeding cmp_members...');
+  const { error: cmpErr } = await supabase
+    .from('cmp_members')
+    .upsert(CMP_MEMBERS.map(cmpToRow), { onConflict: 'id' });
+  if (cmpErr) { console.error('  ✗', cmpErr.message, '(run supabase/cmp_members_migration.sql first)'); } else { console.log(`  ✓ ${CMP_MEMBERS.length} members`); }
+
+  // Added once, by name: later edits in the Form builder are kept.
+  console.log('Seeding SNP Snapshot form...');
+  const snapshotRow = snpSnapshotFormRow();
+  const { data: snapshotExisting, error: snapshotFindErr } = await supabase.from('forms').select('id').eq('name', snapshotRow.name).limit(1);
+  if (snapshotFindErr) {
+    console.error('  ✗', snapshotFindErr.message);
+  } else if (snapshotExisting?.length) {
+    console.log(`  ✓ already present (id=${snapshotExisting[0].id})`);
+  } else {
+    const { error: snapshotErr } = await supabase.from('forms').insert({ ...snapshotRow, response_count: 0 });
+    if (snapshotErr) console.error('  ✗', snapshotErr.message); else console.log('  ✓ added');
+  }
+
   console.log('Seeding apcm_patients...');
   const apcmRows = await withoutExistingPeople(supabase, 'apcm_patients', APCM_PATIENTS.map(apcmToRow));
   const { error: ae } = await supabase
@@ -944,6 +1000,17 @@ async function main() {
     .from('patient_history_entries')
     .upsert(withPatient(PATIENT_HISTORY_ENTRIES), { onConflict: 'id' });
   if (phe) { console.error('  ✗', phe.message); } else { console.log(`  ✓ ${PATIENT_HISTORY_ENTRIES.length} rows`); }
+
+  // Fixed ids so re-seeding updates the demo patient's vitals instead of duplicating them.
+  console.log('Seeding patient_vitals...');
+  const vitalRows = SAMPLE_VITALS.map((v, i) => ({
+    id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
+    patient_id: PAMI_DEMO_PATIENT,
+    vital_key: v.vital_key, value: v.value, value2: v.value2 ?? null,
+    flag: !!v.flag, recorded_on: v.recorded_on,
+  }));
+  const { error: pve } = await supabase.from('patient_vitals').upsert(vitalRows, { onConflict: 'id' });
+  if (pve) { console.error('  ✗', pve.message); } else { console.log(`  ✓ ${vitalRows.length} rows`); }
 
   // Components: Print Report Header / Footer Options 1–4 (Option 1 is the
   // default Report Header and Report Footer).
@@ -1183,6 +1250,17 @@ async function main() {
     .upsert(goalLibraryRows, { onConflict: 'id' });
   if (cpgErr) console.error('  ✗', cpgErr.message);
   else console.log(`  ✓ ${goalLibraryRows.length} library goals`);
+
+  console.log('Seeding care_program_types...');
+  // Built-in program types; ignoreDuplicates keeps any configuration already edited in Settings.
+  const programTypeRows = defaultProgramTypes().map(programTypeToRow);
+  const { error: cptypeErr } = await supabase
+    .from('care_program_types')
+    .upsert(programTypeRows, { onConflict: 'id', ignoreDuplicates: true });
+  if (cptypeErr) {
+    if (cptypeErr.code === '42P01') console.log('  ⚠ care_program_types missing — run supabase/care_program_types_migration.sql');
+    else console.error('  ✗', cptypeErr.message);
+  } else console.log(`  ✓ ${programTypeRows.length} care program types`);
 
   console.log('Seeding care_plan_templates (library)...');
   const templateRows = CARE_PLAN_TEMPLATE_LIBRARY.map(carePlanTemplateLibraryToRow);

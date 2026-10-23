@@ -9,18 +9,7 @@ import { Pagination } from '../components/Pagination/Pagination';
 import { ActiveCallCard } from '../components/ActiveCallCard/ActiveCallCard';
 import { InvokeAgentModal } from '../components/InvokeAgentModal/InvokeAgentModal';
 import { DegradedBanner } from '../components/DegradedBanner/DegradedBanner';
-import { WorklistTable } from '../features/toc/worklist/WorklistTable';
-import { QueueTable } from '../features/toc/queue/QueueTable';
 import { QueueSummaryBar } from '../features/toc/queue/QueueSummaryBar';
-import { TocWorklistTable } from '../features/toc/TocWorklistTable';
-import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
-import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
-import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
-import { JsaWorklistTable } from '../features/jsa-worklist/JsaWorklistTable';
-import { CcmWorklistTable } from '../features/ccm-worklist/CcmWorklistTable';
-import { SnpWorklistTable } from '../features/snp-worklist/SnpWorklistTable';
-import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
-import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
 import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
 import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
@@ -56,6 +45,20 @@ const EmailBuilder      = lz(() => import('../features/email-builder/EmailBuilde
 const CampaignBuilder   = lz(() => import('../features/campaign/CampaignBuilder'),  'CampaignBuilder');
 const FormBuilder       = lz(() => import('../features/forms/builder/FormBuilder'), 'FormBuilder');
 const FormView          = lz(() => import('../features/forms/view/FormView'),       'FormView');
+
+// Worklist tables: one renders per subnav list, so each loads on demand.
+const WorklistTable        = lz(() => import('../features/toc/worklist/WorklistTable'), 'WorklistTable');
+const QueueTable           = lz(() => import('../features/toc/queue/QueueTable'), 'QueueTable');
+const TocWorklistTable     = lz(() => import('../features/toc/TocWorklistTable'), 'TocWorklistTable');
+const HccWorklistTable     = lz(() => import('../features/hcc/HccWorklistTable'), 'HccWorklistTable');
+const HedisWorklistTable   = lz(() => import('../features/hedis-worklist/HedisWorklistTable'), 'HedisWorklistTable');
+const AwvWorklistTable     = lz(() => import('../features/awv-worklist/AwvWorklistTable'), 'AwvWorklistTable');
+const CmpWorklistTable     = lz(() => import('../features/cmp-worklist/CmpWorklistTable'), 'CmpWorklistTable');
+const JsaWorklistTable     = lz(() => import('../features/jsa-worklist/JsaWorklistTable'), 'JsaWorklistTable');
+const CcmWorklistTable     = lz(() => import('../features/ccm-worklist/CcmWorklistTable'), 'CcmWorklistTable');
+const SnpWorklistTable     = lz(() => import('../features/snp-worklist/SnpWorklistTable'), 'SnpWorklistTable');
+const AllPatientsTable     = lz(() => import('../features/all-patients/AllPatientsTable'), 'AllPatientsTable');
+const PopulationGroupsView = lz(() => import('../features/population-groups/PopulationGroupsView'), 'PopulationGroupsView');
 
 // Drawers and overlays — only mounted when their state is truthy, so lazy here
 // keeps them out of the entry chunk entirely.
@@ -121,6 +124,7 @@ function PopulationView() {
 
   const isAwv = activeSubnavList === 'Annual Visit';
   const isJsa = activeSubnavList === 'JSA';
+  const isCmp = activeSubnavList === 'CMP';
 
   // Dynamic group rule builder — full-page takeover, no subnav
   if (pgRuleBuilder) {
@@ -163,11 +167,11 @@ function PopulationView() {
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isToc = activeSubnavList === 'TOC IP';
-  const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHedis && !isCcm && !isAwv && !isJsa && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHedis && !isCcm && !isAwv && !isJsa && !isCmp && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
-  const chromeless = isHcc || isHedis || isCcm || isSnp || isAwv || isJsa || isComingSoon || isPopulationGroup;
+  const chromeless = isHcc || isHedis || isCcm || isSnp || isAwv || isJsa || isCmp || isComingSoon || isPopulationGroup;
 
   return (
     <div className={styles.main}>
@@ -184,6 +188,7 @@ function PopulationView() {
             <WorklistFilterBar leading={(isToc || (isTcm && activeTab === 'toc-queue')) ? null : undefined} />
           )}
           {isTcm && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          <Suspense fallback={<LazyFallback />}>
           {isHcc
               ? <HccWorklistTable />
               : isHedis
@@ -196,6 +201,8 @@ function PopulationView() {
                   ? <AwvWorklistTable />
                 : isJsa
                   ? <JsaWorklistTable />
+                : isCmp
+                  ? <CmpWorklistTable />
                   : isAllPatients
                     ? <AllPatientsTable />
                     : isPopulationGroup
@@ -205,6 +212,7 @@ function PopulationView() {
                         : isToc
                           ? <TocWorklistTable />
                           : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
+          </Suspense>
           {!chromeless && <Pagination />}
         </div>
       </div>
@@ -312,6 +320,14 @@ export function AppLayout() {
       const names = { first_name: firstName, last_name: lastName, full_name: fullName };
       const identity = { id: user.id, email: user.email, updated_at: new Date().toISOString() };
 
+      // Skip the write when this browser already synced these exact values.
+      // Every profiles write is a realtime event that makes each open
+      // Messages tab in the org re-read all profiles, so an unconditional
+      // write per page load fanned out across everyone.
+      const syncKey = `fold:profileSynced:${user.id}`;
+      const fingerprint = JSON.stringify([user.email, fullName, firstName, lastName]);
+      try { if (localStorage.getItem(syncKey) === fingerprint) return; } catch { /* storage blocked */ }
+
       // Write first, ask questions only if it missed. This was a
       // `select id` → then `update` or `insert`, i.e. two serialized round
       // trips on every single page load to do what is almost always one
@@ -343,6 +359,9 @@ export function AppLayout() {
           ...names,
           status: 'Active',
         });
+      }
+      if (updated?.length) {
+        try { localStorage.setItem(syncKey, fingerprint); } catch { /* storage blocked */ }
       }
     });
   }, []);

@@ -33,7 +33,7 @@ export function buildHash(...parts) {
 
 // Every store slice that can back a patient profile view. Order doesn't
 // matter — memberId is unique across the whole set post-unification.
-const PATIENT_SLICES = ['patients', 'hccMembers', 'awvMembers', 'jsaMembers', 'ccmWorklistMembers', 'snpWorklistMembers', 'hedisMembers', 'allPatients'];
+const PATIENT_SLICES = ['patients', 'hccMembers', 'awvMembers', 'jsaMembers', 'cmpMembers', 'ccmWorklistMembers', 'snpWorklistMembers', 'hedisMembers', 'allPatients'];
 
 // ── Patient profile tab slugs ──
 // The right-panel tab, the open care program, and its active step each get a
@@ -208,6 +208,10 @@ export function stateToHash(state) {
       const mlTab = state.memberLeadsTab || 'care-team';
       return buildHash('settings', 'member-leads', mlTab);
     }
+    if (settingsNavItem === 'care-program-config') {
+      if (!state.careProgramConfigId) return buildHash('settings', 'care-program-config');
+      return buildHash('settings', 'care-program-config', state.careProgramConfigId, state.careProgramConfigTab || 'overview');
+    }
     if (settingsNavItem === 'care-plan-library') {
       if (state.carePlanCreateOpen) return buildHash('settings', 'care-plan-library', 'create');
       const cplTab = state.carePlanTab || 'template';
@@ -249,6 +253,7 @@ export function stateToHash(state) {
     'HEDIS': 'hedis',
     'CCM': 'ccm',
     'JSA': 'jsa',
+    'CMP': 'cmp',
     'High Utilizers': 'high-utilizers',
     'DM': 'dm',
     'My Patients': 'my-patients',
@@ -316,6 +321,7 @@ const SETTINGS_SECTION_TO_NAV = {
   'messages': 'messages',
   'calls': 'calls',
   'care-plan-library': 'care-plan-library',
+  'care-program-config': 'care-program-config',
   'crm-widgets': 'crm-widgets',
   'embedded-components': 'embedded-components',
   'content': 'content',
@@ -478,6 +484,13 @@ export function hashToState(route, state = null) {
       updates.memberLeadsTab = route.tab || 'care-team';
       return updates;
     }
+    // Care Program Configuration — the open program type and its tab ride the URL.
+    if (route.section === 'care-program-config') {
+      updates.settingsNavItem = 'care-program-config';
+      updates.careProgramConfigId = route.tab || null;
+      updates.careProgramConfigTab = route.id || 'overview';
+      return updates;
+    }
     // Care Plan Library — tab + create overlay rides the URL so refresh restores it.
     if (route.section === 'care-plan-library') {
       updates.settingsNavItem = 'care-plan-library';
@@ -555,6 +568,7 @@ export function hashToState(route, state = null) {
     'hedis': 'HEDIS',
     'ccm': 'CCM',
     'jsa': 'JSA',
+    'cmp': 'CMP',
     'high-utilizers': 'High Utilizers',
     'dm': 'DM',
     'my-patients': 'My Patients',

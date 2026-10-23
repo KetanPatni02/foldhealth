@@ -12,7 +12,7 @@ import { reportSignInSuccess, takeOAuthSignIn } from './features/auth/accountSec
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
-import { track, trackPageview } from './lib/tracking';
+import { track, trackPageview, scrubAnalyticsEvent } from './lib/tracking';
 import { maybeApplyOrgDefaults } from './lib/orgDefaults';
 
 // Public, shareable form fill-view (#/f/{id}) — rendered without auth so a
@@ -29,7 +29,9 @@ function App() {
   // Message handed from ResetPasswordPage to LoginPage (e.g. "awaiting approval").
   const [loginNotice, setLoginNotice] = useState('');
   const [signOutRequest, setSignOutRequest] = useState(0);
-  const [bypassed, setBypassed] = useState(() => sessionStorage.getItem('__auth_bypass') === 'true');
+  // Dev builds only: in a production bundle a hand-set sessionStorage flag
+  // must not open the app shell without a Supabase session.
+  const [bypassed, setBypassed] = useState(() => import.meta.env.DEV && sessionStorage.getItem('__auth_bypass') === 'true');
   // Set when Supabase fires PASSWORD_RECOVERY OR when the URL hash carries
   // the recovery tokens directly (e.g. before supabase-js has processed
   // them). Initial check handles the brief window between mount and the
@@ -304,8 +306,9 @@ function App() {
     <Suspense fallback={null}>
       <UpdateAvailableCard />
       <AppLayout />
-      <Analytics />
-      <SpeedInsights />
+      {/* Their scripts report the full URL; keep tokens and prefill params out. */}
+      <Analytics beforeSend={scrubAnalyticsEvent} />
+      <SpeedInsights beforeSend={scrubAnalyticsEvent} />
     </Suspense>
   );
 }

@@ -10,6 +10,7 @@ import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Button } from '../../components/Button/Button';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { FilePreview } from '../../components/FilePreview/FilePreview';
+import { openSafeUrl } from '../../lib/openSafeUrl';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import { Select } from '../../components/Select/Select';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
@@ -367,7 +368,7 @@ function PdfPreviewPane({ selected, member, docStatus, expanded, onToggleExpand 
       url = blobUrlRef.current;
     }
     if (!url) return;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    openSafeUrl(url, 'noopener,noreferrer');
   };
 
   return (

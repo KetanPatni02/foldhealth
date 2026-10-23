@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from '../../../components/Drawer/Drawer';
+import { InfoBar } from '../../../components/InfoBar/InfoBar';
 import { Button } from '../../../components/Button/Button';
 import { Select } from '../../../components/Select/Select';
 import { Input } from '../../../components/Input/Input';
 import { Switch } from '../../../components/Switch/Switch';
 import { Icon } from '../../../components/Icon/Icon';
+import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { Link } from '../../../components/Link/Link';
-import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { isEmailAddress } from '../../../components/RecipientInput/isEmailAddress';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { toast } from '../../../components/Toast/sonnerToast';
 import { applyMergeTags, buildRecipientContext } from '../../email-builder/mergeTags';
-import { findOrCreateConversation, addMessage, updateMessage, deleteMessage, updateConversation } from './commsRepo';
+import { findOrCreateConversation, addMessage, updateMessage, deleteMessage } from './commsRepo';
 import { sendEmail } from './commsSend';
 import { useCommsPeople } from './useCommsPeople';
 import { UnityAIBar } from '../../../components/UnityAIBar/UnityAIBar';
@@ -22,9 +23,11 @@ import { formShareLink } from '../../forms/formLink';
 import { EDUCATION_LIBRARY } from './educationLibrary';
 import { draftPatientEmail } from './draftPatientEmail';
 import { SendToSection } from './SendToSection';
-import { DEFAULT_PROTECTION, DEFAULT_ID_VERIFICATION, contactFor, recipientError, personMeta } from './sendTo';
-import { PersonOption } from './PersonOption';
-import { VerifyIdCard } from './VerifyIdCard';
+import {
+  DEFAULT_PROTECTION, DEFAULT_ID_VERIFICATION, contactFor, recipientError, personMeta, verifyBlockers, protectHtml, hasLink, withDecisionMakers, pickOneDecisionMaker, verifyForSendTo, SEND_TO_INFO, SEND_TO_PLACEHOLDER, sendToChipLabel,
+} from './sendTo';
+import { PersonOption, PersonTip } from './PersonOption';
+import { VerifyIdCard, VerifyIdStack, VerifyIdReveal } from './VerifyIdCard';
 import { useAppStore } from '../../../store/useAppStore';
 import { RecipientInput } from '../../../components/RecipientInput/RecipientInput';
 import { useEmailTemplates, withBody } from './useEmailTemplates';
@@ -104,9 +107,8 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
   ];
 
   // Comms (no patient given): who in Send To ('patient' or a contact id).
-  const [picked, setPicked] = useState([]);
+  const [picked, setPicked] = useState(() => (initial.patient?.email ? ['patient'] : []));
   const [verifyId, setVerifyId] = useState(DEFAULT_ID_VERIFICATION);
-  const [archiveOnSend, setArchiveOnSend] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -116,7 +118,8 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
 
   const touch = (fn) => (v) => { setDirty(true); fn(v); };
 
-  const patient = initial.patient || patients.find(p => String(p.id) === patientId) || null;
+  const patient = patients.find(p => String(p.id) === patientId)
+    || (initial.patient && String(initial.patient.id) === patientId ? initial.patient : null);
   const contacts = useAppStore(st => (patient ? st.patientContacts[patient.id] : null));
   const fetchPatientContacts = useAppStore(st => st.fetchPatientContacts);
   useEffect(() => { if (patient?.id) fetchPatientContacts(patient.id); }, [patient?.id, fetchPatientContacts]);
@@ -125,29 +128,57 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
   // details the verification methods need). The first failed check blocks Send.
   const contact = patient ? contactFor(sendTo.type, patient, contacts || []) : null;
   const sendToError = patient ? recipientError({ type: sendTo.type, contact, need: 'email', protection: sendTo.protection }) : null;
-  const forPatient = !!initial.patient;
+  // One layout everywhere: opened for a patient, the drawer is the Comms one
+  // with that patient already picked (Patient, then Send To, then Verify ID).
+  const forPatient = false;
   // Comms: Send To offers the patient and their recorded contacts; someone
   // without an email address is listed but can't be picked.
   const people = patient ? [
-    { value: 'patient', label: patient.name, email: patient.email, type: 'Patient', meta: personMeta(patient), initials: patient.initials },
-    ...(contacts || []).map(c => ({ value: c.id, label: c.name, email: c.email, type: c.type, meta: personMeta(c) })),
+    { value: 'patient', label: patient.name, email: patient.email, phone: patient.phone, dob: patient.dob, type: 'Patient', meta: personMeta(patient), initials: patient.initials },
+    ...(contacts ? withDecisionMakers(contacts) : []).map(c => ({ value: c.id, label: c.name, email: c.email, phone: c.phone, dob: c.dob, type: c.type, missing: c.missing, meta: personMeta(c) })),
   ] : [];
-  const globalTo = people.filter(o => picked.includes(o.value)).map(o => o.email).filter(Boolean);
+  // Send To only shows once a patient with other people on record (care
+  // giver, decision maker…) is picked; otherwise the email goes to the patient.
+  const hasRoles = !!patient && (contacts || []).length > 0;
+  // Verify identity sits above the email so it's seen before writing: under the
+  // template fields (templates carry their own links, so always), or under the
+  // Email Template switch once the body has a link.
+  // It only applies when Send To shows (someone besides the patient can
+  // receive it).
+  const protectable = !forPatient && hasRoles && (useTemplate || hasLink(body));
+  const sendToPicked = hasRoles ? picked : (patient?.email ? ['patient'] : []);
+  const blockers = protectable ? verifyBlockers(verifyId, people.filter(o => sendToPicked.includes(o.value)).map(o => ({ ...o, name: o.label }))) : [];
+  const verifyCard = <VerifyIdCard value={verifyId} onChange={(v) => { setDirty(true); setVerifyId(v); }} blockers={blockers} />;
+  const globalTo = people.filter(o => sendToPicked.includes(o.value)).map(o => o.email).filter(Boolean);
   const to = forPatient
     ? [contact?.email, ...extraContacts.map(c => c.email)].filter(Boolean)
     : globalTo;
   const subjectError = touched && !subject.trim() ? 'Add a subject.' : null;
   const canSend = forPatient
     ? !!contact && !sendToError && !!subject.trim() && !busy
-    : !!patient && to.length > 0 && to.every(isEmailAddress) && !!subject.trim() && !busy;
+    : !!patient && to.length > 0 && to.every(isEmailAddress) && !!subject.trim() && !blockers.length && !busy;
+  // Why Send is greyed out, the first thing missing.
+  const sendBlockedReason = busy ? null
+    : !patient ? 'Pick a patient'
+      : !to.length ? (hasRoles ? 'Pick who to send to' : "This patient doesn't have an email address on record")
+        : !to.every(isEmailAddress) ? 'Fix the email address in Send To'
+          : !subject.trim() ? 'Add a subject'
+            : blockers.length ? "Someone in Send To can't verify their identity"
+              : null;
 
   // Patient picker rows: avatar, name, gender • date of birth (no tag).
-  const patientOptions = useMemo(() => patients.map(p => ({
-    value: String(p.id),
-    triggerLabel: p.name,
-    searchText: p.name,
-    label: <PersonOption name={p.name} initials={p.initials} meta={personMeta(p)} />,
-  })), [patients]);
+  const patientOptions = useMemo(() => {
+    // The patient it was opened for stays listed even if the list lacks them.
+    const list = initial.patient && !patients.some(p => String(p.id) === String(initial.patient.id))
+      ? [initial.patient, ...patients] : patients;
+    return list.map(p => ({
+      value: String(p.id),
+      triggerLabel: p.name,
+      searchText: `${p.name} ${p.email || ''}`,
+      // An email drawer: the second line is the patient's email address.
+      label: <PersonOption name={p.name} initials={p.initials} meta={p.email || 'No email address on record'} />,
+    }));
+  }, [patients, initial.patient]);
 
   // Picking the patient in Comms starts Send To on them.
   const pickPatient = (id) => {
@@ -164,12 +195,11 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
   );
 
   // Merge tags ({{first_name}} …) greet whoever it's sent to.
-  const recipientCtx = useMemo(() => {
-    const recipient = forPatient && sendTo.type !== 'Patient' && contact
-      ? { name: contact.name, email: contact.email }
-      : (patient || { name: to[0] || '' });
-    return buildRecipientContext(recipient, { providerName: sender.name, clinicName: 'Fold Health' });
-  }, [forPatient, sendTo.type, contact, patient, to, sender.name]);
+  // (Without a patient there's no one in Send To yet, so no name.)
+  const recipientCtx = useMemo(
+    () => buildRecipientContext(patient || { name: '' }, { providerName: sender.name, clinicName: 'Fold Health' }),
+    [patient, sender.name],
+  );
 
   const templates = useEmailTemplates(recipientCtx, sender);
   const template = templates.find(t => t.id === templateId) || templates[0];
@@ -215,7 +245,9 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
     setBusy(true);
     try {
       const conversation = await conversationFor();
-      const html = currentHtml();
+      // Verify ID: every link goes out as a secure link.
+      const secured = protectable && verifyId.on ? protectHtml(currentHtml()) : null;
+      const html = secured ? secured.html : currentHtml();
       const result = await sendEmail({
         conversation,
         sender: { id: me?.id, name: sender.name },
@@ -228,10 +260,9 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
         // link service (not built yet) and the Sent record.
         meta: forPatient
           ? { sendTo: sendTo.type, protection: sendTo.protection.on ? sendTo.protection : null, contacts: extraContacts }
-          : { verifyId: verifyId.on ? verifyId : null },
+          : { verifyId: secured ? verifyId : null, ...(secured ? { secureLinks: secured.links } : {}) },
       });
       if (initial.draft) await deleteMessage(initial.draft.id);
-      if (archiveOnSend) await updateConversation(conversation.id, { archived: true });
       if (result?.status === 'failed') toast.error(`Email not sent: ${result.failure_reason}`);
       else toast.success('Email sent');
       onSent?.(conversation);
@@ -278,11 +309,21 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
     setDismissed(true);
   };
 
+  const ccLinks = (
+    <span className={styles.ccLinks}>
+      {!showCc && <Link variant="secondary" onClick={() => setShowCc(true)}>Cc</Link>}
+      {!showCc && !showBcc && <span className={styles.ccDivider} />}
+      {!showBcc && <Link variant="secondary" onClick={() => setShowBcc(true)}>Bcc</Link>}
+    </span>
+  );
+
   return (
     <>
       <Drawer
         title="Compose Email"
-        width={1240}
+        // Without a template there's no preview: the drawer narrows to the
+        // standard width as the preview fades out (Drawer animates width).
+        width={useTemplate ? 1240 : 700}
         onClose={onClose}
         dismissed={dismissed}
         beforeClose={() => {
@@ -291,11 +332,11 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
           return false;
         }}
         primaryAction={(
-          <Button variant="primary" size="L" leadingIcon="solar:plain-2-linear" onClick={send} disabled={!canSend}>
+          <Button variant="primary" size="L" leadingIcon="solar:plain-2-linear" onClick={send} disabled={!canSend} disabledReason={sendBlockedReason}>
             {busy ? 'Sending…' : 'Send'}
           </Button>
         )}
-        bodyClassName={styles.composeBody}
+        bodyClassName={`${styles.composeBody} ${useTemplate ? '' : styles.composeBodySolo}`}
       >
         <div className={styles.composeLeft}>
           <Select
@@ -306,49 +347,67 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
             onChange={() => {}}
           />
           {!forPatient && (<>
-            <Select
-              label="Patient"
-              required
-              searchable
-              options={patientOptions}
-              value={patientId}
-              onChange={pickPatient}
-              placeholder="Search patient"
-              searchPlaceholder="Search by name"
-              emptyText="No matching patients."
-            />
+            {/* Cc / Bcc sit on the last recipient field's label row: Send To
+                when it shows, otherwise Patient. */}
             <div className={styles.recipientField}>
               <div className={styles.recipientLabelRow}>
                 <span className={styles.recipientLabel}>
-                  Send To
+                  Patient
                   <span className={styles.recipientRequired} aria-hidden="true" />
                 </span>
-                <span className={styles.ccLinks}>
-                  {!showCc && <Link variant="secondary" onClick={() => setShowCc(true)}>Cc</Link>}
-                  {!showCc && !showBcc && <span className={styles.ccDivider} />}
-                  {!showBcc && <Link variant="secondary" onClick={() => setShowBcc(true)}>Bcc</Link>}
-                </span>
+                {!hasRoles && ccLinks}
               </div>
-              {/* The patient and their contacts (Figma 2910:39991); no email, no pick. */}
               <Select
-                multiple
-                checkboxes
-                badges
+                aria-label="Patient"
                 searchable
+                options={patientOptions}
+                value={patientId}
+                onChange={pickPatient}
+                placeholder="Search patient"
                 searchPlaceholder="Search by name"
-                options={people.map(o => ({
-                  value: o.value,
-                  triggerLabel: o.label,
-                  searchText: `${o.label} ${o.type} ${o.email || ''}`,
-                  disabled: !o.email,
-                  label: <PersonOption name={o.label} initials={o.initials} meta={o.email ? o.meta : 'No email address on record'} tag={o.type} />,
-                }))}
-                value={picked}
-                onChange={(v) => { setDirty(true); setPicked(v); }}
-                placeholder={patient ? 'Select recipients' : 'Pick a patient first'}
-                disabled={!patient}
+                emptyText="No matching patients."
               />
             </div>
+            {hasRoles && (
+              <div className={styles.recipientField}>
+                <div className={styles.recipientLabelRow}>
+                  <span className={styles.recipientLabel}>
+                    Send To
+                    <Tooltip label={SEND_TO_INFO} maxWidth={280}>
+                      <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-300)" className={styles.recipientInfo} aria-label={SEND_TO_INFO} />
+                    </Tooltip>
+                    <span className={styles.recipientRequired} aria-hidden="true" />
+                  </span>
+                  {ccLinks}
+                </div>
+                {/* The patient and their contacts (Figma 2910:39991); no email, no pick. */}
+                <Select
+                  multiple
+                  checkboxes
+                  badges
+                  searchable
+                  searchPlaceholder="Search by name"
+                  options={people.map(o => ({
+                    value: o.value,
+                    triggerLabel: sendToChipLabel(o.label, o.type),
+                    searchText: `${o.label} ${o.type} ${o.email || ''}`,
+                    disabled: !o.email,
+                    label: <PersonOption name={o.label} initials={o.initials} meta={o.missing ? 'None on record' : o.email || 'No email address on record'} tag={o.type} />,
+                    badgeTooltip: <PersonTip name={o.label} initials={o.initials} email={o.email} tag={o.type} />,
+                  }))}
+                  value={picked}
+                  onChange={(v) => {
+                    setDirty(true);
+                    const next = pickOneDecisionMaker(v, picked, id => people.find(o => o.value === id)?.type);
+                    // Anyone but the patient turns Verify identity on; patient only, off.
+                    const on = verifyForSendTo(next, picked);
+                    if (on !== null) setVerifyId(x => ({ ...x, on }));
+                    setPicked(next);
+                  }}
+                  placeholder={SEND_TO_PLACEHOLDER}
+                />
+              </div>
+            )}
           </>)}
           {forPatient && (<SendToSection
             value={sendTo}
@@ -419,7 +478,9 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
             errorText={subjectError || undefined}
           />
           <Switch checked={useTemplate} onChange={touch(setUseTemplate)} label="Email Template" />
+          {!useTemplate && <VerifyIdReveal show={protectable}>{verifyCard}</VerifyIdReveal>}
           {useTemplate && (
+            <VerifyIdStack>
             <div className={styles.templateRow}>
               <Select
                 label="Template Category"
@@ -446,17 +507,23 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
                 }}
               />
             </div>
+            <VerifyIdReveal show={protectable}>{verifyCard}</VerifyIdReveal>
+            </VerifyIdStack>
           )}
-          {!forPatient && <VerifyIdCard value={verifyId} onChange={(v) => { setDirty(true); setVerifyId(v); }} />}
-          <UnityAIBar onGenerate={generate} generating={generating} />
-          {/* The email text area: PHI notice, formatting, message, insert bar. */}
-          <EmailEditor
-            ref={editorRef}
-            value={body}
-            onChange={(html) => { setDirty(true); setBody(html); }}
-            notice={PHI_NOTICE}
-            actions={editorActions}
-          />
+          {!useTemplate && <UnityAIBar onGenerate={generate} generating={generating} />}
+          {/* A template carries the email, so only the PHI notice shows; without
+              one, the text area: PHI notice, formatting, message, insert bar. */}
+          {useTemplate ? (
+            <InfoBar tone="warning">{PHI_NOTICE}</InfoBar>
+          ) : (
+            <EmailEditor
+              ref={editorRef}
+              value={body}
+              onChange={(html) => { setDirty(true); setBody(html); }}
+              notice={PHI_NOTICE}
+              actions={editorActions}
+            />
+          )}
           <input
             ref={imageInputRef}
             type="file"
@@ -485,14 +552,10 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
               onClose={() => setInsertMenu(null)}
             />
           )}
-          <label className={styles.archive}>
-            <Checkbox checked={archiveOnSend} onCheckedChange={v => setArchiveOnSend(v === true)} />
-            Archive on send
-          </label>
         </div>
 
         {/* The email as it will be sent; edits happen in the editor on the left. */}
-        <div className={styles.composeRight}>
+        <div className={`${styles.composeRight} ${useTemplate ? '' : styles.composeRightHidden}`} aria-hidden={!useTemplate}>
           <div className={styles.previewBar}>
             <span className={styles.previewTitle}>{useTemplate ? 'Template Preview' : 'Preview'}</span>
           </div>

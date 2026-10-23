@@ -187,6 +187,8 @@ import { REFERRAL_SENDER_LINES_MOCK } from '../features/hedis-worklist/data/refe
 import { fetchEfaxNumberRows, persistEfaxNumberInsert, persistEfaxNumberUpdate, persistEfaxNumberDelete } from './lib/efaxNumbersPersist';
 import { fetchCaregapLabRows, persistLabOrder, persistLabResult } from './lib/caregapLabsPersist';
 import { fetchStepStatusRows, persistStepStatus } from './lib/careProgramStepStatusPersist';
+import { fetchProgramTypeRows, persistProgramType, persistProgramTypeDelete } from './lib/careProgramTypesPersist';
+import { defaultProgramTypes } from '../features/settings/care-program-config/careProgramConfigModel';
 import { fetchPatientSnapshotRow } from './lib/patientSnapshotsPersist';
 import { buildPatientSnapshot, patientSnapshotKey } from '../lib/patientSnapshot';
 import { EFAX_NUMBERS_MOCK } from '../features/settings/messages/efax/efaxNumbersMock';
@@ -325,6 +327,14 @@ const CARE_PLAN_LOG_ACTIONS = [
 // One gate per resync query; see lib/resyncGate.js for why these exist.
 const notificationsResync = createResyncGate();
 const unreadMessagesResync = createResyncGate();
+// Reference-data fetches that components fire on every mount. Visiting a
+// page again within a minute reuses what's loaded, and mounts in the same
+// tick share one request; after a save, callers pass { force: true }.
+const mountFetchGates = new Map();
+function mountFetch(name, fn, opts) {
+  if (!mountFetchGates.has(name)) mountFetchGates.set(name, createResyncGate());
+  return mountFetchGates.get(name)('all', fn, { force: !!opts?.force });
+}
 const tabHidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
 
 export const useAppStore = create((set, get) => ({
@@ -487,6 +497,24 @@ export const useAppStore = create((set, get) => ({
   stickyNoteHistory: [],
   quickNotes: [],
   quickNoteHistory: [],
+  // Recorded vitals per patient: { [patientId]: rows }. Empty or failed
+  // loads leave the Vitals tab on its sample history.
+  patientVitals: {},
+  patientVitalsLoading: false,
+  fetchPatientVitals: async (patientId) => {
+    if (!patientId) return;
+    set({ patientVitalsLoading: true });
+    const { data, error } = await supabase.from('patient_vitals').select('*').eq('patient_id', String(patientId)).order('recorded_on', { ascending: false });
+    set(s => ({ patientVitalsLoading: false, patientVitals: error ? s.patientVitals : { ...s.patientVitals, [patientId]: data || [] } }));
+  },
+  recordPatientVitals: async (patientId, readings) => {
+    const rows = readings.map(r => ({ ...r, patient_id: String(patientId) }));
+    const { data, error } = await supabase.from('patient_vitals').insert(rows).select();
+    if (error) return { error };
+    track('patient.vitals_recorded', { count: rows.length });
+    set(s => ({ patientVitals: { ...s.patientVitals, [patientId]: [...data, ...(s.patientVitals[patientId] || [])] } }));
+    return { data };
+  },
   fetchStickyNotes: async (patientId) => {
     const { data } = await supabase.from('sticky_notes').select('*').eq('patient_id', patientId).order('created_at', { ascending: true });
     if (data) set({ stickyNotes: data });
@@ -1103,10 +1131,10 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Quick Notes (global / home page)
-  fetchQuickNotes: async () => {
+  fetchQuickNotes: (opts) => mountFetch('fetchQuickNotes', async () => {
     const { data } = await supabase.from('sticky_notes').select('*').eq('patient_id', 'global').order('created_at', { ascending: false });
     if (data) set({ quickNotes: data });
-  },
+  }, opts),
   fetchQuickNoteHistory: async () => {
     const { data } = await supabase.from('sticky_note_history').select('*').eq('patient_id', 'global').order('created_at', { ascending: false });
     if (data) set({ quickNoteHistory: data });
@@ -1117,7 +1145,7 @@ export const useAppStore = create((set, get) => ({
     if (!error && data) {
       track('note.quick_created', { noteId: data.id });
       await supabase.from('sticky_note_history').insert({ sticky_note_id: data.id, patient_id: 'global', author_name: 'You', action: 'added a Note', note_text: text, ehr_instance: 'Quick Note' });
-      get().fetchQuickNotes();
+      get().fetchQuickNotes({ force: true });
       get().fetchQuickNoteHistory();
     }
     return data;
@@ -1126,7 +1154,7 @@ export const useAppStore = create((set, get) => ({
     track('note.quick_updated', { noteId: id });
     await supabase.from('sticky_notes').update({ text, author_name: 'You' }).eq('id', id);
     await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'Updated a Note', note_text: text, ehr_instance: 'Quick Note' });
-    get().fetchQuickNotes();
+    get().fetchQuickNotes({ force: true });
     get().fetchQuickNoteHistory();
   },
   deleteQuickNote: async (id) => {
@@ -1136,7 +1164,7 @@ export const useAppStore = create((set, get) => ({
       await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'deleted a Note', note_text: noteData.text, ehr_instance: 'Quick Note' });
     }
     await supabase.from('sticky_notes').delete().eq('id', id);
-    get().fetchQuickNotes();
+    get().fetchQuickNotes({ force: true });
     get().fetchQuickNoteHistory();
   },
 
@@ -1197,6 +1225,8 @@ export const useAppStore = create((set, get) => ({
   // its ProgramDetailView on mount. Cleared once consumed.
   pendingCareProgramCode: null,
   pendingCareProgramCarePlan: false,
+  // CMP only: which sub-program to open or enroll (opts.subProgram).
+  pendingCareProgramSubProgram: null,
   navigateToPatient: (patientId, opts = {}) => {
     const from = get().activePage;
     track('nav.patient_opened', { patientId, from });
@@ -1222,6 +1252,7 @@ export const useAppStore = create((set, get) => ({
       updates.pendingCareProgramCode = opts.programCode;
       // Land on the program's Care Plan step rather than its first step.
       updates.pendingCareProgramCarePlan = !!opts.carePlan;
+      updates.pendingCareProgramSubProgram = opts.subProgram || null;
     }
     set(updates);
     const state = get();
@@ -1270,7 +1301,7 @@ export const useAppStore = create((set, get) => ({
     set({ carePlanSummaryOpen: !!open, selectedCareProgramKey: null, careProgramStep: null });
     updateHash?.(get());
   },
-  clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null, pendingCareProgramCarePlan: false }),
+  clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null, pendingCareProgramCarePlan: false, pendingCareProgramSubProgram: null }),
 
   // EditPatientDrawer — one drawer shared by every "Edit …" entry-point
   // on the Profile tab, the P360 banner overflow menu, and every worklist
@@ -1685,6 +1716,57 @@ export const useAppStore = create((set, get) => ({
   // reload; on cold load we hydrate from the DB and fall back to
   // programsForPatient() when the row set is empty.
   careProgramsByPatient: {},
+
+  // Care Program Configuration (Settings): program types, their steps,
+  // worklists, care team, completion criteria and access. The program view
+  // reads each type's steps (see stepsFor). Until care_program_types exists
+  // the built-in types stand in and edits last for the session.
+  careProgramTypes: [],
+  careProgramTypesLoading: false,
+  careProgramTypesDidFetch: false,
+  careProgramTypesMissing: false,
+  fetchCareProgramTypes: async ({ force = false } = {}) => {
+    const s0 = get();
+    if (s0.careProgramTypesLoading || (s0.careProgramTypesDidFetch && !force)) return;
+    set({ careProgramTypesLoading: true });
+    const { types, missing, error } = await fetchProgramTypeRows();
+    if (error && !missing) console.warn('fetchCareProgramTypes:', error.message);
+    set({
+      careProgramTypes: types.length ? types : defaultProgramTypes(),
+      careProgramTypesMissing: missing,
+      careProgramTypesLoading: false,
+      careProgramTypesDidFetch: true,
+    });
+  },
+  saveCareProgramType: async (type) => {
+    const actor = get().currentUserProfile?.name || null;
+    const next = { ...type, createdBy: type.createdBy || actor, updatedAt: new Date().toISOString() };
+    set(s => ({
+      careProgramTypes: s.careProgramTypes.some(t => t.id === next.id)
+        ? s.careProgramTypes.map(t => (t.id === next.id ? next : t))
+        : [...s.careProgramTypes, next],
+    }));
+    if (get().careProgramTypesMissing) return next;
+    const { type: saved, error } = await persistProgramType(next);
+    if (error) {
+      get().showToast?.(`Couldn't save ${next.name}: ${error.message}`);
+      return null;
+    }
+    set(s => ({ careProgramTypes: s.careProgramTypes.map(t => (t.id === saved.id ? saved : t)) }));
+    return saved;
+  },
+  deleteCareProgramType: async (id) => {
+    const prev = get().careProgramTypes;
+    set({ careProgramTypes: prev.filter(t => t.id !== id) });
+    if (get().careProgramTypesMissing) return true;
+    const { error } = await persistProgramTypeDelete(id);
+    if (error) {
+      set({ careProgramTypes: prev });
+      get().showToast?.(`Couldn't delete the program type: ${error.message}`);
+      return false;
+    }
+    return true;
+  },
   careProgramsLoadedFor: {},
   // Program Activity Log entries, keyed by patientId.
   patientProgramActivity: {},
@@ -1996,6 +2078,10 @@ export const useAppStore = create((set, get) => ({
     const rows = (data || []).map(r => ({
       id:           r.id,
       code:         r.code,
+      subProgram:   r.sub_program || null,
+      triggerType:  r.trigger_type || null,
+      triggerDate:  r.trigger_date || null,
+      memberInfo:   r.member_info || null,
       name:         r.name,
       acuity:       r.acuity,
       status:       r.status || 'New',
@@ -2032,14 +2118,26 @@ export const useAppStore = create((set, get) => ({
     set((state) => {
       const existing = state.careProgramsByPatient[patientId] || [];
       // SNP is "triggerable" — it can be enrolled repeatedly, each enrollment a
-      // new trigger (1, 2, 3…). Every other program stays single-instance.
+      // new trigger (1, 2, 3…). CMP allows one enrollment per sub-program
+      // (SPD, Maternity Program, …). Every other program stays single-instance.
       const isTriggerable = entry.code === 'SNP';
-      if (!isTriggerable && existing.some((p) => p.code === entry.code)) return {};
+      const subProgram = entry.subProgram || null;
+      if (subProgram) {
+        if (existing.some((p) => p.code === entry.code && p.subProgram === subProgram)) return {};
+      } else if (!isTriggerable && existing.some((p) => p.code === entry.code)) return {};
       const trigger = existing.filter((p) => p.code === entry.code).length + 1;
+      const subSlug = subProgram ? subProgram.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null;
       program = {
-        id: isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}`,
+        id: subSlug
+          ? `pcp-${patientId}-${entry.code}-${subSlug}`
+          : isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}`,
         code: entry.code,
-        name: `${entry.name} (${entry.code})`,
+        subProgram,
+        // SNP: what triggered the enrollment and for which plan id (Create SNP Program).
+        triggerType: entry.triggerType || null,
+        triggerDate: entry.triggerDate || null,
+        memberInfo: entry.memberInfo || null,
+        name: subProgram ? `${subProgram} (${entry.code})` : `${entry.name} (${entry.code})`,
         acuity: null,
         status: 'New',
         statusColor: 'var(--primary-300)',
@@ -2066,7 +2164,7 @@ export const useAppStore = create((set, get) => ({
     // Persist. Fire-and-forget — the optimistic local update already
     // rendered the row; a slow network shouldn't block the UI.
     if (program) {
-      supabase.from('patient_care_programs').upsert({
+      const row = {
         id:            program.id,
         patient_id:    patientId,
         code:          program.code,
@@ -2083,6 +2181,7 @@ export const useAppStore = create((set, get) => ({
         med_recon_signed_by:   program.medReconSignedBy || null,
         med_recon_signed_role: program.medReconSignedRole || null,
         med_recon_signed_at:   program.medReconSignedAt || null,
+      };
       // ON CONFLICT DO NOTHING against (patient_id, code): the local guard at
       // the top bails when an enrollment already exists locally, so we only
       // reach here when local state was blind to it. Seed rows carry ids like
@@ -2091,7 +2190,28 @@ export const useAppStore = create((set, get) => ({
       // miss the seed row, INSERT, and trip the (patient_id, code) unique key.
       // DO UPDATE would rewrite the id column and dangle references in
       // care_plan_audit / patient_care_plans / patient_care_plan_versions.
-      }, { onConflict: 'patient_id, code', ignoreDuplicates: true }).select('id').then(({ data, error }) => {
+      // With patient_care_programs_sub_program_migration.sql the key is
+      // (patient_id, code, sub_program), so CMP can hold one row per
+      // sub-program. Until that migration runs, fall back to the old key
+      // (a second CMP sub-program then only saves locally). Each save tries
+      // the key its row most likely needs first, then the other.
+      // The trigger columns come from
+      // patient_care_programs_snp_trigger_migration.sql; until it runs, the
+      // last tries save without them.
+      const trigger = Object.fromEntries(Object.entries({
+        trigger_type: program.triggerType, trigger_date: program.triggerDate, member_info: program.memberInfo,
+      }).filter(([, v]) => v));
+      const upsertSubProgram = (extra) => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...extra, sub_program: program.subProgram || '' }, { onConflict: 'patient_id, code, sub_program', ignoreDuplicates: true })
+        .select('id');
+      const upsertLegacy = (extra) => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...extra }, { onConflict: 'patient_id, code', ignoreDuplicates: true })
+        .select('id');
+      const keyOrder = program.subProgram ? [upsertSubProgram, upsertLegacy] : [upsertLegacy, upsertSubProgram];
+      const tries = Object.keys(trigger).length
+        ? [...keyOrder.map(fn => () => fn(trigger)), ...keyOrder.map(fn => () => fn({}))]
+        : keyOrder.map(fn => () => fn({}));
+      tries.reduce((p, attempt) => p.then(res => (res && !res.error ? res : attempt())), Promise.resolve(null)).then(({ data, error }) => {
         if (error) { console.warn('addCareProgram — insert failed:', error.message); return; }
         // Enrolling is program activity, but only when it really enrolled: a
         // duplicate is ignored above, and logging it anyway filled the log
@@ -4083,7 +4203,8 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await supabase
       .from('care_plan_audit').select('*')
       .eq('patient_id', patientId).eq('program_id', programId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
     if (error) console.warn('fetchCarePlanAudit:', error.message);
     set(s => ({
       patientCarePlanAudit: { ...s.patientCarePlanAudit, [key]: (data || []).map(mapCarePlanAuditRow) },
@@ -5551,6 +5672,8 @@ export const useAppStore = create((set, get) => ({
   // mirrored into the URL (#/settings/care-plan-library/<tab>) so a refresh
   // restores the exact library.
   carePlanTab: 'template',
+  careProgramConfigId: null,     // program type open in Settings > Care Program Configuration
+  careProgramConfigTab: 'overview',
   componentWizardOpen: false,
   componentWizardEditId: null,
   componentPreviewId: null,
@@ -5864,7 +5987,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   // ─── Supabase: Fetch calls UI config (nav items, phone lines, session list) ───
-  fetchCallsConfig: async () => {
+  fetchCallsConfig: (opts) => mountFetch('fetchCallsConfig', async () => {
     set({ callsConfigLoading: true });
     const [navRes, linesRes, sessRes] = await Promise.allSettled([
       supabase.from('call_nav_items').select('*').order('sort_order'),
@@ -5898,7 +6021,7 @@ export const useAppStore = create((set, get) => ({
       callSessions: sessData.map(mapSession),
       callsConfigLoading: false,
     });
-  },
+  }, opts),
 
   // Helper: get call records for a patient
   getCallsForPatient: (patientId) => {
@@ -6092,7 +6215,13 @@ export const useAppStore = create((set, get) => ({
     if (!isRealUserId(me?.id)) return () => {};
     get()._unreadMessagesChannel?.unsubscribe();
     // A real insert/update always recounts; only the resync path is gated.
-    const recount = () => get().fetchMessagesUnreadCount({ force: true });
+    // Debounced: opening a chat stamps read_at on many rows at once, and each
+    // row arrives as its own UPDATE event; one count after the burst is enough.
+    let recountTimer = null;
+    const recount = () => {
+      clearTimeout(recountTimer);
+      recountTimer = setTimeout(() => get().fetchMessagesUnreadCount({ force: true }), 500);
+    };
     const ch = supabase
       .channel(`unread-messages:${me.id}`)
       .on('postgres_changes', {
@@ -6131,7 +6260,7 @@ export const useAppStore = create((set, get) => ({
         if (status === 'SUBSCRIBED' && !tabHidden()) get().fetchMessagesUnreadCount();
       });
     set({ _unreadMessagesChannel: ch });
-    return () => { ch.unsubscribe(); set({ _unreadMessagesChannel: null }); };
+    return () => { clearTimeout(recountTimer); ch.unsubscribe(); set({ _unreadMessagesChannel: null }); };
   },
   _unreadMessagesChannel: null,
   setPendingChatUserEmail: (email) => set({ pendingChatUserEmail: email }),
@@ -6183,7 +6312,11 @@ export const useAppStore = create((set, get) => ({
   setEmbeddedComponentsTab: (tab) => { set({ embeddedComponentsTab: tab }); updateHash(get); },
   setAccountTab: (tab) => { set({ accountTab: tab }); updateHash(get); },
   setContentTab: (tab) => { set({ contentTab: tab }); updateHash(get); },
-  setCarePlanTab: (tab) => {
+  openCareProgramConfig: (id, tab = 'overview') => {
+    set({ careProgramConfigId: id, careProgramConfigTab: tab });
+    updateHash(get);
+  },
+    setCarePlanTab: (tab) => {
     const from = get().carePlanTab;
     if (from !== tab) track('nav.tab_changed', { scope: 'settings', from, to: tab });
     set({ carePlanTab: tab });
@@ -6292,7 +6425,7 @@ export const useAppStore = create((set, get) => ({
   // ── Population Groups (Supabase-backed) ──
   popGroups: [],
   popGroupsLoading: false,
-  fetchPopGroups: async () => {
+  fetchPopGroups: (opts) => mountFetch('fetchPopGroups', async () => {
     set({ popGroupsLoading: true });
     const { data, error } = await supabase
       .from('population_groups')
@@ -6304,7 +6437,7 @@ export const useAppStore = create((set, get) => ({
       return;
     }
     set({ popGroups: (data || []).map(popGroupRowToJs), popGroupsLoading: false });
-  },
+  }, opts),
   createPopGroup: async (group) => {
     const { data, error } = await supabase
       .from('population_groups')
@@ -6358,7 +6491,8 @@ export const useAppStore = create((set, get) => ({
       .from('pop_group_activity')
       .select('*')
       .eq('group_id', groupId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
     if (error) {
       console.warn('[store] fetchPopGroupActivity failed:', error.message);
       return [];
@@ -6677,11 +6811,11 @@ export const useAppStore = create((set, get) => ({
 
   // Holidays
   holidaysData: null,
-  fetchHolidays: async () => {
+  fetchHolidays: (opts) => mountFetch('fetchHolidays', async () => {
     const { data, error } = await supabase.from('holidays').select('*').order('date');
     if (error) { console.warn('[store] holidays fetch failed:', error.message); return; }
     set({ holidaysData: data.map(r => ({ id: r.id, date: r.date, name: r.name })) });
-  },
+  }, opts),
   addHoliday: async (holiday) => {
     const { data, error } = await supabase.from('holidays').insert({ date: holiday.date, name: holiday.name }).select();
     if (!error && data) set(s => ({ holidaysData: [...(s.holidaysData || []), { id: data[0].id, date: data[0].date, name: data[0].name }] }));
@@ -7161,23 +7295,30 @@ export const useAppStore = create((set, get) => ({
   //     union prevents half-persisted feeds where some entries are DB-
   //     backed and others live only in memory.
   caregapActivity: {},
-  caregapActivityLoaded: false,
-  fetchCaregapActivity: async () => {
-    if (get().caregapActivityLoaded) return;
+  // Per member: the drawer shows one member's feed, so it reads only those
+  // rows (the whole table grows with every action on every member).
+  caregapActivityLoadedFor: {},
+  fetchCaregapActivity: async (memberId) => {
+    if (!memberId || get().caregapActivityLoadedFor[memberId]) return;
+    set(s => ({ caregapActivityLoadedFor: { ...s.caregapActivityLoadedFor, [memberId]: 'loading' } }));
     const { data, error } = await supabase
       .from('caregap_activity')
       .select('*')
-      .order('at', { ascending: false });
-    if (error) {
-      console.warn('fetchCaregapActivity failed:', error.message);
-      set({ caregapActivityLoaded: true });
-      return;
-    }
-    const byMember = {};
-    for (const row of (data || [])) {
-      (byMember[row.member_id] ??= []).push(caregapRowToEntry(row));
-    }
-    set({ caregapActivity: byMember, caregapActivityLoaded: true });
+      .eq('member_id', memberId)
+      .order('at', { ascending: false })
+      .limit(500);
+    if (error) console.warn('fetchCaregapActivity failed:', error.message);
+    set(s => ({
+      // Entries logged while this read was in flight are already in the map.
+      caregapActivity: error ? s.caregapActivity : {
+        ...s.caregapActivity,
+        [memberId]: [
+          ...(s.caregapActivity[memberId] || []).filter(e => !(data || []).some(r => r.id === e.id)),
+          ...(data || []).map(caregapRowToEntry),
+        ],
+      },
+      caregapActivityLoadedFor: { ...s.caregapActivityLoadedFor, [memberId]: true },
+    }));
   },
   // Status updates applied to the local HEDIS mock data via setHedisMembers.
   hedisMembers: [],
@@ -7294,7 +7435,7 @@ export const useAppStore = create((set, get) => ({
 
   apcmPatients: [],
   apcmPatientsLoading: false,
-  fetchApcmPatients: async () => {
+  fetchApcmPatients: (opts) => mountFetch('fetchApcmPatients', async () => {
     set({ apcmPatientsLoading: true });
     const { data, error } = await supabase
       .from('apcm_patients')
@@ -7330,7 +7471,7 @@ export const useAppStore = create((set, get) => ({
       })),
       apcmPatientsLoading: false,
     });
-  },
+  }, opts),
 
   // ─── CCM Worklist (shared list) ─────────────────────────────────────────
   ccmWorklistMembers: [],
@@ -10797,6 +10938,84 @@ export const useAppStore = create((set, get) => ({
     if (error) console.warn('Failed to update JSA status:', error.message);
   },
 
+  // ── CMP (Care Management Program) worklist: same shape as the JSA slice,
+  // backed by cmp_members (supabase/cmp_members_migration.sql). Falls back to
+  // the local mock until that table exists and is seeded.
+  cmpMembers: [],
+  cmpMembersLoading: false,
+  cmpMembersDidFetch: false,
+  fetchCmpMembers: async () => {
+    if (useAppStore.getState().cmpMembersDidFetch) return;
+    set({ cmpMembersDidFetch: true, cmpMembersLoading: true });
+
+    const { data, error } = await supabase
+      .from('cmp_members')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      console.warn('fetchCmpMembers error or empty, falling back to local mock:', error?.message);
+      const { CMP_MEMBERS } = await import('../features/cmp-worklist/data/mock');
+      set({
+        cmpMembers: CMP_MEMBERS,
+        cmpMembersLoading: false,
+        ...(error ? { cmpMembersDidFetch: false } : {}),
+      });
+      return;
+    }
+
+    set({
+      cmpMembers: data.map(m => ({
+        id: m.id,
+        patientId: m.patient_id,
+        memberId: m.member_id,
+        subProgram: m.sub_program,
+        name: m.name,
+        in: m.initials,
+        g: m.gender,
+        age: m.age,
+        dob: m.dob,
+        language: m.language || 'en',
+        progSubStatus: m.program_sub_status,
+        carePlanStatus: m.care_plan_status,
+        nextActionDue: m.next_action_due,
+        programStartDate: m.program_start_date,
+        programDueDate: m.program_due_date,
+        outreach: m.outreach ?? 0,
+        lastOutreach: m.last_outreach,
+        assignee: m.assignee,
+        assigneeIn: m.assignee_initials,
+        ri: m.risk_level,
+        task: m.tasks ?? 0,
+      })),
+      cmpMembersLoading: false,
+    });
+  },
+  cmpFilters: hydrateListFilters('CMP'),
+  setCmpFilter: (k, vals) => set(s => {
+    const next = { ...s.cmpFilters };
+    if (!vals || vals.length === 0) delete next[k];
+    else next[k] = vals;
+    return { cmpFilters: next };
+  }),
+  clearCmpFilters: () => set(s => ({ cmpFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'CMP') })),
+  selectedCmpIds: [],
+  selectCmpMember: (id) => set(s => ({
+    selectedCmpIds: s.selectedCmpIds.includes(id)
+      ? s.selectedCmpIds.filter(x => x !== id)
+      : [...s.selectedCmpIds, id],
+  })),
+  selectAllCmp: (ids) => set({ selectedCmpIds: ids }),
+  clearCmpSelected: () => set({ selectedCmpIds: [] }),
+  updateCmpMemberStatus: async (id, newStatus) => {
+    set(s => ({ cmpMembers: s.cmpMembers.map(m => (m.id === id ? { ...m, progSubStatus: newStatus } : m)) }));
+    const { error } = await supabase
+      .from('cmp_members')
+      .update({ program_sub_status: newStatus })
+      .eq('id', id);
+    if (error) console.warn('Failed to update CMP status:', error.message);
+  },
+
   selectedHccIds: [],
   selectHccMember: (id) => {
     track('hcc.member_selected', { memberId: id });
@@ -10981,6 +11200,8 @@ export const useAppStore = create((set, get) => ({
     if (get().worklistColumnPrefsLoaded) return;
     try {
       const userId = await get()._resolveWorklistUser();
+      // The dev bypass has no real user id; Postgres rejects it as a uuid.
+      if (!isRealUserId(userId)) { set({ worklistColumnPrefsLoaded: true }); return; }
       const { data, error } = await supabase
         .from('user_worklist_column_prefs')
         .select('worklist_key, column_order, hidden_cols')
@@ -13697,10 +13918,15 @@ export const useAppStore = create((set, get) => ({
     }
     const updated = state.patients.map(p => {
       if (!p.agentAssigned) return p;
-      const newP = { ...p, agentAssigned: '', agentRole: '', onCall: false, status: p.status === 'oncall' || p.status === 'queued' ? 'scheduled' : p.status };
+      const secs = state.agentCallSeconds[p.id];
+      const newP = {
+        ...p, agentAssigned: '', agentRole: '', onCall: false,
+        status: p.status === 'oncall' || p.status === 'queued' ? 'scheduled' : p.status,
+        ...(secs != null ? { callDuration: formatDuration(secs) } : {}),
+      };
       return newP;
     });
-    set({ patients: updated, callTimerRef: null, queueTabDot: false, toast: 'All agent runs aborted' });
+    set({ patients: updated, callTimerRef: null, agentCallSeconds: {}, queueTabDot: false, toast: 'All agent runs aborted' });
     // Persist changes
     for (const p of updated) {
       if (p.agentAssigned === '') {
@@ -13710,29 +13936,31 @@ export const useAppStore = create((set, get) => ({
     setTimeout(() => set(s => s.toast === 'All agent runs aborted' ? { toast: null } : {}), 2800);
   },
 
+  // Agent calls tick in `agentCallSeconds` (id → seconds), not in `patients`:
+  // rebuilding the patients array every second re-rendered every component
+  // subscribed to it. Rows read the clock through useCallDuration.
   startCallTimers: () => {
     const existing = get().callTimerRef;
     if (existing) return;
     const ref = setInterval(() => {
       const state = get();
-      const anyActive = state.patients.some(p => p.status === 'oncall' && p.onCall);
-      if (!anyActive) {
+      const active = state.patients.filter(p => p.status === 'oncall' && p.onCall);
+      if (!active.length) {
         clearInterval(ref);
-        set({ callTimerRef: null });
+        set({ callTimerRef: null, agentCallSeconds: {} });
         return;
       }
-      set(s => ({
-        patients: s.patients.map(p => {
-          if (p.status !== 'oncall' || !p.onCall) return p;
-          const secs = parseDuration(p.callDuration || '00:00') + 1;
-          return { ...p, callDuration: formatDuration(secs) };
-        })
-      }));
+      const prev = state.agentCallSeconds;
+      const next = {};
+      for (const p of active) {
+        next[p.id] = (prev[p.id] ?? parseDuration(p.callDuration || '00:00')) + 1;
+      }
+      set({ agentCallSeconds: next });
       // Note: call duration ticks are NOT persisted every second (too noisy).
-      // They get persisted when the call ends.
     }, 1000);
     set({ callTimerRef: ref });
   },
+  agentCallSeconds: {},
 
   openCallPopover: (patientId, btnRef) => {
     const state = get();
@@ -13759,15 +13987,10 @@ export const useAppStore = create((set, get) => ({
     }));
     get().persistPatient(patientId, updates);
 
+    // Only the seconds tick; rows read the live clock through
+    // useCallDuration, and endActiveCall writes the final duration.
     const ref = setInterval(() => {
-      set(s => {
-        const newSecs = s.activeCallSeconds + 1;
-        const timeStr = formatDuration(newSecs);
-        return {
-          activeCallSeconds: newSecs,
-          patients: s.patients.map(p => p.id === patientId ? { ...p, callDuration: timeStr } : p)
-        };
-      });
+      set(s => ({ activeCallSeconds: s.activeCallSeconds + 1 }));
     }, 1000);
     set({ activeCallTimerRef: ref });
   },
@@ -14135,7 +14358,7 @@ export const useAppStore = create((set, get) => ({
     if (get().efaxesDidFetch) return;
     set({ efaxesDidFetch: true, efaxesLoading: true });
     const { rowToFax, sampleFaxes } = await import('../features/messages/efax/efaxData');
-    const { data, error } = await supabase.from('efax_inbound').select('*').order('received_at', { ascending: false });
+    const { data, error } = await supabase.from('efax_inbound').select('*').order('received_at', { ascending: false }).limit(500);
     if (error) console.warn('fetchEfaxes: falling back to samples:', error.message);
     if (!error && data?.length) {
       set({ efaxes: data.map(rowToFax), efaxesLoading: false, efaxLive: true });
@@ -14586,18 +14809,18 @@ export const useAppStore = create((set, get) => ({
 
   // ── Appointment Types ──
   appointmentTypes: [],
-  fetchAppointmentTypes: async () => {
+  fetchAppointmentTypes: (opts) => mountFetch('fetchAppointmentTypes', async () => {
     const { data, error } = await supabase
       .from('appointment_types')
       .select('*')
       .order('name');
     if (!error && data) set({ appointmentTypes: data });
-  },
+  }, opts),
 
   // ── Appointments ──
   appointments: [],
   appointmentsLoading: false,
-  fetchAppointments: async () => {
+  fetchAppointments: (opts) => mountFetch('fetchAppointments', async () => {
     set({ appointmentsLoading: true });
     const { data, error } = await supabase
       .from('appointments')
@@ -14605,7 +14828,7 @@ export const useAppStore = create((set, get) => ({
       .order('date', { ascending: true });
     if (!error && data) set({ appointments: data });
     set({ appointmentsLoading: false });
-  },
+  }, opts),
 
   // Signal-based drawer opener (mirrors pendingAddTask / pendingOpenTaskId
   // pattern). Set by NotificationsPopover on an "openAppointment" action;
@@ -14646,7 +14869,7 @@ export const useAppStore = create((set, get) => ({
     }
     if (error) { console.error('Create appointment error:', error); return null; }
     // Refresh list
-    get().fetchAppointments();
+    get().fetchAppointments({ force: true });
     // Notify me if I'm listed on the appointment — but not when I created
     // the invite myself (the store surfaces that via the drawer instead).
     if (data && get()._appointmentInvolvesMe(data)) {
@@ -14676,7 +14899,7 @@ export const useAppStore = create((set, get) => ({
       ({ error } = await supabase.from('appointments').update(byName).eq('id', id));
     }
     if (error) { console.error('Update appointment error:', error); return false; }
-    get().fetchAppointments();
+    get().fetchAppointments({ force: true });
     // Notify me if this update newly puts me on the appointment (name
     // becomes primary_user, or gets added to secondary_users).
     if (prev) {
@@ -14702,7 +14925,7 @@ export const useAppStore = create((set, get) => ({
       .delete()
       .eq('id', id);
     if (error) { console.error('Delete appointment error:', error); return false; }
-    get().fetchAppointments();
+    get().fetchAppointments({ force: true });
     return true;
   },
 
@@ -14812,7 +15035,7 @@ export const useAppStore = create((set, get) => ({
 
   // ── Audience segments (CampaignBuilder Include/Exclude options) ──
   audienceSegments: FALLBACK_AUDIENCE_SEGMENTS,
-  fetchAudienceSegments: async () => {
+  fetchAudienceSegments: (opts) => mountFetch('fetchAudienceSegments', async () => {
     const { data, error } = await supabase
       .from('audience_segments')
       .select('*')
@@ -14824,7 +15047,7 @@ export const useAppStore = create((set, get) => ({
         id: r.id, label: r.label, resolverKey: r.resolver_key, sortOrder: r.sort_order,
       })),
     });
-  },
+  }, opts),
 
   // ── Delivery log (campaign_sends), keyed by campaign id ──
   campaignSends: {},
@@ -15471,6 +15694,22 @@ export const useAppStore = create((set, get) => ({
       return false;
     }
     return true;
+  },
+
+  // The response saved under one session (e.g. a patient program's Snapshot,
+  // session `snapshot:<patientId>:<programId>`), or null.
+  fetchFormResponseBySession: async (formId, sessionId) => {
+    if (!formId || !sessionId || (typeof formId === 'string' && formId.startsWith('local-'))) return null;
+    const { data, error } = await supabase
+      .from('form_responses').select('id, answers, completed_at, created_at')
+      .eq('form_id', formId).eq('session_id', sessionId)
+      .order('created_at', { ascending: false }).limit(1);
+    if (error) {
+      console.warn('fetchFormResponseBySession:', error.message);
+      return null;
+    }
+    const row = data?.[0];
+    return row ? { id: row.id, answers: row.answers || {}, savedAt: row.completed_at || row.created_at } : null;
   },
 
   // All responses for a form (newest first), with the submitter's name when the
@@ -16978,7 +17217,7 @@ export const useAppStore = create((set, get) => ({
 
   // ── Task Labels (custom labels stored in DB) ──
   taskLabels: [],
-  fetchTaskLabels: async () => {
+  fetchTaskLabels: (opts) => mountFetch('fetchTaskLabels', async () => {
     const { data, error } = await supabase
       .from('task_labels')
       .select('name')
@@ -16989,7 +17228,7 @@ export const useAppStore = create((set, get) => ({
       return;
     }
     set({ taskLabels: (data || []).map(l => l.name) });
-  },
+  }, opts),
   createTaskLabel: async (name) => {
     const trimmed = name.trim();
     if (!trimmed) return null;
@@ -17009,12 +17248,12 @@ export const useAppStore = create((set, get) => ({
     { name: 'Documentation', description: 'Chart review and documentation tasks' },
     { name: 'Follow-up', description: 'Post-visit follow-up tasks awaiting assignment' },
   ],
-  fetchTaskPools: async () => {
+  fetchTaskPools: (opts) => mountFetch('fetchTaskPools', async () => {
     const { data, error } = await supabase.from('task_pools').select('name, description').order('name');
     if (!error && data && data.length > 0) {
       set({ taskPools: data });
     }
-  },
+  }, opts),
   claimTask: async (taskId) => {
     track('task.claimed', { taskId });
     const me = get().currentUserProfile;

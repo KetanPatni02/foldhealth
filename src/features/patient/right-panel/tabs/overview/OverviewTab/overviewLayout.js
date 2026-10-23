@@ -6,9 +6,10 @@
 // it already reads as a column, so the Overview tops out at two; collapsed, a
 // wide Overview gets three (25% / 50% / 25%).
 //
-// Folding: 3 columns show the lanes as they are; 2 columns stack lanes 1 and
-// 3 in the narrow column and give lane 2 the wide one; 1 column stacks the
-// lanes in order.
+// Folding: 3 columns show the lanes as they are (Overview, Care Management,
+// Actionables); 2 columns stack Actionables under Overview in the narrow
+// column and give Care Management the wide one; 1 column stacks the lanes
+// in that order.
 
 export const TWO_COLUMN_MIN_WIDTH = 1150;
 export const THREE_COLUMN_MIN_WIDTH = 1400;
@@ -19,41 +20,45 @@ export function overviewColumnCount(width, { leftPanelOpen }) {
   return 1;
 }
 
-export const LANE_LABELS = ['Column 1', 'Column 2', 'Column 3'];
-export const LANE_HINTS = ['Narrow, left', 'Wide, middle', 'Narrow, right'];
+export const LANE_LABELS = ['Overview', 'Care Management', 'Actionables'];
+export const LANE_HINTS = ['Patient context', 'Clinical work', 'What to do next'];
+
+// Bump when the default lanes change, so a layout saved before the categories
+// picks up the new columns instead of keeping the old mix.
+export const OVERVIEW_LAYOUT_REVISION = 3;
 
 // Every widget the Overview can show. `sample` marks widgets reused from the
 // left panel Summary tab that still show built-in sample data rather than
-// this patient's.
+// this patient's. `group` is the column it belongs in.
 export const OVERVIEW_WIDGETS = [
-  { key: 'synopsis', label: 'Patient Synopsis', group: 'Summary' },
-  { key: 'healthChart', label: 'Health Chart', group: 'Summary' },
-  { key: 'riskAcuity', label: 'Risk & Acuity', group: 'Summary' },
-  { key: 'highlights', label: 'Highlights', group: 'Summary' },
-  { key: 'suggestedActions', label: 'Suggested Actions', group: 'Actions' },
-  { key: 'quickActions', label: 'Quick Actions', group: 'Actions' },
-  { key: 'carePlan', label: 'Care Plan', group: 'Programs' },
-  { key: 'carePrograms', label: 'Active Care Programs', group: 'Programs' },
-  { key: 'programProgress', label: 'Program Progress', group: 'Programs' },
-  { key: 'consent', label: 'Consent', group: 'Programs' },
-  { key: 'gaps', label: 'Gaps', group: 'Clinical' },
-  { key: 'vitals', label: 'Vitals', group: 'Clinical' },
-  { key: 'medications', label: 'Medications', group: 'Clinical' },
-  { key: 'conditions', label: 'Diagnoses & Problems', group: 'Clinical' },
-  { key: 'notes', label: 'Recent Notes', group: 'Engagement' },
-  { key: 'appointments', label: 'Upcoming Appointments', group: 'Engagement' },
-  { key: 'tasks', label: 'Tasks', group: 'Engagement' },
-  { key: 'sinceLastTouch', label: 'Since Last Touch', group: 'Engagement' },
-  { key: 'contact', label: 'Contact & Reachability', group: 'Engagement' },
-  { key: 'careTeam', label: 'Care Team', group: 'People' },
-  { key: 'caregivers', label: 'Caregiver & Family', group: 'People' },
-  { key: 'careUtilization', label: 'Care Utilization Summary', group: 'Summary tab', sample: true },
-  { key: 'priorAuth', label: 'Prior Authorization Requests', group: 'Summary tab', sample: true },
-  { key: 'populationGroups', label: 'Population Groups', group: 'Summary tab', sample: true },
-  { key: 'careJourneys', label: 'Care Journeys', group: 'Summary tab', sample: true },
-  { key: 'automations', label: 'Active Automations', group: 'Summary tab', sample: true },
-  { key: 'insurance', label: 'Insurance', group: 'Summary tab', sample: true },
-  { key: 'subscription', label: 'Subscription', group: 'Summary tab', sample: true },
+  { key: 'synopsis', label: 'Patient Synopsis', group: 'Overview' },
+  { key: 'healthChart', label: 'Health Chart', group: 'Overview' },
+  { key: 'riskAcuity', label: 'Risk & Acuity', group: 'Overview' },
+  { key: 'highlights', label: 'Highlights', group: 'Overview' },
+  { key: 'careTeam', label: 'Care Team', group: 'Overview' },
+  { key: 'contact', label: 'Contact & Reachability', group: 'Overview' },
+  { key: 'caregivers', label: 'Caregiver & Family', group: 'Overview' },
+  { key: 'consent', label: 'Consent', group: 'Overview' },
+  { key: 'populationGroups', label: 'Population Groups', group: 'Overview', sample: true },
+  { key: 'insurance', label: 'Insurance', group: 'Overview', sample: true },
+  { key: 'subscription', label: 'Subscription', group: 'Overview', sample: true },
+  { key: 'vitals', label: 'Vitals', group: 'Care Management' },
+  { key: 'carePlan', label: 'Care Plan', group: 'Care Management' },
+  { key: 'carePrograms', label: 'Active Care Programs', group: 'Care Management' },
+  { key: 'gaps', label: 'Gaps', group: 'Care Management' },
+  { key: 'notes', label: 'Recent Notes', group: 'Care Management' },
+  { key: 'medications', label: 'Medications', group: 'Care Management' },
+  { key: 'conditions', label: 'Diagnoses & Problems', group: 'Care Management' },
+  { key: 'programProgress', label: 'Program Progress', group: 'Care Management' },
+  { key: 'careUtilization', label: 'Care Utilization Summary', group: 'Care Management', sample: true },
+  { key: 'priorAuth', label: 'Prior Authorization Requests', group: 'Care Management', sample: true },
+  { key: 'careJourneys', label: 'Care Journeys', group: 'Care Management', sample: true },
+  { key: 'quickActions', label: 'Quick Actions', group: 'Actionables' },
+  { key: 'suggestedActions', label: 'Suggested Actions', group: 'Actionables' },
+  { key: 'appointments', label: 'Upcoming Appointments', group: 'Actionables' },
+  { key: 'tasks', label: 'Tasks', group: 'Actionables' },
+  { key: 'sinceLastTouch', label: 'Since Last Touch', group: 'Actionables' },
+  { key: 'automations', label: 'Active Automations', group: 'Actionables', sample: true },
 ];
 
 export const OVERVIEW_WIDGET_KEYS = OVERVIEW_WIDGETS.map(w => w.key);
@@ -61,19 +66,19 @@ const KNOWN = new Set(OVERVIEW_WIDGET_KEYS);
 
 // Every widget has a home lane. Hidden widgets stay in their lane (dimmed in
 // Customize, skipped on the Overview), so showing one again puts it back
-// where it was. Synopsis and Health Chart open the first lane; Quick Actions
-// sits directly above Upcoming Appointments.
+// where it was.
+//
+// Overview is who the patient is. Care Management is the clinical record
+// (the wide column). Actionables is what to do next, with Quick Actions
+// directly above Suggested Actions and Upcoming Appointments.
 export const DEFAULT_OVERVIEW_LAYOUT = {
+  revision: OVERVIEW_LAYOUT_REVISION,
   lanes: [
-    ['synopsis', 'healthChart', 'riskAcuity', 'highlights', 'conditions', 'medications', 'careUtilization', 'populationGroups'],
-    ['suggestedActions', 'carePlan', 'carePrograms', 'gaps', 'notes', 'programProgress', 'sinceLastTouch', 'priorAuth', 'careJourneys', 'automations'],
-    ['quickActions', 'appointments', 'contact', 'tasks', 'vitals', 'careTeam', 'caregivers', 'consent', 'insurance', 'subscription'],
+    ['synopsis', 'healthChart', 'riskAcuity', 'highlights', 'careTeam', 'contact', 'caregivers', 'consent', 'populationGroups', 'insurance', 'subscription'],
+    ['vitals', 'carePlan', 'carePrograms', 'gaps', 'notes', 'medications', 'conditions', 'careUtilization', 'priorAuth', 'careJourneys', 'programProgress'],
+    ['quickActions', 'suggestedActions', 'appointments', 'tasks', 'sinceLastTouch', 'automations'],
   ],
-  hidden: [
-    'conditions', 'medications', 'careUtilization', 'populationGroups',
-    'programProgress', 'sinceLastTouch', 'priorAuth', 'careJourneys', 'automations',
-    'caregivers', 'consent', 'insurance', 'subscription',
-  ],
+  hidden: ['programProgress'],
 };
 
 const DEFAULT_LANE_OF = Object.fromEntries(
@@ -88,7 +93,8 @@ const DEFAULT_HIDDEN = new Set(DEFAULT_OVERVIEW_LAYOUT.hidden);
  * lane with their default visibility.
  */
 export function normalizeOverviewLayout(saved) {
-  const source = saved && Array.isArray(saved.lanes) ? saved : DEFAULT_OVERVIEW_LAYOUT;
+  const current = saved?.revision === OVERVIEW_LAYOUT_REVISION;
+  const source = current && Array.isArray(saved.lanes) ? saved : DEFAULT_OVERVIEW_LAYOUT;
   const lanes = [[], [], []];
   const seen = new Set();
   source.lanes.slice(0, 3).forEach((lane, i) => {

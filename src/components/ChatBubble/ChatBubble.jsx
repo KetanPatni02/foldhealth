@@ -3,9 +3,12 @@ import { Icon } from '../Icon/Icon';
 import { Avatar } from '../Avatar/Avatar';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { MenuPopover } from '../MenuPopover/MenuPopover';
+import { useStorageUrl } from '../../lib/storageUrl';
+import { openStoredLink } from '../../lib/openSafeUrl';
 import styles from './ChatBubble.module.css';
 
 const URL_RE = /(https?:\/\/[^\s]+)/;
+const URL_SPLIT_RE = /(https?:\/\/[^\s]+)/g;
 
 function formatBytes(n) {
   if (!n && n !== 0) return '';
@@ -23,7 +26,9 @@ function formatBytes(n) {
  *   "Internal" badge
  *
  * Inside the bubble, in order: an optional reply quote, attachment, link
- * card (the first URL in `text`) or call, then the text. Under it: the time
+ * card (a preview of the first URL in `text`) or call, then the text. Links
+ * stay in the text where they were, underlined: white on our purple bubble,
+ * info blue otherwise. Under it: the time
  * and, for our messages, a status (pass a <MessageStatus />).
  *
  * @param {'left'|'right'|'internal'} props.side
@@ -42,6 +47,8 @@ function formatBytes(n) {
  * @param {React.ReactNode} [props.children] – extra content at the end of the bubble (e.g. a card)
  * @param {boolean} [props.flush]          – no padding: `children` lay out the bubble's sections themselves
  * @param {'patient'|'provider'} [props.avatarVariant='patient'] – the sender's avatar colour (provider: an outside org)
+ * @param {(bucket: string, path: string, expiresIn: number) => Promise<string>} [props.signUrl]
+ *   – signs a private attachment URL; defaults to the signed-in session (see lib/storageUrl.js)
  */
 export function ChatBubble({
   side = 'left',
@@ -60,16 +67,17 @@ export function ChatBubble({
   children,
   flush = false,
   avatarVariant = 'patient',
+  signUrl,
 }) {
   const menuRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const internal = side === 'internal';
   const right = side === 'right';
+  const attachmentUrl = useStorageUrl(attachment?.url, signUrl);
 
   const linkMatch = !attachment && !call && text ? text.match(URL_RE) : null;
   const link = linkMatch?.[1];
-  const bodyText = link ? text.replace(link, '').trim() : text;
 
   const copyLink = () => {
     navigator.clipboard?.writeText(link).then(() => {
@@ -101,10 +109,16 @@ export function ChatBubble({
         </div>
       )}
       {attachment && (
-        <a href={attachment.url} target="_blank" rel="noopener noreferrer" className={styles.attachment}>
+        <a
+          href={attachmentUrl || attachment.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.attachment}
+          onClick={e => openStoredLink(e, attachment.url, signUrl)}
+        >
           {attachment.type === 'image' && (
             <span className={styles.attachImage}>
-              <img src={attachment.url} alt={attachment.name} />
+              {attachmentUrl && <img src={attachmentUrl} alt={attachment.name} />}
             </span>
           )}
           <span className={styles.attachRow}>
@@ -131,7 +145,14 @@ export function ChatBubble({
           {call.duration && <span className={styles.callDuration}>{call.duration}</span>}
         </span>
       )}
-      {bodyText && <span className={styles.text}>{bodyText}</span>}
+      {/* The text keeps its links where they were (the card above is a preview). */}
+      {text && (
+        <span className={styles.text}>
+          {text.split(URL_SPLIT_RE).map((part, i) => (i % 2
+            ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className={styles.inlineLink}>{part}</a>
+            : part))}
+        </span>
+      )}
       {children}
     </>
   );

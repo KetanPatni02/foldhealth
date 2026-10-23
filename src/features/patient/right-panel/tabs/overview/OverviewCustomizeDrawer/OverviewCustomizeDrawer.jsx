@@ -81,9 +81,9 @@ export function OverviewCustomizeDrawer({ layout, onSave, onClose }) {
       primaryAction={<Button variant="primary" size="L" onClick={save}>Save</Button>}
     >
       <p className={styles.intro}>
-        Drag widgets to arrange the Overview. Hover a widget to hide it; hidden widgets stay in place, dimmed, so you
-        can show them again. On narrower screens Column 3 stacks under Column 1, and with one column all three stack in
-        order. Only you see this layout.
+        Drag widgets between Overview, Care Management, and Actionables. Hover a widget to hide it; hidden widgets
+        stay in place, dimmed, so you can show them again. On narrower screens Actionables stacks under Overview, and
+        with one column all three stack in that order. Only you see this layout.
       </p>
       <SortableLanes
         lanes={lanes}

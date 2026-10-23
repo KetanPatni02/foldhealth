@@ -60,6 +60,8 @@
   white-space: normal;
   box-shadow: var(--shadow-tooltip);
 }
+/* Higher lift (`raised`). Same specificity as the variants, so it's last. */
+.bubbleLight.bubbleRaised { box-shadow: var(--shadow-tooltip-raised); }
 
 /* Light variant — matches ActionButton tooltips. */
 .bubbleLight {

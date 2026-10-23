@@ -12,6 +12,7 @@
 // Allowed Sentry project — matches src/main.jsx Sentry.init DSN.
 const SENTRY_HOST = 'o4511450529529856.ingest.us.sentry.io';
 const ALLOWED_PROJECT_IDS = ['4511450531037184'];
+const MAX_ENVELOPE_BYTES = 1024 * 1024;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -33,8 +34,14 @@ export default async function handler(req, res) {
       envelope = JSON.stringify(req.body);
     } else {
       // No body parser ran — read the stream ourselves.
+      // Unauthenticated, so stop reading once it's clearly not a normal envelope.
       const chunks = [];
-      for await (const chunk of req) chunks.push(chunk);
+      let size = 0;
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > MAX_ENVELOPE_BYTES) return res.status(413).json({ error: 'Envelope too large' });
+        chunks.push(chunk);
+      }
       envelope = Buffer.concat(chunks).toString('utf8');
     }
 

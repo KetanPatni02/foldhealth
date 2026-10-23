@@ -11,6 +11,18 @@
 // Env: TEXTBEE_API_KEY, TEXTBEE_DEVICE_ID (both from the textbee dashboard).
 
 import { requireUser } from './_lib/requireUser.js';
+import { isE164 } from './_lib/validate.js';
+
+// Longest text we'll send (10 SMS segments).
+const MAX_SMS_LENGTH = 1600;
+
+// The number as E.164: digits with a leading +, a bare 10-digit number as US.
+function toE164(raw) {
+  const s = String(raw || '').trim();
+  const digits = s.replace(/\D/g, '');
+  if (s.startsWith('+')) return `+${digits}`;
+  return digits.length === 10 ? `+1${digits}` : `+${digits}`;
+}
 
 const BASE = 'https://api.textbee.dev/api/v1/gateway/devices';
 
@@ -30,8 +42,14 @@ export default async function handler(req, res) {
   const headers = { 'x-api-key': cfg.key, 'Content-Type': 'application/json' };
 
   if (req.method === 'POST') {
-    const { to, message } = req.body || {};
-    if (!to || !message) return res.status(400).json({ error: { message: 'Missing required fields: to, message' } });
+    const { message } = req.body || {};
+    const to = toE164(req.body?.to);
+    if (!req.body?.to || !message) return res.status(400).json({ error: { message: 'Missing required fields: to, message' } });
+    // One real phone number and a bounded message, so this isn't an open relay.
+    if (!isE164(to)) return res.status(400).json({ error: { message: 'That phone number is not valid.' } });
+    if (typeof message !== 'string' || message.length > MAX_SMS_LENGTH) {
+      return res.status(400).json({ error: { message: `A text can be at most ${MAX_SMS_LENGTH} characters.` } });
+    }
     try {
       const r = await fetch(`${BASE}/${cfg.device}/send-sms`, {
         method: 'POST',
@@ -40,12 +58,14 @@ export default async function handler(req, res) {
       });
       const json = await r.json().catch(() => ({}));
       if (!r.ok) {
-        return res.status(r.status).json({ error: { message: json?.error || json?.message || `Gateway returned ${r.status}` } });
+        console.error('[comms-sms] gateway error', r.status, json);
+        return res.status(r.status).json({ error: { message: 'The SMS gateway could not send this text.' } });
       }
       const id = json?.data?.smsBatchId || json?.data?._id || null;
       return res.status(200).json({ id });
     } catch (err) {
-      return res.status(502).json({ error: { message: `Could not reach the SMS gateway: ${err?.message || err}` } });
+      console.error('[comms-sms]', err);
+      return res.status(502).json({ error: { message: 'Could not reach the SMS gateway.' } });
     }
   }
 
@@ -53,7 +73,10 @@ export default async function handler(req, res) {
     try {
       const r = await fetch(`${BASE}/${cfg.device}/get-received-sms`, { headers });
       const json = await r.json().catch(() => ({}));
-      if (!r.ok) return res.status(r.status).json({ error: { message: json?.message || `Gateway returned ${r.status}` } });
+      if (!r.ok) {
+        console.error('[comms-sms] gateway error', r.status, json);
+        return res.status(r.status).json({ error: { message: 'The SMS gateway could not be read.' } });
+      }
       const messages = (json?.data || []).map(m => ({
         id: `textbee:${m._id || m.id}`,
         from: m.sender,
@@ -62,7 +85,8 @@ export default async function handler(req, res) {
       }));
       return res.status(200).json({ messages });
     } catch (err) {
-      return res.status(502).json({ error: { message: `Could not reach the SMS gateway: ${err?.message || err}` } });
+      console.error('[comms-sms]', err);
+      return res.status(502).json({ error: { message: 'Could not reach the SMS gateway.' } });
     }
   }
 

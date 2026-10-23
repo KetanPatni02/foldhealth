@@ -14,6 +14,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { formatFoldId, matchesFoldId } from '../../lib/foldId';
 import { formatBadgeCount } from '../../lib/formatBadgeCount';
 import { supabase } from '../../lib/supabase';
+import { clearUserStorage } from '../../lib/clearUserStorage';
 import styles from './TopBar.module.css';
 
 /* ── Get user initials from Supabase user_metadata ── */
@@ -95,6 +96,7 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    clearUserStorage();
     sessionStorage.removeItem('__auth_bypass');
     try { sessionStorage.removeItem('__auth_bypass_user'); } catch { /* */ }
     window.location.hash = '#/login';

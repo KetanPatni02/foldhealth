@@ -53,6 +53,49 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-error) 12%, transparent);
 }
 
+/* ── Link highlighting (plain mode, `highlightLinks`) ───────────────── */
+.linkWrap {
+  position: relative;
+  width: 100%;
+}
+/* Same box and type as the textarea so the drawn text sits under the real one.
+   Scoped under .linkWrap so a caller's own textarea class (e.g. MessageComposer's)
+   can't override these, whichever stylesheet loads last. */
+.linkWrap > .linkBackdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  border-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
+  resize: none;
+  scrollbar-gutter: stable;
+}
+
+.linkWrap > .linkInput {
+  position: relative;
+  display: block;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--neutral-400);
+  scrollbar-gutter: stable;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+/* Styling ::selection drops the browser's own highlight, so give it one. */
+.linkWrap > .linkInput::selection {
+  color: transparent;
+  background: color-mix(in srgb, var(--primary-300) 25%, transparent);
+}
+.link {
+  color: var(--status-info-dark, var(--status-info));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* ── Enhanced labeled card layout (Figma 5786:1273) ─────────────────── */
 
 .enhRoot {

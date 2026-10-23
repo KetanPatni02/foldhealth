@@ -323,7 +323,7 @@ export function PatientProfileTabs({
 
         {currentTab === 'PAMI/Hx' && <PAMIHxTab patientId={patientId} widgets={visibleWidgets(layout, 'PAMI/Hx')} />}
 
-        {currentTab === 'Vitals/Labs' && <VitalsLabsTab widgets={visibleWidgets(layout, 'Vitals/Labs')} />}
+        {currentTab === 'Vitals/Labs' && <VitalsLabsTab widgets={visibleWidgets(layout, 'Vitals/Labs')} patientId={patientId} />}
 
         {currentTab === 'Comms' && <CommsTab patient={patient} />}
 

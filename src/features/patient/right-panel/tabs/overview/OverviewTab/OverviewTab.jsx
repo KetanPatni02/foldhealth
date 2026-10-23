@@ -23,7 +23,7 @@ import {
 import { ProgramProgressCard, SinceLastTouchCard } from '../cards/MonitoringCards';
 import { SummaryWidgetCard } from '../cards/SummaryWidgetCard';
 import {
-  OVERVIEW_COLUMN_TEMPLATE, OVERVIEW_WIDGETS, normalizeOverviewLayout, overviewColumnCount, overviewColumns,
+  OVERVIEW_COLUMN_TEMPLATE, OVERVIEW_LAYOUT_REVISION, OVERVIEW_WIDGETS, normalizeOverviewLayout, overviewColumnCount, overviewColumns,
 } from './overviewLayout';
 import styles from './OverviewTab.module.css';
 
@@ -102,25 +102,25 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
     switch (key) {
       case 'synopsis': return <SynopsisCard key={key} overview={overview} />;
       case 'healthChart': return <HealthChartCard key={key} overview={overview} />;
-      case 'highlights': return <HighlightsCard key={key} overview={overview} />;
-      case 'suggestedActions': return <SuggestedActionsCard key={key} memberId={memberId} overview={overview} actions={actions} />;
+      case 'highlights': return <HighlightsCard key={key} patient={patient} patientId={patient.id} overview={overview} />;
+      case 'suggestedActions': return <SuggestedActionsCard key={key} memberId={memberId} patientId={patient.id} overview={overview} actions={actions} />;
       case 'carePlan': return <CarePlanCard key={key} patientId={patient.id} actions={actions} />;
       case 'carePrograms': return <CareProgramsCard key={key} patientId={patient.id} />;
-      case 'gaps': return <GapsCard key={key} overview={overview} actions={actions} />;
+      case 'gaps': return <GapsCard key={key} patient={patient} overview={overview} actions={actions} />;
       case 'notes': return <RecentNotesCard key={key} patientId={patient.id} actions={actions} />;
       case 'quickActions': return <QuickActionsCard key={key} overview={overview} actions={actions} />;
-      case 'appointments': return <AppointmentsCard key={key} patientId={patient.id} />;
+      case 'appointments': return <AppointmentsCard key={key} patientId={patient.id} patient={patient} />;
       case 'tasks': return <TasksCard key={key} patient={patient} actions={actions} />;
-      case 'vitals': return <VitalsCard key={key} overview={overview} />;
+      case 'vitals': return <VitalsCard key={key} memberId={memberId} overview={overview} />;
       case 'riskAcuity': return <RiskAcuityCard key={key} patientId={patient.id} />;
       case 'contact': return <ContactCard key={key} patientId={patient.id} />;
       case 'careTeam': return <CareTeamCard key={key} patientId={patient.id} />;
       case 'caregivers': return <CaregiversCard key={key} patientId={patient.id} />;
       case 'consent': return <ConsentCard key={key} patientId={patient.id} />;
       case 'medications': return <MedicationsCard key={key} patientId={patient.id} />;
-      case 'conditions': return <ConditionsCard key={key} patientId={patient.id} />;
+      case 'conditions': return <ConditionsCard key={key} patientId={patient.id} patient={patient} />;
       case 'sinceLastTouch': return <SinceLastTouchCard key={key} memberId={memberId} />;
-      case 'programProgress': return <ProgramProgressCard key={key} memberId={memberId} />;
+      case 'programProgress': return <ProgramProgressCard key={key} memberId={memberId} patientId={patient.id} />;
       default: return null;
     }
   };
@@ -140,7 +140,11 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
       </div>
 
       {customizing && (
-        <OverviewCustomizeDrawer layout={layout} onSave={next => savePanelLayout(LAYOUT_KEY, next)} onClose={() => onCustomizeClose?.()} />
+        <OverviewCustomizeDrawer
+          layout={layout}
+          onSave={next => savePanelLayout(LAYOUT_KEY, { ...next, revision: OVERVIEW_LAYOUT_REVISION })}
+          onClose={() => onCustomizeClose?.()}
+        />
       )}
       {drawer?.kind === 'note' && <NonVisitNoteDrawer patient={patient} onClose={closeDrawer} />}
       {drawer?.kind === 'task' && (

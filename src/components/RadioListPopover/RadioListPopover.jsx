@@ -18,6 +18,7 @@ import styles from './RadioListPopover.module.css';
  *  - onClose    (fn)             Called on overlay click or Escape.
  *  - width      (number)         Defaults to 240px.
  *  - showClear  (boolean)        Show a "Reset Selection" footer (default true).
+ *  - disabledOptions (string[])  Choices shown greyed out that can't be picked.
  */
 export function RadioListPopover({
   anchorRect,
@@ -28,6 +29,7 @@ export function RadioListPopover({
   onClose,
   width = 240,
   showClear = true,
+  disabledOptions,
 }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
@@ -54,11 +56,13 @@ export function RadioListPopover({
         <div className={styles.list}>
           {options.map((opt) => {
             const active = current === opt;
+            const disabled = disabledOptions?.includes(opt);
             return (
               <button
                 key={opt}
                 type="button"
-                className={styles.row}
+                className={[styles.row, disabled ? styles.rowDisabled : ''].join(' ')}
+                disabled={disabled}
                 onClick={() => onChange?.([opt])}
               >
                 <span className={[styles.radio, active ? styles.radioActive : ''].join(' ')}>

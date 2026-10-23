@@ -41,7 +41,14 @@ const MSG_DEFAULTS = {
 };
 
 // ── Local backend ─────────────────────────────────────────────────────────
+// Messages are patient data, so outside dev builds the fallback lives in
+// memory only and is gone when the tab closes (a failed mode check in
+// production must not leave PHI on a shared machine's disk).
+const PERSIST_LOCAL = import.meta.env.DEV;
+let memoryDb = { conversations: [], messages: [] };
+
 function readLocal() {
+  if (!PERSIST_LOCAL) return memoryDb;
   try {
     const raw = localStorage.getItem(LOCAL_KEY);
     if (raw) return JSON.parse(raw);
@@ -49,7 +56,10 @@ function readLocal() {
   return { conversations: [], messages: [] };
 }
 
-try { localStorage.removeItem('fold-comms-v1'); } catch { /* storage blocked */ }
+try {
+  localStorage.removeItem('fold-comms-v1');
+  if (!PERSIST_LOCAL) localStorage.removeItem(LOCAL_KEY);
+} catch { /* storage blocked */ }
 
 // Own writes are announced in this tab right away; realtime echoes of them
 // (remote mode) carry the same id, so listeners upsert by id.
@@ -58,7 +68,11 @@ function emit(change) {
 }
 
 function writeLocal(db, change) {
-  try { localStorage.setItem(LOCAL_KEY, JSON.stringify(db)); } catch { /* quota or blocked */ }
+  if (!PERSIST_LOCAL) {
+    memoryDb = db;
+  } else {
+    try { localStorage.setItem(LOCAL_KEY, JSON.stringify(db)); } catch { /* quota or blocked */ }
+  }
   if (change) emit(change);
 }
 
@@ -70,6 +84,14 @@ if (typeof window !== 'undefined') {
 }
 
 // ── Public API ────────────────────────────────────────────────────────────
+// One conversation's row (sending a message only needs its unread count, not
+// every conversation in the practice).
+async function getConversation(id) {
+  if (await commsMode() === 'local') return readLocal().conversations.find(c => c.id === id) || null;
+  const { data } = await supabase.from('patient_conversations').select('*').eq('id', id).maybeSingle();
+  return data || null;
+}
+
 export async function listConversations() {
   if (await commsMode() === 'local') {
     return [...readLocal().conversations].sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
@@ -133,11 +155,18 @@ export async function updateConversation(id, patch) {
 
 /** Find the patient's conversation on a channel, or open one. */
 export async function findOrCreateConversation(channel, patient, extra = {}) {
-  const all = await listConversations();
   const key = patient.id != null ? String(patient.id) : null;
-  const found = all.find(c => c.channel === channel && (
-    (key && c.patient_id === key) || (!key && c.patient_name === patient.name)
-  ));
+  let found;
+  if (await commsMode() === 'remote') {
+    const { data } = await supabase.from('patient_conversations').select('*').eq('channel', channel)
+      .eq(key ? 'patient_id' : 'patient_name', key || patient.name || '')
+      .order('last_message_at', { ascending: false }).limit(1);
+    found = data?.[0];
+  } else {
+    found = readLocal().conversations.find(c => c.channel === channel && (
+      (key && c.patient_id === key) || (!key && c.patient_name === patient.name)
+    ));
+  }
   if (found) return found;
   return createConversation({
     channel,
@@ -179,8 +208,7 @@ export async function addMessage(fields) {
     emit({ table: 'patient_messages', type: 'INSERT', row: data });
   }
   if (saved.status !== 'draft' && !saved.internal) {
-    const convs = await listConversations();
-    const c = convs.find(x => x.id === saved.conversation_id);
+    const c = await getConversation(saved.conversation_id);
     await updateConversation(saved.conversation_id, {
       last_preview: previewOf(saved),
       last_message_at: saved.created_at,
@@ -222,8 +250,16 @@ export async function deleteMessage(id) {
 export async function markConversationRead(conversation) {
   if (!conversation?.unread_count) return;
   await updateConversation(conversation.id, { unread_count: 0 });
-  const msgs = await listMessages(conversation.id);
   const stamp = now();
+  if (await commsMode() === 'remote') {
+    // One UPDATE for the whole conversation, not one request per message.
+    const { data } = await supabase.from('patient_messages').update({ read_at: stamp })
+      .eq('conversation_id', conversation.id).eq('direction', 'in').is('read_at', null)
+      .select();
+    for (const row of data || []) emit({ table: 'patient_messages', type: 'UPDATE', row });
+    return;
+  }
+  const msgs = await listMessages(conversation.id);
   await Promise.all(msgs.filter(m => m.direction === 'in' && !m.read_at).map(m => updateMessage(m.id, { read_at: stamp })));
 }
 
@@ -231,25 +267,43 @@ export async function markConversationRead(conversation) {
  * Listen for any change to conversations or messages. The callback gets
  * { table, type, row }; type 'reload' means "re-read everything".
  */
-export function subscribeComms(onChange, name = 'comms') {
+export function subscribeComms(onChange) {
   const local = (e) => onChange(e.detail);
   emitter.addEventListener('change', local);
-  let channel = null;
   let closed = false;
   commsMode().then((mode) => {
     if (mode !== 'remote' || closed) return;
-    channel = supabase.channel(`${name}-${uid()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_conversations' },
-        p => onChange({ table: 'patient_conversations', type: p.eventType, row: p.new?.id ? p.new : p.old }))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_messages' },
-        p => onChange({ table: 'patient_messages', type: p.eventType, row: p.new?.id ? p.new : p.old }))
-      .subscribe();
+    remoteListeners.add(onChange);
+    openSharedChannel();
   });
   return () => {
     closed = true;
     emitter.removeEventListener('change', local);
-    channel?.unsubscribe();
+    remoteListeners.delete(onChange);
+    if (!remoteListeners.size) closeSharedChannel();
   };
+}
+
+// Every comms hook shares one realtime channel. One per hook meant each
+// mounted list opened its own socket subscription on both whole tables.
+const remoteListeners = new Set();
+let sharedChannel = null;
+
+function openSharedChannel() {
+  if (sharedChannel) return;
+  const relay = (table) => (p) => {
+    const change = { table, type: p.eventType, row: p.new?.id ? p.new : p.old };
+    for (const fn of remoteListeners) fn(change);
+  };
+  sharedChannel = supabase.channel(`comms-${uid()}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_conversations' }, relay('patient_conversations'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_messages' }, relay('patient_messages'))
+    .subscribe();
+}
+
+function closeSharedChannel() {
+  sharedChannel?.unsubscribe();
+  sharedChannel = null;
 }
 
 // ── Patient page (/#/p/<token>, signed out) ───────────────────────────────

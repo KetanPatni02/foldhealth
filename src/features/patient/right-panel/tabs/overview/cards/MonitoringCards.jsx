@@ -3,9 +3,11 @@
 import { useEffect } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
+import { CappedRows } from './CappedRows';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { useAppStore } from '../../../../../../store/useAppStore';
+import { programUrlKey } from '../../care-programs/CareProgramsTab/CareProgramsTab.utils';
 import styles from './overviewCards.module.css';
 
 function useMonitoring(memberId) {
@@ -26,18 +28,24 @@ export function SinceLastTouchCard({ memberId }) {
       count={items.length || null}
       footer={data?.continuityNext ? `Next touchpoint: ${data.continuityNext}` : null}
     >
-      <DashboardCardBody>
-        {data?.continuityLast && <PanelSectionItem title="Last touch" meta={data.continuityLast} />}
+      <DashboardCardBody className={styles.listBody}>
+        {data?.continuityLast && <PanelSectionItem inset title="Last touch" meta={data.continuityLast} />}
         {items.length === 0 ? (
           <p className={styles.empty}>Nothing new recorded since the last touch.</p>
-        ) : items.map(t => (
-          <PanelSectionItem
-            key={t.text}
-            title={t.text}
-            wrapTitle
-            trailing={t.source ? <Badge tone="grey" size="S" label={t.source} /> : null}
+        ) : (
+          <CappedRows
+            items={items}
+            render={t => (
+              <PanelSectionItem
+                key={t.text}
+                inset
+                title={t.text}
+                wrapTitle
+                trailing={t.source ? <span className={styles.statusSlotWide}><Badge tone="grey" size="S" label={t.source} /></span> : null}
+              />
+            )}
           />
-        ))}
+        )}
       </DashboardCardBody>
     </DashboardCard>
   );
@@ -48,37 +56,65 @@ const STEP = {
   current: { icon: 'solar:arrow-right-linear', className: styles.textWarning },
 };
 
-export function ProgramProgressCard({ memberId }) {
+export function ProgramProgressCard({ memberId, patientId }) {
   const data = useMonitoring(memberId);
+  const enrollments = useAppStore(s => s.careProgramsByPatient[patientId]);
+  const fetchCareProgramsForPatient = useAppStore(s => s.fetchCareProgramsForPatient);
+  const setPatientProfileTab = useAppStore(s => s.setPatientProfileTab);
+  const openCareProgram = useAppStore(s => s.openCareProgram);
+  useEffect(() => { if (patientId) fetchCareProgramsForPatient(patientId); }, [patientId, fetchCareProgramsForPatient]);
+
+  const openProgram = (p) => {
+    const match = (enrollments || []).find(pr => (p.code && pr.code === p.code) || (p.name && pr.name === p.name));
+    setPatientProfileTab('Care Programs');
+    if (match) openCareProgram(programUrlKey(match));
+  };
+
   if (memberId && data === undefined) return <DashboardCardSkeleton icon="solar:checklist-linear" title="Program Progress" />;
   const programs = (data?.programs || []).filter(p => p.steps?.length || p.progress);
   return (
     <DashboardCard icon="solar:checklist-linear" title="Program Progress" count={programs.length || null}>
-      <DashboardCardBody>
+      <DashboardCardBody className={styles.listBody}>
         {programs.length === 0 ? (
           <p className={styles.empty}>No program steps tracked for this patient yet.</p>
-        ) : programs.map(p => (
+        ) : programs.slice(0, 2).map(p => (
           <div key={p.code} className={styles.programBlock}>
-            <PanelSectionItem
-              leading={<span className={styles.codeChip}>{p.code}</span>}
-              title={p.name}
-              meta={[p.progress, p.next]}
-              wrapTitle
-            />
-            {(p.steps || []).map(s => {
+            <div className={styles.clickRow}>
+              <PanelSectionItem
+                inset
+                leading={<span className={styles.codeChip}>{p.code}</span>}
+                title={(
+                  <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => openProgram(p)}>
+                    {p.name}
+                  </button>
+                )}
+                meta={[p.progress, p.next]}
+                wrapTitle
+              />
+            </div>
+            {(p.steps || []).slice(0, 3).map(s => {
               const st = STEP[s.status];
               return (
-                <PanelSectionItem
-                  key={s.label}
-                  leading={<span className={st?.className || styles.muted}><Icon name={st?.icon || 'solar:record-linear'} size={14} /></span>}
-                  title={s.label}
-                  meta={s.meta || s.sub}
-                  wrapTitle
-                />
+                <div key={s.label} className={styles.clickRow}>
+                  <PanelSectionItem
+                    inset
+                    leading={<span className={st?.className || styles.muted}><Icon name={st?.icon || 'solar:record-linear'} size={14} /></span>}
+                    title={(
+                      <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => openProgram(p)}>
+                        {s.label}
+                      </button>
+                    )}
+                    meta={s.meta || s.sub}
+                    wrapTitle
+                  />
+                </div>
               );
             })}
           </div>
         ))}
+        {programs.length > 2 && (
+          <p className={`${styles.muted} ${styles.listNote}`}>{programs.length - 2} more program{programs.length - 2 === 1 ? '' : 's'} on the Care Management tab.</p>
+        )}
       </DashboardCardBody>
     </DashboardCard>
   );

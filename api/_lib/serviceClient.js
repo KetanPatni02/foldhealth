@@ -1,11 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_PROJECTS } from '../../src/lib/supabaseConfig.js';
 
 /**
  * Service-role Supabase client for server routes that must act past RLS
  * (account lockout, password reset). Null when the server env is missing
  * SUPABASE_SERVICE_ROLE_KEY; callers answer 500 then.
  */
-const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const configuredUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const url = process.env.VERCEL_ENV === 'preview' && (!configuredUrl || configuredUrl.includes('osnihfqqrcchsaqhagcx'))
+  ? SUPABASE_PROJECTS.dev.url
+  : configuredUrl;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export const serviceClient = url && key
