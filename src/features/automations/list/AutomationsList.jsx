@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
+import { SectionTitleBar } from '../../../components/SectionTitleBar/SectionTitleBar';
 import { SubTabs } from '../../../components/SubTabs/SubTabs';
 import { Input } from '../../../components/Input/Input';
 import { Link } from '../../../components/Link/Link';
@@ -199,37 +200,37 @@ export function AutomationsList() {
     : <RingEmptyState icon="solar:documents-linear" label="No templates in this category yet" />);
 
   const header = (
-    <div className={styles.headerRow}>
-      <SubTabs
-        tabs={[
-          { key: 'mine', label: 'My Automations', count: automations.length },
-          { key: 'templates', label: 'Templates', count: templates.length },
-        ]}
-        activeKey={tab}
-        onChange={switchTab}
-      />
-      <div className={styles.headerRight}>
-        <Input
-          type="search"
-          leadingIcon="solar:magnifer-linear"
-          placeholder="Search Automation"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          wrapperClassName={styles.search}
-          aria-label="Search automations"
-          ref={searchRef}
-        />
-        <span className={styles.divider} />
-        <Link onClick={() => setGuideOpen(true)} role="button" tabIndex={0} className={styles.guideLink}>
-          <Icon name="solar:play-linear" size={16} />
-          Get Started
-        </Link>
-        <span className={styles.divider} />
-        <Toggle items={LAYOUTS} active={layout} onChange={setLayout} size="S" />
-        <span className={styles.divider} />
-        <ActionButton icon="solar:add-square-linear" tooltip="New automation" tooltipBelow tooltipLeft onClick={() => openNewAutomation(null)} />
-      </div>
-    </div>
+    <SectionTitleBar
+      tabs={[
+        { key: 'mine', label: 'My Automations', count: automations.length },
+        { key: 'templates', label: 'Templates', count: templates.length },
+      ]}
+      activeTab={tab}
+      onTabChange={switchTab}
+      rightExtras={(
+        <div className={styles.headerRight}>
+          <Input
+            type="search"
+            leadingIcon="solar:magnifer-linear"
+            placeholder="Search Automation"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            wrapperClassName={styles.search}
+            aria-label="Search automations"
+            ref={searchRef}
+          />
+          <span className={styles.divider} />
+          <Link onClick={() => setGuideOpen(true)} role="button" tabIndex={0} className={styles.guideLink}>
+            <Icon name="solar:play-linear" size={16} />
+            Get Started
+          </Link>
+          <span className={styles.divider} />
+          <Toggle items={LAYOUTS} active={layout} onChange={setLayout} size="S" />
+          <span className={styles.divider} />
+          <ActionButton icon="solar:add-square-linear" tooltip="New automation" tooltipBelow tooltipLeft onClick={() => openNewAutomation(null)} />
+        </div>
+      )}
+    />
   );
 
   const searchToggle = (
