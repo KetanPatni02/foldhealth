@@ -4,11 +4,13 @@
 // patient_monitoring. Everything else on the Overview (care programs, care
 // plan, tasks, notes, appointments) reads its own existing table.
 //
-// The local seed only covers Annette Brave (member 11089). Other patients
-// render each card's empty state until they have a row.
+// The local seed only covers Annette Brave. Her chart is member 11089.
+// The CCM and HCC worklist mocks identify that same demo patient as
+// `#837261495203` and `M-6479-2697`. The overview lookup is by member id,
+// so those screens stay empty unless the seed is keyed that way too.
+// Other patients render each card's empty state until they have a row.
 
-export const OVERVIEW_SEED = {
-  '11089': {
+const ANNETTE_OVERVIEW = {
     memberId: '11089',
     synopsis: 'Annette is a 56-year-old woman with Type 2 Diabetes and Hypertension, both above target. HbA1c rose to 8.2% (goal under 7.0%) and blood pressure is 142/88 mmHg. She is enrolled in CCM and TCM following an ER visit for chest pain on 03/02/2025.',
     synopsisEmphasis: ['8.2%', '142/88 mmHg', 'CCM', 'TCM'],
@@ -56,8 +58,13 @@ export const OVERVIEW_SEED = {
       { id: 'g4', category: 'hcc', code: 'HCC 37', title: 'Diabetes with chronic complications (E11.65)', detail: 'Suspected • not documented this year', status: 'Open', tone: 'error', cta: 'Review' },
       { id: 'g5', category: 'hcc', code: 'HCC 48', title: 'Morbid obesity (E66.01)', detail: 'Recapture due • last coded 2024', status: 'Open', tone: 'warning', cta: 'Review' },
     ],
-  },
 };
+
+const ANNETTE_MEMBER_IDS = ['11089', '#837261495203', 'M-6479-2697'];
+
+export const OVERVIEW_SEED = Object.fromEntries(
+  ANNETTE_MEMBER_IDS.map(memberId => [memberId, { ...ANNETTE_OVERVIEW, memberId }]),
+);
 
 // Supabase row (snake_case) → app object. Used by the store's fetch.
 export function mapOverviewRow(row) {

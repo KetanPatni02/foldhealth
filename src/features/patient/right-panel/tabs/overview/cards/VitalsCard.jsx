@@ -7,6 +7,7 @@ import {
 } from '../../../../../../components/LazyRecharts/LazyRecharts';
 import { goalTarget } from './vitalGoal';
 import styles from './overviewCards.module.css';
+import { CardInsights } from '../attention/CardInsights';
 
 const TONE_COLOR = {
   error: 'var(--status-error-dark)',
@@ -225,6 +226,7 @@ export function VitalsCard({ overview, memberId }) {
           </div>
         )}
       </DashboardCardBody>
+      <CardInsights />
     </DashboardCard>
   );
 }

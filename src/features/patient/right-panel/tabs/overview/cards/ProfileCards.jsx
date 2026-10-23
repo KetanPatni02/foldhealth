@@ -16,6 +16,7 @@ import { isProgramClosed } from '../../../../data/programStatus';
 import { consentSections } from '../../../../data/consentDisplay';
 import { usePatientConsent } from '../../../../hooks/usePatientConsent';
 import { Button } from '../../../../../../components/Button/Button';
+import { CardInsights } from '../attention/CardInsights';
 
 const AddMedicationsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddMedicationsDrawer/AddMedicationsDrawer').then(m => ({ default: m.AddMedicationsDrawer })));
 const AddProblemsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddProblemsDrawer/AddProblemsDrawer').then(m => ({ default: m.AddProblemsDrawer })));
@@ -31,6 +32,7 @@ function ProfileCard({ patientId, icon, title, count, bodyClassName, children })
       <DashboardCardBody className={bodyClassName}>
         {profile ? children(profile) : <p className={styles.empty}>No profile data for this patient yet.</p>}
       </DashboardCardBody>
+      <CardInsights />
     </DashboardCard>
   );
 }
@@ -244,6 +246,7 @@ export function ConsentCard({ patientId }) {
           </>
         )}
       </DashboardCardBody>
+      <CardInsights />
     </DashboardCard>
   );
 }

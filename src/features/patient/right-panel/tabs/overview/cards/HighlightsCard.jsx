@@ -6,6 +6,7 @@ import { Icon } from '../../../../../../components/Icon/Icon';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { gapForHighlight, openOverviewGap } from './overviewItemActions';
 import styles from './overviewCards.module.css';
+import { CardInsights } from '../attention/CardInsights';
 
 const AddMedicationsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddMedicationsDrawer/AddMedicationsDrawer').then(m => ({ default: m.AddMedicationsDrawer })));
 const CareGapDetailDrawer = lazy(() => import('../../../../../hedis-worklist/CareGapDetailDrawer').then(m => ({ default: m.CareGapDetailDrawer })));
@@ -91,6 +92,7 @@ export function HighlightsCard({ overview, patient, patientId }) {
           />
         </Suspense>
       )}
+      <CardInsights />
     </DashboardCard>
   );
 }
