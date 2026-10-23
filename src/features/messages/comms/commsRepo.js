@@ -101,6 +101,28 @@ export async function listConversations() {
   return data || [];
 }
 
+/**
+ * One patient's conversations (by patient id, or by name for threads that
+ * carry no id), newest first. A one-off read for patient surfaces, so they
+ * don't load every conversation.
+ */
+export async function listPatientConversations({ patientId, patientName }) {
+  const id = patientId != null ? String(patientId) : null;
+  if (!id && !patientName) return [];
+  const matches = c => (id && c.patient_id === id) || (!c.patient_id && patientName && c.patient_name === patientName);
+  if (await commsMode() === 'local') {
+    return readLocal().conversations.filter(matches)
+      .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
+  }
+  let query = supabase.from('patient_conversations').select('*').order('last_message_at', { ascending: false });
+  if (id && patientName) query = query.or(`patient_id.eq.${id},and(patient_id.is.null,patient_name.eq."${patientName.replace(/"/g, '')}")`);
+  else if (id) query = query.eq('patient_id', id);
+  else query = query.is('patient_id', null).eq('patient_name', patientName);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
 export async function listMessages(conversationId) {
   if (await commsMode() === 'local') {
     return readLocal().messages.filter(m => m.conversation_id === conversationId)

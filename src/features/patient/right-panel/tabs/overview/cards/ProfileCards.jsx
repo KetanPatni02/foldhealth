@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { CappedRows } from './CappedRows';
+import { MedChangesSection } from './MedChangesSection';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Avatar } from '../../../../../../components/Avatar/Avatar';
 import { Icon } from '../../../../../../components/Icon/Icon';
@@ -233,8 +234,16 @@ export function MedicationsCard({ patientId }) {
       <ProfileCard patientId={patientId} icon="solar:pill-linear" title="Medications" count={p => list(p.medication_orders).length || null} bodyClassName={styles.listBody}>
         {(p) => {
           const meds = list(p.medication_orders);
-          if (meds.length === 0) return <p className={styles.empty}>No active medications on file.</p>;
+          if (meds.length === 0) {
+            return (
+              <>
+                <p className={styles.empty}>No active medications on file.</p>
+                <MedChangesSection patientId={patientId} />
+              </>
+            );
+          }
           return (
+            <>
             <CappedRows
               items={meds}
               render={m => (
@@ -251,6 +260,8 @@ export function MedicationsCard({ patientId }) {
                 </div>
               )}
             />
+            <MedChangesSection patientId={patientId} />
+            </>
           );
         }}
       </ProfileCard>
