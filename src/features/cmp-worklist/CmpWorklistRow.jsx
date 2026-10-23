@@ -110,24 +110,42 @@ export function CmpWorklistRow({ member, columns, hiddenSet, selected, onToggle,
         </td>
       )))}
 
-      <td className={`${styles.td} ${styles.stickyRight}`}>
-        <div className={styles.actionsCell}>
-          <ActionButton icon="solar:document-text-linear" size="L" tooltip="View Program" onClick={() => onView(enrollments[0])} />
-          <span className={styles.actionDivider} />
-          <ActionButton
-            ref={callBtnRef}
-            icon="solar:phone-linear"
-            size="L"
-            tooltip="Call patient"
-            onClick={(e) => { e.stopPropagation(); openCallPopover(worklistMemberCallId(member), callBtnRef); }}
-          />
-          <span className={styles.actionDivider} />
-          <ActionButton
-            icon="solar:menu-dots-linear"
-            size="L"
-            tooltip="More"
-            onClick={() => showToast(`More actions for ${member.name} are coming soon`)}
-          />
+      {/* Actions stack with the sub-programs: View Program on every line opens
+          that one; Call and More are for the member, on the first line. */}
+      <td className={[styles.td, styles.tdStack, shown.length === 1 ? styles.tdStackCenter : '', styles.stickyRight].filter(Boolean).join(' ')}>
+        <div className={styles.stackItems}>
+          {shown.map((e, i) => (
+            <div key={e.id} className={styles.stackItem}>
+              <div className={styles.actionsCell}>
+                <ActionButton
+                  icon="solar:document-text-linear"
+                  size="L"
+                  tooltip={multi ? `View ${e.subProgram || 'Program'}` : 'View Program'}
+                  onClick={() => onView(e)}
+                />
+                {i === 0 && (
+                  <>
+                    <span className={styles.actionDivider} />
+                    <ActionButton
+                      ref={callBtnRef}
+                      icon="solar:phone-linear"
+                      size="L"
+                      tooltip="Call patient"
+                      onClick={(ev) => { ev.stopPropagation(); openCallPopover(worklistMemberCallId(member), callBtnRef); }}
+                    />
+                    <span className={styles.actionDivider} />
+                    <ActionButton
+                      icon="solar:menu-dots-linear"
+                      size="L"
+                      tooltip="More"
+                      onClick={() => showToast(`More actions for ${member.name} are coming soon`)}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+          {extraCount > 0 && <div className={styles.stackFooter} />}
         </div>
       </td>
     </tr>
