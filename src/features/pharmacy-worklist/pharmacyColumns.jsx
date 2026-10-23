@@ -3,7 +3,7 @@ import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { FAIL_DATE_HINT, GAP_STATUS_TONE, MEASURE_NAMES, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
 import { fillsToStayCompliant } from './fillEvents';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
 import { ClaimReconCell, Dash, DateOnly, DateWithDays, DrugsCount, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SubStatus } from './PharmacyCells';
@@ -13,6 +13,12 @@ import styles from './PharmacyWorklistRow.module.css';
 const PRIORITY_TONE = { P1: 'error' };
 
 const isOverdue = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
+const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
+const failDateHint = (d) => {
+  if (d < 0) return `Passed ${days(-d)} ago: the member can no longer reach 80% PDC this year`;
+  if (d === 0) return 'Today is the last day the member can still reach 80% PDC this year';
+  return `In ${days(d)}: after this date the member can no longer reach 80% PDC this year`;
+};
 
 // Gap-level columns stack one item per pharmacy gap, HEDIS style; the last
 // one draws the divider between per-gap and per-member columns.
@@ -93,12 +99,17 @@ export const PHARMACY_MIDDLE_COLUMNS = [
     key: 'failDate', label: 'Fail Date (Absolute)', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
     renderCell: perGap((g) => {
       const d = daysFromToday(g.failDate);
-      return <DateOnly date={g.failDate} alert={isActiveGap(g.status) && d != null && d <= 14} source={g.failDateSource} hint={FAIL_DATE_HINT} />;
+      const alert = isActiveGap(g.status) && d != null && d <= 14;
+      return <DateOnly date={g.failDate} projected={g.failDateSource === 'Projected'} medications={g.medications} alertHint={alert ? failDateHint(d) : null} />;
     }),
   },
   {
     key: 'nextFillDue', label: 'Next Fill Due', sortKey: 'nextFillDueSort', sortType: 'date', getTdClassName: gapTd(false),
-    renderCell: perGap((g) => <DateOnly date={g.nextFillDue} alert={isActiveGap(g.status) && isOverdue(g.nextFillDue)} source={g.nextFillDueSource} />),
+    renderCell: perGap((g) => {
+      const d = daysFromToday(g.nextFillDue);
+      const overdue = isActiveGap(g.status) && d != null && d < 0;
+      return <DateOnly date={g.nextFillDue} projected={g.nextFillDueSource === 'Projected'} medications={g.medications} alertHint={overdue ? `Overdue by ${days(-d)}` : null} />;
+    }),
   },
   {
     key: 'claimRecon', label: 'Claim Reconciliation', sortKey: 'reconRank', sortType: 'number', getTdClassName: gapTd(false), stopRowClickPropagation: true,
@@ -113,7 +124,7 @@ export const PHARMACY_MIDDLE_COLUMNS = [
       const n = fillsToStayCompliant(g);
       return n == null ? <Dash /> : (
         <Tooltip label="Fills of the usual days supply still needed to reach 80% PDC by Dec 31" placement="bottom">
-          <span className={styles.cellText}>{n === 0 ? 'None needed' : n}</span>
+          <span className={styles.cellText}>{n === 0 ? 'None needed' : `${n} fill${n === 1 ? '' : 's'}`}</span>
         </Tooltip>
       );
     }),

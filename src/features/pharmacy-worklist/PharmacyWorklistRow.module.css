@@ -56,10 +56,10 @@
 .dateText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 .mutedDash { color: var(--neutral-200); font-size: var(--font-base); }
 .pdc { font-size: var(--font-base); font-weight: 500; }
-/* Underlined PDCs carry a tooltip: projected (an estimate until a claim
-   confirms it) and confirmed-but-below-80%. */
-.pdcProjected { color: var(--neutral-400); border-bottom: 1px dashed var(--neutral-300); }
-.pdcBelow { color: var(--status-error); border-bottom: 1px dashed var(--status-error); }
+/* Underlined values carry a tooltip: projected (an estimate until a claim
+   confirms it) and alert (red, act on it). */
+.projected { color: var(--neutral-400); border-bottom: 1px dashed var(--neutral-300); }
+.alert { color: var(--status-error); border-bottom: 1px dashed var(--status-error); }
 .sep { margin: 0 var(--space-1); color: var(--neutral-300); }
 
 .toneError { color: var(--status-error); }
@@ -153,20 +153,6 @@
 .gapLink:hover { background: var(--primary-50); color: var(--primary-300); }
 .gapLinkName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gapLinkStatus { color: var(--neutral-300); }
-
-/* Plan / Calculated / Projected under a number. Projected is set apart:
-   it is not a closure until a claim matches. */
-.sourceTag {
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-  white-space: nowrap;
-  cursor: default;
-}
-.sourceProjected {
-  color: var(--neutral-400);
-  font-style: italic;
-  border-bottom: 1px dashed var(--neutral-300);
-}
 
 /* Claim detail is capped so the column stays narrow; full text on hover. */
 .reconDetail { display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
