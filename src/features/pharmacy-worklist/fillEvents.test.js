@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyPickup, applyRecentFill, projectedPdc, recomputeMeasure, setsRecentFill, withManualRecentFill } from './fillEvents';
+import { applyPickup, applyRecentFill, fillsToStayCompliant, projectedFailDate, projectedPdc, recomputeMeasure, setsRecentFill, withManualRecentFill } from './fillEvents';
 
 // Claims 08/01 and 09/01, 30 days each (measure year 2026).
 const claims = [{ date: '09/01/2026', daysSupply: 30 }, { date: '08/01/2026', daysSupply: 30 }];
@@ -100,5 +100,49 @@ describe('discontinued drugs', () => {
     const dc = recomputeMeasure({ ...x, medications: x.medications.map(d => (d.id === 'm1' ? { ...d, status: 'Discontinued' } : d)) });
     expect(dc.nextFillDue).toBe('11/09/2026');
     expect(projectedPdc(dc)).toBeGreaterThanOrEqual(39);
+  });
+});
+
+describe('claim reversals in PDC', () => {
+  const withRefills = (refills) => gap({ medications: [med({ refills })] });
+
+  it('drops a reversed claim, and a claim voided by a negative-value reversal', () => {
+    const base = projectedPdc(withRefills([{ date: '08/01/2026', daysSupply: 30, claimId: 'A' }]));
+    expect(projectedPdc(withRefills([
+      { date: '09/01/2026', daysSupply: 30, claimId: 'B', claimStatus: 'Reversed' },
+      { date: '08/01/2026', daysSupply: 30, claimId: 'A' },
+    ]))).toBe(base);
+    expect(projectedPdc(withRefills([
+      { date: '09/03/2026', qty: -30, daysSupply: -30, claimId: 'B-R', reversesClaimId: 'B' },
+      { date: '09/01/2026', daysSupply: 30, claimId: 'B' },
+      { date: '08/01/2026', daysSupply: 30, claimId: 'A' },
+    ]))).toBe(base);
+  });
+
+  it('counts a resubmitted claim once, and never a non-Part D claim', () => {
+    const once = projectedPdc(withRefills([{ date: '09/01/2026', daysSupply: 30, claimId: 'B' }]));
+    expect(projectedPdc(withRefills([
+      { date: '09/01/2026', daysSupply: 30, claimId: 'B-2', claimGroup: 'B', claimSeq: 2 },
+      { date: '09/01/2026', daysSupply: 30, claimId: 'B', claimSeq: 1 },
+    ]))).toBe(once);
+    expect(projectedPdc(withRefills([{ date: '09/01/2026', daysSupply: 30, coverage: 'Commercial' }]))).toBeNull();
+  });
+});
+
+describe('projected fail date and fills remaining', () => {
+  it('moves the fail date later and needs fewer fills after a manual fill', () => {
+    const x = gap();
+    const after = withManualRecentFill(x, 'm1', '10/01/2026');
+    const t = (mdy) => Date.parse(`${mdy.slice(6)}-${mdy.slice(0, 2)}-${mdy.slice(3, 5)}`);
+    expect(after.failDateProjected).toBe(projectedFailDate(after));
+    expect(t(after.failDateProjected) - t(projectedFailDate(x))).toBe(30 * 86_400_000);
+    expect(fillsToStayCompliant(after)).toBe(fillsToStayCompliant(x) - 1);
+  });
+
+  it('has no fail date once the fills on record reach 80% for the year', () => {
+    const fills = Array.from({ length: 12 }, (_, i) => ({ date: `${String(i + 1).padStart(2, '0')}/01/2026`, daysSupply: 31 }));
+    const x = gap({ medications: [med({ refills: fills })] });
+    expect(projectedFailDate(x)).toBeNull();
+    expect(fillsToStayCompliant(x)).toBe(0);
   });
 });

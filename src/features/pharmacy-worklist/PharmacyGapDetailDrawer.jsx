@@ -13,7 +13,7 @@ import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
-import { GAP_STATUSES, GAP_STATUS_TONE, MEASURE_NAMES, daysFromToday, enrichPharmacyMember, medLabel } from './pharmacyWorklist.utils';
+import { MANUAL_GAP_STATUSES, GAP_STATUS_TONE, MEASURE_NAMES, daysFromToday, enrichPharmacyMember, medLabel } from './pharmacyWorklist.utils';
 import { SubStatus } from './PharmacyCells';
 import { PharmacySnapshotStep } from './program/PharmacySnapshotStep';
 import { MedicationDetail, PharmacyMedicationReview } from './program/PharmacyMedicationReview';
@@ -62,7 +62,8 @@ export function PharmacyGapDetailDrawer() {
   // A member with no pharmacy measures has no gap to show.
   if (!target || !row || !row.measures?.length) return null;
   // Keyed by member: the outreach state reads the member's log once per mount.
-  return <PharmacyGapDrawerBody key={row.id} target={target} row={row} />;
+  // A rework link for another drug remounts it on that drug's claims.
+  return <PharmacyGapDrawerBody key={`${row.id}|${target.medId || ''}`} target={target} row={row} />;
 }
 
 function PharmacyGapDrawerBody({ target, row }) {
@@ -72,8 +73,11 @@ function PharmacyGapDrawerBody({ target, row }) {
   const setPharmacyAssignee = useAppStore(s => s.setPharmacyAssignee);
   const setPharmacyGapStatus = useAppStore(s => s.setPharmacyGapStatus);
 
-  const [tab, setTab] = useState('snapshot');
-  const [workspace, setWorkspace] = useState(null); // 'outreach' | 'verify' | 'barriers' | { med }
+  // Opened from a "Claim not matched" flag: the drug's claim history in the
+  // side workspace, outreach logging in the main pane.
+  const rework = target.view === 'claims' && target.medId;
+  const [tab, setTab] = useState(rework ? 'outreach' : 'snapshot');
+  const [workspace, setWorkspace] = useState(rework ? { medId: target.medId, tab: 'claims' } : null); // 'outreach' | 'verify' | 'barriers' | { medId, tab? }
   const [statusRect, setStatusRect] = useState(null);
   const [moreRect, setMoreRect] = useState(null);
   const statusBtnRef = useRef(null);
@@ -116,7 +120,7 @@ function PharmacyGapDrawerBody({ target, row }) {
     .map(u => ({ id: u.id, name: u.name, initials: u.initials, role: clinicalRolesPickerLabel(u) }));
 
   const statusItems = [
-    ...GAP_STATUSES.map(s => ({ key: s, label: s, selected: s === gap.status.gap })),
+    ...MANUAL_GAP_STATUSES.map(s => ({ key: s, label: s, selected: s === gap.status.gap })),
     ...(gap.status.manual ? [{ key: AUTO_STATUS, label: 'Use status from data' }] : []),
   ];
 
@@ -175,7 +179,7 @@ function PharmacyGapDrawerBody({ target, row }) {
             )}
             {workspace === 'verify' && <PharmacyVerificationStep member={row} program={PHARM_PROGRAM} />}
             {workspace === 'barriers' && <PharmacyBarrierStep member={row} />}
-            {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} interventionLog={m.interventionLog} />}
+            {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} interventionLog={m.interventionLog} plan={m.healthPlan} initialTab={workspace.tab} />}
           </div>
         </div>
       )}
@@ -289,7 +293,7 @@ function PharmacyGapDrawerBody({ target, row }) {
 
         <div className={styles.tabContentWrap}>
           {tab === 'snapshot' && <PharmacySnapshotStep member={row} />}
-          {tab === 'medication' && <PharmacyMedicationReview member={row} onOpenMed={(medId) => setWorkspace({ medId })} />}
+          {tab === 'medication' && <PharmacyMedicationReview member={row} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab })} />}
           {tab === 'outreach' && (
             <OutreachTabView tab={outreach} hideLogForRow hideForm={workspace === 'outreach'} taskMember={m.name} onLogNew={openOutreach} />
           )}

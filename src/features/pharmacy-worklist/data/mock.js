@@ -20,6 +20,8 @@
 // callHistory: newest first — { date, contact (stakeholder), outcome,
 //   result: 'success' | 'failed', by, note, measures?: ['MAD', …] }
 
+import { applyPickup, recomputeMeasure, withManualRecentFill } from '../fillEvents';
+
 function addDays(mdy, days) {
   const [m, d, y] = mdy.split('/').map(Number);
   const t = new Date(Date.UTC(y, m - 1, d + days));
@@ -506,6 +508,124 @@ function withClaims(base, x, medications) {
   });
 }
 
+// ── Claim history and pickups ──
+// Every claim row gets the transaction fields the reversal logic reads
+// (see annotateClaims). BIN / PCN / group are placeholders until Astrana
+// confirms the feed.
+const PLAN_RX = {
+  'Humana Gold Plus': { bin: '610649', pcn: 'MEDDPRIME', rxGroup: 'HUM-MAPD' },
+  'SCAN Classic': { bin: '004336', pcn: 'MEDDADV', rxGroup: 'SCAN01' },
+  'Blue Shield Medicare': { bin: '610014', pcn: 'MEDDPRIME', rxGroup: 'BSC-MA' },
+  'Aetna Medicare Advantage': { bin: '610502', pcn: 'MEDDAET', rxGroup: 'AET-MAPD' },
+};
+const withClaimFields = (m) => ({
+  ...m,
+  measures: m.measures.map(x => ({
+    ...x,
+    medications: x.medications.map(d => ({
+      ...d,
+      refills: d.refills.map(r => (r.source ? r : {
+        coverage: 'Part D', ...PLAN_RX[m.healthPlan], processedDate: addDays(r.date, 1), claimSeq: 1, ...r,
+      })),
+    })),
+  })),
+});
+
+// Prior-year PDC when the plan sends it (two years for some, one for
+// others); the rest only send prior-year non-compliance as Yes / No.
+const withPriorYearPdc = (m, i) => ({
+  ...m,
+  measures: m.measures.map((x, c) => {
+    const p = (k) => Math.min(98, 70 + ((i * 7 + c * 5 + k * 11) % 26));
+    if ((i + c) % 3 === 2) return x;
+    return { ...x, priorYearPdc: (i + c) % 3 === 0 ? [{ year: 2025, pdc: p(0) }, { year: 2024, pdc: p(1) }] : [{ year: 2025, pdc: p(0) }] };
+  }),
+});
+
+const claimRow = (d, date, o) => ({
+  date, qty: d.qty, daysSupply: d.daysSupply, pharmacy: d.pharmacy?.name, prescriber: d.prescriber?.name,
+  prescriberAddress: d.refills?.[0]?.prescriberAddress || '', claimStatus: 'Paid', claimSeq: 1, coverage: 'Part D',
+  processedDate: addDays(date, 1), planPaid: 18.4, copay: 0, ...o,
+});
+const editMed = (x, medId, fn) => recomputeMeasure({ ...x, medications: x.medications.map(d => (d.id === medId ? fn(d) : d)) });
+const newestFirst = (rows) => rows.toSorted((a, b) => toUtc(b.date) - toUtc(a.date));
+
+// One measure per claim scenario the reversal logic has to handle.
+const CLAIM_SCENARIOS = {
+  // Paid claim matching the confirmed pickup: the gap closes (Closed-Data).
+  '19401|MAD': (x, m) => x.medications.filter(d => d.status !== 'Discontinued').reduce((y, d) => editMed(y, d.id, med => ({
+    ...med, refills: newestFirst([claimRow(med, '10/09/2026', { claimId: `CLM-${med.id}-1009`, ...PLAN_RX[m.healthPlan] }), ...med.refills]),
+  })), x),
+  // The pharmacy returned the fill to stock: the claim is reversed and the
+  // gap reopens.
+  '19403|MAC': (x, m) => editMed(x, '19403-mac-1', d => {
+    const [latest, ...rest] = d.refills;
+    return { ...d, refills: [
+      claimRow(d, '10/12/2026', { claimId: `${latest.claimId}-R`, txnType: 'Reversal', claimStatus: 'Reversed', reversesClaimId: latest.claimId, reversalDate: '10/12/2026', qty: d.qty, daysSupply: d.daysSupply, planPaid: 0, copay: 0, note: 'Returned to stock after 14 days on the shelf', ...PLAN_RX[m.healthPlan] }),
+      latest, ...rest,
+    ] };
+  }),
+  // Resubmitted claim: billed, reversed, rebilled as sequence 2.
+  '19403|MAD': (x, m) => editMed(x, '19403-mad-1', d => {
+    const [latest, ...rest] = d.refills;
+    return { ...d, refills: [
+      claimRow(d, latest.date, { claimId: `${latest.claimId}-2`, claimGroup: latest.claimId, claimSeq: 2, txnType: 'Rebill', processedDate: addDays(latest.date, 2), planPaid: latest.planPaid, copay: latest.copay, note: 'Rebilled with corrected days supply', ...PLAN_RX[m.healthPlan] }),
+      claimRow(d, latest.date, { claimId: `${latest.claimId}-R`, claimGroup: latest.claimId, txnType: 'Reversal', claimStatus: 'Reversed', reversesClaimId: latest.claimId, reversalDate: addDays(latest.date, 1), processedDate: addDays(latest.date, 1), planPaid: 0, copay: 0, ...PLAN_RX[m.healthPlan] }),
+      latest, ...rest,
+    ] };
+  }),
+  // Reversal sent as negative quantity and days supply (no transaction type).
+  '19404|MAH': (x, m) => editMed(x, '19404-mah-1', d => {
+    const [latest, ...rest] = d.refills;
+    return { ...d, refills: [
+      claimRow(d, addDays(latest.date, 7), { claimId: `${latest.claimId}-N`, reversesClaimId: latest.claimId, qty: -latest.qty, daysSupply: -latest.daysSupply, planPaid: -(latest.planPaid || 0), copay: 0, ...PLAN_RX[m.healthPlan] }),
+      latest, ...rest,
+    ] };
+  }),
+  // Fill date entered by hand, no claim past the plan's window: flagged.
+  '19405|MAC': (x) => withManualRecentFill(x, '19405-mac-1', '10/01/2026'),
+  // Fill entered by hand, but the claim went to the member's commercial plan.
+  '19406|MAH': (x) => editMed(withManualRecentFill(x, '19406-mah-2', '10/12/2026'), '19406-mah-2', d => ({
+    ...d,
+    refills: newestFirst([claimRow(d, '10/12/2026', { claimId: 'CLM-19406-MAH-COMM', coverage: 'Commercial', bin: '003858', pcn: 'A4', rxGroup: 'EMP-2210', planPaid: 32.1, copay: 10 }), ...d.refills]),
+  })),
+};
+
+// Pickups confirmed by the pharmacy, kept as their own records (who logged
+// them, when, from where), apart from claims. Also mirrored as confirmed
+// fills on each active drug of the measure.
+const PICKUPS = [
+  { memberRowId: '19401', measureCode: 'MAD', pickupDate: '10/09/2026', source: 'Pharmacy call', loggedBy: 'Priya Natarajan' },
+  { memberRowId: '19402', measureCode: 'MAC', pickupDate: '09/22/2026', source: 'Pharmacy call', loggedBy: 'Priya Natarajan' },
+  { memberRowId: '19406', measureCode: 'MAD', pickupDate: '09/30/2026', source: 'Pharmacy verification', loggedBy: 'Marcus Reyes' },
+  { memberRowId: '19407', measureCode: 'MAD', pickupDate: '10/18/2026', source: 'Pharmacy call', loggedBy: 'Priya Natarajan', note: 'Picked up at the counter; claim not on the plan feed yet.' },
+  { memberRowId: '19408', measureCode: 'MAD', pickupDate: '10/01/2026', source: 'Pharmacy call', loggedBy: 'Marcus Reyes' },
+  { memberRowId: '19409', measureCode: 'MAC', pickupDate: '09/24/2026', source: 'Pharmacy verification', loggedBy: 'Priya Natarajan' },
+];
+
+function withPickupsAndScenarios(m) {
+  let measures = m.measures;
+  for (const p of PICKUPS.filter(y => y.memberRowId === m.id)) {
+    ({ measures } = applyPickup({ ...m, measures }, [p.measureCode], p.pickupDate, `Pickup confirmed by ${p.source === 'Pharmacy call' ? 'call' : 'pharmacy'}`));
+  }
+  measures = measures.map(x => (CLAIM_SCENARIOS[`${m.id}|${x.code}`] ? CLAIM_SCENARIOS[`${m.id}|${x.code}`](x, m) : x));
+  // The newest pickup is also the latest call on record.
+  const callHistory = m.id === '19407'
+    ? [{ date: '10/18/2026', contact: 'Pharmacy', outcome: 'Confirmed medication pickup date', result: 'success', by: 'Priya Natarajan', note: 'Picked up at the counter.', measures: ['MAD'] }, ...(m.callHistory || [])]
+    : m.callHistory;
+  return { ...m, measures, callHistory };
+}
+
+export const PHARMACY_PICKUP_CONFIRMATIONS = PICKUPS.map((p, i) => ({
+  id: `pu-${p.memberRowId}-${p.measureCode.toLowerCase()}-${p.pickupDate.replaceAll('/', '')}`,
+  ...p,
+  note: p.note || null,
+  loggedAt: new Date(Date.UTC(+p.pickupDate.slice(6), +p.pickupDate.slice(0, 2) - 1, +p.pickupDate.slice(3, 5), 17, 10 + i)).toISOString(),
+}));
+
 export const PHARMACY_WORKLIST_MEMBERS = BASE_MEMBERS
   .map((m, i) => completeMeasures(m, i))
-  .map(m => ({ sourcePriority: null, ...m, ...SOURCE_FIELDS[m.id] }));
+  .map(m => ({ sourcePriority: null, ...m, ...SOURCE_FIELDS[m.id] }))
+  .map(withClaimFields)
+  .map(withPriorYearPdc)
+  .map(withPickupsAndScenarios);

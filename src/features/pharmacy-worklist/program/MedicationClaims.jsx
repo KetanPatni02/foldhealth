@@ -1,19 +1,69 @@
 import { useState } from 'react';
+import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
 import { Icon } from '../../../components/Icon/Icon';
 import { PhoneLink } from '../../../components/PhoneLink/PhoneLink';
-import { medLabel } from '../pharmacyWorklist.utils';
+import { Tooltip } from '../../../components/Tooltip/Tooltip';
+import { annotateClaims, confirmedFills, matchFill, medLabel, parseMdy } from '../pharmacyWorklist.utils';
 import styles from './MedicationClaims.module.css';
 
-// Same status badges the HCC Claims tab uses.
-const CLAIM_STATUS_BADGE = {
-  Paid: 'status-completed',
-  Pending: 'status-queued',
-  Reversed: 'status-failed',
-  Rejected: 'status-failed',
+const EMPTY = [];
+
+// Each claim status looks different, so a reversed, cancelled or rejected
+// line never reads as a paid fill.
+const CLAIM_BADGE = {
+  Paid: { tone: 'success', icon: 'solar:check-circle-linear' },
+  Pending: { tone: 'grey', icon: 'solar:clock-circle-linear' },
+  Reversed: { tone: 'error', icon: 'solar:undo-left-linear' },
+  Cancelled: { tone: 'warning', icon: 'solar:close-circle-linear' },
+  Rejected: { tone: 'error', icon: 'solar:forbidden-circle-linear' },
+  Deleted: { tone: 'grey', icon: 'solar:trash-bin-minimalistic-linear' },
 };
-const money = (n) => (n == null ? '—' : `$${Number(n).toFixed(2)}`);
+const MATCH_BADGE = {
+  Verified: { tone: 'success', label: 'Claim verified' },
+  'Pending claim': { tone: 'grey', label: 'Pending claim' },
+  'Not matched': { tone: 'error', label: 'Claim not matched' },
+};
+// Claim fields still waiting on Astrana's feed definition.
+const PENDING_FIELDS = 'Status values, transaction type, claim ID and sequence, fill and reversal dates, BIN / PCN / group, the negative-value rule and deleted-claim handling are pending confirmation from Astrana.';
+
+const money = (n) => (n == null ? '—' : `${n < 0 ? '-' : ''}$${Math.abs(Number(n)).toFixed(2)}`);
 const total = (c) => (c.planPaid == null && c.copay == null ? null : (c.planPaid || 0) + (c.copay || 0));
+const byDate = (a, b) => (parseMdy(a.date) ?? 0) - (parseMdy(b.date) ?? 0);
+// Within one claim group, the order things happened: when each transaction
+// was processed (a rebill can carry the original fill date), then billed,
+// reversed, rebilled.
+const TXN_RANK = { Original: 0, Reversal: 1, Rebill: 2 };
+const eventAt = (c) => parseMdy(c.reversalDate || c.processedDate || c.date) ?? 0;
+const byEvent = (a, b) => eventAt(a) - eventAt(b) || TXN_RANK[a.txnType] - TXN_RANK[b.txnType] || a.claimSeq - b.claimSeq;
+
+function ClaimStatusBadge({ claim }) {
+  if (claim.effect === 'Not Part D') return <Badge size="S" tone="info" icon="solar:shield-linear" label={`${claim.coverage}`} />;
+  if (claim.effect === 'Superseded') return <Badge size="S" tone="grey" label="Superseded" />;
+  const status = claim.effect === 'Reversed' && claim.claimStatus === 'Paid' ? 'Reversed' : (claim.claimStatus || 'Paid');
+  const b = CLAIM_BADGE[status] || CLAIM_BADGE.Paid;
+  return <Badge size="S" tone={b.tone} icon={b.icon} label={status} />;
+}
+
+function PendingConfirmation() {
+  return (
+    <Tooltip label={PENDING_FIELDS} placement="bottom" maxWidth={320}>
+      <span><Badge size="S" tone="warning" icon="solar:info-circle-linear" label="Pending data confirmation" /></span>
+    </Tooltip>
+  );
+}
+
+// The story of one claim group, oldest step first: billed, reversed,
+// rebilled, or billed to other insurance.
+function claimStory(rows) {
+  return rows.map(c => {
+    if (c.txnType === 'Reversal') return `Reversed ${c.reversalDate || c.date}`;
+    if (c.txnType === 'Rebill') return `Rebilled ${c.date} (seq ${c.claimSeq})`;
+    if (c.effect === 'Not Part D') return `Billed to ${c.coverage} ${c.date}`;
+    if (['Cancelled', 'Rejected', 'Deleted'].includes(c.claimStatus)) return `${c.claimStatus} ${c.date}`;
+    return `Billed ${c.date}`;
+  }).join(' → ');
+}
 
 function ClaimField({ label, children }) {
   return (
@@ -37,10 +87,12 @@ function Section({ title, aside, children }) {
 }
 
 // Inline claim detail, as in the HCC Claims tab: back arrow and title, then
-// the claim, the drug dispensed, the pharmacy and the prescriber.
-function ClaimDetail({ med, claim, onBack }) {
+// the claim, its transaction, the drug dispensed, the pharmacy and the
+// prescriber.
+function ClaimDetail({ med, claim, onBack, onOpen }) {
   const pharmacy = med.pharmacy?.name === claim.pharmacy ? med.pharmacy : { name: claim.pharmacy };
   const prescriber = med.prescriber;
+  const original = claim.reversesClaimId || (claim.claimGroup !== claim.claimId ? claim.claimGroup : null);
   return (
     <div>
       <div className={styles.claimDetailHead}>
@@ -50,13 +102,28 @@ function ClaimDetail({ med, claim, onBack }) {
         <span className={styles.claimDetailTitle}>Claim Details for Fill: {claim.date}</span>
       </div>
 
-      <Section title="Claim Information" aside={<Badge size="M" variant={CLAIM_STATUS_BADGE[claim.claimStatus] || 'toc-new'} label={claim.claimStatus || 'Paid'} />}>
+      <Section title="Claim Information" aside={<ClaimStatusBadge claim={claim} />}>
         <ClaimField label="Claim Number">{claim.claimId}</ClaimField>
         <ClaimField label="Fill Date">{claim.date}</ClaimField>
         <ClaimField label="Status">{claim.claimStatus || 'Paid'}</ClaimField>
         <ClaimField label="Plan Paid">{money(claim.planPaid)}</ClaimField>
         <ClaimField label="Copay">{money(claim.copay)}</ClaimField>
         <ClaimField label="Total">{money(total(claim))}</ClaimField>
+      </Section>
+
+      <Section title="Transaction" aside={<PendingConfirmation />}>
+        <ClaimField label="Transaction Type">{claim.txnType}</ClaimField>
+        <ClaimField label="Claim Sequence">{`${claim.claimSeq}${claim.current ? ' · Current' : ''}`}</ClaimField>
+        <ClaimField label={claim.txnType === 'Reversal' ? 'Reverses Claim' : 'Original Claim'}>
+          {original ? <button type="button" className={styles.claimIdLink} onClick={() => onOpen(original)}>{original}</button> : null}
+        </ClaimField>
+        <ClaimField label="Reversal Date">{claim.reversalDate}</ClaimField>
+        <ClaimField label="Processed Date">{claim.processedDate}</ClaimField>
+        <ClaimField label="Coverage">{claim.coverage || 'Part D'}</ClaimField>
+        <ClaimField label="BIN">{claim.bin}</ClaimField>
+        <ClaimField label="PCN">{claim.pcn}</ClaimField>
+        <ClaimField label="Group">{claim.rxGroup}</ClaimField>
+        {claim.note && <ClaimField label="Note">{claim.note}</ClaimField>}
       </Section>
 
       <Section title="Drug Dispensed">
@@ -83,38 +150,128 @@ function ClaimDetail({ med, claim, onBack }) {
   );
 }
 
-/**
- * Claims tab for one medication, laid out like the HCC Claims tab: a list
- * (claim ID, fill date, status, amount); a claim ID opens its detail in the
- * same panel with a back arrow. Claims are the refill rows without a Fold
- * `source` (those are fills confirmed by call or verification).
- */
-export function MedicationClaims({ med }) {
-  const [selectedIdx, setSelectedIdx] = useState(null);
-  const claims = (med.refills || []).filter(r => !r.source);
-  const selected = selectedIdx != null ? claims[selectedIdx] : null;
+function ClaimRow({ c, onOpen }) {
+  const muted = c.voided || c.effect === 'Superseded' || c.txnType === 'Reversal';
+  return (
+    <div className={`${styles.dataTableRow} ${styles.claimsGrid} ${muted ? styles.rowVoid : ''}`}>
+      <span className={styles.idCell}>
+        <button type="button" className={styles.claimIdLink} onClick={() => onOpen(c.claimId)}>{c.claimId || 'Claim'}</button>
+        {c.reversesClaimId && (
+          <span className={styles.rowMeta}>
+            Reverses <button type="button" className={styles.inlineLink} onClick={() => onOpen(c.reversesClaimId)}>{c.reversesClaimId}</button>
+          </span>
+        )}
+      </span>
+      <span className={styles.claimDate}>{c.date}</span>
+      <span className={styles.rowMeta}>{c.txnType}</span>
+      <span className={styles.rowMeta}>{c.claimSeq}{c.current ? ' · Current' : ''}</span>
+      <ClaimStatusBadge claim={c} />
+      <span className={`${styles.claimAmount} ${c.voided || c.effect === 'Superseded' ? styles.struck : ''}`}>{money(total(c))}</span>
+    </div>
+  );
+}
 
-  if (selected) return <ClaimDetail med={med} claim={selected} onBack={() => setSelectedIdx(null)} />;
-  if (!claims.length) return <p className={styles.empty}>No claims on file for this medication.</p>;
+// A fill confirmed in Fold (by hand, from a pickup or a refill approval):
+// projected until its claim matches, so it never reads as a claim.
+function FillRow({ f }) {
+  const b = MATCH_BADGE[f.match.status];
+  return (
+    <div className={`${styles.dataTableRow} ${styles.claimsGrid} ${styles.rowFill}`}>
+      <span className={styles.idCell}>
+        <span className={styles.fillLabel}>{f.manual ? 'Entered by hand' : f.source}</span>
+        <span className={styles.rowMeta}>{f.match.detail}</span>
+      </span>
+      <span className={styles.claimDate}>{f.date}</span>
+      <span className={styles.rowMeta}>Fold fill</span>
+      <span className={styles.rowMeta}>—</span>
+      <span className={styles.badges}>
+        {f.match.status !== 'Verified' && <Badge size="S" tone="warning" label="Projected" />}
+        <Badge size="S" tone={b.tone} label={b.label} />
+      </span>
+      <span className={styles.claimAmount}>—</span>
+    </div>
+  );
+}
+
+/**
+ * Claim history for one medication. Claims are grouped into the story of
+ * each fill (billed, reversed, rebilled, billed to other insurance); fills
+ * confirmed in Fold sit in the same timeline with their source and match
+ * status, tagged Projected until a claim matches. Pharmacy-confirmed pickups
+ * are listed below, apart from claim data. A claim ID opens its detail in the
+ * same panel with a back arrow.
+ */
+export function MedicationClaims({ med, plan, memberRowId }) {
+  const [selectedId, setSelectedId] = useState(null);
+  const allPickups = useAppStore(s => s.pharmacyPickups ?? EMPTY);
+  const claims = annotateClaims(med.refills);
+  const fills = confirmedFills(med).map(f => ({ ...f, match: matchFill(f, claims, plan) }));
+  const pickups = allPickups.filter(p => p.memberRowId === memberRowId && p.measureCode === med.measure);
+  const selected = selectedId ? claims.find(c => c.claimId === selectedId) : null;
+
+  if (selected) return <ClaimDetail med={med} claim={selected} onBack={() => setSelectedId(null)} onOpen={setSelectedId} />;
+
+  const groups = new Map();
+  for (const c of claims) groups.set(c.claimGroup, [...(groups.get(c.claimGroup) || []), c]);
+  const timeline = [
+    ...[...groups.values()].map(rows => ({ kind: 'claims', rows: rows.toSorted(byEvent), date: rows.toSorted(byDate).at(-1).date })),
+    ...fills.map(f => ({ kind: 'fill', f, date: f.date })),
+  ].toSorted((a, b) => byDate(b, a));
 
   return (
-    <div className={styles.dataTable}>
-      <div className={`${styles.dataTableHead} ${styles.claimsGrid}`}>
-        <span>Claim ID</span>
-        <span>Fill Date</span>
-        <span>Status</span>
-        <span>Amount</span>
+    <div className={styles.history}>
+      <div className={styles.historyHead}>
+        <span className={styles.claimSectionTitle}>Claim History</span>
+        <PendingConfirmation />
       </div>
-      {claims.map((c, i) => (
-        <div key={`${c.claimId || c.date}-${i}`} className={`${styles.dataTableRow} ${styles.claimsGrid}`}>
-          <button type="button" className={styles.claimIdLink} onClick={() => setSelectedIdx(i)}>
-            {c.claimId || 'Claim'}
-          </button>
-          <span className={styles.claimDate}>{c.date}</span>
-          <Badge size="M" variant={CLAIM_STATUS_BADGE[c.claimStatus] || 'toc-new'} label={c.claimStatus || 'Paid'} />
-          <span className={styles.claimAmount}>{money(total(c))}</span>
+      {!timeline.length ? <p className={styles.empty}>No claims on file for this medication.</p> : (
+        <div className={styles.dataTable}>
+          <div className={`${styles.dataTableHead} ${styles.claimsGrid}`}>
+            <span>Claim ID</span>
+            <span>Fill Date</span>
+            <span>Type</span>
+            <span>Seq</span>
+            <span>Status</span>
+            <span>Amount</span>
+          </div>
+          {timeline.map(item => (item.kind === 'fill' ? (
+            <FillRow key={`fill-${item.f.date}-${item.f.source}`} f={item.f} />
+          ) : (
+            <div key={item.rows[0].claimGroup} className={styles.claimGroup}>
+              {item.rows.length > 1 || item.rows[0].effect !== 'Counts' ? (
+                <div className={styles.story}>{claimStory(item.rows)}</div>
+              ) : null}
+              {item.rows.map(c => <ClaimRow key={`${c.claimId}-${c.claimSeq}-${c.txnType}`} c={c} onOpen={setSelectedId} />)}
+            </div>
+          )))}
         </div>
-      ))}
+      )}
+
+      <div className={styles.historyHead}>
+        <span className={styles.claimSectionTitle}>Pharmacy-Confirmed Pickups</span>
+        <span className={styles.rowMeta}>Logged in Fold, not claim data</span>
+      </div>
+      {!pickups.length ? <p className={styles.empty}>No pickups confirmed for {med.measure}.</p> : (
+        <div className={`${styles.dataTable} ${styles.pickupTable}`}>
+          <div className={`${styles.dataTableHead} ${styles.pickupGrid}`}>
+            <span>Pickup Date</span>
+            <span>Source</span>
+            <span>Logged By</span>
+            <span>Logged</span>
+          </div>
+          {pickups.map(p => (
+            <div key={p.id} className={`${styles.dataTableRow} ${styles.pickupGrid}`}>
+              <span className={styles.claimDate}>{p.pickupDate}</span>
+              <span className={styles.idCell}>
+                <span>{p.source}</span>
+                {p.note && <span className={styles.rowMeta}>{p.note}</span>}
+              </span>
+              <span>{p.loggedBy}</span>
+              <span className={styles.rowMeta}>{new Date(p.loggedAt).toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

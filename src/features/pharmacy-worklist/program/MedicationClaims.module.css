@@ -22,7 +22,46 @@
 .dataTableRow:hover { background: var(--neutral-25); }
 .claimsGrid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 0.9fr 0.8fr;
+  grid-template-columns: 1.7fr 0.9fr 0.7fr 0.7fr 1.3fr 0.7fr;
+  gap: var(--space-3);
+}
+
+.history { display: flex; flex-direction: column; gap: var(--space-3); }
+.historyHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.historyHead + .historyHead, .dataTable + .historyHead, .empty + .historyHead { margin-top: var(--space-2); }
+
+/* One claim group: its story line, then each transaction. */
+.claimGroup { border-bottom: 0.5px solid var(--neutral-150); }
+.claimGroup:last-child { border-bottom: none; }
+.claimGroup .dataTableRow:last-child { border-bottom: none; }
+.story {
+  padding: var(--space-2) var(--space-3) 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+.idCell { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
+.rowMeta { font-size: var(--font-sm); color: var(--neutral-300); }
+.badges { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.inlineLink {
+  border: none; background: none; padding: 0; cursor: pointer;
+  font-size: var(--font-sm); color: var(--primary-300);
+}
+.inlineLink:hover { text-decoration: underline; }
+
+/* Voided, superseded and reversal lines read as history, not as fills. */
+.rowVoid { color: var(--neutral-300); }
+.rowVoid .claimDate, .rowVoid .claimAmount { color: var(--neutral-300); }
+.struck { text-decoration: line-through; }
+
+/* Fills confirmed in Fold: projected, set apart from claims. */
+.rowFill { background: var(--neutral-25); border-left: 2px dashed var(--neutral-200); }
+.fillLabel { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+
+/* Pickups are not claim data: their own table, dashed. */
+.pickupTable { border-style: dashed; }
+.pickupGrid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.6fr 1fr 1.2fr;
   gap: var(--space-3);
 }
 .claimIdLink {

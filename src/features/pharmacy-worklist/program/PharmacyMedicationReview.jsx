@@ -12,7 +12,7 @@ import { Button } from '../../../components/Button/Button';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import { MedicationClaims } from './MedicationClaims';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
-import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, isActiveGap, effectivePdc, fillDueTone, measureStatus, pdcTone } from '../pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, pdcTone } from '../pharmacyWorklist.utils';
 import { MeasureCode, SubStatus } from '../PharmacyCells';
 import { BARRIERS } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -56,7 +56,30 @@ function ContactCard({ title, person }) {
   );
 }
 
-export function MedicationDetail({ med, memberRowId, interventionLog }) {
+const claimKey = (c) => `${c.claimId}|${c.claimSeq ?? 1}|${c.date}`;
+
+// The drug's latest fill confirmed in Fold and its claim match, if any.
+const fillMatchOf = (d, plan) => {
+  const fill = latestConfirmedFill(d);
+  return fill ? { fill, ...matchFill(fill, annotateClaims(d.refills), plan) } : null;
+};
+
+// Tag for a fill date confirmed in Fold: Projected until its claim matches;
+// a rework link when the claim did not match.
+function FillMatchTag({ match, onRework }) {
+  if (!match) return null;
+  if (match.status === 'Verified') return <Badge size="S" tone="success" icon="solar:check-circle-linear" label="Claim verified" />;
+  if (match.status === 'Not matched') {
+    return (
+      <button type="button" className={styles.reworkLink} onClick={(e) => { e.stopPropagation(); onRework?.(); }} title={match.detail}>
+        Claim not matched
+      </button>
+    );
+  }
+  return <Badge size="S" tone="warning" label="Projected" />;
+}
+
+export function MedicationDetail({ med, memberRowId, interventionLog, plan, initialTab }) {
   // Barrier & Intervention log entries for this medication's measure.
   const barrierLog = (interventionLog || [])
     .filter(e => e.measures?.[med.measure])
@@ -64,8 +87,10 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
   const update = useAppStore(s => s.updatePharmacyMedication);
   const save = (patch) => update(memberRowId, med.id, patch);
   // Claims tab (as in HCC), or the medication's details.
-  const [tab, setTab] = useState('details');
-  const claimCount = (med.refills || []).filter(r => !r.source).length;
+  const [tab, setTab] = useState(initialTab || 'details');
+  const claims = annotateClaims(med.refills);
+  const countedClaims = new Set(claims.filter(c => c.counts).map(claimKey));
+  const claimCount = (med.refills || []).length;
   const conditions = conditionsOf(med);
   const toggleCondition = (c) => save({
     conditions: conditions.includes(c) ? conditions.filter(x => x !== c) : [...conditions, c],
@@ -74,13 +99,13 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
   return (
     <div className={styles.detail}>
       <TabStrip
-        items={[{ key: 'details', label: 'Details' }, { key: 'claims', label: `Claims (${claimCount})` }]}
+        items={[{ key: 'details', label: 'Details' }, { key: 'claims', label: `Claim History (${claimCount})` }]}
         activeKey={tab}
         onChange={setTab}
         fullWidth={false}
         size="S"
       />
-      {tab === 'claims' ? <MedicationClaims med={med} /> : <>
+      {tab === 'claims' ? <MedicationClaims med={med} plan={plan} memberRowId={memberRowId} /> : <>
       <div className={styles.detailHead}>
         <MeasureCode code={med.measure} />
         <span className={styles.detailMeta}><span>Dose Form:</span> {med.doseForm}</span>
@@ -153,13 +178,19 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
             <tr><th>Fill Date</th><th>Quantity</th><th>Days Supply</th><th>Pharmacy</th><th>Prescriber</th><th>Prescriber Address</th><th>Source</th></tr>
           </thead>
           <tbody>
-            {/* A reversed claim was never dispensed: it's in Claim History only. */}
-            {med.refills.filter(r => r.claimStatus !== 'Reversed').map((r, i) => (
+            {/* Only claims that count are fills; reversals, voided and other
+                coverage lines are in Claim History only. */}
+            {med.refills.filter(r => r.source || countedClaims.has(claimKey(r))).map((r, i) => (
               <tr key={`${r.date}-${r.source || 'claim'}-${i}`}>
                 <td>{r.date}</td><td>{r.qty}</td><td>{r.daysSupply}</td>
                 <td>{r.pharmacy}</td><td>{r.prescriber}</td><td>{r.prescriberAddress}</td>
                 {/* Call-confirmed pickups land here before the claim does. */}
-                <td>{r.source ? <Badge size="S" tone="grey" icon="solar:phone-linear" label={r.source} /> : 'Claim'}</td>
+                <td>{r.source ? (
+                  <span className={styles.sourceCell}>
+                    <Badge size="S" tone="grey" icon={r.manual ? 'solar:pen-linear' : 'solar:phone-linear'} label={r.manual ? 'Entered by hand' : r.source} />
+                    <FillMatchTag match={matchFill(r, claims, plan)} onRework={() => setTab('claims')} />
+                  </span>
+                ) : 'Claim'}</td>
               </tr>
             ))}
           </tbody>
@@ -223,6 +254,13 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
   // their default, so a later status change doesn't flip a chosen state.
   const [chosen, setChosen] = useState(() => new Map());
   const [openId, setOpenId] = useState(null);
+  const [openTab, setOpenTab] = useState(null);
+  // Opens a drug's details, or its claim history for a rework.
+  const openDrug = (medId, medTab = null) => {
+    if (onOpenMed) { onOpenMed(medId, medTab); return; }
+    setOpenId(medId);
+    setOpenTab(medTab);
+  };
   // Bulk Recent Fill: drugs picked across any gaps, as "code|medId".
   const setRecentFillBulk = useAppStore(s => s.setPharmacyRecentFillBulk);
   const [picked, setPicked] = useState(() => new Set());
@@ -296,6 +334,10 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
         )}
         <span className={styles.count}>{all.length} gap{all.length === 1 ? '' : 's'} · {medCount} medication{medCount === 1 ? '' : 's'}</span>
       </div>
+      <p className={styles.helper}>
+        <Icon name="solar:info-circle-linear" size={14} color="var(--neutral-300)" />
+        A Recent Fill date entered here is projected: it updates PDC, next fill and fail date, but the gap only closes when a matching Part D claim arrives.
+      </p>
 
       {picked.size > 0 && (
         <div className={styles.bulkBar} role="region" aria-label="Set recent fill for selected medications">
@@ -364,7 +406,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                             <tr
                               key={d.id}
                               className={`${styles.medRow} ${openId === d.id ? styles.medRowSelected : ''} ${d.status === 'Discontinued' ? styles.medRowDc : ''}`}
-                              onClick={() => (onOpenMed ? onOpenMed(d.id) : setOpenId(d.id))}
+                              onClick={() => openDrug(d.id)}
                             >
                               <td className={styles.pickCol} onClick={e => e.stopPropagation()}>
                                 {d.status !== 'Discontinued' && (
@@ -389,6 +431,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                                     onSelect={(iso) => setRecentFill(member.id, x.code, d.id, fromIso(iso) || null)}
                                     aria-label={`${d.name} recent fill date`}
                                   />
+                                  <FillMatchTag match={fillMatchOf(d, member.healthPlan)} onRework={() => openDrug(d.id, 'claims')} />
                                 </td>
                               )}
                               <td className={riskClass(d.measure, fillDueTone(d.nextFill))}>{d.nextFill}</td>
@@ -421,7 +464,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
           onClose={() => setOpenId(null)}
           width={760}
         >
-          <MedicationDetail key={openMed.id} med={openMed} memberRowId={member.id} interventionLog={member.interventionLog} />
+          <MedicationDetail key={`${openMed.id}-${openTab || 'details'}`} med={openMed} memberRowId={member.id} interventionLog={member.interventionLog} plan={member.healthPlan} initialTab={openTab} />
         </Drawer>
       )}
     </div>
