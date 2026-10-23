@@ -93,8 +93,17 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
     showToast(`${key} – coming soon`);
   };
 
+  const openRow = () => { if (m.gaps.length) openPharmacyGapDrawer(m.id, m.urgent?.code || m.gaps[0].code); };
+
   return (
-    <tr className={`${styles.row} ${visibleGaps.length > 1 ? styles.rowMultiGap : ''}`} onClick={() => { if (m.gaps.length) openPharmacyGapDrawer(m.id, m.urgent?.code || m.gaps[0].code); }}>
+    <tr
+      className={`${styles.row} ${visibleGaps.length > 1 ? styles.rowMultiGap : ''}`}
+      tabIndex={0}
+      aria-label={`Open ${m.name}'s pharmacy gaps`}
+      onClick={openRow}
+      // Only keys on the row itself: a cell's own buttons keep their keys.
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openRow(); } }}
+    >
       <td className={`${styles.checkTd} ${styles.stickyLeft}`} style={{ left: 0 }} onClick={e => e.stopPropagation()}>
         {/* Same height as the avatar + name block, so the checkbox lines up with
             the avatar even when a multi-gap row top-aligns (HEDIS / HCC). */}
@@ -133,6 +142,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
           data-col-key={col.key}
           className={col.getTdClassName ? col.getTdClassName(m, cellCtx) : styles.td}
           onClick={col.stopRowClickPropagation ? (e) => e.stopPropagation() : undefined}
+          onKeyDown={col.stopRowClickPropagation ? (e) => e.stopPropagation() : undefined}
         >
           {col.renderCell(m, cellCtx)}
         </td>

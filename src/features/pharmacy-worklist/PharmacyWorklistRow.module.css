@@ -5,6 +5,8 @@
   composes: row from '../../components/WorklistShell/WorklistRow.module.css';
   cursor: pointer;
 }
+/* Rows open the gap drawer from the keyboard too (Enter / Space). */
+.row:focus-visible { outline: 2px solid var(--primary-200); outline-offset: -2px; }
 
 .stickyLeft {
   position: sticky;
