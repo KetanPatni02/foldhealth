@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildRuleInputs, describeCondition, evaluateRule, mapAutomationRuleRow, ruleProblem, rulesForProgram,
-} from './automationRules';
+} from './clinicalCriteria';
 
 const today = new Date(2026, 9, 19);
 const inputs = buildRuleInputs({

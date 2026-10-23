@@ -15,6 +15,9 @@ import { EmailPreviewDrawer } from './EmailPreviewDrawer';
 import { ComponentsTab } from './ComponentsTab';
 import { AddNoteTemplateDrawer } from './AddNoteTemplateDrawer';
 import { NoteTemplatePreviewDrawer } from './NoteTemplatePreviewDrawer';
+import { EmailUsageBadge } from '../../automations/content/EmailUsageBadge';
+import { EmailUsageGuard } from '../../automations/content/EmailUsageGuard';
+import { loadEmailUsage } from '../../automations/content/loadEmailUsage';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { ActivityLog } from '../../../components/ActivityLog/ActivityLog';
 import { formShareLink, copyToClipboard } from '../../forms/formLink';
@@ -283,7 +286,10 @@ function EmailsTab({
               </span>
             </div>
             <div className={styles.nameStack}>
-              <span className={styles.nameText}>{campaign.name}</span>
+              <span className={styles.nameRow}>
+                <span className={styles.nameText}>{campaign.name}</span>
+                <EmailUsageBadge emailId={campaign.id} />
+              </span>
               {campaign.description ? (
                 <span className={styles.nameDesc}>{campaign.description}</span>
               ) : null}
@@ -1127,12 +1133,12 @@ export function ContentSettings() {
   const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
   const [notesShowArchived, setNotesShowArchived] = useState(false);
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
+  const handleDelete = async (target = deleteTarget) => {
+    if (!target) return false;
     setDeleting(true);
     let ok = false;
     try {
-      ok = isForms ? await deleteForm(deleteTarget.id) : await deleteCampaign(deleteTarget.id);
+      ok = isForms ? await deleteForm(target.id) : await deleteCampaign(target.id);
     } finally {
       setDeleting(false);
     }
@@ -1142,6 +1148,7 @@ export function ContentSettings() {
       if (isForms) fetchContentForms?.({ page: 1, perPage: 10, search: searchVal, force: true });
       else fetchContentEmails?.({ page: 1, perPage: 10, search: searchVal, status: statusFilter });
     }
+    return ok;
   };
 
   const handleDuplicate = async (row) => {
@@ -1162,7 +1169,7 @@ export function ContentSettings() {
 
   const handleBulkDeleteConfirm = async () => {
     const ids = Array.from(selectedIds);
-    if (ids.length === 0) { setBulkDeleteOpen(false); return; }
+    if (ids.length === 0) { setBulkDeleteOpen(false); return false; }
     setDeleting(true);
     let ok = false;
     try {
@@ -1177,6 +1184,28 @@ export function ContentSettings() {
       if (isForms) fetchContentForms?.({ page: 1, perPage: 10, search: searchVal, force: true });
       else fetchContentEmails?.({ page: 1, perPage: 10, search: searchVal, status: statusFilter });
     }
+    return ok;
+  };
+
+  // Emails that automations send get the usage dialog instead of the plain confirm.
+  const [usageGuard, setUsageGuard] = useState(null);
+  const guardEmailDelete = async (ids, name, confirm, proceed) => {
+    const used = await loadEmailUsage(ids);
+    if (used.length) setUsageGuard({ ids, name, proceed });
+    else confirm();
+  };
+  const deleteEmail = (campaign) => guardEmailDelete(
+    [campaign.id], campaign.name,
+    () => setDeleteTarget(campaign),
+    () => handleDelete(campaign),
+  );
+  const deleteSelectedEmails = () => {
+    const ids = Array.from(selectedIds);
+    guardEmailDelete(
+      ids, `${ids.length} selected email${ids.length === 1 ? '' : 's'}`,
+      () => setBulkDeleteOpen(true),
+      handleBulkDeleteConfirm,
+    );
   };
 
   // Reset bulk mode + selection on any tab switch (selections are per-list).
@@ -1277,7 +1306,7 @@ export function ContentSettings() {
             statusFilter={statusFilter}
             onPreview={setPreviewCampaign}
             onDuplicate={handleDuplicate}
-            onDelete={setDeleteTarget}
+            onDelete={deleteEmail}
             bulkMode={bulkMode}
             selectedIds={selectedIds}
             onToggleId={toggleId}
@@ -1329,7 +1358,17 @@ export function ContentSettings() {
           variant="error"
           loading={deleting}
           onCancel={() => setDeleteTarget(null)}
-          onConfirm={handleDelete}
+          onConfirm={() => handleDelete()}
+        />
+      ) : null}
+
+      {usageGuard ? (
+        <EmailUsageGuard
+          emailIds={usageGuard.ids}
+          emailName={usageGuard.name}
+          deleting={deleting}
+          onDelete={usageGuard.proceed}
+          onClose={() => setUsageGuard(null)}
         />
       ) : null}
 
@@ -1353,7 +1392,7 @@ export function ContentSettings() {
       {bulkMode ? (
         <EmailsBulkBar
           count={selectedIds.size}
-          onDelete={() => setBulkDeleteOpen(true)}
+          onDelete={() => (isEmails ? deleteSelectedEmails() : setBulkDeleteOpen(true))}
           onClear={clearSelection}
           onExit={exitBulkMode}
         />

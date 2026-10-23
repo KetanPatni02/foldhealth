@@ -37,6 +37,22 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Automations (Settings > Automations).** Replaces Automation Rules with the
+  full automation experience from Figma: template library (grid and table,
+  preview, Use Template), My Automations by status with Run, History,
+  Duplicate and Delete, and a builder (triggers, conditions, actions, outcome
+  branches, delays, repeats, micro automations, duplicate-action warning,
+  autosaved working copy, Save and publish). A step-by-step test run checks
+  each step without touching real data. Analytics (Global and Node Level),
+  overview, email and SMS drilldowns and a per-member trace with Re-trigger
+  read run records, so every total adds up. Runs are simulated
+  (`src/features/automations/lib/simulate.js`); nothing is delivered. Content
+  > Emails warns before deleting an email an automation sends. Enrollment
+  rules became automations with the "enrolled in a care program" trigger and
+  keep auto-applying care plan templates. Needs
+  `supabase/automations_migration.sql` and `bun run seed`; until then the
+  screens use in-memory sample data. Design review and decisions:
+  `docs/features/automations-design-review.md`.
 - **Verify ID on patient sends (VBC-25597).** Compose Email, New SMS, Send
   Content, Send Assessment and the thread's new Send Forms / Send Article
   drawers can protect their links. Ticking "Verify ID" applies the default
