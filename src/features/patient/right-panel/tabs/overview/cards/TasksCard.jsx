@@ -6,12 +6,14 @@ import { SubTabs } from '../../../../../../components/SubTabs/SubTabs';
 import { PriorityIcon } from '../../../../../../components/PriorityIcon/PriorityIcon';
 import { Checkbox } from '../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Button } from '../../../../../../components/Button/Button';
+import { FilterChip } from '../../../../../../components/FilterChip/FilterChip';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { groupTasksForTab } from '../../../../left-panel/tabs/tasks/TasksTab/groupTasksForTab';
 import { TaskDetailDrawer } from '../../../../../tasks/TaskDetailDrawer';
 import styles from './overviewCards.module.css';
 
 const VISIBLE = 3;
+const OWNER_OPTIONS = ['Mine', 'Others'];
 
 // Same patient match as the Monitoring tab: member id, store id, or name.
 function tasksForPatient(tasks, patient) {
@@ -29,10 +31,19 @@ export function TasksCard({ patient, actions }) {
   const updateTask = useAppStore(s => s.updateTask);
   const [pickedTab, setTab] = useState(null);
   const [openTaskId, setOpenTaskId] = useState(null);
+  // Mine / Others, so work someone else already owns isn't picked up twice.
+  const [owner, setOwner] = useState([]);
+  const myName = useAppStore(s => s.currentUserProfile?.name || '');
+  const isMine = t => !!myName && t.assignee === myName;
 
   useEffect(() => { fetchTasks?.(); }, [fetchTasks]);
 
-  const groups = useMemo(() => groupTasksForTab(tasksForPatient(allTasks, patient)), [allTasks, patient]);
+  const groups = useMemo(() => {
+    const all = groupTasksForTab(tasksForPatient(allTasks, patient));
+    if (owner.length !== 1) return all;
+    const keep = owner[0] === 'Mine' ? (t => !!myName && t.assignee === myName) : (t => !myName || t.assignee !== myName);
+    return { pending: all.pending.filter(keep), overdue: all.overdue.filter(keep), completed: all.completed.filter(keep) };
+  }, [allTasks, patient, owner, myName]);
   // Until the user picks a tab, open on Overdue when nothing is merely open,
   // so the card never leads with an empty list while work is waiting.
   const tab = pickedTab ?? (groups.pending.length === 0 && groups.overdue.length > 0 ? 'overdue' : 'pending');
@@ -53,7 +64,7 @@ export function TasksCard({ patient, actions }) {
       count={groups.pending.length + groups.overdue.length || null}
       actions={<Button variant="ghost" size="S" onClick={actions.addTask}>Add task</Button>}
     >
-      <div className={styles.tabs}>
+      <div className={`${styles.tabs} ${styles.tabsWithFilter}`}>
           <SubTabs
           className={styles.tabRow}
           tabs={[
@@ -64,6 +75,7 @@ export function TasksCard({ patient, actions }) {
           activeKey={tab}
           onChange={setTab}
         />
+        <FilterChip size="S" singleSelect label="Owner" options={OWNER_OPTIONS} selected={owner} onChange={setOwner} />
       </div>
       <DashboardCardBody className={styles.listBody}>
         {list.length === 0 ? (
@@ -96,7 +108,7 @@ export function TasksCard({ patient, actions }) {
               )}
               meta={[
                 t.due && <span key="due" className={isOverdueTab ? styles.textError : undefined}>{isOverdueTab ? 'Overdue • ' : ''}Due {t.due}</span>,
-                t.assignee,
+                t.assignee && (isMine(t) ? 'You' : t.assignee),
               ]}
             />
           </div>

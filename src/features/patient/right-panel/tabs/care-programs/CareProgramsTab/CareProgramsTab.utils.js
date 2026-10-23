@@ -8,6 +8,19 @@ export const programUrlKey = (p) => {
   return (p.trigger || 1) > 1 ? `${slug}-${p.trigger}` : slug;
 };
 
+/**
+ * The program to reopen from the user's last-used key: the same enrollment
+ * (code + trigger) when the patient has it, else an open one with that code.
+ */
+export function programForLastKey(programs, lastKey) {
+  if (!lastKey) return null;
+  const open = (programs || []).filter(p => p.status !== 'Closed');
+  const exact = open.find(p => programUrlKey(p) === lastKey);
+  if (exact) return exact;
+  const slug = lastKey.replace(/-\d+$/, '');
+  return open.find(p => programUrlKey({ code: p.code }) === slug) || null;
+}
+
 export const SUB_STATUS_OPTIONS = ['Assigned', 'Unassigned'];
 export const DATE_RANGE_OPTIONS = ['Last 7 days', 'Last 30 days', 'Last 90 days'];
 export const EMPTY_FILTERS = { assignee: [], program: [], status: [], subStatus: [], startDate: [], endDate: [] };

@@ -21,6 +21,7 @@ import {
   CaregiversCard, CareTeamCard, ConditionsCard, ConsentCard, ContactCard, MedicationsCard, RiskAcuityCard,
 } from '../cards/ProfileCards';
 import { ProgramProgressCard, SinceLastTouchCard } from '../cards/MonitoringCards';
+import { AwaitingReplyCard } from '../cards/AwaitingReplyCard';
 import { SummaryWidgetCard } from '../cards/SummaryWidgetCard';
 import {
   OVERVIEW_COLUMN_TEMPLATE, OVERVIEW_LAYOUT_REVISION, OVERVIEW_WIDGETS, normalizeOverviewLayout, overviewColumnCount, overviewColumns,
@@ -111,6 +112,7 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
       case 'quickActions': return <QuickActionsCard key={key} overview={overview} actions={actions} />;
       case 'appointments': return <AppointmentsCard key={key} patientId={patient.id} patient={patient} />;
       case 'tasks': return <TasksCard key={key} patient={patient} actions={actions} />;
+      case 'awaitingReply': return <AwaitingReplyCard key={key} patient={patient} />;
       case 'vitals': return <VitalsCard key={key} memberId={memberId} overview={overview} />;
       case 'riskAcuity': return <RiskAcuityCard key={key} patientId={patient.id} />;
       case 'contact': return <ContactCard key={key} patientId={patient.id} />;

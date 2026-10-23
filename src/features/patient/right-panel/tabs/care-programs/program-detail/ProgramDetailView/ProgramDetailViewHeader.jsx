@@ -92,7 +92,7 @@ export function ProgramDetailViewHeader({
           )}
           {otherPrograms.length > 0 && (
             <>
-              <ProgramBadges programs={otherPrograms} progressFor={progressFor} />
+              <ProgramBadges programs={otherPrograms} progressFor={progressFor} onSelect={onSwitchProgram} />
               <span className={styles.headerDivider} />
             </>
           )}
