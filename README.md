@@ -81,10 +81,11 @@ build requires esbuild ≥ 0.28 on Node 26.
   Management, Coordination of Care, Maternity Program or Pediatrics Program.
   Picking CMP under New Program on a member opens that list; sub-programs the
   member already has are greyed out. Population > Worklists has a CMP
-  worklist, one row per enrollment: Sub Program, Program Sub Status
-  (editable), Care Plan Status, Next Action Due, Outreach, Assignee, Program
-  Start / Due Dates, Risk IQ and Tasks, with the shared filter bar and saved
-  filters. Backed by `cmp_members` (`supabase/cmp_members_migration.sql`,
+  worklist, one row per member: like HEDIS's gaps, a member's sub-programs
+  stack inside the row (Sub Program, Program Sub Status (editable), Care Plan
+  Status, Assignee, Outreach, Next Action Due, Start Date, Due Date; View More
+  past two), while Member, Risk IQ and Tasks show once. Shared filter bar and
+  saved filters. Backed by `cmp_members` (`supabase/cmp_members_migration.sql`,
   seeded by `bun run seed`) and a `sub_program` column on
   `patient_care_programs` (`supabase/patient_care_programs_sub_program_migration.sql`).
 - **Consistent worklist filters.** Gender (Male, Female, Other), Language

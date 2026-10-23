@@ -38,10 +38,12 @@ function dueInfo(mdy) {
 }
 
 /**
- * Middle-column defs for CMP, same shape as JSA_MIDDLE_COLUMNS: rows render
- * these in order and skip the ones hidden in Show Columns.
+ * Middle-column defs for CMP. One row per member; a member can be in several
+ * CMP sub-programs, so the `perEnrollment` columns stack one line per
+ * enrollment (`renderItem(enrollment, ctx)`, like HEDIS's per-gap columns)
+ * and the rest render once for the member (`renderCell(member, ctx)`).
  *
- * ctx shape: { statusAnchor, setStatusAnchor, updateCmpMemberStatus, showToast }
+ * ctx shape: { statusAnchor, setStatusAnchor, updateCmpMemberStatus, showToast, onOpenEnrollment }
  */
 export const CMP_MIDDLE_COLUMNS = [
   {
@@ -49,33 +51,43 @@ export const CMP_MIDDLE_COLUMNS = [
     label: 'Sub Program',
     sortKey: 'subProgram',
     width: 210,
-    renderCell: (member) => member.subProgram || '—',
+    perEnrollment: true,
+    renderItem: (e, ctx) => (
+      <button
+        type="button"
+        className={styles.subProgramLink}
+        onClick={(ev) => { ev.stopPropagation(); ctx.onOpenEnrollment(e); }}
+      >
+        {e.subProgram || '—'}
+      </button>
+    ),
   },
   {
     key: 'progSubStatus',
     label: 'Program Sub Status',
     sortKey: 'progSubStatus',
     width: 200,
-    renderCell: (member, ctx) => (
+    perEnrollment: true,
+    renderItem: (e, ctx) => (
       <>
         <button
           type="button"
           className={styles.statusBtn}
-          onClick={(e) => { e.stopPropagation(); ctx.setStatusAnchor(e.currentTarget); }}
+          onClick={(ev) => { ev.stopPropagation(); ctx.setStatusAnchor({ id: e.id, el: ev.currentTarget }); }}
         >
           <Badge
             size="M"
-            variant={STATUS_VARIANT[member.progSubStatus] || 'awv-new'}
-            label={member.progSubStatus}
+            variant={STATUS_VARIANT[e.progSubStatus] || 'awv-new'}
+            label={e.progSubStatus}
             trailingIconElement={<DownChevronIcon size={12} color="currentColor" />}
           />
         </button>
-        {ctx.statusAnchor && (
+        {ctx.statusAnchor?.id === e.id && (
           <MenuPopover
-            anchorRef={{ current: ctx.statusAnchor }}
+            anchorRef={{ current: ctx.statusAnchor.el }}
             width="auto"
             items={STATUS_MENU}
-            onSelect={(key) => ctx.updateCmpMemberStatus(member.id, key)}
+            onSelect={(key) => ctx.updateCmpMemberStatus(e.id, key)}
             onClose={() => ctx.setStatusAnchor(null)}
           />
         )}
@@ -87,27 +99,60 @@ export const CMP_MIDDLE_COLUMNS = [
     label: 'Care Plan Status',
     sortKey: 'carePlanStatus',
     width: 160,
-    renderCell: (member) => {
-      const look = CARE_PLAN_LOOK[member.carePlanStatus];
+    perEnrollment: true,
+    renderItem: (e) => {
+      const look = CARE_PLAN_LOOK[e.carePlanStatus];
       return (
         <span className={`${styles.carePlanStatus} ${look?.className || styles.carePlanNone}`}>
           {look && <Icon name={look.icon} size={14} color="currentColor" />}
-          {member.carePlanStatus || '—'}
+          {e.carePlanStatus || '—'}
         </span>
       );
     },
+  },
+  {
+    key: 'assignee',
+    label: 'Assignee',
+    sortKey: 'assignee',
+    width: 170,
+    perEnrollment: true,
+    renderItem: (e, ctx) => (
+      e.assignee ? (
+        <AssigneeChange
+          name={e.assignee}
+          initials={e.assigneeIn}
+          showRole={false}
+          onClick={() => ctx.showToast(`Changing the assignee for ${e.name} is coming soon`)}
+        />
+      ) : (
+        <AssigneeChange
+          unassigned
+          showRole={false}
+          onClick={() => ctx.showToast(`Assigning an owner for ${e.name} is coming soon`)}
+        />
+      )
+    ),
+  },
+  {
+    key: 'outreach',
+    label: 'Outreach',
+    sortKey: 'outreach',
+    width: 150,
+    perEnrollment: true,
+    renderItem: (e) => <CmpOutreachCell member={e} />,
   },
   {
     key: 'nextActionDue',
     label: 'Next Action Due',
     sortKey: 'nextActionDueSort',
     width: 150,
-    renderCell: (member) => {
-      const due = dueInfo(member.nextActionDue);
+    perEnrollment: true,
+    renderItem: (e) => {
+      const due = dueInfo(e.nextActionDue);
       if (!due) return '—';
       return (
         <div className={styles.dueCell}>
-          <div className={styles.dueDate}>{member.nextActionDue}</div>
+          <div className={styles.dueDate}>{e.nextActionDue}</div>
           <div className={`${styles.dueLabel} ${due.className}`}>
             <Icon name="solar:clock-circle-linear" size={11} color="currentColor" />
             {due.label}
@@ -117,47 +162,20 @@ export const CMP_MIDDLE_COLUMNS = [
     },
   },
   {
-    key: 'outreach',
-    label: 'Outreach',
-    sortKey: 'outreach',
-    width: 150,
-    renderCell: (member) => <CmpOutreachCell member={member} />,
-  },
-  {
-    key: 'assignee',
-    label: 'Assignee',
-    sortKey: 'assignee',
-    width: 170,
-    renderCell: (member, ctx) => (
-      member.assignee ? (
-        <AssigneeChange
-          name={member.assignee}
-          initials={member.assigneeIn}
-          showRole={false}
-          onClick={() => ctx.showToast(`Changing the assignee for ${member.name} is coming soon`)}
-        />
-      ) : (
-        <AssigneeChange
-          unassigned
-          showRole={false}
-          onClick={() => ctx.showToast(`Assigning an owner for ${member.name} is coming soon`)}
-        />
-      )
-    ),
-  },
-  {
     key: 'programStartDate',
-    label: 'Program Start Date',
+    label: 'Start Date',
     sortKey: 'programStartSort',
-    width: 160,
-    renderCell: (member) => member.programStartDate || '—',
+    width: 130,
+    perEnrollment: true,
+    renderItem: (e) => e.programStartDate || '—',
   },
   {
     key: 'programDueDate',
-    label: 'Program Due Date',
+    label: 'Due Date',
     sortKey: 'programDueSort',
-    width: 160,
-    renderCell: (member) => member.programDueDate || '—',
+    width: 130,
+    perEnrollment: true,
+    renderItem: (e) => e.programDueDate || '—',
   },
   {
     key: 'ri',
