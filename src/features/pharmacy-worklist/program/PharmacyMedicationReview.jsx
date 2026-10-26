@@ -111,11 +111,6 @@ function RecentFillChip({ date, label, onChange }) {
           max={toIso(todayMdy())}
           onChange={pick}
           onClose={() => setRect(null)}
-          footer={date ? (
-            <div className={styles.cChipFooter}>
-              <Button variant="secondary" size="S" onClick={() => pick('')}>Clear date</Button>
-            </div>
-          ) : null}
         />
       )}
     </>
@@ -395,12 +390,13 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
               const dc = d.status === 'Discontinued';
               const note = [d.internalNotes, d.notesToMd && `To MD: ${d.notesToMd}`].filter(Boolean).join(' · ');
               const match = dc ? null : fillMatchOf(d, member.healthPlan);
-              const meta = [
+              const supply = [
+                d.cls,
+                dc && 'Discontinued',
                 d.qty != null && `Qty ${d.qty}`,
                 d.daysSupply != null && `${d.daysSupply} days supply`,
-                d.prescriber?.name,
-                d.pharmacy?.name,
               ].filter(Boolean);
+              const source = [d.prescriber?.name, d.pharmacy?.name].filter(Boolean);
               return (
                 <div key={d.id} className={`${styles.cRow} ${styles.cMedRow} ${dc ? styles.cDiscontinued : ''}`} role="row" onClick={() => openDrug(d.id)}>
                   <span className={styles.cPick} onClick={e => e.stopPropagation()}>
@@ -427,14 +423,19 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                     )}
                     <ActionButton icon="solar:eye-linear" size="S" tooltip="View details" onClick={() => openDrug(d.id)} />
                   </span>
-                  {/* Second line: class, the fill's claim match, a barrier if
-                      any, then quantity, supply, prescriber and pharmacy. */}
+                  {/* Second line: the drug's details under Rx, the fill's
+                      claim match under Recent Fill. */}
                   <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
-                    <span>{d.cls}{dc ? ' · Discontinued' : ''}</span>
-                    {match && <FillMatchText match={match} onRework={() => openDrug(d.id, 'claims')} />}
-                    {d.nonAdherenceReason && <span className={styles.cBarrierText}>Barrier: {d.nonAdherenceReason}</span>}
-                    {meta.map(t => <span key={t}>{t}</span>)}
+                    {[supply, source].filter(l => l.length).map(l => (
+                      <span key={l[0]} className={styles.cMetaLine} title={l.join(' · ')}>{l.join(' · ')}</span>
+                    ))}
+                    {d.nonAdherenceReason && <span className={`${styles.cMetaLine} ${styles.cBarrierText}`}>Barrier: {d.nonAdherenceReason}</span>}
                   </span>
+                  {match && (
+                    <span className={styles.cMatch} onClick={e => e.stopPropagation()}>
+                      <FillMatchText match={match} onRework={() => openDrug(d.id, 'claims')} />
+                    </span>
+                  )}
                 </div>
               );
             })}

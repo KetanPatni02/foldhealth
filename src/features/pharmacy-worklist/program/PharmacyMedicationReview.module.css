@@ -262,24 +262,35 @@
 .cChip { border: none; background: none; padding: 0; cursor: pointer; display: inline-flex; }
 .cChip:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; border-radius: 4px; }
 .cChipEmpty { color: var(--neutral-300); }
-.cChipFooter { display: flex; justify-content: flex-end; padding-top: var(--space-2); }
 /* Note and details, fixed at the right of the first line. */
 .cActions { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
 .cNote { display: inline-flex; }
-/* Second line: class, claim match, barrier, quantity, supply, prescriber,
-   pharmacy, dot-separated. */
+/* Under Rx and Last Fill: class, quantity and supply; then prescriber and
+   pharmacy; then a barrier if any. One line each, cut short rather than
+   wrapped. */
 .cMeta {
-  grid-column: 2 / 7;
+  grid-column: 2 / 4;
   grid-row: 2;
+  align-self: start;
+  min-width: 0;
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
+  flex-direction: column;
+  gap: 0.125rem;
   font-size: var(--font-md);
   line-height: var(--leading-tight);
   color: var(--neutral-300);
   cursor: default;
 }
-.cMeta > * + *::before { content: '·'; margin: 0 var(--space-1); color: var(--neutral-200); }
+.cMetaLine { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Second line under Recent Fill: the fill's claim match. */
+.cMatch {
+  grid-column: 4;
+  grid-row: 2;
+  align-self: start;
+  font-size: var(--font-md);
+  line-height: var(--leading-tight);
+  cursor: default;
+}
 .cMatchOk { color: var(--status-success); }
 .cMatchPending { color: var(--status-warning); }
 .cBarrierText { color: var(--status-error); }
