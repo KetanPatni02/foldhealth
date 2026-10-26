@@ -25,6 +25,7 @@ export function PopulationGroupsWidget() {
 
   return (
     <PanelSection
+      icon="solar:users-group-rounded-linear"
       title="Population Groups"
       actions={(
         <>

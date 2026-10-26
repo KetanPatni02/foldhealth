@@ -53,7 +53,7 @@ build requires esbuild ≥ 0.28 on Node 26.
   `saveProgramMembership`, `logAccessOverride`; hook: `useProgramAccess`.
   No UI yet. Needs `supabase/program_access_migration.sql` then
   `supabase/program_access_seed.sql`.
-- **Patient consent and preferences (Phase 2A.1, 2A.2).** Patient consent is now
+- **Patient consent and preferences (Phase 2A).** Patient consent is now
   a record, not a "2/4" count: `patient_consents` keeps an append-only
   history per program (CCM, APCM, RPM, BHI) and channel (call, SMS, email,
   TCPA) with status, method, who captured it, expiry, witness and the signed
@@ -70,7 +70,21 @@ build requires esbuild ≥ 0.28 on Node 26.
   uploaded form) opens from the banner's consent popover, which now shows
   each consent's live state and an audit log, and from the Overview Consent
   card. The banner count covers the patient's open billable enrollments.
-  The billing gates follow in 2A.3. Needs
+  Without current CCM consent no CCM time is recorded (2A.3): the store
+  refuses the write, the timer shows why with a Capture link and keeps the
+  time, and the billing log leaves unlogged time unclassified. Enrolling
+  checks eligibility (CCM needs two or more chronic conditions, RPM one)
+  and captures consent first, enrolling once it's given; a program whose
+  enrollments have all ended can be enrolled again. Gates stay off until
+  the consent table exists, so billing isn't switched off by a rollout.
+  The Profile tab's new Preferences view (2A.4) shows the preferred channel
+  per enrolled program, language and interpreter need, health literacy,
+  and whether each phone and email is valid, edited in a Contact
+  Preferences drawer. Outreach warns when the logged channel was declined
+  or withdrawn, the number is marked invalid, or a text has no TCPA
+  consent. Block Number now writes `p360_profiles.opted_out_comms`, which
+  the banner and Contact card read (it wrote the `patients` table).
+  Needs
   `supabase/patient_consents_migration.sql` then
   `supabase/patient_consents_seed.sql` (consent reads as missing and
   captures stay session-only until then).
@@ -83,13 +97,25 @@ build requires esbuild ≥ 0.28 on Node 26.
   are abnormal labs, ED visits and admissions, missed or cancelled visits
   not yet rebooked, medication changes, messages awaiting a reply, vitals
   off goal, overdue tasks and care gaps, and RAF jumps, new ones flagged
-  since the last touch (or the last 30 days). A Recap pill at the top left
-  opens a walkthrough of them, one slide per widget, that plays on its own.
-  Rules: `overview/attention/attentionSignals.js`; shared pieces:
+  since the last touch (or the last 30 days). A Recap button in the Patient
+  Synopsis header (Unity gradient until you open it, an outline after)
+  opens a walkthrough of what happened since the last touch, or over 30 or
+  90 days: an At a Glance slide (counts, last touch, what's coming up, a
+  plain summary), then touchpoints, clinical events (with repeat ED use),
+  vitals with their trends, medication changes and program updates, each
+  event with who, when and how it went, and finally the open items with
+  their next steps. Each slide leads with what changed against the
+  period before (`recapChanges.js`) and a Unity summary of the section
+  (`/api/patient-recap-summary`, Gemini, one call for all sections); when
+  Unity can't answer, a summary written from the same facts stands in.
+  Story: `overview/attention/recapStory.js`; rules:
+  `overview/attention/attentionSignals.js`; shared pieces:
   `src/components/UnityInsights` and `src/components/SlideshowDialog`. The
   default lanes now lead with what moves (risk, care plan, gaps, suggested
   actions, tasks), and sample-only reference cards start hidden; layouts
   people already arranged are kept.
+  Cards are soft white surfaces on a tinted page (8px radius, no inner
+  rules) with one header style: icon, title, 44px, on a 16px edge.
 - **Care plan Linkage view.** The care plan's More menu switches between
   Table View and Linkage View. Linkage nests each goal's interventions and
   barriers beneath it with connecting lines, and lists anything not linked to a goal under

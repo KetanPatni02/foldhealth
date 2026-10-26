@@ -9,7 +9,7 @@ const SUBSCRIPTIONS = [
 
 export function SubscriptionWidget() {
   return (
-    <PanelSection title="Subscription">
+    <PanelSection icon="solar:card-linear" title="Subscription">
       {SUBSCRIPTIONS.map(s => (
         <PanelSectionItem
           key={s.id}

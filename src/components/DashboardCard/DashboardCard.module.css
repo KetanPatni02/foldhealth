@@ -1,3 +1,6 @@
+/* A soft white surface: a faint edge and shadow instead of a hard border,
+   and no rules inside, so the content carries the structure. Reads best on
+   a tinted page (see the Overview grid). */
 .card {
   position: relative;
   isolation: isolate;
@@ -5,8 +8,9 @@
   flex-direction: column;
   min-width: 0;
   background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
+  border: 0.5px solid var(--neutral-100);
   border-radius: var(--space-2);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -14,10 +18,6 @@
    fading the card's content. */
 .ai {
   border-color: var(--primary-200);
-}
-
-.ai .header {
-  border-bottom-color: var(--primary-200);
 }
 
 .ai::before {
@@ -34,14 +34,15 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 0.5px solid var(--neutral-150);
+  /* One height whether or not the header carries buttons, so titles line up. */
+  min-height: calc(var(--space-10) + var(--space-1));
+  padding: var(--space-2) var(--space-4);
 }
 
 .title {
   margin: 0;
   min-width: 0;
-  font-size: var(--font-base);
+  font-size: var(--font-lg);
   font-weight: 500;
   line-height: var(--leading-tight);
   color: var(--neutral-500);
@@ -83,23 +84,17 @@
 .body {
   display: flex;
   flex-direction: column;
-  padding: var(--space-3);
+  padding: var(--space-1) var(--space-4) var(--space-4);
 }
 
+/* Quiet small print at the foot, without a bar of its own. */
 .footer {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-top: 0.5px solid var(--neutral-150);
-  background: var(--neutral-50);
+  padding: 0 var(--space-4) var(--space-3);
   font-size: var(--font-sm);
   color: var(--neutral-200);
-}
-
-.ai .footer {
-  border-top-color: var(--primary-200);
-  background: transparent;
 }
 
 /* ── Skeleton ── */
@@ -112,7 +107,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-4);
 }
 
 .skeletonRow {

@@ -12,6 +12,7 @@ const POLICIES = [
 export function InsuranceWidget() {
   return (
     <PanelSection
+      icon="solar:shield-check-linear"
       title="Insurance"
       actions={(
         <>

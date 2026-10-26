@@ -25,6 +25,8 @@ export const FALLBACK_DAYS = 30;
 // A year, so a missed annual visit still surfaces until it is rebooked.
 const MISSED_LOOKBACK_DAYS = 365;
 const RAF_JUMP = 0.3;
+// Repeat ED use: two or more ED visits inside this window.
+const ED_WINDOW_DAYS = 180;
 
 const SEVERITY_RANK = { high: 0, medium: 1, low: 2 };
 // Within a severity: care events first, then the patient waiting on us, then
@@ -99,6 +101,24 @@ function streamChanges(events, since) {
     }
     return [];
   });
+}
+
+// ED visits recorded as encounters (claims) rather than ADT feeds: repeat use
+// is the signal, since a single past visit is history the Recap already shows.
+function edUtilization(events, now) {
+  const ed = events.filter(e => e.kind === 'encounter' && /emergency|\bED\b/i.test(e.title || '')
+    && e.at <= now && e.at >= now - ED_WINDOW_DAYS * DAY);
+  if (ed.length < 2) return [];
+  return [{
+    id: `ed:${ed.map(e => e.id).sort().join(',')}`,
+    kind: 'adt',
+    severity: 'high',
+    icon: 'solar:hospital-linear',
+    title: `${ed.length} ED visits in 6 months`,
+    detail: ed.map(e => fmtDate(e.at)).join(' • '),
+    at: ed[0].at,
+    action: { key: 'addTask', label: 'Create Task' },
+  }];
 }
 
 // The patient_overview row marks a vital off goal with tone 'error'.
@@ -196,6 +216,7 @@ export function buildAttentionSignals({
   const signals = [
     ...streamChanges(events, since),
     ...missedAppointments(events, now),
+    ...edUtilization(events, now),
     ...unanswered(conversations, now),
     ...vitalsOffGoal(vitals),
     ...overdueTasks(overdue),

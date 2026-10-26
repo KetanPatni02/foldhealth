@@ -9,6 +9,7 @@ import { parseLocalDate } from '../../../lib/localDate';
  * Event: { id, at (ms), category, kind, title, detail, actor, actorRole,
  *   program, billingProgram, outcome, tone, durationSeconds, vendor, source,
  *   facts: [{ label, value }] } (facts: the kind's own fields, for details)
+ * Labs also carry name, value and unit.
  * category: 'clinical' | 'touchpoint' | 'program'
  */
 
@@ -51,6 +52,10 @@ export function fromClinicalEvent(e) {
       const out = value != null && ((high != null && value > high) || (low != null && value < low));
       return {
         ...base,
+        // Name and value apart, so a result can be compared with the previous one.
+        name: e.display,
+        value,
+        unit: e.unit || null,
         title: `${e.display}${value != null ? ` ${fmtNum(value)}${e.unit ? ` ${e.unit}` : ''}` : ''}`,
         detail: low != null || high != null ? `Range ${low ?? ''}${low != null && high != null ? '–' : ''}${high ?? ''}${e.unit ? ` ${e.unit}` : ''}` : null,
         outcome: value == null ? null : out ? 'Out of range' : 'In range',
