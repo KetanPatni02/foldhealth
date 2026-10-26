@@ -2,13 +2,13 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { DashboardCard, DashboardCardBody } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { CappedRows } from './CappedRows';
-import { SubTabs } from '../../../../../../components/SubTabs/SubTabs';
+import { CountToggle } from './CountToggle';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Button } from '../../../../../../components/Button/Button';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { openOverviewGap } from './overviewItemActions';
 import styles from './overviewCards.module.css';
-import { CardInsights } from '../attention/CardInsights';
+import { CardHeaderActions, CardInsights } from '../attention/CardInsights';
 
 const CareGapDetailDrawer = lazy(() => import('../../../../../hedis-worklist/CareGapDetailDrawer').then(m => ({ default: m.CareGapDetailDrawer })));
 
@@ -22,6 +22,7 @@ export function GapsCard({ overview, actions, patient }) {
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
   const openDiagPanel = useAppStore(s => s.openDiagPanel);
   const [careGap, setCareGap] = useState(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   // Open gaps, most urgent first (error, then warning tone).
   const TONE_ORDER = { error: 0, warning: 1 };
   const gaps = (overview?.gaps || []).filter(g => g.status !== 'Closed')
@@ -51,48 +52,49 @@ export function GapsCard({ overview, actions, patient }) {
     <DashboardCard
       icon="solar:danger-triangle-linear"
       title="Gaps"
-      count={gaps.length || null}
       tabs={gaps.length > 0 && (
-        <SubTabs
-          className={styles.tabRow}
-          tabs={[{ key: 'quality', label: `Quality gaps (${quality.length})` }, { key: 'hcc', label: `HCC gaps (${hcc.length})` }]}
-          activeKey={tab}
+        <CountToggle
+          items={[{ key: 'quality', label: 'Quality Gaps', count: quality.length }, { key: 'hcc', label: 'HCC Gaps', count: hcc.length }]}
+          active={tab}
           onChange={setTab}
         />
       )}
+      actions={<CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}></CardHeaderActions>}
     >
+      <CardInsights open={insightsOpen} />
       <DashboardCardBody className={styles.listBody}>
         {gaps.length === 0 ? (
           <p className={styles.empty}>No open gaps.</p>
         ) : list.length === 0 ? (
           <p className={styles.empty}>No open {tab === 'hcc' ? 'HCC' : 'quality'} gaps.</p>
         ) : (
-          <CappedRows
-            items={list}
-            resetKey={tab}
-            render={g => (
-              <div key={g.id} className={styles.clickRow}>
-                <PanelSectionItem
-                  inset
-                  leading={<span className={styles.codeChip}>{g.code}</span>}
-                  title={(
-                    <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => openGap(g)}>
-                      {g.title}
-                    </button>
-                  )}
-                  meta={g.detail}
-                  trailing={(
-                    <span className={`${styles.trail} ${styles.aboveStretch}`}>
-                      <span className={styles.statusSlot}><Badge tone={g.tone || 'grey'} size="S" label={g.status} /></span>
-                      {g.cta
-                        ? <Button variant="secondary" size="S" className={styles.ctaButton} onClick={(e) => run(g, e)}>{g.cta}</Button>
-                        : <span className={styles.ctaButton} />}
-                    </span>
-                  )}
-                />
-              </div>
-            )}
-          />
+          <div className={styles.dividedRows}>
+            <CappedRows
+              items={list}
+              resetKey={tab}
+              render={g => (
+                <div key={g.id} className={styles.clickRow}>
+                  <PanelSectionItem
+                    inset
+                    title={(
+                      <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => openGap(g)}>
+                        {g.code ? `${g.code} - ${g.title}` : g.title}
+                      </button>
+                    )}
+                    meta={g.detail}
+                    trailing={(
+                      <span className={`${styles.trail} ${styles.aboveStretch}`}>
+                        <span className={styles.statusSlot}><Badge tone={g.tone || 'grey'} size="S" label={g.status} /></span>
+                        {g.cta
+                          ? <Button variant="secondary" size="S" className={styles.ctaButton} onClick={(e) => run(g, e)}>{g.cta}</Button>
+                          : <span className={styles.ctaButton} />}
+                      </span>
+                    )}
+                  />
+                </div>
+              )}
+            />
+          </div>
         )}
       </DashboardCardBody>
       {careGap && (
@@ -105,7 +107,6 @@ export function GapsCard({ overview, actions, patient }) {
           />
         </Suspense>
       )}
-      <CardInsights />
     </DashboardCard>
   );
 }

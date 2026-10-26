@@ -33,12 +33,10 @@ export const OVERVIEW_LAYOUT_REVISION = 3;
 export const OVERVIEW_WIDGETS = [
   { key: 'synopsis', label: 'Patient Synopsis', group: 'Overview' },
   { key: 'healthChart', label: 'Health Chart', group: 'Overview' },
-  { key: 'riskAcuity', label: 'Risk & Acuity', group: 'Overview' },
   { key: 'highlights', label: 'Highlights', group: 'Overview' },
   { key: 'careTeam', label: 'Care Team', group: 'Overview' },
   { key: 'contact', label: 'Contact & Reachability', group: 'Overview' },
   { key: 'caregivers', label: 'Caregiver & Family', group: 'Overview' },
-  { key: 'consent', label: 'Consent', group: 'Overview' },
   { key: 'populationGroups', label: 'Population Groups', group: 'Overview', sample: true },
   { key: 'insurance', label: 'Insurance', group: 'Overview', sample: true },
   { key: 'subscription', label: 'Subscription', group: 'Overview', sample: true },
@@ -71,16 +69,17 @@ const KNOWN = new Set(OVERVIEW_WIDGET_KEYS);
 // where it was.
 //
 // Needs Attention sits above the lanes, so each lane leads with what moves:
-// Overview is who the patient is (synopsis and risk first, reference cards
-// last). Care Management is the clinical record (the wide column), with
-// vitals, care plan and gaps on top. Actionables is what to do next, led by
+// Overview is who the patient is (synopsis first, reference cards last;
+// risk, acuity and consent live in the patient banner). Care Management is
+// the clinical record (the wide column), with vitals, care plan and gaps on
+// top. Actionables is what to do next, led by
 // Suggested Actions, Tasks and Appointments. Sample-only reference cards
 // (population groups, insurance, subscription) start hidden. Unchanged
 // revision: a layout someone already arranged stays as they left it.
 export const DEFAULT_OVERVIEW_LAYOUT = {
   revision: OVERVIEW_LAYOUT_REVISION,
   lanes: [
-    ['synopsis', 'riskAcuity', 'healthChart', 'careTeam', 'caregivers', 'highlights', 'contact', 'consent', 'populationGroups', 'insurance', 'subscription'],
+    ['synopsis', 'healthChart', 'careTeam', 'caregivers', 'highlights', 'contact', 'populationGroups', 'insurance', 'subscription'],
     ['vitals', 'carePlan', 'gaps', 'carePrograms', 'medications', 'conditions', 'notes', 'programProgress', 'careUtilization', 'priorAuth', 'careJourneys'],
     ['suggestedActions', 'tasks', 'reminders', 'appointments', 'awaitingReply', 'quickActions', 'sinceLastTouch', 'automations'],
   ],

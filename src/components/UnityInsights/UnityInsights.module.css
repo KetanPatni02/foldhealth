@@ -148,9 +148,9 @@
 }
 
 .recDescription {
-  font-size: var(--font-base);
+  font-size: var(--insight-description-size, var(--font-base));
   line-height: var(--leading-normal);
-  color: var(--neutral-300);
+  color: var(--insight-description-color, var(--neutral-300));
 }
 
 .recActions {

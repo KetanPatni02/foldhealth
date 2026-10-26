@@ -663,6 +663,28 @@ export const useAppStore = create((set, get) => ({
       get().showToast?.('Could not update pinned rows');
     }
   },
+  // The Overview Vitals widget's tiles, in order, shared by the care team:
+  // { [patientId]: vital keys }. null = no saved choice (the overview's own vitals).
+  overviewVitalKeys: {},
+  fetchOverviewVitalKeys: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_overview_vitals').select('vital_keys').eq('patient_id', String(patientId)).maybeSingle();
+    if (error) return;
+    set(s => ({ overviewVitalKeys: { ...s.overviewVitalKeys, [patientId]: data?.vital_keys ?? null } }));
+  },
+  setOverviewVitalKeys: async (patientId, keys) => {
+    const before = get().overviewVitalKeys[patientId];
+    set(s => ({ overviewVitalKeys: { ...s.overviewVitalKeys, [patientId]: keys } }));
+    const table = supabase.from('patient_overview_vitals');
+    const { error } = keys
+      ? await table.upsert({ patient_id: String(patientId), vital_keys: keys, updated_at: new Date().toISOString() }, { onConflict: 'patient_id' })
+      : await table.delete().eq('patient_id', String(patientId));
+    // Until patient_overview_vitals is migrated, the choice holds for the session only.
+    if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
+      set(s => ({ overviewVitalKeys: { ...s.overviewVitalKeys, [patientId]: before } }));
+      get().showToast?.('Could not update the Vitals widget');
+    }
+  },
   fetchStickyNotes: async (patientId) => {
     const { data } = await supabase.from('sticky_notes').select('*').eq('patient_id', patientId).order('created_at', { ascending: true });
     if (data) set({ stickyNotes: data });
@@ -2008,6 +2030,8 @@ export const useAppStore = create((set, get) => ({
       status: r.status || 'Active',
       note: r.note || '',
       stopReason: r.stop_reason || '',
+      lastFilledOn: r.last_filled_on || '',
+      daysSupply: r.days_supply ?? null,
       source: r.source,
       openfdaMeta: r.openfda_meta || null,
     }));
@@ -2030,6 +2054,8 @@ export const useAppStore = create((set, get) => ({
       status: med.status || 'Active',
       note: med.note || '',
       stopReason: med.stopReason || '',
+      lastFilledOn: med.lastFilledOn || '',
+      daysSupply: med.daysSupply ?? null,
       source: med.source || 'manual',
       openfdaMeta: med.openfdaMeta || null,
     };
@@ -2050,6 +2076,10 @@ export const useAppStore = create((set, get) => ({
         status: optimistic.status,
         note: optimistic.note || null,
         stop_reason: optimistic.stopReason || null,
+        // Refill fields only when filled in, so saving works before
+        // patient_medications_refill_migration.sql has run.
+        ...(optimistic.lastFilledOn ? { last_filled_on: optimistic.lastFilledOn } : {}),
+        ...(optimistic.daysSupply ? { days_supply: optimistic.daysSupply } : {}),
         source: optimistic.source,
         openfda_meta: optimistic.openfdaMeta,
       })
@@ -2103,6 +2133,9 @@ export const useAppStore = create((set, get) => ({
     if ('status' in updates) dbUpdates.status = updates.status;
     if ('note' in updates) dbUpdates.note = updates.note || null;
     if ('stopReason' in updates) dbUpdates.stop_reason = updates.stopReason || null;
+    // Refill fields only when set now or before (see addPatientMedication).
+    if ('lastFilledOn' in updates && (updates.lastFilledOn || prev.lastFilledOn)) dbUpdates.last_filled_on = updates.lastFilledOn || null;
+    if ('daysSupply' in updates && (updates.daysSupply || prev.daysSupply)) dbUpdates.days_supply = updates.daysSupply ?? null;
     const { error } = await supabase
       .from('patient_medications')
       .update(dbUpdates)

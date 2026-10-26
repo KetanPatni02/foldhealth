@@ -1,4 +1,5 @@
 import { parseLocalDate } from '../../../../../../lib/localDate';
+import { formatGoalTarget } from '../../../../../settings/care-plan-library/lib/goalFormat';
 
 /**
  * Which care plan goals, interventions and barriers need attention now, and
@@ -35,39 +36,52 @@ const dateMs = (s) => {
   return d ? d.getTime() : null;
 };
 const ownerName = a => (typeof a === 'string' ? a : a?.name) || '';
+const fmtDate = t => new Date(t).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+const days = n => `${n} ${n === 1 ? 'day' : 'days'}`;
+const current = g => g.currentValue && `${g.currentValue}${g.customUnit ? ` ${g.customUnit}` : ''}`;
+// "Current 8.2 %, target < 7 %", or whichever half is on record.
+const versus = (g) => {
+  const goal = formatGoalTarget(g);
+  if (current(g)) return goal ? `Current ${current(g)}, target ${goal}` : `Current ${current(g)}`;
+  return goal ? `Target ${goal}` : '';
+};
 
+// Each reason carries `detail`: the line the Overview shows under the item,
+// built from the same recorded fields.
 function goalReason(g, now) {
-  if (/^not met$/i.test(g.status || '')) return { reason: 'Not met', tone: 'error' };
+  if (/^not met$/i.test(g.status || '')) return { reason: 'Not met', tone: 'error', detail: versus(g) ? `Not met. ${versus(g)}.` : 'Marked not met.' };
   if (!isOpen(g)) return null;
-  const target = dateMs(g.targetDate);
-  if (target != null && target < now) return { reason: 'Past target date', tone: 'error' };
-  if (g.trend === '↓') return { reason: 'Trending down', tone: 'warning' };
+  const due = dateMs(g.targetDate);
+  if (due != null && due < now) return { reason: 'Past target date', tone: 'error', detail: `Target date ${fmtDate(due)} has passed${current(g) ? `; current ${current(g)}` : ''}.` };
+  if (g.trend === '↓') return { reason: 'Trending down', tone: 'warning', detail: `Trending the wrong way${current(g) ? `, now ${current(g)}` : ''}.` };
   return null;
 }
 
 function interventionReason(i, now) {
   if (!isOpen(i)) return null;
   const due = dateMs(i.config?.dueDateOverride);
-  if (due != null && due < now) return { reason: 'Past due', tone: 'error' };
+  if (due != null && due < now) return { reason: 'Past due', tone: 'error', detail: `Was due ${fmtDate(due)}, ${days(Math.floor((now - due) / DAY))} ago.` };
   const adherence = Number(i.adherence);
   if (i.adherence != null && i.adherence !== '' && Number.isFinite(adherence) && adherence < 50) {
-    return { reason: `Adherence ${Math.round(adherence)}%`, tone: 'warning' };
+    return { reason: `Adherence ${Math.round(adherence)}%`, tone: 'warning', detail: `Adherence is ${Math.round(adherence)}%, under half of what was planned.` };
   }
   if (i.priority === 'high' && (!ownerName(i.assignee) || ownerName(i.assignee) === 'Unassigned')) {
-    return { reason: 'No owner', tone: 'warning' };
+    return { reason: 'No owner', tone: 'warning', detail: 'High priority with no one assigned.' };
   }
   const created = ms(i.createdAt);
   if (i.priority === 'high' && /^not started$/i.test(i.status || '') && created != null && now - created > 14 * DAY) {
-    return { reason: 'Not started', tone: 'warning' };
+    return { reason: 'Not started', tone: 'warning', detail: `High priority, still not started ${days(Math.floor((now - created) / DAY))} after it was added.` };
   }
   return null;
 }
 
 function barrierReason(b, now) {
   if (!isOpen(b)) return null;
-  if (/^on hold$/i.test(b.status || '')) return { reason: 'On hold', tone: 'warning' };
+  if (/^on hold$/i.test(b.status || '')) return { reason: 'On hold', tone: 'warning', detail: 'On hold, so the goals it blocks are not moving.' };
   const created = ms(b.createdAt);
-  if (b.priority === 'high' && created != null && now - created <= 30 * DAY) return { reason: 'New, high priority', tone: 'warning' };
+  if (b.priority === 'high' && created != null && now - created <= 30 * DAY) {
+    return { reason: 'New, high priority', tone: 'warning', detail: `High-priority barrier added ${fmtDate(created)}.` };
+  }
   return null;
 }
 
@@ -113,4 +127,32 @@ export function carePlanAttention({ goals = [], interventions = [], barriers = [
     open: open.length,
     total: all.length,
   };
+}
+
+/**
+ * The open items of each kind (plus goals marked not met), each with its
+ * attention reason and detail when it has one. Items needing attention lead,
+ * then priority, then the most recently updated.
+ *
+ * Returns { goal: [...], intervention: [...], barrier: [...] }, entries
+ * { kind, item, reason, tone, detail } (reason/tone/detail null when fine).
+ */
+export function carePlanByKind({ goals = [], interventions = [], barriers = [], now = Date.now() } = {}) {
+  const all = unique([
+    ...goals.map(item => ({ kind: 'goal', item, why: goalReason(item, now) })),
+    ...interventions.map(item => ({ kind: 'intervention', item, why: interventionReason(item, now) })),
+    ...barriers.map(item => ({ kind: 'barrier', item, why: barrierReason(item, now) })),
+  ]);
+  const updated = e => ms(e.item.updatedAt) ?? ms(e.item.createdAt) ?? 0;
+  const rank = e => (e.why ? TONE_RANK[e.why.tone] : 9);
+  const out = { goal: [], intervention: [], barrier: [] };
+  all
+    .filter(e => e.why || isOpen(e.item))
+    .sort((a, b) => (rank(a) - rank(b))
+      || ((PRIORITY_RANK[a.item.priority] ?? 3) - (PRIORITY_RANK[b.item.priority] ?? 3))
+      || (updated(b) - updated(a)))
+    .forEach(e => out[e.kind].push({
+      kind: e.kind, item: e.item, reason: e.why?.reason ?? null, tone: e.why?.tone ?? null, detail: e.why?.detail ?? null,
+    }));
+  return out;
 }

@@ -111,6 +111,9 @@ function MedicationDraft({ title, eyebrow, initial, onSave, onCancel }) {
   const [stop, setStop] = useState(initial?.stop || '');
   const [stopReason, setStopReason] = useState(initial?.stopReason || '');
   const [sig, setSig] = useState(initial?.sig || '');
+  // Optional; together they tell the Overview when a refill is due.
+  const [lastFilledOn, setLastFilledOn] = useState(initial?.lastFilledOn || '');
+  const [daysSupply, setDaysSupply] = useState(initial?.daysSupply ?? '');
   const [note, setNote] = useState(initial?.note || '');
   const [noteOpen, setNoteOpen] = useState(!!initial?.note);
   const [saving, setSaving] = useState(false);
@@ -135,6 +138,8 @@ function MedicationDraft({ title, eyebrow, initial, onSave, onCancel }) {
         // A medication that is running has no stop date or reason to record.
         stop: stopped ? stop : '',
         stopReason: stopped ? stopReason : '',
+        lastFilledOn: stopped ? '' : lastFilledOn,
+        daysSupply: !stopped && Number(daysSupply) > 0 ? Math.round(Number(daysSupply)) : null,
       });
     } finally {
       setSaving(false);
@@ -174,6 +179,12 @@ function MedicationDraft({ title, eyebrow, initial, onSave, onCancel }) {
         )}
       </div>
       <Input label="Sig" required value={sig} onChange={e => setSig(e.target.value)} placeholder="Enter Sig" />
+      {!stopped && (
+        <div className={[styles.draftFields, styles.draftFieldsPair].join(' ')}>
+          <Input label="Last Filled" type="date" value={lastFilledOn} min={start || undefined} onChange={e => setLastFilledOn(e.target.value)} />
+          <Input label="Days Supply" type="number" min={1} value={daysSupply} onChange={e => setDaysSupply(e.target.value)} placeholder="e.g. 30" />
+        </div>
+      )}
       {!noteOpen && (
         <Link className={styles.draftAddNote} onClick={() => setNoteOpen(true)}>
           <AddIconMinimalist size={14} color="var(--primary-300)" />
@@ -270,6 +281,8 @@ export function AddMedicationsDrawer({ patientId, focus, onClose }) {
       stopReason: med.stopReason || '',
       sig: med.sig || '',
       note: med.note || '',
+      lastFilledOn: toIsoDate(med.lastFilledOn) || '',
+      daysSupply: med.daysSupply ?? '',
     },
   });
 

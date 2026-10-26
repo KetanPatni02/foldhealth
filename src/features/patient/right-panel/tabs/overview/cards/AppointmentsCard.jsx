@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem, PanelSectionMore } from '../../../../../../components/PanelSection/PanelSection';
-import { SubTabs } from '../../../../../../components/SubTabs/SubTabs';
+import { CountToggle } from './CountToggle';
 import { Button } from '../../../../../../components/Button/Button';
 import { ScheduleDrawer } from '../../../../../../components/ScheduleDrawer/ScheduleDrawer';
 import { parseLocalDate } from '../../../../../../lib/localDate';
@@ -11,7 +11,7 @@ import { useP360Profile } from './useP360Profile';
 import { usePatientStream } from '../../../../hooks/usePatientStream';
 import { missedAppointments } from './missedAppointments';
 import styles from './overviewCards.module.css';
-import { CardInsights } from '../attention/CardInsights';
+import { CardHeaderActions, CardInsights } from '../attention/CardInsights';
 
 const VISIBLE = 3;
 
@@ -47,6 +47,7 @@ export function AppointmentsCard({ patientId, patient }) {
   const [pickedTab, setPickedTab] = useState(null);
   const [rescheduling, setRescheduling] = useState(false);
   const [openedAt] = useState(() => Date.now());
+  const [insightsOpen, setInsightsOpen] = useState(false);
 
   useEffect(() => { fetchAppointments?.(); }, [fetchAppointments]);
 
@@ -77,17 +78,18 @@ export function AppointmentsCard({ patientId, patient }) {
       icon="solar:calendar-linear"
       title="Appointments"
       tabs={(
-        <SubTabs
-          className={styles.tabRow}
-          tabs={[
-            { key: 'upcoming', label: `Upcoming (${appts.length})` },
-            { key: 'missed', label: `Missed (${missed.length})` },
+        <CountToggle
+          items={[
+            { key: 'upcoming', label: 'Upcoming', count: appts.length },
+            { key: 'missed', label: 'Missed', count: missed.length },
           ]}
-          activeKey={tab}
+          active={tab}
           onChange={pickTab}
         />
       )}
+      actions={<CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}></CardHeaderActions>}
     >
+      <CardInsights open={insightsOpen} />
       <DashboardCardBody className={styles.listBody}>
         {tab === 'missed' ? (
           missed.length === 0 ? (
@@ -152,7 +154,6 @@ export function AppointmentsCard({ patientId, patient }) {
           onClose={() => setRescheduling(false)}
         />
       )}
-      <CardInsights />
     </DashboardCard>
   );
 }
