@@ -68,6 +68,8 @@ function countKinds(events) {
 // something that happened with the patient.
 const isHousekeeping = e => e.category === 'program' && /\b(downloaded|exported|viewed|printed)\b/i.test(e.title || '');
 
+const isMedChange = e => e.kind === 'med_start' || e.kind === 'med_stop';
+
 const isEd = e => e.kind === 'adt' || (e.kind === 'encounter' && /emergency|\bED\b/i.test(e.title || ''));
 
 /**
@@ -81,12 +83,12 @@ export function buildRecap({ events = [], from, now = Date.now(), openCount = 0 
   const past = events.filter(e => e.at <= now && !isHousekeeping(e));
   const inWindow = past.filter(e => e.at >= from);
   const touchpoints = inWindow.filter(e => e.category === 'touchpoint');
-  const medications = inWindow.filter(e => e.kind === 'med_start' || e.kind === 'med_stop');
-  const clinical = inWindow.filter(e => e.category === 'clinical' && !medications.includes(e));
+  const medications = inWindow.filter(isMedChange);
+  const clinical = inWindow.filter(e => e.category === 'clinical' && !isMedChange(e));
   const programs = inWindow.filter(e => e.category === 'program');
   // With nothing new, the clinical step still shows where things stand.
   const earlierClinical = clinical.length ? [] : past
-    .filter(e => e.category === 'clinical' && e.kind !== 'med_start' && e.kind !== 'med_stop' && e.at < from)
+    .filter(e => e.category === 'clinical' && !isMedChange(e) && e.at < from)
     .slice(0, 3);
   const upcoming = events.filter(e => e.at > now && e.kind === 'appointment').sort((a, b) => a.at - b.at).slice(0, 3);
   const touchAt = lastTouchAt(events, now);
