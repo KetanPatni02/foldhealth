@@ -63,6 +63,9 @@ export default defineConfig({
   customLogger: logger,
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
+    // Vercel preview builds are production-mode Vite builds. Mark them so the
+    // Supabase fallback is Foldhealth Dev, not the production project.
+    __DEPLOY_TARGET__: JSON.stringify(process.env.VERCEL_ENV === 'preview' ? 'dev' : ''),
   },
   plugins: [tailwindcss(), react(), devApiPlugin(), emitVersionJsonPlugin()],
   server: {

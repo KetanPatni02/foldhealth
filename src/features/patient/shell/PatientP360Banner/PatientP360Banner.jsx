@@ -3,6 +3,7 @@ import { Avatar } from '../../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../../components/Icon/Icon';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
+import { Collapse } from '../../../../components/Collapse/Collapse';
 import { useAppStore } from '../../../../store/useAppStore';
 import { formatFoldId } from '../../../../lib/foldId';
 import { usePatientDisplay } from '../../hooks/usePatientDisplay';
@@ -12,6 +13,9 @@ import { ExpandedDemographics, ExpandedHealthStatus, ExpandedAppointments, Expan
 import { PatientP360BannerDrawer } from './PatientP360BannerDrawer';
 import { MORE_MENU_LABELS } from './PatientP360Banner.utils';
 import { useCcmTimerDockOptional } from '../CcmTimerWidget/CcmTimerDockContext';
+import { PatientConsentPopover } from '../../shared/PatientConsentPopover/PatientConsentPopover';
+import { usePatientConsent } from '../../hooks/usePatientConsent';
+import { consentPopoverPos, consentSummaryLabel } from './consentBadge';
 import styles from './PatientP360Banner.module.css';
 
 export function PatientP360Banner({ patient, variant = 'full' }) {
@@ -39,6 +43,13 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
   const { dockRef } = useCcmTimerDockOptional();
+  const [consentPos, setConsentPos] = useState(null);
+  const { summary: consent } = usePatientConsent(patient?.id);
+  const toggleConsent = (e) => {
+    const next = consentPopoverPos(e.currentTarget);
+    setConsentPos(pos => (pos ? null : next));
+  };
+  const closeConsent = useCallback(() => setConsentPos(null), []);
 
   const measureBanner = useCallback(() => {
     const el = bannerRef.current;
@@ -100,8 +111,8 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
               {bannerSize !== 'wide' && (
                 <>
                   <span className={styles.metaDot}>•</span>
-                  <button type="button" className={styles.metaConsent}>
-                    Consent: {p.consent_given}/{p.consent_total}
+                  <button type="button" className={styles.metaConsent} onClick={toggleConsent} aria-haspopup="dialog">
+                    Consent: {consentSummaryLabel(consent)}
                     <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--status-warning)" />
                   </button>
                 </>
@@ -150,7 +161,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
               <div className={styles.metricCol}>
                 <span className={styles.metricLabel}>Consent</span>
                 <div className={styles.metricValueRow}>
-                  <span className={`${styles.badge} ${styles.badgeWarning}`}>{p.consent_given}/{p.consent_total} <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--status-warning)" /></span>
+                  <button type="button" className={`${styles.badge} ${styles.badgeWarning}`} onClick={toggleConsent} aria-haspopup="dialog" aria-label={`Consent ${consentSummaryLabel(consent)}`}>{consentSummaryLabel(consent)} <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--status-warning)" /></button>
                 </div>
               </div>
               <div className={styles.metricCol}>
@@ -254,8 +265,8 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         <div ref={dockRef} className={styles.timerDockSlot} data-ccm-timer-dock />
       </div>
 
-      {expanded && (
-        bannerSize === 'wide' ? (
+      <Collapse open={expanded}>
+        {bannerSize === 'wide' ? (
           <div className={styles.expandedGrid}>
             <ExpandedDemographics p={p} />
             <ExpandedHealthStatus p={p} movedMetrics programCodes={programCodes} />
@@ -264,8 +275,9 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
           </div>
         ) : (
           <QuickViewExpanded p={p} programCodes={programCodes} />
-        )
-      )}
+        )}
+      </Collapse>
+      {consentPos && <PatientConsentPopover patientId={patient.id} pos={consentPos} onClose={closeConsent} />}
     </div>
   );
 }

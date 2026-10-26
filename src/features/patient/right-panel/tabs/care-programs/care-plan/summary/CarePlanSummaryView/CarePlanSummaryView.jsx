@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { Collapse } from '../../../../../../../../components/Collapse/Collapse';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { Button } from '../../../../../../../../components/Button/Button';
@@ -44,6 +45,7 @@ import styles from './CarePlanSummaryView.module.css';
 import { localDateMs } from '../../../../../../../../lib/localDate';
 import { apiFetch } from '../../../../../../../../lib/apiFetch';
 import { useSignedCarePlans } from '../../lib/useSignedCarePlans';
+import { isProgramClosed } from '../../../../../../data/programStatus';
 
 const PRIORITIES = ['high', 'medium', 'low'];
 
@@ -727,7 +729,7 @@ function BarriersTable({ rows, onOpen, onStatusMenu, programOverlap }) {
             <span className={sharedRow.closedBarriersLabel}>Closed Barriers</span>
             <span className={sharedRow.completedCount}>{closedRows.length}</span>
           </button>
-          {closedOpen && (
+          <Collapse open={closedOpen}>
             <table className={sharedRow.closedBarriersTable}>
               <colgroup>
                 <col style={{ width: GBI_COL_WIDTH.priority }} />
@@ -747,7 +749,7 @@ function BarriersTable({ rows, onOpen, onStatusMenu, programOverlap }) {
                 ))}
               </tbody>
             </table>
-          )}
+          </Collapse>
         </div>
       )}
     </div>
@@ -873,9 +875,8 @@ export function CarePlanSummaryView({
     return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
   };
   const activeProgramRows = useMemo(() => {
-    const past = new Set(['Completed', 'Closed']);
     return (programs || [])
-      .filter(p => !past.has(p.status))
+      .filter(p => !isProgramClosed(p.status))
       .map(p => {
         const key = `${patientId}::${p.id}`;
         const plan = patientCarePlans[key];

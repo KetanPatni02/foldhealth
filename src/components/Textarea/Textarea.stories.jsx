@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Textarea } from './Textarea';
 
 export default {
@@ -109,3 +110,10 @@ export const Disabled = {
     maxLength: 150,
   },
 };
+
+/** Plain textarea with `highlightLinks`: web links show blue and underlined while typing. */
+function LinkHighlightDemo() {
+  const [value, setValue] = useState('Please fill this form: https://example.com/forms/54');
+  return <Textarea highlightLinks rows={4} value={value} onChange={e => setValue(e.target.value)} />;
+}
+export const LinkHighlight = { render: () => <LinkHighlightDemo /> };

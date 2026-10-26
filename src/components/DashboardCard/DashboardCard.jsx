@@ -16,12 +16,13 @@ import styles from './DashboardCard.module.css';
  * @param {string} [props.icon]                 Solar icon name (or custom:ai)
  * @param {React.ReactNode} props.title
  * @param {React.ReactNode} [props.count]       Muted count after the title
+ * @param {React.ReactNode} [props.tabs]        Tabs beside the title
  * @param {React.ReactNode} [props.actions]     Right side of the header
  * @param {'default'|'ai'} [props.tone='default']
  * @param {React.ReactNode} [props.footer]
  * @param {string} [props.className]
  */
-export function DashboardCard({ icon, title, count, actions, tone = 'default', footer, className, children }) {
+export function DashboardCard({ icon, title, count, tabs, actions, tone = 'default', footer, className, children }) {
   const ai = tone === 'ai';
   return (
     <section className={[styles.card, ai ? styles.ai : '', className].filter(Boolean).join(' ')}>
@@ -29,12 +30,21 @@ export function DashboardCard({ icon, title, count, actions, tone = 'default', f
         {icon && <Icon name={icon} size={16} color={ai ? undefined : 'var(--neutral-300)'} />}
         <h3 className={[styles.title, ai ? styles.aiTitle : ''].join(' ')}>{title}</h3>
         {count != null && <span className={styles.count}>{count}</span>}
+        {tabs && <div className={styles.headerTabs}>{tabs}</div>}
         {actions && <div className={styles.actions}>{actions}</div>}
       </header>
       {children}
       {footer && <footer className={styles.footer}>{footer}</footer>}
     </section>
   );
+}
+
+/**
+ * Just the card frame, for content that brings its own header (a
+ * PanelSection-based widget dropped into a dashboard grid).
+ */
+export function DashboardCardShell({ flush = false, className, children }) {
+  return <section className={[styles.card, flush ? '' : styles.shell, className].filter(Boolean).join(' ')}>{children}</section>;
 }
 
 /** Loading placeholder with the card's real header, so the grid doesn't jump when data lands. */

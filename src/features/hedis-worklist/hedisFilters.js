@@ -1,4 +1,5 @@
 import { parseLocalDate } from '../../lib/localDate';
+import { GENDER_FILTER_OPTIONS, LANGUAGE_FILTER_OPTIONS, MEMBER_STATUS_FILTER_OPTIONS, memberGenderLabel, memberLanguageLabel } from '../../lib/memberFilters';
 // HEDIS worklist filter definitions — parallel to `src/features/hcc/filters.js`
 // so the shared FilterChipBar / MoreFiltersPopover can drive both worklists
 // with the same UX (chip → popover, Label|Value active state, More Filters,
@@ -62,13 +63,6 @@ export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.reduce((keys, x) => {
   return keys;
 }, []);
 
-// Language display labels; the DB stores ISO 639-1 codes (en, es, …) so the
-// predicate translates each member's code before comparing.
-const LANGUAGE_LABEL = {
-  en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese',
-  ko: 'Korean',  vi: 'Vietnamese', hi: 'Hindi', bn: 'Bengali', ar: 'Arabic',
-};
-
 // Age Range filter bands, in whole months: [min, max) so they don't
 // overlap within a set. The month bands follow the CIS childhood schedule
 // (birth, 2, 6 and 18 months); the year bands the HEDIS measure
@@ -89,16 +83,16 @@ const AGE_GROUPS = [
 
 export const FILTER_DEFS = [
   { k: 'memberStatus',        label: 'Member Status', type: 'multi',
-    opts: ['Active', 'Inactive', 'Suspended'] },
+    opts: MEMBER_STATUS_FILTER_OPTIONS },
   { k: 'gapStatus',           label: 'Gap Status', type: 'multi',
     opts: ['Open', 'Engaged', 'Engaged Requires Follow-Up', 'Submitted', 'Completed',
            'Closed - Data', 'Closed - Do not call', 'Closed - UTR', 'Closed - Other'] },
   { k: 'assignee',            label: 'Assignee', type: 'multi',
     dynamic: 'assignee', opts: [], searchable: true },
   { k: 'gender',              label: 'Gender', type: 'multi',
-    opts: ['Male', 'Female'] },
+    opts: GENDER_FILTER_OPTIONS },
   { k: 'language',            label: 'Language', type: 'multi',
-    opts: ['English', 'Spanish', 'Chinese', 'Cantonese', 'Korean', 'Vietnamese', 'Hindi', 'Bengali', 'Arabic'] },
+    opts: LANGUAGE_FILTER_OPTIONS, searchable: true },
   { k: 'lastOutreachOutcome', label: 'Last Outreach Outcome', type: 'multi',
     opts: ['Attended', 'Failed', 'Pending', 'No Answer', 'Voicemail'] },
   { k: 'preferredCallTime',   label: 'Preferred Call Time', type: 'multi',
@@ -179,10 +173,9 @@ function matchOne(m, k, vals) {
   switch (k) {
     case 'memberStatus':        return vals.includes(m.memberStatus);
     case 'gender': {
-      const long = m.gender === 'M' ? 'Male' : m.gender === 'F' ? 'Female' : m.gender;
-      return vals.includes(m.gender) || vals.includes(long);
+      return vals.includes(m.gender) || vals.includes(memberGenderLabel(m.gender));
     }
-    case 'language':            return vals.includes(LANGUAGE_LABEL[m.language] || m.language);
+    case 'language':            return vals.includes(memberLanguageLabel(m.language));
     case 'gapStatus': {
       const valSet = new Set(vals);
       for (const g of (m.gaps || [])) {

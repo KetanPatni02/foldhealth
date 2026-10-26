@@ -135,6 +135,18 @@
   color: var(--neutral-500);
 }
 .expandedMetaDot { color: var(--neutral-200); margin: 0 6px; }
+/* "View details" field list: label column, then values. */
+.detailsGrid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--font-md);
+  line-height: var(--leading-normal);
+}
+.detailsLabel { color: var(--neutral-300); }
+.detailsValue { margin: 0; color: var(--neutral-500); overflow-wrap: anywhere; }
+
 .expandedNoteLabel {
   margin-top: var(--space-3);
   font-size: var(--font-base);

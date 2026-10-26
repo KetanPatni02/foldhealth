@@ -13,6 +13,7 @@ import { buildAiFieldCatalog, buildAiRuleInstructions } from '../../src/features
 import { AI_RULE_RESPONSE_SCHEMA } from '../../src/features/population-groups/rule-builder/aiRuleResponseSchema.js';
 import { normalizeAiRuleQuery } from '../../src/features/population-groups/rule-builder/normalizeAiRuleQuery.js';
 import { requireUser } from '../_lib/requireUser.js';
+import { bodyWithinLimit } from '../_lib/limits.js';
 
 function buildPrompt({ prompt, messages, currentRule }) {
   const catalog = buildAiFieldCatalog({ compact: true });
@@ -53,15 +54,10 @@ export default async function handler(req, res) {
 
   const key = process.env.GOOGLE_AI_API_KEY;
   if (!key) {
-    return res.status(500).json({
-      error: {
-        message:
-          'GOOGLE_AI_API_KEY is not available on this deployment. On Vercel (foldhealth project): ' +
-          'Settings → Environment Variables → add GOOGLE_AI_API_KEY with Production enabled, then redeploy. ' +
-          'Local dev uses .env in the repo root (not committed).',
-      },
-    });
+    console.error('[pop-group-rule-from-nl] GOOGLE_AI_API_KEY is not set');
+    return res.status(500).json({ error: { message: 'AI rule building is not set up on this deployment.' } });
   }
+  if (!bodyWithinLimit(req, res)) return;
 
   const body = req.body && typeof req.body === 'object' ? req.body : null;
   const messages = Array.isArray(body?.messages) ? body.messages : [];

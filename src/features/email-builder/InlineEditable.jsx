@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { getFontStack } from './googleFonts';
 import { isGradient } from './colorHelpers';
 import { formatLetterSpacingCss } from './dimUnits';
+import { sanitizeRichText } from '../../lib/sanitizeHtml';
 
 // In-place text editor for Heading/Text blocks. Renders a contentEditable
 // element so users can click-and-type directly on the canvas, **and** select
@@ -84,15 +85,18 @@ function buildStyle(style, type) {
 // - For lists, split on newline and wrap each non-empty line in <li>.
 // - For non-lists, normalize raw newlines to <br/> so they show as line breaks.
 // Empty content renders one <li><br></li> or nothing so the caret has a home.
+// Stored text can come from a shared template authored by a teammate, so it is
+// sanitized before it reaches the live DOM (the rich-text profile keeps the
+// <b>/<i>/<u>/<s>/<strike>/<code>/<a> tags the SelectionToolbar produces).
 function textToInnerHtml(text, listStyle) {
   const safe = text || '';
   if (listStyle === 'bullet' || listStyle === 'number') {
     const lines = safe.split(/\n/);
     const items = lines.length ? lines : [''];
-    return items.map(l => `<li>${l || '<br>'}</li>`).join('');
+    return sanitizeRichText(items.map(l => `<li>${l || '<br>'}</li>`).join(''));
   }
   // Preserve existing inline HTML; only convert bare newlines.
-  return safe.replace(/\n/g, '<br>');
+  return sanitizeRichText(safe.replace(/\n/g, '<br>'));
 }
 
 // Read the current DOM back into the stored text format. For lists we walk

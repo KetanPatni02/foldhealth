@@ -77,6 +77,10 @@ export const Textarea = forwardRef(function Textarea({
   mentions = false,
   mentionUsers,
   onMentionsChange,
+  // Plain mode: web links in the text show as underlined info-colored links
+  // (a layer under the textarea draws them; editing and selection are
+  // unchanged). MessageComposer uses the same layer (LinkHighlightTextarea).
+  highlightLinks = false,
   onChange,
   value,
   defaultValue,
@@ -109,6 +113,21 @@ export const Textarea = forwardRef(function Textarea({
       variant === 'error' ? styles.textareaError : '',
       className || '',
     ].filter(Boolean).join(' ');
+    if (highlightLinks) {
+      return (
+        <LinkHighlightTextarea
+          ref={ref}
+          rows={rows}
+          className={cls}
+          disabled={disabled}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          maxLength={maxLength}
+          {...rest}
+        />
+      );
+    }
     return (
       <textarea
         ref={ref}
@@ -154,6 +173,36 @@ export const Textarea = forwardRef(function Textarea({
       placeholder={placeholder}
       {...rest}
     />
+  );
+});
+
+// A <textarea> can't style part of its text, so the text is drawn by a
+// layer underneath (links underlined and colored) and the textarea on top
+// keeps the caret, selection and editing with transparent text.
+const LINK_RE = /(https?:\/\/[^\s]+)/g;
+
+/** Also used directly by MessageComposer's type box. */
+export const LinkHighlightTextarea = forwardRef(function LinkHighlightTextarea({ className, value = '', onScroll, ...rest }, ref) {
+  const backdropRef = useRef(null);
+  const parts = String(value).split(LINK_RE);
+  return (
+    <div className={styles.linkWrap}>
+      <div ref={backdropRef} className={`${className} ${styles.linkBackdrop}`} aria-hidden="true">
+        {parts.map((part, i) => (i % 2 ? <span key={i} className={styles.link}>{part}</span> : part))}
+        {/* A trailing newline needs a character after it to take up a line. */}
+        {'\u200b'}
+      </div>
+      <textarea
+        ref={ref}
+        className={`${className} ${styles.linkInput}`}
+        value={value}
+        onScroll={(e) => {
+          if (backdropRef.current) backdropRef.current.scrollTop = e.currentTarget.scrollTop;
+          onScroll?.(e);
+        }}
+        {...rest}
+      />
+    </div>
   );
 });
 
@@ -735,7 +784,6 @@ function ToolbarButton({ icon, label, onClick, disabled, showDivider, tone, acti
 function plainTextLen(html) {
   if (!html) return 0;
   if (typeof document === 'undefined') return html.replace(/<[^>]*>/g, '').length;
-  const el = document.createElement('div');
-  el.innerHTML = html;
-  return (el.innerText || el.textContent || '').length;
+  // DOMParser documents are inert: no scripts run and no <img onerror> fires.
+  return (new DOMParser().parseFromString(html, 'text/html').body.textContent || '').length;
 }

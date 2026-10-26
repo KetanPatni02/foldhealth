@@ -434,7 +434,15 @@
   padding: 8px;
   display: flex;
   flex-direction: column;
+}
+
+/* The header gap lives inside the collapsible body so a collapsed panel
+   has no stray space under its header. */
+.notePanelBody {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  padding-top: var(--space-2);
 }
 
 .notePanelHeader {
@@ -724,6 +732,10 @@
   width: 100%;
 }
 
+.chevron {
+  transition: transform var(--duration-medium) var(--ease-out);
+}
+
 /* ── Log entry row ── */
 .logEntry {
   display: flex;
@@ -938,8 +950,13 @@
    Bordered card containing: Call Details / Date & Time meta, "Note :"
    label, optional transcript inset, plain note text, and the Call
    Recording + Transcript action buttons. */
+/* Cancels the .logBody gap so a closed note adds no space; the card's own
+   margin restores the same spacing when open. */
+.logExpandedCollapse {
+  margin-top: calc(var(--space-1) * -1);
+}
 .logExpandedCard {
-  margin-top: 10px;
+  margin-top: calc(var(--space-3) + var(--space-1) / 2);
   padding: 14px 16px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;

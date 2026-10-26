@@ -1,9 +1,9 @@
-/* The card is inset 8px from the viewport and sits flush beside the app rail
-   (Figma node 14108:294861 carries p-8 + the dropdown shadow). */
+/* Fills the body slot beside the app rail. The floating shell stays bare
+   here, so this card is the pane — no extra inset inside it. */
 .view {
   flex: 1;
+  min-width: 0;
   min-height: 0;
-  margin: var(--space-2);
   display: flex;
   align-items: stretch;
   background: var(--neutral-0);

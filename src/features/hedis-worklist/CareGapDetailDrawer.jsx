@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useCan } from '../../lib/useCan';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
@@ -69,6 +70,7 @@ import { TABS, MORE_ACTIONS, MEASURE_NAMES, toActivityLogEntries, initialsOf } f
 import { NOTELESS_GAP_CODES, noteOpenGaps } from './ClinicalNotePanel.utils';
 import { CareGapDetailDrawerHeader } from './CareGapDetailDrawerHeader';
 import styles from './CareGapDetailDrawer.module.css';
+import { openSafeUrl } from '../../lib/openSafeUrl';
 
 // Compact MM/DD/YYYY formatter used by the preview subtitle. Kept local
 // so the drawer file doesn't reach into date-utils modules for a one-off.
@@ -394,7 +396,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const [apptToDelete, setApptToDelete] = useState(null);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
-  const caregapActivityLoaded = useAppStore(s => s.caregapActivityLoaded);
+  const caregapActivityLoaded = useAppStore(s => s.caregapActivityLoadedFor[member?.id] === true);
   const fetchCaregapActivity = useAppStore(s => s.fetchCaregapActivity);
   const memberComments = useAppStore(s => s.caregapComments[member?.id]);
   const fetchCaregapComments = useAppStore(s => s.fetchCaregapComments);
@@ -404,7 +406,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const [commentToDelete, setCommentToDelete] = useState(null);
   useEffect(() => { fetchCaregapComments(); }, [fetchCaregapComments]);
-  useEffect(() => { fetchCaregapActivity(); }, [fetchCaregapActivity]);
+  useEffect(() => { fetchCaregapActivity(member?.id); }, [fetchCaregapActivity, member?.id]);
   const appointments = useAppStore(s => s.appointments);
   const fetchAppointments = useAppStore(s => s.fetchAppointments);
   useEffect(() => { fetchAppointments?.(); }, [fetchAppointments]);
@@ -649,6 +651,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   // the newest saved note for that gap so nothing extra is needed on the
   // editable path.
   const [amendNoteId, setAmendNoteId] = useState(null);
+  const canAmendNotes = useCan()('notes:sign');
   const openNoteInWorkspace = (dc) => {
     if (!dc?.gapCode && !dc?.noteId && !dc?.id) return;
     if (dc.gapCode) {
@@ -941,7 +944,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     onSave: (row) => {
       showToast('Appointment scheduled');
       logAppointmentScheduled(row);
-      fetchAppointments?.();
+      fetchAppointments?.({ force: true });
     },
     initialSelectedPatient: schedulePatient,
   });
@@ -1030,7 +1033,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     if (leftWorkspace === 'outreach') outreach.handleDiscard();
     if (leftWorkspace === 'document') docUpload.reset();
     if (leftWorkspace === 'document-preview') setPreviewDocId(null);
-    if (leftWorkspace === 'appointment-detail') { setOpenAppt(null); fetchAppointments?.(); }
+    if (leftWorkspace === 'appointment-detail') { setOpenAppt(null); fetchAppointments?.({ force: true }); }
     if (leftWorkspace === 'reminder') reminderForm.reset();
     if (leftWorkspace === 'cis-appointment') cisApptForm.reset();
     if (leftWorkspace === 'referral') referralForm.reset();
@@ -1590,7 +1593,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                       icon="solar:square-top-down-linear"
                       size="L"
                       tooltip="Open in new tab"
-                      onClick={() => { const w = window.open(previewDoc.fileUrl, '_blank', 'noopener'); try { w?.focus(); } catch { /* popup blocked */ } }}
+                      onClick={() => openSafeUrl(previewDoc.fileUrl, 'noopener')}
                     />
                   ) : null
                 ) : leftWorkspace === 'clinical-note' ? (
@@ -1660,22 +1663,24 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                         tooltip="Print"
                         onClick={() => {
                           const url = memberNotes.find(n => n.id === selectedNoteId)?.pdfDataUrl || memberNotes.find(n => (n.gapCodes || []).includes(currentCode))?.pdfDataUrl;
-                          if (url) { const w = window.open(url, '_blank'); try { w?.focus(); } catch {} }
+                          if (url) openSafeUrl(url);
                           else showToast('No PDF for this version');
                         }}
                       />
-                      <Button
-                        variant="tertiary"
-                        size="M"
-                        leadingIcon="solar:lock-keyhole-minimalistic-linear"
-                        onClick={() => {
-                          const note = selectedNoteId ? memberNotes.find(n => n.id === selectedNoteId) : memberNotes.find(n => (n.gapCodes || []).includes(currentCode));
-                          if (note?.id) setAmendNoteId(note.id);
-                          setLeftWorkspace('clinical-note');
-                        }}
-                      >
-                        Amend
-                      </Button>
+                      {canAmendNotes && (
+                        <Button
+                          variant="tertiary"
+                          size="M"
+                          leadingIcon="solar:lock-keyhole-minimalistic-linear"
+                          onClick={() => {
+                            const note = selectedNoteId ? memberNotes.find(n => n.id === selectedNoteId) : memberNotes.find(n => (n.gapCodes || []).includes(currentCode));
+                            if (note?.id) setAmendNoteId(note.id);
+                            setLeftWorkspace('clinical-note');
+                          }}
+                        >
+                          Amend
+                        </Button>
+                      )}
                     </>
                   )
                 ) : leftWorkspace === 'clinical-note-consolidated' ? (
@@ -1815,7 +1820,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 ) : null
               ) : leftWorkspace === 'outreach' ? (
                 <OutreachTabView tab={outreach} hideLogForRow hideActivity hideFormFooter flush taskMember={member?.name} schedulePatient={schedulePatient}
-                  onTaskCreated={logTaskAdded} onAppointmentScheduled={(row) => { logAppointmentScheduled(row); fetchAppointments?.(); }} />
+                  onTaskCreated={logTaskAdded} onAppointmentScheduled={(row) => { logAppointmentScheduled(row); fetchAppointments?.({ force: true }); }} />
               ) : leftWorkspace === 'clinical-note' ? (
                 <ClinicalNoteWorkspaceBody v={clinicalNote} />
               ) : leftWorkspace === 'clinical-note-preview' ? (
@@ -1963,7 +1968,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
               // only the log so the same form isn't rendered twice.
               <OutreachTabView tab={outreach} hideLogForRow hideForm={leftWorkspace === 'outreach'} taskMember={member?.name} schedulePatient={schedulePatient}
                 onLogNew={openOutreachWorkspace}
-                onTaskCreated={logTaskAdded} onAppointmentScheduled={(row) => { logAppointmentScheduled(row); fetchAppointments?.(); }} />
+                onTaskCreated={logTaskAdded} onAppointmentScheduled={(row) => { logAppointmentScheduled(row); fetchAppointments?.({ force: true }); }} />
             ) : shownTab === 'Documents' ? (
               programDocumentsDidFetch ? (
                 <DocumentList

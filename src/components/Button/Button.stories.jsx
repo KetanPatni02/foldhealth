@@ -111,3 +111,10 @@ export const Playground = {
     />
   ),
 };
+
+/** Disabled with a reason: hovering the greyed-out button says what's missing. */
+export const DisabledWithReason = {
+  render: () => (
+    <Button variant="primary" disabled disabledReason="Pick a form">Add Form Link</Button>
+  ),
+};

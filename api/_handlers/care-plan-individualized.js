@@ -14,6 +14,7 @@
 
 import { geminiGenerateContent } from '../_lib/googleGemini.js';
 import { requireUser } from '../_lib/requireUser.js';
+import { bodyWithinLimit } from '../_lib/limits.js';
 import {
   INDIVIDUALIZED_SCHEMA,
   buildIndividualizedPrompt,
@@ -27,7 +28,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: { message: 'Method not allowed' } });
 
   const key = process.env.GOOGLE_AI_API_KEY;
-  if (!key) return res.status(500).json({ error: { message: 'AI drafting is not set up on this deployment (GOOGLE_AI_API_KEY is missing).' } });
+  if (!key) return res.status(500).json({ error: { message: 'AI drafting is not set up on this deployment.' } });
+
+  // Patient facts and library items ride along, so allow more than the default cap.
+  if (!bodyWithinLimit(req, res, 200 * 1024)) return;
 
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const facts = asList(body.facts, 80).filter(f => f && typeof f.id === 'string' && typeof f.text === 'string');

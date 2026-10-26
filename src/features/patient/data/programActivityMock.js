@@ -245,6 +245,7 @@ export const CP_FILTERS = [
 // Step definitions only: each step's status is worked out per patient in
 // ProgramDetailView/stepStatus.js.
 export const PROGRAM_STEPS_MOCK = [
+  { id: 'step-3s', name: 'Snapshot' },
   { id: 'step-1', name: 'Outreach' },
   { id: 'step-2', name: 'Letters', mandatory: true },
   {
@@ -316,13 +317,13 @@ const AWV_STEPS = [
 ];
 
 const TOC_IP_STEPS = [
+  { id: 'tocip-snapshot', name: 'Snapshot', mandatory: true },
   { id: 'tocip-outreach', name: 'Outreach' },
   { id: 'tocip-docs', name: 'Program Documents' },
   { id: 'tocip-letters', name: 'Letters' },
   {
     id: 'tocip-directives', name: 'Program Directives', type: 'section', expanded: true,
     children: [
-      { id: 'tocip-snapshot', name: 'Snapshot', mandatory: true },
       { id: 'tocip-postip', name: 'Post IP Assessment', mandatory: true },
       { id: 'tocip-postvisit', name: 'Post-Visit', mandatory: true },
     ],

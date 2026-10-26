@@ -32,6 +32,8 @@ import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper'
 import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch, normalizeWorklistLabel } from '../lib/worklistDefaults';
 import { MONITORING_SEED, mapMonitoringRow } from '../features/patient/right-panel/tabs/monitoring/monitoringData';
 import { OVERVIEW_SEED, mapOverviewRow } from '../features/patient/data/overviewData';
+import { CLOSURE_REASONS, closureReasonLabel, statusColorFor as programStatusColor } from '../features/patient/data/programStatus';
+import { nextEnrollment, plannedEndDate } from '../features/patient/data/programLifecycle';
 import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
@@ -82,7 +84,6 @@ import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interven
 import { buildPatientFacts, buildTemplateChoices, draftCounts } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/individualizedPlan';
 import { buildTemplateCatalog } from '../features/settings/care-plan-library/lib/aiTemplateDraft';
 import { apiFetch } from '../lib/apiFetch';
-import { buildRuleInputs, evaluateRule, mapAutomationRuleRow, rulesForProgram } from '../features/settings/automation-rules/lib/automationRules';
 import { sdohSocialRisk } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/sdohReport';
 import { isDueToAutoResume, nextTouchpoint as computeNextTouchpoint, pauseAuditEntry, pauseFields, resumeAuditEntry } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanPause';
 import { INSTANCE_STATUS, formatInstanceDate, instanceOutcome, templateEndsOn } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
@@ -95,6 +96,8 @@ import { resolvePatientForCall } from '../lib/patientCall';
 
 import { reportPersistFailure } from './lib/reportPersistFailure';
 import { createResyncGate, isRealUserId } from './lib/resyncGate';
+import { BUILT_IN_ROLES } from '../lib/accessControl';
+import { sampleAssessmentSeed, pickAssessmentForms } from '../features/patient/right-panel/tabs/assessments/assessmentSeed';
 import { isPastDate, parseDuration, formatDuration } from './lib/taskDateUtils';
 import {
   campaignSendRowToJs,
@@ -106,6 +109,8 @@ import {
   formRowToJs,
   clinicalNoteRowToJs,
   clinicalNoteVersionRowToJs,
+  patientFormResponseRowToJs,
+  assessmentSendRowToJs,
 } from './lib/contentStoreMappers';
 import {
   mapCarePlanGoalRow,
@@ -195,6 +200,12 @@ import { CAREGAP_WHITELIST_MOCK } from '../features/hedis-worklist/data/caregapW
 import { fetchEfaxNumberRows, persistEfaxNumberInsert, persistEfaxNumberUpdate, persistEfaxNumberDelete } from './lib/efaxNumbersPersist';
 import { fetchCaregapLabRows, persistLabOrder, persistLabResult } from './lib/caregapLabsPersist';
 import { fetchStepStatusRows, persistStepStatus } from './lib/careProgramStepStatusPersist';
+import { fetchConsentRows, fetchPreferencesRow, insertConsentRow, persistPreferences, preferencesFromRow, uploadConsentArtifact } from './lib/patientConsentPersist';
+import { CONSENT_METHODS, canBill, validateCapture } from '../features/patient/data/consentRules';
+import { fetchProgramAccessRows, insertOverride, persistMembership } from './lib/programAccessPersist';
+import { validateOverride } from '../features/patient/data/programAccess';
+import { fetchProgramTypeRows, persistProgramType, persistProgramTypeDelete } from './lib/careProgramTypesPersist';
+import { defaultProgramTypes } from '../features/settings/care-program-config/careProgramConfigModel';
 import { fetchPatientSnapshotRow } from './lib/patientSnapshotsPersist';
 import { buildPatientSnapshot, patientSnapshotKey } from '../lib/patientSnapshot';
 import { EFAX_NUMBERS_MOCK } from '../features/settings/messages/efax/efaxNumbersMock';
@@ -222,9 +233,15 @@ import {
 import { HCC_TRANSITION_LABEL, HCC_ROLE_LABEL, hccTransitionRole, hccRoleStatusHeadline } from '../features/hcc/hccTransitionLabels';
 import { buildSeedHccActivityFeed } from '../features/hcc/seed/buildSeedHccActivityFeed';
 import { createShellSlice } from './slices/shellSlice';
+import { createAutomationsSlice } from './slices/automationsSlice';
 import { rowToCrm, sampleCrmActivities } from '../features/patient/data/crmActivity';
+import { rowToReferral, sampleReferralsFor } from '../features/patient/data/patientReferrals';
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
 import { createPharmacyWorklistSlice } from './slices/pharmacyWorklistSlice';
+import { createPatientOrdersSlice } from './slices/patientOrdersSlice';
+
+// patientId → in-flight fetchPatientConsents request.
+const consentFetches = new Map();
 
 // Timer handle for the 3-second row-flash on the tasks page.
 let _flashTaskTimer = null;
@@ -335,12 +352,31 @@ const careProgramsInFlight = new Map();
 // One gate per resync query; see lib/resyncGate.js for why these exist.
 const notificationsResync = createResyncGate();
 const unreadMessagesResync = createResyncGate();
+// Reference-data fetches that components fire on every mount. Visiting a
+// page again within a minute reuses what's loaded, and mounts in the same
+// tick share one request; after a save, callers pass { force: true }.
+const mountFetchGates = new Map();
+function mountFetch(name, fn, opts) {
+  if (!mountFetchGates.has(name)) mountFetchGates.set(name, createResyncGate());
+  return mountFetchGates.get(name)('all', fn, { force: !!opts?.force });
+}
 const tabHidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
+
+const mapReminderRow = r => ({
+  id: r.id,
+  title: r.title,
+  note: r.note || null,
+  remindAt: r.remind_at,
+  doneAt: r.done_at || null,
+  createdAt: r.created_at,
+});
 
 export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
+  ...createAutomationsSlice(set, get),
   ...createHccWorklistFiltersSlice(set, get),
   ...createPharmacyWorklistSlice(set, get),
+  ...createPatientOrdersSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
   // keyed by member id. Falls back to the bundled MONITORING_SEED until
@@ -370,6 +406,108 @@ export const useAppStore = create((set, get) => ({
       patientMonitoring: { ...st.patientMonitoring, [key]: obj },
       patientMonitoringLoading: { ...st.patientMonitoringLoading, [key]: false },
     }));
+  },
+
+  // A user's private reminders on a patient (patient_reminders), keyed by
+  // member id. RLS returns only the signed-in user's own rows. `undefined`
+  // until fetched; `[]` when there are none or the table is missing.
+  patientReminders: {},
+  fetchPatientReminders: async (memberId) => {
+    if (!memberId) return;
+    const key = String(memberId);
+    if (get().patientReminders[key] !== undefined) return;
+    const { data, error } = await supabase
+      .from('patient_reminders')
+      .select('id, title, note, remind_at, done_at, created_at')
+      .eq('member_id', key)
+      .order('remind_at', { ascending: true });
+    if (error) console.warn('[store] patient_reminders fetch failed (run supabase/patient_reminders_migration.sql):', error.message);
+    set(st => ({ patientReminders: { ...st.patientReminders, [key]: (data || []).map(mapReminderRow) } }));
+  },
+  addPatientReminder: async (memberId, { title, remindAt, note = null }) => {
+    const key = String(memberId);
+    const { data, error } = await supabase
+      .from('patient_reminders')
+      .insert({ member_id: key, title: title.trim(), remind_at: remindAt, note })
+      .select('id, title, note, remind_at, done_at, created_at')
+      .single();
+    if (error) {
+      console.warn('[store] add reminder failed:', error.message);
+      get().showToast?.('Could not save the reminder. Please try again.');
+      return null;
+    }
+    const row = mapReminderRow(data);
+    set(st => ({ patientReminders: { ...st.patientReminders, [key]: [...(st.patientReminders[key] || []), row] } }));
+    return row;
+  },
+  // Optimistic: the card updates at once and goes back if the save fails.
+  updatePatientReminder: async (memberId, id, patch) => {
+    const key = String(memberId);
+    const before = get().patientReminders[key] || [];
+    set(st => ({ patientReminders: { ...st.patientReminders, [key]: before.map(r => (r.id === id ? { ...r, ...patch } : r)) } }));
+    const cols = {};
+    if ('title' in patch) cols.title = patch.title;
+    if ('note' in patch) cols.note = patch.note;
+    if ('remindAt' in patch) cols.remind_at = patch.remindAt;
+    if ('doneAt' in patch) cols.done_at = patch.doneAt;
+    const { error } = await supabase.from('patient_reminders').update(cols).eq('id', id);
+    if (error) {
+      console.warn('[store] update reminder failed:', error.message);
+      set(st => ({ patientReminders: { ...st.patientReminders, [key]: before } }));
+      get().showToast?.('Could not update the reminder. Please try again.');
+    }
+  },
+  deletePatientReminder: async (memberId, id) => {
+    const key = String(memberId);
+    const before = get().patientReminders[key] || [];
+    set(st => ({ patientReminders: { ...st.patientReminders, [key]: before.filter(r => r.id !== id) } }));
+    const { error } = await supabase.from('patient_reminders').delete().eq('id', id);
+    if (error) {
+      console.warn('[store] delete reminder failed:', error.message);
+      set(st => ({ patientReminders: { ...st.patientReminders, [key]: before } }));
+      get().showToast?.('Could not delete the reminder. Please try again.');
+    }
+  },
+
+  // Needs Attention reviews on the Overview (patient_signal_reviews), keyed
+  // by member id → { [signalId]: { reviewedBy, reviewedByName, reviewedAt } }.
+  // Shared by the team. Read once per patient; `{}` when the table is missing
+  // (reviews then live for the session only).
+  patientSignalReviews: {},
+  fetchPatientSignalReviews: async (memberId) => {
+    if (!memberId) return;
+    const key = String(memberId);
+    if (get().patientSignalReviews[key] !== undefined) return;
+    set(st => ({ patientSignalReviews: { ...st.patientSignalReviews, [key]: {} } }));
+    const { data, error } = await supabase
+      .from('patient_signal_reviews')
+      .select('signal_id, reviewed_by, reviewed_by_name, reviewed_at')
+      .eq('member_id', key);
+    if (error) {
+      console.warn('[store] patient_signal_reviews fetch failed (run supabase/patient_signal_reviews_migration.sql):', error.message);
+      return;
+    }
+    const map = Object.fromEntries((data || []).map(r => [r.signal_id, {
+      reviewedBy: r.reviewed_by, reviewedByName: r.reviewed_by_name, reviewedAt: r.reviewed_at,
+    }]));
+    set(st => ({ patientSignalReviews: { ...st.patientSignalReviews, [key]: map } }));
+  },
+  setPatientSignalReviewed: async (memberId, signalId, reviewed) => {
+    if (!memberId || !signalId) return;
+    const key = String(memberId);
+    const userId = await get()._resolveWorklistUser();
+    const name = get().currentUserProfile?.name || 'You';
+    const entry = { reviewedBy: userId, reviewedByName: name, reviewedAt: new Date().toISOString() };
+    const prev = get().patientSignalReviews[key] || {};
+    const next = { ...prev };
+    if (reviewed) next[signalId] = entry; else delete next[signalId];
+    set(st => ({ patientSignalReviews: { ...st.patientSignalReviews, [key]: next } }));
+    const { error } = reviewed
+      ? await supabase.from('patient_signal_reviews').upsert({
+        member_id: key, signal_id: signalId, reviewed_by: userId, reviewed_by_name: name, reviewed_at: entry.reviewedAt,
+      }, { onConflict: 'member_id,signal_id' })
+      : await supabase.from('patient_signal_reviews').delete().eq('member_id', key).eq('signal_id', signalId);
+    if (error) console.warn('[store] save signal review failed (run supabase/patient_signal_reviews_migration.sql):', error.message);
   },
 
   // Patient Overview: the Overview tab's own data (Unity synopsis, health
@@ -497,6 +635,67 @@ export const useAppStore = create((set, get) => ({
   stickyNoteHistory: [],
   quickNotes: [],
   quickNoteHistory: [],
+  // Recorded vitals per patient: { [patientId]: rows }. Empty or failed
+  // loads leave the Vitals tab on its sample history.
+  patientVitals: {},
+  patientVitalsLoading: false,
+  fetchPatientVitals: async (patientId) => {
+    if (!patientId) return;
+    set({ patientVitalsLoading: true });
+    const { data, error } = await supabase.from('patient_vitals').select('*').eq('patient_id', String(patientId)).order('recorded_on', { ascending: false });
+    set(s => ({ patientVitalsLoading: false, patientVitals: error ? s.patientVitals : { ...s.patientVitals, [patientId]: data || [] } }));
+  },
+  recordPatientVitals: async (patientId, readings) => {
+    const rows = readings.map(r => ({ ...r, patient_id: String(patientId) }));
+    const { data, error } = await supabase.from('patient_vitals').insert(rows).select();
+    if (error) return { error };
+    track('patient.vitals_recorded', { count: rows.length });
+    set(s => ({ patientVitals: { ...s.patientVitals, [patientId]: [...data, ...(s.patientVitals[patientId] || [])] } }));
+    return { data };
+  },
+  // Rows pinned to the top of the Vitals/Labs tables: { [patientId]: row ids }.
+  // Absent until loaded, and null when the patient has none saved yet (the
+  // tab then uses its default pins).
+  patientVitalPins: {},
+  fetchPatientVitalPins: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_vital_pins').select('pinned').eq('patient_id', String(patientId)).maybeSingle();
+    if (error) return;
+    set(s => ({ patientVitalPins: { ...s.patientVitalPins, [patientId]: data?.pinned ?? null } }));
+  },
+  setPatientVitalPins: async (patientId, pinned) => {
+    const before = get().patientVitalPins[patientId];
+    set(s => ({ patientVitalPins: { ...s.patientVitalPins, [patientId]: pinned } }));
+    const { error } = await supabase.from('patient_vital_pins')
+      .upsert({ patient_id: String(patientId), pinned, updated_at: new Date().toISOString() }, { onConflict: 'patient_id' });
+    // Until patient_vital_pins is migrated, pins hold for the session only.
+    if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
+      set(s => ({ patientVitalPins: { ...s.patientVitalPins, [patientId]: before } }));
+      get().showToast?.('Could not update pinned rows');
+    }
+  },
+  // The Overview Vitals widget's tiles, in order, shared by the care team:
+  // { [patientId]: vital keys }. null = no saved choice (the overview's own vitals).
+  overviewVitalKeys: {},
+  fetchOverviewVitalKeys: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_overview_vitals').select('vital_keys').eq('patient_id', String(patientId)).maybeSingle();
+    if (error) return;
+    set(s => ({ overviewVitalKeys: { ...s.overviewVitalKeys, [patientId]: data?.vital_keys ?? null } }));
+  },
+  setOverviewVitalKeys: async (patientId, keys) => {
+    const before = get().overviewVitalKeys[patientId];
+    set(s => ({ overviewVitalKeys: { ...s.overviewVitalKeys, [patientId]: keys } }));
+    const table = supabase.from('patient_overview_vitals');
+    const { error } = keys
+      ? await table.upsert({ patient_id: String(patientId), vital_keys: keys, updated_at: new Date().toISOString() }, { onConflict: 'patient_id' })
+      : await table.delete().eq('patient_id', String(patientId));
+    // Until patient_overview_vitals is migrated, the choice holds for the session only.
+    if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
+      set(s => ({ overviewVitalKeys: { ...s.overviewVitalKeys, [patientId]: before } }));
+      get().showToast?.('Could not update the Vitals widget');
+    }
+  },
   fetchStickyNotes: async (patientId) => {
     const { data } = await supabase.from('sticky_notes').select('*').eq('patient_id', patientId).order('created_at', { ascending: true });
     if (data) set({ stickyNotes: data });
@@ -1026,6 +1225,54 @@ export const useAppStore = create((set, get) => ({
     }));
   },
 
+  // Orders & Referrals tab: the patient's referrals, newest first. Sample
+  // rows stand in only while patient_referrals is missing.
+  // Documents tab folders added with Add Category (document_categories),
+  // shared across patients. Until the table exists they last the session.
+  documentCategories: [],
+  documentCategoriesLoaded: false,
+  fetchDocumentCategories: async () => {
+    if (get().documentCategoriesLoaded) return;
+    set({ documentCategoriesLoaded: true });
+    const { data, error } = await supabase.from('document_categories').select('key, name').order('created_at');
+    if (error) return;
+    set(s => ({ documentCategories: [...(data || []), ...s.documentCategories.filter(c => !(data || []).some(d => d.key === c.key))] }));
+  },
+  addDocumentCategory: async (name) => {
+    const label = String(name || '').trim();
+    if (!label) return null;
+    const existing = get().documentCategories.find(c => c.name.toLowerCase() === label.toLowerCase());
+    if (existing) return existing.key;
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'folder';
+    const key = `custom_${slug}_${Math.random().toString(36).slice(2, 6)}`;
+    set(s => ({ documentCategories: [...s.documentCategories, { key, name: label }] }));
+    const { error } = await supabase.from('document_categories').insert({ key, name: label, created_by: get().currentActorName?.() || null });
+    if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
+      set(s => ({ documentCategories: s.documentCategories.filter(c => c.key !== key) }));
+      get().showToast?.('Could not add the category');
+      return null;
+    }
+    return key;
+  },
+  patientReferrals: {},           // { [patientId]: referral[] }
+  patientReferralsLoadedFor: {},  // { [patientId]: true }: gates the skeleton
+  fetchPatientReferrals: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_referrals')
+      .select('*').eq('patient_id', String(patientId)).order('created_at', { ascending: false });
+    const missing = error && (error.code === '42P01' || error.code === 'PGRST205');
+    if (error && !missing) console.warn('fetchPatientReferrals:', error.message);
+    set(s => ({
+      patientReferrals: {
+        ...s.patientReferrals,
+        [patientId]: missing
+          ? [...(s.patientReferrals[patientId] || []).filter(r => r.local), ...sampleReferralsFor(patientId)]
+          : (data || []).map(rowToReferral),
+      },
+      patientReferralsLoadedFor: { ...s.patientReferralsLoadedFor, [patientId]: true },
+    }));
+  },
+
   patientSocialHistory: {},           // { [patientId]: { answers } }
   patientSocialHistoryLoadedFor: {},  // { [patientId]: true }: gates the skeleton
   fetchPatientSocialHistory: async (patientId) => {
@@ -1113,10 +1360,10 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Quick Notes (global / home page)
-  fetchQuickNotes: async () => {
+  fetchQuickNotes: (opts) => mountFetch('fetchQuickNotes', async () => {
     const { data } = await supabase.from('sticky_notes').select('*').eq('patient_id', 'global').order('created_at', { ascending: false });
     if (data) set({ quickNotes: data });
-  },
+  }, opts),
   fetchQuickNoteHistory: async () => {
     const { data } = await supabase.from('sticky_note_history').select('*').eq('patient_id', 'global').order('created_at', { ascending: false });
     if (data) set({ quickNoteHistory: data });
@@ -1127,7 +1374,7 @@ export const useAppStore = create((set, get) => ({
     if (!error && data) {
       track('note.quick_created', { noteId: data.id });
       await supabase.from('sticky_note_history').insert({ sticky_note_id: data.id, patient_id: 'global', author_name: 'You', action: 'added a Note', note_text: text, ehr_instance: 'Quick Note' });
-      get().fetchQuickNotes();
+      get().fetchQuickNotes({ force: true });
       get().fetchQuickNoteHistory();
     }
     return data;
@@ -1136,7 +1383,7 @@ export const useAppStore = create((set, get) => ({
     track('note.quick_updated', { noteId: id });
     await supabase.from('sticky_notes').update({ text, author_name: 'You' }).eq('id', id);
     await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'Updated a Note', note_text: text, ehr_instance: 'Quick Note' });
-    get().fetchQuickNotes();
+    get().fetchQuickNotes({ force: true });
     get().fetchQuickNoteHistory();
   },
   deleteQuickNote: async (id) => {
@@ -1146,7 +1393,7 @@ export const useAppStore = create((set, get) => ({
       await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'deleted a Note', note_text: noteData.text, ehr_instance: 'Quick Note' });
     }
     await supabase.from('sticky_notes').delete().eq('id', id);
-    get().fetchQuickNotes();
+    get().fetchQuickNotes({ force: true });
     get().fetchQuickNoteHistory();
   },
 
@@ -1207,6 +1454,8 @@ export const useAppStore = create((set, get) => ({
   // its ProgramDetailView on mount. Cleared once consumed.
   pendingCareProgramCode: null,
   pendingCareProgramCarePlan: false,
+  // CMP only: which sub-program to open or enroll (opts.subProgram).
+  pendingCareProgramSubProgram: null,
   navigateToPatient: (patientId, opts = {}) => {
     const from = get().activePage;
     track('nav.patient_opened', { patientId, from });
@@ -1232,6 +1481,7 @@ export const useAppStore = create((set, get) => ({
       updates.pendingCareProgramCode = opts.programCode;
       // Land on the program's Care Plan step rather than its first step.
       updates.pendingCareProgramCarePlan = !!opts.carePlan;
+      updates.pendingCareProgramSubProgram = opts.subProgram || null;
     }
     set(updates);
     const state = get();
@@ -1267,6 +1517,11 @@ export const useAppStore = create((set, get) => ({
     track('care_program.opened', { patientId: get().selectedPatientId, programKey });
     set({ selectedCareProgramKey: programKey, careProgramStep: null, carePlanSummaryOpen: false });
     updateHash?.(get());
+    // Remember the user's program context: the Care Programs tab reopens it
+    // the next time they land on a patient enrolled in it.
+    if (programKey && get().panelLayouts['care-program-context']?.key !== programKey) {
+      get().savePanelLayout('care-program-context', { key: programKey });
+    }
   },
   closeCareProgram: () => {
     set({ selectedCareProgramKey: null, careProgramStep: null, carePlanSummaryOpen: false });
@@ -1280,7 +1535,7 @@ export const useAppStore = create((set, get) => ({
     set({ carePlanSummaryOpen: !!open, selectedCareProgramKey: null, careProgramStep: null });
     updateHash?.(get());
   },
-  clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null, pendingCareProgramCarePlan: false }),
+  clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null, pendingCareProgramCarePlan: false, pendingCareProgramSubProgram: null }),
 
   // EditPatientDrawer — one drawer shared by every "Edit …" entry-point
   // on the Profile tab, the P360 banner overflow menu, and every worklist
@@ -1695,6 +1950,57 @@ export const useAppStore = create((set, get) => ({
   // reload; on cold load we hydrate from the DB and fall back to
   // programsForPatient() when the row set is empty.
   careProgramsByPatient: {},
+
+  // Care Program Configuration (Settings): program types, their steps,
+  // worklists, care team, completion criteria and access. The program view
+  // reads each type's steps (see stepsFor). Until care_program_types exists
+  // the built-in types stand in and edits last for the session.
+  careProgramTypes: [],
+  careProgramTypesLoading: false,
+  careProgramTypesDidFetch: false,
+  careProgramTypesMissing: false,
+  fetchCareProgramTypes: async ({ force = false } = {}) => {
+    const s0 = get();
+    if (s0.careProgramTypesLoading || (s0.careProgramTypesDidFetch && !force)) return;
+    set({ careProgramTypesLoading: true });
+    const { types, missing, error } = await fetchProgramTypeRows();
+    if (error && !missing) console.warn('fetchCareProgramTypes:', error.message);
+    set({
+      careProgramTypes: types.length ? types : defaultProgramTypes(),
+      careProgramTypesMissing: missing,
+      careProgramTypesLoading: false,
+      careProgramTypesDidFetch: true,
+    });
+  },
+  saveCareProgramType: async (type) => {
+    const actor = get().currentUserProfile?.name || null;
+    const next = { ...type, createdBy: type.createdBy || actor, updatedAt: new Date().toISOString() };
+    set(s => ({
+      careProgramTypes: s.careProgramTypes.some(t => t.id === next.id)
+        ? s.careProgramTypes.map(t => (t.id === next.id ? next : t))
+        : [...s.careProgramTypes, next],
+    }));
+    if (get().careProgramTypesMissing) return next;
+    const { type: saved, error } = await persistProgramType(next);
+    if (error) {
+      get().showToast?.(`Couldn't save ${next.name}: ${error.message}`);
+      return null;
+    }
+    set(s => ({ careProgramTypes: s.careProgramTypes.map(t => (t.id === saved.id ? saved : t)) }));
+    return saved;
+  },
+  deleteCareProgramType: async (id) => {
+    const prev = get().careProgramTypes;
+    set({ careProgramTypes: prev.filter(t => t.id !== id) });
+    if (get().careProgramTypesMissing) return true;
+    const { error } = await persistProgramTypeDelete(id);
+    if (error) {
+      set({ careProgramTypes: prev });
+      get().showToast?.(`Couldn't delete the program type: ${error.message}`);
+      return false;
+    }
+    return true;
+  },
   careProgramsLoadedFor: {},
   // Program Activity Log entries, keyed by patientId.
   patientProgramActivity: {},
@@ -1735,6 +2041,8 @@ export const useAppStore = create((set, get) => ({
       status: r.status || 'Active',
       note: r.note || '',
       stopReason: r.stop_reason || '',
+      lastFilledOn: r.last_filled_on || '',
+      daysSupply: r.days_supply ?? null,
       source: r.source,
       openfdaMeta: r.openfda_meta || null,
     }));
@@ -1757,6 +2065,8 @@ export const useAppStore = create((set, get) => ({
       status: med.status || 'Active',
       note: med.note || '',
       stopReason: med.stopReason || '',
+      lastFilledOn: med.lastFilledOn || '',
+      daysSupply: med.daysSupply ?? null,
       source: med.source || 'manual',
       openfdaMeta: med.openfdaMeta || null,
     };
@@ -1777,6 +2087,10 @@ export const useAppStore = create((set, get) => ({
         status: optimistic.status,
         note: optimistic.note || null,
         stop_reason: optimistic.stopReason || null,
+        // Refill fields only when filled in, so saving works before
+        // patient_medications_refill_migration.sql has run.
+        ...(optimistic.lastFilledOn ? { last_filled_on: optimistic.lastFilledOn } : {}),
+        ...(optimistic.daysSupply ? { days_supply: optimistic.daysSupply } : {}),
         source: optimistic.source,
         openfda_meta: optimistic.openfdaMeta,
       })
@@ -1830,6 +2144,9 @@ export const useAppStore = create((set, get) => ({
     if ('status' in updates) dbUpdates.status = updates.status;
     if ('note' in updates) dbUpdates.note = updates.note || null;
     if ('stopReason' in updates) dbUpdates.stop_reason = updates.stopReason || null;
+    // Refill fields only when set now or before (see addPatientMedication).
+    if ('lastFilledOn' in updates && (updates.lastFilledOn || prev.lastFilledOn)) dbUpdates.last_filled_on = updates.lastFilledOn || null;
+    if ('daysSupply' in updates && (updates.daysSupply || prev.daysSupply)) dbUpdates.days_supply = updates.daysSupply ?? null;
     const { error } = await supabase
       .from('patient_medications')
       .update(dbUpdates)
@@ -1882,6 +2199,121 @@ export const useAppStore = create((set, get) => ({
 
   // `force` re-reads a log already loaded, so opening it shows what other
   // screens (care plans above all) have written since.
+  // ── Patient event stream sources (Timeline) ──
+  // The records the store doesn't load elsewhere: clinical events, calls,
+  // notes, appointments and completed assessments, for one patient. Medications,
+  // CRM touchpoints and program activity come from their own slices.
+  // patient_event_stream_migration.sql / data/patientStream.js.
+  patientStreamSources: {},
+  fetchPatientStreamSources: async (patientId, { force = false } = {}) => {
+    if (!patientId) return;
+    const id = String(resolvePatientStoreId(get(), patientId));
+    if (!force && get().patientStreamSources[id]) return;
+    const rows = (res, label) => {
+      if (res.error) console.warn(`fetchPatientStreamSources ${label}:`, res.error.message);
+      return res.data || [];
+    };
+    const [ce, calls, notes, appts, forms] = await Promise.all([
+      supabase.from('patient_clinical_events')
+        .select('id, event_type, code, code_system, display, effective_date, end_date, status, numeric_value, unit, reference_low, reference_high, source, raw_meta')
+        .eq('patient_id', id).order('effective_date', { ascending: false }).limit(500),
+      supabase.from('call_sessions').select('id, name, status, dir, created_at').eq('patient_id', id).limit(200),
+      supabase.from('clinical_notes').select('id, form_type, status, author_name, signed_by_name, signed_at, created_at').eq('patient_id', id).limit(200),
+      supabase.from('appointments')
+        .select('id, appointment_type_name, mode, location, primary_user, secondary_users, date, time_start, status, reason_for_visit')
+        .eq('patient_id', id).limit(200),
+      supabase.from('form_responses').select('id, form_id, status, completed_at, created_at').eq('patient_id', id).eq('status', 'completed').limit(200),
+    ]);
+    const assessments = rows(forms, 'form_responses');
+    const formIds = [...new Set(assessments.map(r => r.form_id).filter(v => v != null))];
+    const names = formIds.length ? rows(await supabase.from('forms').select('id, name').in('id', formIds), 'forms') : [];
+    set(s => ({
+      patientStreamSources: {
+        ...s.patientStreamSources,
+        [id]: {
+          clinicalEvents: rows(ce, 'patient_clinical_events'),
+          calls: rows(calls, 'call_sessions'),
+          notes: rows(notes, 'clinical_notes'),
+          appointments: rows(appts, 'appointments'),
+          assessments,
+          formNames: new Map(names.map(f => [String(f.id), f.name])),
+        },
+      },
+    }));
+  },
+
+  // ── P360 Assessments tab ──
+  // Per patient: the Forms library forms they were sent or filled, their
+  // form_responses, and the sends (patient_assessment_sends_migration.sql).
+  // A missing sends table or form_responses.patient_id column reads as none.
+  patientAssessments: {},
+  patientAssessmentsLoading: {},
+  fetchPatientAssessments: async (patientId, { force = false } = {}) => {
+    if (!patientId) return;
+    const id = String(resolvePatientStoreId(get(), patientId));
+    if (!force && (get().patientAssessments[id] || get().patientAssessmentsLoading[id])) return;
+    set(s => ({ patientAssessmentsLoading: { ...s.patientAssessmentsLoading, [id]: true } }));
+    const MISSING = new Set(['42P01', 'PGRST205', '42703']);
+    const rowsOf = (res, label) => {
+      if (res.error && !MISSING.has(res.error.code)) console.warn(`fetchPatientAssessments ${label}:`, res.error.message);
+      return res.error ? [] : (res.data || []);
+    };
+    const responsesQuery = (select) => supabase.from('form_responses').select(select)
+      .eq('patient_id', id).order('created_at', { ascending: false }).limit(300);
+    const [firstResponsesRes, sendsRes] = await Promise.all([
+      responsesQuery('*, created_by_profile:profiles!created_by(id, full_name)'),
+      supabase.from('patient_assessment_sends').select('*').eq('patient_id', id)
+        .order('sent_at', { ascending: false }).limit(300),
+    ]);
+    const responsesRes = firstResponsesRes.error?.code === 'PGRST200' ? await responsesQuery('*') : firstResponsesRes;
+    let responses = rowsOf(responsesRes, 'form_responses').map(patientFormResponseRowToJs);
+    let sends = rowsOf(sendsRes, 'patient_assessment_sends').map(assessmentSendRowToJs);
+    const FORM_COLUMNS = 'id, name, description, category, form_type, status, schema, scoring, settings';
+    // Until patient_assessment_sends is migrated (and seeded), the tab shows
+    // the seed's own sample sends and responses on real assessment forms, so
+    // the screen isn't empty. Once the table exists, only real rows show.
+    if (MISSING.has(sendsRes.error?.code) && !responses.length) {
+      const candidates = rowsOf(await supabase.from('forms').select(FORM_COLUMNS).limit(300), 'forms');
+      const sample = sampleAssessmentSeed(id, pickAssessmentForms(candidates));
+      sends = sample.sends.map(assessmentSendRowToJs);
+      responses = sample.responses
+        .map((r, i) => ({ ...r, id: `sample-${id}-${i + 1}`, created_at: r.completed_at || sample.sends[i]?.sent_at }))
+        .map(patientFormResponseRowToJs);
+    }
+    const formIds = [...new Set([...responses, ...sends].map(r => r.formId).filter(Boolean))];
+    const forms = formIds.length
+      ? rowsOf(await supabase.from('forms')
+        .select(FORM_COLUMNS)
+        .in('id', formIds), 'forms').map(formRowToJs)
+      : [];
+    set(s => ({
+      patientAssessments: { ...s.patientAssessments, [id]: { forms, responses, sends } },
+      patientAssessmentsLoading: { ...s.patientAssessmentsLoading, [id]: false },
+    }));
+  },
+
+  // One send record per form (Send Assessment drawer). Best effort: the
+  // message itself already went out, so a missing table only logs.
+  recordAssessmentSends: async ({ patientId, formIds, sentByName, channels = [], programCodes = [] }) => {
+    if (!patientId || !formIds?.length) return;
+    const id = String(resolvePatientStoreId(get(), patientId));
+    const sentById = await get()._resolveUpdatedBy();
+    const rows = formIds.map(formId => ({
+      patient_id: id,
+      form_id: formId,
+      sent_by_id: sentById,
+      sent_by_name: sentByName || null,
+      channels,
+      program_codes: programCodes,
+    }));
+    const { error } = await supabase.from('patient_assessment_sends').insert(rows);
+    if (error) {
+      console.warn('recordAssessmentSends:', error.message);
+      return;
+    }
+    if (get().patientAssessments[id]) get().fetchPatientAssessments(id, { force: true });
+  },
+
   fetchPatientProgramActivity: async (patientId, { force = false } = {}) => {
     if (!patientId) return;
     const resolvedId = resolvePatientStoreId(get(), patientId);
@@ -2012,6 +2444,10 @@ export const useAppStore = create((set, get) => ({
     const rows = (data || []).map(r => ({
       id:           r.id,
       code:         r.code,
+      subProgram:   r.sub_program || null,
+      triggerType:  r.trigger_type || null,
+      triggerDate:  r.trigger_date || null,
+      memberInfo:   r.member_info || null,
       name:         r.name,
       acuity:       r.acuity,
       status:       r.status || 'New',
@@ -2025,6 +2461,14 @@ export const useAppStore = create((set, get) => ({
       medReconSignedBy:   r.med_recon_signed_by || null,
       medReconSignedRole: r.med_recon_signed_role || null,
       medReconSignedAt:   r.med_recon_signed_at || null,
+      // Lifecycle (patient_care_program_lifecycle_migration.sql).
+      instance:       r.instance || null,
+      plannedEndDate: r.planned_end_date || null,
+      enrolledBy:     r.enrolled_by || null,
+      closureReason:  r.closure_reason || null,
+      closureNote:    r.closure_note || null,
+      closedAt:       r.closed_at || null,
+      closedBy:       r.closed_by || null,
     }));
     // `trigger` is derived (not stored): the 1-based position among same-code
     // enrollments in created_at order. SNP can be enrolled repeatedly, so its
@@ -2048,17 +2492,35 @@ export const useAppStore = create((set, get) => ({
     set((state) => {
       const existing = state.careProgramsByPatient[patientId] || [];
       // SNP is "triggerable" — it can be enrolled repeatedly, each enrollment a
-      // new trigger (1, 2, 3…). Every other program stays single-instance.
+      // new trigger (1, 2, 3…). CMP allows one enrollment per sub-program
+      // (SPD, Maternity Program, …). Every other program stays single-instance.
       const isTriggerable = entry.code === 'SNP';
-      if (!isTriggerable && existing.some((p) => p.code === entry.code)) return {};
+      const subProgram = entry.subProgram || null;
+      // A program can be enrolled again once its earlier enrollment ended
+      // (instance 2, 3 …), and is then Re-enrolled.
+      const next = nextEnrollment(existing, entry.code, subProgram, { triggerable: isTriggerable });
+      if (!next.allowed) return {};
       const trigger = existing.filter((p) => p.code === entry.code).length + 1;
+      const subSlug = subProgram ? subProgram.toLowerCase().replace(/[^a-z0-9]+/g, '-') : null;
+      const again = next.instance > 1 ? `-${next.instance}` : '';
+      const maxDays = (state.careProgramTypes || []).find(t => t.code === entry.code)?.completion?.maxDurationDays;
       program = {
-        id: isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}`,
+        id: subSlug
+          ? `pcp-${patientId}-${entry.code}-${subSlug}${again}`
+          : isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}${again}`,
+        instance: next.instance,
+        enrolledBy: state.currentUserProfile?.name || null,
+        plannedEndDate: plannedEndDate(createdStamp, maxDays),
         code: entry.code,
-        name: `${entry.name} (${entry.code})`,
+        subProgram,
+        // SNP: what triggered the enrollment and for which plan id (Create SNP Program).
+        triggerType: entry.triggerType || null,
+        triggerDate: entry.triggerDate || null,
+        memberInfo: entry.memberInfo || null,
+        name: subProgram ? `${subProgram} (${entry.code})` : `${entry.name} (${entry.code})`,
         acuity: null,
-        status: 'New',
-        statusColor: 'var(--primary-300)',
+        status: next.reEnrolled ? 'Re-enrolled' : 'New',
+        statusColor: programStatusColor(next.reEnrolled ? 'Re-enrolled' : 'New'),
         startDate: createdStamp,
         endDate: '—',
         lastUpdated: createdStamp,
@@ -2082,7 +2544,7 @@ export const useAppStore = create((set, get) => ({
     // Persist. Fire-and-forget — the optimistic local update already
     // rendered the row; a slow network shouldn't block the UI.
     if (program) {
-      supabase.from('patient_care_programs').upsert({
+      const row = {
         id:            program.id,
         patient_id:    patientId,
         code:          program.code,
@@ -2099,6 +2561,7 @@ export const useAppStore = create((set, get) => ({
         med_recon_signed_by:   program.medReconSignedBy || null,
         med_recon_signed_role: program.medReconSignedRole || null,
         med_recon_signed_at:   program.medReconSignedAt || null,
+      };
       // ON CONFLICT DO NOTHING against (patient_id, code): the local guard at
       // the top bails when an enrollment already exists locally, so we only
       // reach here when local state was blind to it. Seed rows carry ids like
@@ -2107,7 +2570,36 @@ export const useAppStore = create((set, get) => ({
       // miss the seed row, INSERT, and trip the (patient_id, code) unique key.
       // DO UPDATE would rewrite the id column and dangle references in
       // care_plan_audit / patient_care_plans / patient_care_plan_versions.
-      }, { onConflict: 'patient_id, code', ignoreDuplicates: true }).select('id').then(({ data, error }) => {
+      // With patient_care_programs_sub_program_migration.sql the key is
+      // (patient_id, code, sub_program), so CMP can hold one row per
+      // sub-program. Until that migration runs, fall back to the old key
+      // (a second CMP sub-program then only saves locally). Each save tries
+      // the key its row most likely needs first, then the other.
+      // The trigger columns come from
+      // patient_care_programs_snp_trigger_migration.sql; until it runs, the
+      // last tries save without them.
+      const trigger = Object.fromEntries(Object.entries({
+        trigger_type: program.triggerType, trigger_date: program.triggerDate, member_info: program.memberInfo,
+      }).filter(([, v]) => v));
+      const upsertSubProgram = (extra) => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...extra, sub_program: program.subProgram || '' }, { onConflict: 'patient_id, code, sub_program', ignoreDuplicates: true })
+        .select('id');
+      const upsertLegacy = (extra) => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...extra }, { onConflict: 'patient_id, code', ignoreDuplicates: true })
+        .select('id');
+      // patient_care_program_lifecycle_migration.sql keys rows per instance
+      // and adds who enrolled / the planned end; tried first, then the older keys.
+      const lifecycle = Object.fromEntries(Object.entries({
+        enrolled_by: program.enrolledBy, planned_end_date: program.plannedEndDate,
+      }).filter(([, v]) => v));
+      const upsertInstance = () => supabase.from('patient_care_programs')
+        .upsert({ ...row, ...trigger, ...lifecycle, sub_program: program.subProgram || '', instance: program.instance }, { onConflict: 'patient_id, code, sub_program, instance', ignoreDuplicates: true })
+        .select('id');
+      const keyOrder = program.subProgram ? [upsertSubProgram, upsertLegacy] : [upsertLegacy, upsertSubProgram];
+      const tries = [upsertInstance, ...(Object.keys(trigger).length
+        ? [...keyOrder.map(fn => () => fn(trigger)), ...keyOrder.map(fn => () => fn({}))]
+        : keyOrder.map(fn => () => fn({})))];
+      tries.reduce((p, attempt) => p.then(res => (res && !res.error ? res : attempt())), Promise.resolve(null)).then(({ data, error }) => {
         if (error) { console.warn('addCareProgram — insert failed:', error.message); return; }
         // Enrolling is program activity, but only when it really enrolled: a
         // duplicate is ignored above, and logging it anyway filled the log
@@ -2116,12 +2608,12 @@ export const useAppStore = create((set, get) => ({
         get().logProgramActivity({
           patientId,
           programCode: program.code,
-          title: `${program.code} Program Enrolled`,
+          title: `${program.code} Program ${program.status === 'Re-enrolled' ? 'Re-enrolled' : 'Enrolled'}`,
           activityKind: 'status',
-          statusLabel: 'New',
+          statusLabel: program.status,
           statusType: 'success',
         });
-        // Auto-apply rules run on a real enrollment only (Settings > Automation Rules).
+        // Enrollment automations run on a real enrollment only (Settings > Automations).
         get().runAutoApplyRules(patientId, program).catch(err => console.warn('runAutoApplyRules:', err?.message || err));
       });
     }
@@ -4000,6 +4492,10 @@ export const useAppStore = create((set, get) => ({
   carePlanBulkMode: false,
   toggleCarePlanBulkMode: () => set(s => ({ carePlanBulkMode: !s.carePlanBulkMode })),
   setCarePlanBulkMode: (on) => set({ carePlanBulkMode: on }),
+  // 'tables' lists goals, interventions and barriers apart; 'linkage' nests
+  // them under their goals. Switched from the content header's More menu.
+  carePlanLayout: 'tables',
+  setCarePlanLayout: (layout) => set({ carePlanLayout: layout }),
   // Care plan search text and filter-bar visibility. Same split as bulk
   // mode: the Search / Filter buttons live in the content header, and
   // CarePlanView filters the GBI tables with them.
@@ -4099,7 +4595,8 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await supabase
       .from('care_plan_audit').select('*')
       .eq('patient_id', patientId).eq('program_id', programId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
     if (error) console.warn('fetchCarePlanAudit:', error.message);
     set(s => ({
       patientCarePlanAudit: { ...s.patientCarePlanAudit, [key]: (data || []).map(mapCarePlanAuditRow) },
@@ -4673,187 +5170,11 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
-  // ── Automation Rules (Settings > Automation Rules; automation_rules migration) ──
-  // Account-level auto-apply rules evaluated at care program enrollment
-  // (runAutoApplyRules, from addCareProgram). The engine is pure:
-  // features/settings/automation-rules/lib/automationRules.js.
-  automationRules: [],
-  automationRulesStatus: 'idle', // 'idle' | 'loading' | 'ready' | 'missing'
-  automationRuleRuns: [],
-  fetchAutomationRules: async () => {
-    set({ automationRulesStatus: 'loading' });
-    const { data, error } = await supabase.from('automation_rules').select('*')
-      .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
-    if (error) {
-      const missing = error.code === '42P01' || error.code === 'PGRST205';
-      if (!missing) console.warn('fetchAutomationRules:', error.message);
-      set({ automationRules: [], automationRulesStatus: missing ? 'missing' : 'ready' });
-      return [];
-    }
-    const rules = (data || []).map(mapAutomationRuleRow);
-    set({ automationRules: rules, automationRulesStatus: 'ready' });
-    return rules;
-  },
-  fetchAutomationRuleRuns: async () => {
-    const { data, error } = await supabase.from('automation_rule_runs').select('*')
-      .order('created_at', { ascending: false }).limit(100);
-    if (error) { set({ automationRuleRuns: [] }); return; }
-    set({ automationRuleRuns: (data || []).map(r => ({
-      id: r.id, ruleId: r.rule_id, patientId: r.patient_id, programCode: r.program_code,
-      matched: !!r.matched, reasons: Array.isArray(r.reasons) ? r.reasons : [],
-      templateIds: r.template_ids || [], taskId: r.task_id || null, createdAt: r.created_at,
-    })) });
-  },
-  saveAutomationRule: async (values, id = null) => {
-    const actor = get().currentUserProfile?.name || null;
-    const row = {
-      name: values.name.trim(),
-      description: (values.description || '').trim(),
-      enabled: values.enabled !== false,
-      program_codes: values.programCodes || [],
-      match: values.match === 'any' ? 'any' : 'all',
-      conditions: values.conditions || [],
-      template_ids: values.templateIds || [],
-      reviewer: values.reviewer?.name ? { id: values.reviewer.id || null, name: values.reviewer.name } : null,
-      updated_by: actor,
-      updated_at: new Date().toISOString(),
-    };
-    const q = id
-      ? supabase.from('automation_rules').update(row).eq('id', id)
-      : supabase.from('automation_rules').insert({ ...row, created_by: actor, sort_order: get().automationRules.length });
-    const { data, error } = await q.select().single();
-    if (error) {
-      console.warn('saveAutomationRule:', error.message);
-      get().showToast(/automation_rules/.test(error.message || '') && /exist/.test(error.message || '')
-        ? 'Automation rules need the automation rules migration'
-        : 'Could not save the rule');
-      return null;
-    }
-    const rule = mapAutomationRuleRow(data);
-    set(s => ({ automationRules: id ? s.automationRules.map(r => (r.id === id ? rule : r)) : [...s.automationRules, rule] }));
-    return rule;
-  },
-  // Forms an assessment condition can point at (id + name only).
+  // Forms a clinical criteria assessment answer can point at (id + name only).
   fetchAssessmentFormOptions: async () => {
     const { data, error } = await supabase.from('forms').select('id, name').order('name').limit(300);
     if (error) { console.warn('fetchAssessmentFormOptions:', error.message); return []; }
     return (data || []).map(f => ({ id: String(f.id), name: f.name || `Form ${f.id}` }));
-  },
-  deleteAutomationRule: async (id) => {
-    const prev = get().automationRules;
-    set({ automationRules: prev.filter(r => r.id !== id) });
-    const { error } = await supabase.from('automation_rules').delete().eq('id', id);
-    if (error) {
-      console.warn('deleteAutomationRule:', error.message);
-      set({ automationRules: prev });
-      get().showToast('Could not delete the rule');
-      return false;
-    }
-    return true;
-  },
-
-  // Evaluate the enabled rules that watch this program against the patient's
-  // conditions, labs, recent encounters and assessment answers. Each match
-  // attaches its templates to the program's care plan unsigned (a draft), and
-  // one review task goes to the care manager listing why. Every evaluation is
-  // logged in automation_rule_runs. Returns { matched: rule[], taskId }.
-  runAutoApplyRules: async (patientId, program) => {
-    if (!patientId || !program?.id) return { matched: [], taskId: null };
-    const rules = get().automationRulesStatus === 'ready' ? get().automationRules : await get().fetchAutomationRules();
-    const applicable = rulesForProgram(rules, program.code);
-    if (!applicable.length) return { matched: [], taskId: null };
-
-    const [problems, events, responses] = await Promise.all([
-      supabase.from('patient_problems').select('title, status').eq('patient_id', String(patientId)),
-      supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit').eq('patient_id', String(patientId)),
-      // patient_id on form_responses comes with the automation rules migration.
-      supabase.from('form_responses').select('form_id, answers, status, completed_at, created_at').eq('patient_id', String(patientId))
-        .order('created_at', { ascending: false }).limit(50),
-    ]);
-    const inputs = buildRuleInputs({
-      problems: problems.data || [],
-      clinicalEvents: events.data || [],
-      responses: responses.error ? [] : (responses.data || []),
-    });
-    const results = applicable.map(rule => ({ rule, ...evaluateRule(rule, inputs) }));
-    const matched = results.filter(r => r.matched);
-
-    let taskId = null;
-    let attached = [];
-    if (matched.length) {
-      if (!get().carePlanTemplates.length) await get().fetchCarePlanLibrary();
-      const templates = get().carePlanTemplates;
-      await get().fetchPatientCarePlan(patientId, program.id);
-      const key = carePlanKey(patientId, program.id);
-      const prev = get().patientCarePlans[key]?.plan?.appliedTemplateIds || [];
-      const known = new Set(templates.map(t => t.id));
-      const already = new Set(prev);
-      attached = [...new Set(matched.flatMap(r => r.rule.templateIds || []))]
-        .filter(id => known.has(id) && !already.has(id));
-      if (attached.length) await get().applyPatientCarePlanTemplates(patientId, program, [...prev, ...attached]);
-
-      const memberName = get().patients.find(p => String(p.id) === String(patientId))?.name || '';
-      const users = get().platformUsers || [];
-      const named = matched.map(r => r.rule.reviewer).find(rv => rv?.name)
-        || (program.assignee && program.assignee !== 'Unassigned' ? users.find(u => u.name === program.assignee) : null);
-      const reviewer = named ? { id: named.id || null, name: named.name } : null;
-      const templateNames = attached.map(id => templates.find(t => t.id === id)?.name).filter(Boolean);
-      const lines = matched.map(r => `• ${r.rule.name}: ${r.reasons.filter(x => x.ok).map(x => x.text).join('; ')}`);
-      const due = new Date(); due.setDate(due.getDate() + 2);
-      const task = await get().createTask({
-        name: `Review auto-applied care plan for ${memberName || 'patient'}`,
-        status: 'pending',
-        priority: 'medium',
-        due_date: `${String(due.getMonth() + 1).padStart(2, '0')}/${String(due.getDate()).padStart(2, '0')}/${due.getFullYear()}`,
-        assigned_to: reviewer?.name || null,
-        assigned_to_id: reviewer?.id || null,
-        member: memberName,
-        labels: ['Care Plan Review', 'Automation'],
-        meta: program.name || program.code || '',
-        description: [
-          `On enrollment in ${program.name || program.code}, automation rules matched and ${templateNames.length ? `attached ${templateNames.join(', ')} in draft` : 'found the templates already on the plan'}. Review, edit and sign the plan.`,
-          ...lines,
-        ].join('\n'),
-        pool: null,
-        mentions: reviewer ? [reviewer.name] : [],
-        attachments: 0,
-        comments: 0,
-        is_subtask: false,
-        parent_task: null,
-        parent_task_id: null,
-      }, { auditUserName: 'Automation Rules' });
-      taskId = task?.id != null ? String(task.id) : null;
-      if (task && program.code) get().addProgramTask?.(program.code, task);
-      get().logCarePlanAudit(patientId, program, {
-        entityType: 'plan',
-        action: 'auto_applied',
-        summary: matched.map(r => r.rule.name).join(', '),
-        detail: templateNames.length ? `Attached in draft: ${templateNames.join(', ')}` : 'Templates were already on the plan',
-      });
-      if (reviewer?.id) {
-        get().addNotification?.({
-          type: 'care_plan.review_requested',
-          title: 'Auto-applied care plan to review',
-          body: `Automation rules attached ${templateNames.join(', ') || 'templates'} for ${memberName}.`,
-          action: 'openCarePlan',
-          recipientId: reviewer.id,
-        });
-      }
-    }
-
-    // The run log: every rule evaluated, matched or not, with its reasons.
-    const runs = results.map(r => ({
-      rule_id: r.rule.id,
-      patient_id: String(patientId),
-      program_code: program.code || null,
-      matched: r.matched,
-      reasons: r.reasons.map(x => `${x.ok ? '✓' : '✗'} ${x.text}`),
-      template_ids: r.matched ? attached.filter(id => new Set(r.rule.templateIds || []).has(id)) : [],
-      task_id: r.matched ? taskId : null,
-    }));
-    const { error: runErr } = await supabase.from('automation_rule_runs').insert(runs);
-    if (runErr) console.warn('automation_rule_runs insert:', runErr.message);
-    return { matched: matched.map(r => r.rule), taskId };
   },
 
   fetchCarePlanLibrary: async () => {
@@ -5098,6 +5419,23 @@ export const useAppStore = create((set, get) => ({
     },
   })),
 
+  // End an enrollment with a reason (Close Program): Completed for "Goal met",
+  // else Discontinued, unless the user picked the status; today is the end date.
+  closeCareProgramInstance: (patientId, programId, { reason, note = '', status } = {}) => {
+    const d = new Date();
+    const today = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    const finalStatus = status || CLOSURE_REASONS.find(r => r.value === reason)?.status || 'Discontinued';
+    get().updateCareProgram(patientId, programId, {
+      status: finalStatus,
+      statusColor: programStatusColor(finalStatus),
+      endDate: today,
+      closureReason: reason || 'other',
+      closureNote: note || null,
+      closedAt: d.toISOString(),
+      closedBy: get().currentUserProfile?.name || null,
+    });
+  },
+
   updateCareProgram: (patientId, programId, patch) => {
     if (!patientId || !programId) return;
     const now = new Date();
@@ -5149,12 +5487,13 @@ export const useAppStore = create((set, get) => ({
       });
     }
     if (updated && patch.status && patch.status !== prevStatus) {
+      const reason = closureReasonLabel(patch.closureReason);
       get().logProgramActivity({
         patientId,
         programCode: updated.code,
-        title: `${updated.code} Program Status Change`,
+        title: reason ? `${updated.code} Program Closed` : `${updated.code} Program Status Change`,
         activityKind: 'status',
-        statusLabel: patch.status,
+        statusLabel: reason ? `${patch.status} · ${reason}` : patch.status,
         statusType: 'warning',
       });
     }
@@ -5176,6 +5515,12 @@ export const useAppStore = create((set, get) => ({
         med_recon_signed_by:   updated.medReconSignedBy || null,
         med_recon_signed_role: updated.medReconSignedRole || null,
         med_recon_signed_at:   updated.medReconSignedAt || null,
+        // Lifecycle columns only once set, so saves still work before
+        // patient_care_program_lifecycle_migration.sql has run.
+        ...Object.fromEntries(Object.entries({
+          closure_reason: updated.closureReason, closure_note: updated.closureNote,
+          closed_at: updated.closedAt, closed_by: updated.closedBy,
+        }).filter(([, v]) => v)),
       }, { onConflict: 'id' }).then(({ error }) => {
         if (error) console.warn('updateCareProgram — update failed:', error.message);
       });
@@ -5256,6 +5601,7 @@ export const useAppStore = create((set, get) => ({
         fileUrl:     r.file_url,
         storagePath: r.storage_path,
         ext:         r.ext,
+        category:    r.category,
       }));
       set({ programDocuments: rows, programDocumentsDidFetch: true });
     } catch (e) {
@@ -5752,6 +6098,8 @@ export const useAppStore = create((set, get) => ({
   // mirrored into the URL (#/settings/care-plan-library/<tab>) so a refresh
   // restores the exact library.
   carePlanTab: 'template',
+  careProgramConfigId: null,     // program type open in Settings > Care Program Configuration
+  careProgramConfigTab: 'overview',
   componentWizardOpen: false,
   componentWizardEditId: null,
   componentPreviewId: null,
@@ -6065,7 +6413,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   // ─── Supabase: Fetch calls UI config (nav items, phone lines, session list) ───
-  fetchCallsConfig: async () => {
+  fetchCallsConfig: (opts) => mountFetch('fetchCallsConfig', async () => {
     set({ callsConfigLoading: true });
     const [navRes, linesRes, sessRes] = await Promise.allSettled([
       supabase.from('call_nav_items').select('*').order('sort_order'),
@@ -6099,7 +6447,7 @@ export const useAppStore = create((set, get) => ({
       callSessions: sessData.map(mapSession),
       callsConfigLoading: false,
     });
-  },
+  }, opts),
 
   // Helper: get call records for a patient
   getCallsForPatient: (patientId) => {
@@ -6239,6 +6587,8 @@ export const useAppStore = create((set, get) => ({
     if (from !== item) track('nav.settings_section_changed', { from, to: item });
     sessionStorage.setItem('settingsNavItem', item);
     set({ settingsNavItem: item });
+    // The section link always lands on the automations list, not a builder left open.
+    if (item === 'automations') set(s => ({ automationsView: { ...s.automationsView, screen: 'list', id: null, runMemberId: null, drawer: null } }));
     updateHash(get);
   },
   setMemberLeadsTab: (tab) => {
@@ -6291,7 +6641,13 @@ export const useAppStore = create((set, get) => ({
     if (!isRealUserId(me?.id)) return () => {};
     get()._unreadMessagesChannel?.unsubscribe();
     // A real insert/update always recounts; only the resync path is gated.
-    const recount = () => get().fetchMessagesUnreadCount({ force: true });
+    // Debounced: opening a chat stamps read_at on many rows at once, and each
+    // row arrives as its own UPDATE event; one count after the burst is enough.
+    let recountTimer = null;
+    const recount = () => {
+      clearTimeout(recountTimer);
+      recountTimer = setTimeout(() => get().fetchMessagesUnreadCount({ force: true }), 500);
+    };
     const ch = supabase
       .channel(`unread-messages:${me.id}`)
       .on('postgres_changes', {
@@ -6330,7 +6686,7 @@ export const useAppStore = create((set, get) => ({
         if (status === 'SUBSCRIBED' && !tabHidden()) get().fetchMessagesUnreadCount();
       });
     set({ _unreadMessagesChannel: ch });
-    return () => { ch.unsubscribe(); set({ _unreadMessagesChannel: null }); };
+    return () => { clearTimeout(recountTimer); ch.unsubscribe(); set({ _unreadMessagesChannel: null }); };
   },
   _unreadMessagesChannel: null,
   setPendingChatUserEmail: (email) => set({ pendingChatUserEmail: email }),
@@ -6342,8 +6698,9 @@ export const useAppStore = create((set, get) => ({
   // Worklist row menu → Comms drawers (Send SMS / Send Email / Send
   // Education / Send Assessment). `row` is the worklist row; it's matched to
   // its all_patients record so the drawers have the email and phone. Returns
-  // false for actions it doesn't handle.
-  runPatientRowAction: (key, row) => {
+  // false for actions it doesn't handle. `drawerProps` go to the Send
+  // Education / Send Assessment drawer (e.g. initialFormIds for a resend).
+  runPatientRowAction: (key, row, drawerProps = {}) => {
     const types = { 'Send SMS': 'sms', 'Send Email': 'email', 'Send Education': 'content', 'Send Assessment': 'assessment' };
     const type = types[key];
     if (!type || !row) return false;
@@ -6357,7 +6714,7 @@ export const useAppStore = create((set, get) => ({
         || { id, name: row.name, email: row.email || '', phone: row.phone || '' };
       if (type === 'sms') get().openCommsDrawer('sms', { initialPatient: patient });
       else if (type === 'email') get().openCommsDrawer('email', { initial: { patient, to: patient.email ? [patient.email] : [] } });
-      else get().openCommsDrawer(type, { patient });
+      else get().openCommsDrawer(type, { patient, ...drawerProps });
     })();
     return true;
   },
@@ -6382,7 +6739,11 @@ export const useAppStore = create((set, get) => ({
   setEmbeddedComponentsTab: (tab) => { set({ embeddedComponentsTab: tab }); updateHash(get); },
   setAccountTab: (tab) => { set({ accountTab: tab }); updateHash(get); },
   setContentTab: (tab) => { set({ contentTab: tab }); updateHash(get); },
-  setCarePlanTab: (tab) => {
+  openCareProgramConfig: (id, tab = 'overview') => {
+    set({ careProgramConfigId: id, careProgramConfigTab: tab });
+    updateHash(get);
+  },
+    setCarePlanTab: (tab) => {
     const from = get().carePlanTab;
     if (from !== tab) track('nav.tab_changed', { scope: 'settings', from, to: tab });
     set({ carePlanTab: tab });
@@ -6491,7 +6852,7 @@ export const useAppStore = create((set, get) => ({
   // ── Population Groups (Supabase-backed) ──
   popGroups: [],
   popGroupsLoading: false,
-  fetchPopGroups: async () => {
+  fetchPopGroups: (opts) => mountFetch('fetchPopGroups', async () => {
     set({ popGroupsLoading: true });
     const { data, error } = await supabase
       .from('population_groups')
@@ -6503,7 +6864,7 @@ export const useAppStore = create((set, get) => ({
       return;
     }
     set({ popGroups: (data || []).map(popGroupRowToJs), popGroupsLoading: false });
-  },
+  }, opts),
   createPopGroup: async (group) => {
     const { data, error } = await supabase
       .from('population_groups')
@@ -6557,7 +6918,8 @@ export const useAppStore = create((set, get) => ({
       .from('pop_group_activity')
       .select('*')
       .eq('group_id', groupId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
     if (error) {
       console.warn('[store] fetchPopGroupActivity failed:', error.message);
       return [];
@@ -6876,11 +7238,11 @@ export const useAppStore = create((set, get) => ({
 
   // Holidays
   holidaysData: null,
-  fetchHolidays: async () => {
+  fetchHolidays: (opts) => mountFetch('fetchHolidays', async () => {
     const { data, error } = await supabase.from('holidays').select('*').order('date');
     if (error) { console.warn('[store] holidays fetch failed:', error.message); return; }
     set({ holidaysData: data.map(r => ({ id: r.id, date: r.date, name: r.name })) });
-  },
+  }, opts),
   addHoliday: async (holiday) => {
     const { data, error } = await supabase.from('holidays').insert({ date: holiday.date, name: holiday.name }).select();
     if (!error && data) set(s => ({ holidaysData: [...(s.holidaysData || []), { id: data[0].id, date: data[0].date, name: data[0].name }] }));
@@ -7360,23 +7722,30 @@ export const useAppStore = create((set, get) => ({
   //     union prevents half-persisted feeds where some entries are DB-
   //     backed and others live only in memory.
   caregapActivity: {},
-  caregapActivityLoaded: false,
-  fetchCaregapActivity: async () => {
-    if (get().caregapActivityLoaded) return;
+  // Per member: the drawer shows one member's feed, so it reads only those
+  // rows (the whole table grows with every action on every member).
+  caregapActivityLoadedFor: {},
+  fetchCaregapActivity: async (memberId) => {
+    if (!memberId || get().caregapActivityLoadedFor[memberId]) return;
+    set(s => ({ caregapActivityLoadedFor: { ...s.caregapActivityLoadedFor, [memberId]: 'loading' } }));
     const { data, error } = await supabase
       .from('caregap_activity')
       .select('*')
-      .order('at', { ascending: false });
-    if (error) {
-      console.warn('fetchCaregapActivity failed:', error.message);
-      set({ caregapActivityLoaded: true });
-      return;
-    }
-    const byMember = {};
-    for (const row of (data || [])) {
-      (byMember[row.member_id] ??= []).push(caregapRowToEntry(row));
-    }
-    set({ caregapActivity: byMember, caregapActivityLoaded: true });
+      .eq('member_id', memberId)
+      .order('at', { ascending: false })
+      .limit(500);
+    if (error) console.warn('fetchCaregapActivity failed:', error.message);
+    set(s => ({
+      // Entries logged while this read was in flight are already in the map.
+      caregapActivity: error ? s.caregapActivity : {
+        ...s.caregapActivity,
+        [memberId]: [
+          ...(s.caregapActivity[memberId] || []).filter(e => !(data || []).some(r => r.id === e.id)),
+          ...(data || []).map(caregapRowToEntry),
+        ],
+      },
+      caregapActivityLoadedFor: { ...s.caregapActivityLoadedFor, [memberId]: true },
+    }));
   },
   // Status updates applied to the local HEDIS mock data via setHedisMembers.
   hedisMembers: [],
@@ -7501,7 +7870,7 @@ export const useAppStore = create((set, get) => ({
 
   apcmPatients: [],
   apcmPatientsLoading: false,
-  fetchApcmPatients: async () => {
+  fetchApcmPatients: (opts) => mountFetch('fetchApcmPatients', async () => {
     set({ apcmPatientsLoading: true });
     const { data, error } = await supabase
       .from('apcm_patients')
@@ -7537,7 +7906,7 @@ export const useAppStore = create((set, get) => ({
       })),
       apcmPatientsLoading: false,
     });
-  },
+  }, opts),
 
   // ─── CCM Worklist (shared list) ─────────────────────────────────────────
   ccmWorklistMembers: [],
@@ -7966,8 +8335,14 @@ export const useAppStore = create((set, get) => ({
     });
     if (error) console.warn('logTimerInactivityEvent:', error.message);
   },
+  // Hard consent gate (Phase 2A.3): no CCM time is recorded without a
+  // current CCM consent. Returns { ok, blocked, reason } so callers keep the
+  // time instead of dropping it. Off until patient_consents exists, so an
+  // environment without the migration keeps logging time.
   addCcmBillableActivity: async (activity) => {
     const { patientId } = activity;
+    const gate = await get().checkBillingConsent(patientId, 'CCM');
+    if (!gate.allowed) return { ok: false, blocked: true, reason: gate.reason };
     set(s => {
       const prev = s.ccmBillableActivitiesByPatient[patientId] || [];
       return {
@@ -7991,6 +8366,7 @@ export const useAppStore = create((set, get) => ({
     };
     const { error } = await supabase.from('ccm_billable_activities').insert(row);
     if (error) console.warn('addCcmBillableActivity — insert failed:', error.message);
+    return { ok: true, blocked: false, reason: null };
   },
 
   updateGapStatus: (memberId, gapCode, nextStatus) => {
@@ -8539,6 +8915,170 @@ export const useAppStore = create((set, get) => ({
     if (get().programStepStatusTableMissing) return;
     const { missing } = await persistStepStatus(patientProgramId, step, status, updatedBy);
     if (missing) set({ programStepStatusTableMissing: true });
+  },
+
+  // ── Patient consent + preferences (Supabase `patient_consents`, ──────────
+  // `patient_preferences`). Consent history is keyed by patient id, newest
+  // first; a capture prepends locally, then inserts (rows are never edited).
+  // Rules live in features/patient/data/consentRules.js. Until the migration
+  // runs, consent reads as missing and captures stay session-only.
+  patientConsents: {},
+  patientConsentsLoadedFor: {},
+  patientPreferences: {},
+  patientConsentTableMissing: false,
+  // Capture Consent drawer, mounted once in AppLayout so the banner, the
+  // Overview card and (2A.3) billing gates can all open it.
+  // { patientId, scopeType?, scope?, status?, programId?, onCaptured?(record) } | null
+  consentCapture: null,
+  openConsentCapture: (patientId, preset = {}) => { if (patientId) set({ consentCapture: { patientId: String(patientId), ...preset } }); },
+  closeConsentCapture: () => set({ consentCapture: null }),
+  // Concurrent callers (the banner, the card, a billing gate) share one
+  // request, so a gate never reads the history before it has arrived.
+  fetchPatientConsents: (patientId, { force = false } = {}) => {
+    if (!patientId) return Promise.resolve();
+    const inflight = consentFetches.get(patientId);
+    if (inflight && !force) return inflight;
+    if (!force && get().patientConsentsLoadedFor[patientId]) return Promise.resolve();
+    set(s => ({ patientConsentsLoadedFor: { ...s.patientConsentsLoadedFor, [patientId]: true } }));
+    const request = Promise.all([fetchConsentRows(patientId), fetchPreferencesRow(patientId)]).then(([{ rows, missing }, prefs]) => {
+      set(s => ({
+        patientConsentTableMissing: missing || prefs.missing || s.patientConsentTableMissing,
+        // Keep anything captured locally while this was in flight.
+        patientConsents: { ...s.patientConsents, [patientId]: [...(s.patientConsents[patientId] || []).filter(c => !rows.some(r => r.id === c.id)), ...rows] },
+        patientPreferences: { ...s.patientPreferences, [patientId]: preferencesFromRow(prefs.row) },
+      }));
+    }).finally(() => consentFetches.delete(patientId));
+    consentFetches.set(patientId, request);
+    return request;
+  },
+  // `capture`: { scopeType, scope, status, method, witness, expiresOn, note,
+  // programId }, plus `file` (signature PNG or signed scan) for written and
+  // e-signed consent. Returns { ok, error }.
+  capturePatientConsent: async (patientId, capture) => {
+    if (!patientId) return { ok: false, error: 'No patient' };
+    const id = `pc-${patientId}-${Date.now()}`;
+    const { file, ...fields } = capture || {};
+    let artifactPath = null;
+    if (file && !get().patientConsentTableMissing) {
+      artifactPath = await uploadConsentArtifact(patientId, id, file);
+      if (!artifactPath) return { ok: false, error: 'Could not upload the signed document' };
+    }
+    const now = new Date();
+    const record = {
+      ...fields,
+      id,
+      patientId: String(patientId),
+      artifactPath: artifactPath || (file ? `session/${id}` : null),
+      artifactKind: file ? (fields.artifactKind || 'upload') : null,
+      capturedBy: get().currentActorName(),
+      capturedByRole: get().currentUserProfile?.role || null,
+      capturedAt: now.toISOString(),
+      effectiveOn: fields.effectiveOn || now.toISOString().slice(0, 10),
+    };
+    const invalid = validateCapture(record);
+    if (invalid) return { ok: false, error: invalid };
+    set(s => ({ patientConsents: { ...s.patientConsents, [patientId]: [record, ...(s.patientConsents[patientId] || [])] } }));
+    if (!get().patientConsentTableMissing) {
+      const { missing } = await insertConsentRow(record);
+      if (missing) set({ patientConsentTableMissing: true });
+    }
+    if (record.scopeType === 'program') {
+      get().logProgramActivity({
+        patientId,
+        programCode: record.scope,
+        title: `${record.scope} Consent ${{ given: 'Captured', declined: 'Declined', withdrawn: 'Withdrawn' }[record.status]}`,
+        statusLabel: CONSENT_METHODS.find(m => m.value === record.method)?.label || '',
+        statusType: record.status === 'given' ? 'success' : 'neutral',
+      });
+    }
+    return { ok: true, error: null, record };
+  },
+  // canBill against freshly loaded consent. Allowed while the consent table
+  // is missing (pre-migration), so billing isn't switched off by a rollout.
+  checkBillingConsent: async (patientId, programCode) => {
+    await get().fetchPatientConsents(patientId);
+    if (get().patientConsentTableMissing) return { allowed: true, state: 'unavailable', reason: null };
+    return canBill(get().patientConsents[patientId] || [], programCode);
+  },
+  savePatientPreferences: async (patientId, patch) => {
+    if (!patientId) return;
+    const next = { ...preferencesFromRow(null), ...(get().patientPreferences[patientId] || {}), ...patch };
+    set(s => ({ patientPreferences: { ...s.patientPreferences, [patientId]: next } }));
+    if (get().patientConsentTableMissing) return;
+    const { missing } = await persistPreferences(patientId, next, get().currentActorName());
+    if (missing) set({ patientConsentTableMissing: true });
+  },
+
+  // ── Program health (program_health migration): the supervisor "Team
+  // programs" card on Home. One RPC per load, keyed by the codes asked for;
+  // `codes` null means every program (admins). No mock fallback: made-up
+  // health counts would mislead, so a missing function shows as such.
+  programHealth: null, // [{ code, activeMembers, attentionMembers, carePlanGaps, overdueOutreach, overdueTasks, reviewGaps }]
+  programHealthKey: null,
+  programHealthLoading: false,
+  programHealthMissing: false,
+  fetchProgramHealth: async (codes) => {
+    const key = codes ? [...codes].sort().join('|') : '*';
+    if (get().programHealthLoading || get().programHealthKey === key) return;
+    set({ programHealthLoading: true, programHealthKey: key });
+    const { data, error } = await supabase.rpc('program_health', { p_codes: codes || null });
+    if (error) {
+      console.warn('fetchProgramHealth:', error.message);
+      set({
+        programHealth: [],
+        programHealthLoading: false,
+        programHealthMissing: /program_health|does not exist|schema cache/i.test(error.message),
+      });
+      return;
+    }
+    set({
+      programHealth: (data || []).map(r => ({
+        code: r.program_code,
+        activeMembers: r.active_members || 0,
+        attentionMembers: r.attention_members || 0,
+        carePlanGaps: r.care_plan_gaps || 0,
+        overdueOutreach: r.overdue_outreach || 0,
+        overdueTasks: r.overdue_tasks || 0,
+        reviewGaps: r.review_gaps || 0,
+      })),
+      programHealthLoading: false,
+      programHealthMissing: false,
+    });
+  },
+
+  // ── Program access (Supabase `program_memberships`, `vendor_organizations`,
+  // `access_override_log`). All active memberships load once (the table is
+  // small and co-sign needs other users' roles); the current user's scope is
+  // derived in features/patient/data/programAccess.js (useProgramAccess).
+  // Until the migration runs everyone stays unscoped.
+  programMemberships: [],
+  vendorOrganizations: [],
+  programAccessLoaded: false,
+  programAccessTableMissing: false,
+  fetchProgramAccess: async ({ force = false } = {}) => {
+    if (!force && (get().programAccessLoaded || get()._programAccessFetching)) return;
+    set({ _programAccessFetching: true });
+    const { memberships, vendors, missing } = await fetchProgramAccessRows();
+    set({ programMemberships: memberships, vendorOrganizations: vendors, programAccessTableMissing: missing, programAccessLoaded: true, _programAccessFetching: false });
+  },
+  // Admin-only in the database; returns { ok, error }.
+  saveProgramMembership: async (membership) => {
+    const next = { ...membership, id: membership.id || `pm-${membership.userId}-${String(membership.programCode).toLowerCase()}`, updatedBy: get().currentActorName() };
+    const { ok, missing, error } = await persistMembership(next);
+    if (missing) { set({ programAccessTableMissing: true }); return { ok: false, error: 'Program access needs its migration first' }; }
+    if (!ok) return { ok: false, error };
+    set(s => ({ programMemberships: [...s.programMemberships.filter(m => !(m.userId === next.userId && m.programCode === next.programCode)), next].filter(m => m.active !== false) }));
+    return { ok: true, error: null };
+  },
+  // A supervisor stepping outside their scope: always with a reason, always
+  // logged. Returns { ok, error }.
+  logAccessOverride: async ({ patientId, programCode, action, reason }) => {
+    const invalid = validateOverride({ reason, programCode });
+    if (invalid) return { ok: false, error: invalid };
+    if (get().programAccessTableMissing) return { ok: true, error: null };
+    const { missing } = await insertOverride({ patientId, programCode, action, reason, userName: get().currentActorName() });
+    if (missing) set({ programAccessTableMissing: true });
+    return { ok: true, error: null };
   },
 
   // ── Care Gap lab orders / results (Supabase `caregap_lab_*`) ────────────
@@ -10109,7 +10649,7 @@ export const useAppStore = create((set, get) => ({
         .from('profiles')
         // locations: the departments (practice locations) each person works
         // at, for picking covering providers when reassigning appointments.
-        .select('id, full_name, first_name, last_name, email, clinical_roles, locations')
+        .select('id, full_name, first_name, last_name, email, clinical_roles, locations, admin_role, status')
         .order('full_name', { ascending: true });
       if (error) throw error;
       const raw = data || [];
@@ -10124,6 +10664,7 @@ export const useAppStore = create((set, get) => ({
       }));
       let me = null;
       let meRoles = [];
+      let meIsAdmin = false;
       if (authUser) {
         const meRow = raw.find(p => p.id === authUser.id)
           || raw.find(p => p.email && authUser.email
@@ -10134,8 +10675,14 @@ export const useAppStore = create((set, get) => ({
             id: meRow.id,
             name: (meRow.full_name || meRow.email?.split('@')[0] || 'Unknown').trim(),
             email: meRow.email || '',
+            // For program access (isPracticeAdmin), matching the database's admin check.
+            adminRole: meRow.admin_role || null,
+            clinicalRoles: meRow.clinical_roles || [],
           };
           meRoles = meRow.clinical_roles || [];
+          meIsAdmin = meRow.status === 'Active'
+            && (['Admin/Practice Manager', 'Business/Practice Owner'].includes(meRow.admin_role)
+              || meRoles.includes('Admin/Practice Manager'));
         } else {
           const meta = authUser.user_metadata || {};
           const meName = (meta.full_name || meta.first_name
@@ -10218,6 +10765,7 @@ export const useAppStore = create((set, get) => ({
         taskProfiles,
         currentUserProfile: me,
         currentUserClinicalRoles: meRoles,
+        currentUserIsAdmin: meIsAdmin,
       });
       // If the HCC worklist already applied a role-scoped default filter
       // using a dev-fallback, backfill it once the real user is known.
@@ -11109,6 +11657,84 @@ export const useAppStore = create((set, get) => ({
     if (error) console.warn('Failed to update JSA status:', error.message);
   },
 
+  // ── CMP (Care Management Program) worklist: same shape as the JSA slice,
+  // backed by cmp_members (supabase/cmp_members_migration.sql). Falls back to
+  // the local mock until that table exists and is seeded.
+  cmpMembers: [],
+  cmpMembersLoading: false,
+  cmpMembersDidFetch: false,
+  fetchCmpMembers: async () => {
+    if (useAppStore.getState().cmpMembersDidFetch) return;
+    set({ cmpMembersDidFetch: true, cmpMembersLoading: true });
+
+    const { data, error } = await supabase
+      .from('cmp_members')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      console.warn('fetchCmpMembers error or empty, falling back to local mock:', error?.message);
+      const { CMP_MEMBERS } = await import('../features/cmp-worklist/data/mock');
+      set({
+        cmpMembers: CMP_MEMBERS,
+        cmpMembersLoading: false,
+        ...(error ? { cmpMembersDidFetch: false } : {}),
+      });
+      return;
+    }
+
+    set({
+      cmpMembers: data.map(m => ({
+        id: m.id,
+        patientId: m.patient_id,
+        memberId: m.member_id,
+        subProgram: m.sub_program,
+        name: m.name,
+        in: m.initials,
+        g: m.gender,
+        age: m.age,
+        dob: m.dob,
+        language: m.language || 'en',
+        progSubStatus: m.program_sub_status,
+        carePlanStatus: m.care_plan_status,
+        nextActionDue: m.next_action_due,
+        programStartDate: m.program_start_date,
+        programDueDate: m.program_due_date,
+        outreach: m.outreach ?? 0,
+        lastOutreach: m.last_outreach,
+        assignee: m.assignee,
+        assigneeIn: m.assignee_initials,
+        ri: m.risk_level,
+        task: m.tasks ?? 0,
+      })),
+      cmpMembersLoading: false,
+    });
+  },
+  cmpFilters: hydrateListFilters('CMP'),
+  setCmpFilter: (k, vals) => set(s => {
+    const next = { ...s.cmpFilters };
+    if (!vals || vals.length === 0) delete next[k];
+    else next[k] = vals;
+    return { cmpFilters: next };
+  }),
+  clearCmpFilters: () => set(s => ({ cmpFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'CMP') })),
+  selectedCmpIds: [],
+  selectCmpMember: (id) => set(s => ({
+    selectedCmpIds: s.selectedCmpIds.includes(id)
+      ? s.selectedCmpIds.filter(x => x !== id)
+      : [...s.selectedCmpIds, id],
+  })),
+  selectAllCmp: (ids) => set({ selectedCmpIds: ids }),
+  clearCmpSelected: () => set({ selectedCmpIds: [] }),
+  updateCmpMemberStatus: async (id, newStatus) => {
+    set(s => ({ cmpMembers: s.cmpMembers.map(m => (m.id === id ? { ...m, progSubStatus: newStatus } : m)) }));
+    const { error } = await supabase
+      .from('cmp_members')
+      .update({ program_sub_status: newStatus })
+      .eq('id', id);
+    if (error) console.warn('Failed to update CMP status:', error.message);
+  },
+
   selectedHccIds: [],
   selectHccMember: (id) => {
     track('hcc.member_selected', { memberId: id });
@@ -11293,6 +11919,8 @@ export const useAppStore = create((set, get) => ({
     if (get().worklistColumnPrefsLoaded) return;
     try {
       const userId = await get()._resolveWorklistUser();
+      // The dev bypass has no real user id; Postgres rejects it as a uuid.
+      if (!isRealUserId(userId)) { set({ worklistColumnPrefsLoaded: true }); return; }
       const { data, error } = await supabase
         .from('user_worklist_column_prefs')
         .select('worklist_key, column_order, hidden_cols')
@@ -14009,10 +14637,15 @@ export const useAppStore = create((set, get) => ({
     }
     const updated = state.patients.map(p => {
       if (!p.agentAssigned) return p;
-      const newP = { ...p, agentAssigned: '', agentRole: '', onCall: false, status: p.status === 'oncall' || p.status === 'queued' ? 'scheduled' : p.status };
+      const secs = state.agentCallSeconds[p.id];
+      const newP = {
+        ...p, agentAssigned: '', agentRole: '', onCall: false,
+        status: p.status === 'oncall' || p.status === 'queued' ? 'scheduled' : p.status,
+        ...(secs != null ? { callDuration: formatDuration(secs) } : {}),
+      };
       return newP;
     });
-    set({ patients: updated, callTimerRef: null, queueTabDot: false, toast: 'All agent runs aborted' });
+    set({ patients: updated, callTimerRef: null, agentCallSeconds: {}, queueTabDot: false, toast: 'All agent runs aborted' });
     // Persist changes
     for (const p of updated) {
       if (p.agentAssigned === '') {
@@ -14022,29 +14655,31 @@ export const useAppStore = create((set, get) => ({
     setTimeout(() => set(s => s.toast === 'All agent runs aborted' ? { toast: null } : {}), 2800);
   },
 
+  // Agent calls tick in `agentCallSeconds` (id → seconds), not in `patients`:
+  // rebuilding the patients array every second re-rendered every component
+  // subscribed to it. Rows read the clock through useCallDuration.
   startCallTimers: () => {
     const existing = get().callTimerRef;
     if (existing) return;
     const ref = setInterval(() => {
       const state = get();
-      const anyActive = state.patients.some(p => p.status === 'oncall' && p.onCall);
-      if (!anyActive) {
+      const active = state.patients.filter(p => p.status === 'oncall' && p.onCall);
+      if (!active.length) {
         clearInterval(ref);
-        set({ callTimerRef: null });
+        set({ callTimerRef: null, agentCallSeconds: {} });
         return;
       }
-      set(s => ({
-        patients: s.patients.map(p => {
-          if (p.status !== 'oncall' || !p.onCall) return p;
-          const secs = parseDuration(p.callDuration || '00:00') + 1;
-          return { ...p, callDuration: formatDuration(secs) };
-        })
-      }));
+      const prev = state.agentCallSeconds;
+      const next = {};
+      for (const p of active) {
+        next[p.id] = (prev[p.id] ?? parseDuration(p.callDuration || '00:00')) + 1;
+      }
+      set({ agentCallSeconds: next });
       // Note: call duration ticks are NOT persisted every second (too noisy).
-      // They get persisted when the call ends.
     }, 1000);
     set({ callTimerRef: ref });
   },
+  agentCallSeconds: {},
 
   openCallPopover: (patientId, btnRef) => {
     const state = get();
@@ -14071,15 +14706,10 @@ export const useAppStore = create((set, get) => ({
     }));
     get().persistPatient(patientId, updates);
 
+    // Only the seconds tick; rows read the live clock through
+    // useCallDuration, and endActiveCall writes the final duration.
     const ref = setInterval(() => {
-      set(s => {
-        const newSecs = s.activeCallSeconds + 1;
-        const timeStr = formatDuration(newSecs);
-        return {
-          activeCallSeconds: newSecs,
-          patients: s.patients.map(p => p.id === patientId ? { ...p, callDuration: timeStr } : p)
-        };
-      });
+      set(s => ({ activeCallSeconds: s.activeCallSeconds + 1 }));
     }, 1000);
     set({ activeCallTimerRef: ref });
   },
@@ -14448,10 +15078,8 @@ export const useAppStore = create((set, get) => ({
   fetchEfaxes: async () => {
     if (get().efaxesDidFetch) return;
     set({ efaxesDidFetch: true, efaxesLoading: true });
-    const [{ rowToFax, sampleFaxes }, { data, error }] = await Promise.all([
-      import('../features/messages/efax/efaxData'),
-      supabase.from('efax_inbound').select('*').order('received_at', { ascending: false }),
-    ]);
+    const { rowToFax, sampleFaxes } = await import('../features/messages/efax/efaxData');
+    const { data, error } = await supabase.from('efax_inbound').select('*').order('received_at', { ascending: false }).limit(500);
     if (error) console.warn('fetchEfaxes: falling back to samples:', error.message);
     if (!error && data?.length) {
       set({ efaxes: data.map(rowToFax), efaxesLoading: false, efaxLive: true });
@@ -14902,18 +15530,18 @@ export const useAppStore = create((set, get) => ({
 
   // ── Appointment Types ──
   appointmentTypes: [],
-  fetchAppointmentTypes: async () => {
+  fetchAppointmentTypes: (opts) => mountFetch('fetchAppointmentTypes', async () => {
     const { data, error } = await supabase
       .from('appointment_types')
       .select('*')
       .order('name');
     if (!error && data) set({ appointmentTypes: data });
-  },
+  }, opts),
 
   // ── Appointments ──
   appointments: [],
   appointmentsLoading: false,
-  fetchAppointments: async () => {
+  fetchAppointments: (opts) => mountFetch('fetchAppointments', async () => {
     set({ appointmentsLoading: true });
     const { data, error } = await supabase
       .from('appointments')
@@ -14921,7 +15549,7 @@ export const useAppStore = create((set, get) => ({
       .order('date', { ascending: true });
     if (!error && data) set({ appointments: data });
     set({ appointmentsLoading: false });
-  },
+  }, opts),
 
   // Signal-based drawer opener (mirrors pendingAddTask / pendingOpenTaskId
   // pattern). Set by NotificationsPopover on an "openAppointment" action;
@@ -14962,7 +15590,7 @@ export const useAppStore = create((set, get) => ({
     }
     if (error) { console.error('Create appointment error:', error); return null; }
     // Refresh list
-    get().fetchAppointments();
+    get().fetchAppointments({ force: true });
     // Notify me if I'm listed on the appointment — but not when I created
     // the invite myself (the store surfaces that via the drawer instead).
     if (data && get()._appointmentInvolvesMe(data)) {
@@ -14992,7 +15620,7 @@ export const useAppStore = create((set, get) => ({
       ({ error } = await supabase.from('appointments').update(byName).eq('id', id));
     }
     if (error) { console.error('Update appointment error:', error); return false; }
-    get().fetchAppointments();
+    get().fetchAppointments({ force: true });
     // Notify me if this update newly puts me on the appointment (name
     // becomes primary_user, or gets added to secondary_users).
     if (prev) {
@@ -15018,7 +15646,7 @@ export const useAppStore = create((set, get) => ({
       .delete()
       .eq('id', id);
     if (error) { console.error('Delete appointment error:', error); return false; }
-    get().fetchAppointments();
+    get().fetchAppointments({ force: true });
     return true;
   },
 
@@ -15128,7 +15756,7 @@ export const useAppStore = create((set, get) => ({
 
   // ── Audience segments (CampaignBuilder Include/Exclude options) ──
   audienceSegments: FALLBACK_AUDIENCE_SEGMENTS,
-  fetchAudienceSegments: async () => {
+  fetchAudienceSegments: (opts) => mountFetch('fetchAudienceSegments', async () => {
     const { data, error } = await supabase
       .from('audience_segments')
       .select('*')
@@ -15140,7 +15768,7 @@ export const useAppStore = create((set, get) => ({
         id: r.id, label: r.label, resolverKey: r.resolver_key, sortOrder: r.sort_order,
       })),
     });
-  },
+  }, opts),
 
   // ── Delivery log (campaign_sends), keyed by campaign id ──
   campaignSends: {},
@@ -15413,6 +16041,21 @@ export const useAppStore = create((set, get) => ({
   // returns to #/settings/content/emails.
   openContentEmailBuilder: async (campaignOrNull) => {
     let campaign = campaignOrNull;
+    // A template listed from code (not in the database yet): save it now,
+    // as New Email does, then open the saved copy.
+    if (campaign?.local && campaign.dbRow) {
+      set({ campaignBuilderSaving: true });
+      const { data, error } = await supabase.from('campaigns').insert(campaign.dbRow).select('*').single();
+      set({ campaignBuilderSaving: false });
+      if (error) {
+        console.error('openContentEmailBuilder local template insert error:', error);
+        get().showToast?.('Could not save the template');
+        return null;
+      }
+      campaign = campaignRowToJs(data);
+      set(s => ({ campaigns: [...s.campaigns, campaign] }));
+      invalidateContentEmailsCache();
+    }
     // Slim-list optimisation: if we were passed a row from the list (no
     // emailTemplate because we excluded it from the list select), fetch the
     // full row now so the email builder gets the saved doc instead of a
@@ -15787,6 +16430,22 @@ export const useAppStore = create((set, get) => ({
       return false;
     }
     return true;
+  },
+
+  // The response saved under one session (e.g. a patient program's Snapshot,
+  // session `snapshot:<patientId>:<programId>`), or null.
+  fetchFormResponseBySession: async (formId, sessionId) => {
+    if (!formId || !sessionId || (typeof formId === 'string' && formId.startsWith('local-'))) return null;
+    const { data, error } = await supabase
+      .from('form_responses').select('id, answers, completed_at, created_at')
+      .eq('form_id', formId).eq('session_id', sessionId)
+      .order('created_at', { ascending: false }).limit(1);
+    if (error) {
+      console.warn('fetchFormResponseBySession:', error.message);
+      return null;
+    }
+    const row = data?.[0];
+    return row ? { id: row.id, answers: row.answers || {}, savedAt: row.completed_at || row.created_at } : null;
   },
 
   // All responses for a form (newest first), with the submitter's name when the
@@ -17275,6 +17934,144 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // ── Access Control (Settings > Account > Access Control) ──
+  // One row per role: { id, name, builtIn, permissions: { key: false } }.
+  // See src/lib/accessControl.js for the keys and how they're read.
+  accessRoles: [],
+  accessRolesLoading: false,
+  accessRolesDidFetch: false,
+  // True while the table is missing (migration not run): edits stay in this
+  // tab so the screen still works, and nothing is written.
+  accessRolesLocalOnly: false,
+  fetchAccessRoles: async () => {
+    if (get().accessRolesDidFetch) return;
+    set({ accessRolesDidFetch: true, accessRolesLoading: true });
+    const { data, error } = await supabase
+      .from('access_roles')
+      .select('id, name, built_in, permissions, created_at')
+      .order('created_at', { ascending: true });
+    const builtIns = BUILT_IN_ROLES.map(name => ({ id: `builtin:${name}`, name, builtIn: true, permissions: {} }));
+    if (error) {
+      console.warn('[store] access_roles fetch failed, using built-in roles:', error.message);
+      set({ accessRoles: builtIns, accessRolesLoading: false, accessRolesLocalOnly: true });
+      return;
+    }
+    const rows = (data || []).map(r => ({ id: r.id, name: r.name, builtIn: !!r.built_in, permissions: r.permissions || {} }));
+    // Built-in roles the table doesn't have yet still show, allowed everywhere.
+    const missing = builtIns.filter(b => !rows.some(r => r.name === b.name));
+    set({ accessRoles: [...rows, ...missing], accessRolesLoading: false, accessRolesLocalOnly: false });
+  },
+
+  // Writes one role's row (insert when it only exists locally). Resolves to
+  // true on success; on failure the caller's optimistic change is rolled back.
+  _saveAccessRole: async (role) => {
+    if (get().accessRolesLocalOnly) return true;
+    const row = { name: role.name, built_in: role.builtIn, permissions: role.permissions, updated_at: new Date().toISOString() };
+    const isLocal = String(role.id).startsWith('builtin:') || String(role.id).startsWith('local:');
+    const q = isLocal
+      ? supabase.from('access_roles').upsert(row, { onConflict: 'name' }).select('id').single()
+      : supabase.from('access_roles').update(row).eq('id', role.id).select('id').single();
+    const { data, error } = await q;
+    if (error) {
+      get().showToast?.(`Couldn't save ${role.name}. ${error.message}`);
+      return false;
+    }
+    if (isLocal && data?.id) {
+      set(s => ({ accessRoles: s.accessRoles.map(r => (r.id === role.id ? { ...r, id: data.id } : r)) }));
+    }
+    return true;
+  },
+
+  setRolePermissions: async (roleId, patch) => {
+    const prev = get().accessRoles;
+    const role = prev.find(r => r.id === roleId);
+    if (!role) return;
+    const next = { ...role, permissions: { ...role.permissions, ...patch } };
+    set({ accessRoles: prev.map(r => (r.id === roleId ? next : r)) });
+    if (!(await get()._saveAccessRole(next))) set({ accessRoles: prev });
+  },
+
+  createAccessRole: async (name, permissions = {}) => {
+    const clean = String(name || '').trim();
+    if (!clean) return null;
+    if (get().accessRoles.some(r => r.name.toLowerCase() === clean.toLowerCase())) {
+      get().showToast?.(`A role named ${clean} already exists.`);
+      return null;
+    }
+    const role = { id: `local:${crypto.randomUUID()}`, name: clean, builtIn: false, permissions };
+    const prev = get().accessRoles;
+    set({ accessRoles: [role, ...prev] });
+    if (!(await get()._saveAccessRole(role))) { set({ accessRoles: prev }); return null; }
+    return get().accessRoles.find(r => r.name === clean)?.id || role.id;
+  },
+
+  duplicateAccessRole: async (roleId) => {
+    const role = get().accessRoles.find(r => r.id === roleId);
+    if (!role) return null;
+    const taken = new Set(get().accessRoles.map(r => r.name.toLowerCase()));
+    let name = `${role.name} (COPY)`;
+    for (let n = 2; taken.has(name.toLowerCase()); n += 1) name = `${role.name} (COPY ${n})`;
+    return get().createAccessRole(name, { ...role.permissions });
+  },
+
+  copyRolePermissions: async (fromId, toIds) => {
+    const from = get().accessRoles.find(r => r.id === fromId);
+    if (!from) return;
+    await Promise.all(toIds.map(id => {
+      const target = get().accessRoles.find(r => r.id === id);
+      if (!target) return null;
+      // Replace, not merge: the target ends up with exactly the source's switches.
+      const prev = get().accessRoles;
+      const next = { ...target, permissions: { ...from.permissions } };
+      set({ accessRoles: prev.map(r => (r.id === id ? next : r)) });
+      return get()._saveAccessRole(next).then(ok => { if (!ok) set(s => ({ accessRoles: s.accessRoles.map(r => (r.id === id ? target : r)) })); });
+    }));
+  },
+
+  // Renaming and deleting also update everyone who holds the role, so they
+  // go through admin-only database functions (profiles.clinical_roles is
+  // guarded against direct writes).
+  renameAccessRole: async (roleId, newName) => {
+    const role = get().accessRoles.find(r => r.id === roleId);
+    const clean = String(newName || '').trim();
+    if (!role || role.builtIn || !clean || clean === role.name) return false;
+    if (get().accessRoles.some(r => r.id !== roleId && r.name.toLowerCase() === clean.toLowerCase())) {
+      get().showToast?.(`A role named ${clean} already exists.`);
+      return false;
+    }
+    const prev = get().accessRoles;
+    set({ accessRoles: prev.map(r => (r.id === roleId ? { ...r, name: clean } : r)) });
+    if (get().accessRolesLocalOnly || String(roleId).startsWith('local:')) return true;
+    const { error } = await supabase.rpc('admin_rename_access_role', { p_id: roleId, p_name: clean });
+    if (error) {
+      set({ accessRoles: prev });
+      get().showToast?.(`Couldn't rename ${role.name}. ${error.message}`);
+      return false;
+    }
+    set(s => ({
+      platformPeople: (s.platformPeople || []).map(p => ({ ...p, clinicalRoles: (p.clinicalRoles || []).map(x => (x === role.name ? clean : x)) })),
+    }));
+    return true;
+  },
+
+  deleteAccessRole: async (roleId) => {
+    const role = get().accessRoles.find(r => r.id === roleId);
+    if (!role || role.builtIn) return false;
+    const prev = get().accessRoles;
+    set({ accessRoles: prev.filter(r => r.id !== roleId) });
+    if (get().accessRolesLocalOnly || String(roleId).startsWith('local:')) return true;
+    const { error } = await supabase.rpc('admin_delete_access_role', { p_id: roleId });
+    if (error) {
+      set({ accessRoles: prev });
+      get().showToast?.(`Couldn't delete ${role.name}. ${error.message}`);
+      return false;
+    }
+    set(s => ({
+      platformPeople: (s.platformPeople || []).map(p => ({ ...p, clinicalRoles: (p.clinicalRoles || []).filter(x => x !== role.name) })),
+    }));
+    return true;
+  },
+
   // ── Task Profiles (assignees from Settings → Users / profiles table) ──
   taskProfiles: [],
   currentUserProfile: null,
@@ -17282,6 +18079,7 @@ export const useAppStore = create((set, get) => ({
   // switcher used to issue its own `select clinical_roles` for the signed-in
   // user; that is a third GET of the same table on every page.
   currentUserClinicalRoles: [],
+  currentUserIsAdmin: false,
   // Display name to stamp on things the signed-in user just did (activity
   // entries, audit lines). `currentUserProfile` only resolves once
   // fetchTaskProfiles has run against a real session, so fall back to the
@@ -17294,7 +18092,7 @@ export const useAppStore = create((set, get) => ({
 
   // ── Task Labels (custom labels stored in DB) ──
   taskLabels: [],
-  fetchTaskLabels: async () => {
+  fetchTaskLabels: (opts) => mountFetch('fetchTaskLabels', async () => {
     const { data, error } = await supabase
       .from('task_labels')
       .select('name')
@@ -17305,7 +18103,7 @@ export const useAppStore = create((set, get) => ({
       return;
     }
     set({ taskLabels: (data || []).map(l => l.name) });
-  },
+  }, opts),
   createTaskLabel: async (name) => {
     const trimmed = name.trim();
     if (!trimmed) return null;
@@ -17325,12 +18123,12 @@ export const useAppStore = create((set, get) => ({
     { name: 'Documentation', description: 'Chart review and documentation tasks' },
     { name: 'Follow-up', description: 'Post-visit follow-up tasks awaiting assignment' },
   ],
-  fetchTaskPools: async () => {
+  fetchTaskPools: (opts) => mountFetch('fetchTaskPools', async () => {
     const { data, error } = await supabase.from('task_pools').select('name, description').order('name');
     if (!error && data && data.length > 0) {
       set({ taskPools: data });
     }
-  },
+  }, opts),
   claimTask: async (taskId) => {
     track('task.claimed', { taskId });
     const me = get().currentUserProfile;

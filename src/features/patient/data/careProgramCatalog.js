@@ -5,7 +5,7 @@
 // Per-program step lists live in PROGRAM_STEPS (programActivityMock.js), keyed
 // by `code`.
 export const CARE_PROGRAM_CATALOG = [
-  { code: 'SNP', name: 'SNP Care Program' },
+  { code: 'SNP', name: 'Special Needs Plan' },
   { code: 'AWV', name: 'Annual Wellness Visit' },
   { code: 'TOC IP', name: 'Transition of Care - IP' },
   { code: 'TOC ED', name: 'Transition of Care - ED' },

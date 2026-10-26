@@ -86,7 +86,9 @@ function renderNode(field, ctx) {
 }
 
 /**
- * Renders the form saved under `formName` (from Settings → Content → Forms)
+ * Renders the form saved under `formName` (from Settings → Content → Forms),
+ * or the one with `formId` when given (a step linked to a form keeps working
+ * if the form is renamed),
  * inside the program window, in the Review layout: a stats strip (progress /
  * score / interpretation) above the form's own questions.
  *
@@ -94,6 +96,7 @@ function renderNode(field, ctx) {
  * (e.g. the TOC queue drawer rendering PHQ-9 from the validated instrument).
  */
 export function AssessmentFormView({
+  formId = null,
   formName,
   interpretation = 'High Risk',
   fallbackForm = null,
@@ -103,6 +106,7 @@ export function AssessmentFormView({
   prefill = false,
 }) {
   const fetchFormByName = useAppStore(s => s.fetchFormByName);
+  const fetchFormById = useAppStore(s => s.fetchFormById);
   const [form, setForm] = useState(null);
   // Which form the loaded `form` belongs to. `loading` is derived from it
   // rather than set at the top of the fetch effect, so switching forms shows
@@ -119,7 +123,7 @@ export function AssessmentFormView({
 
   useEffect(() => {
     let active = true;
-    fetchFormByName(formName)
+    (formId ? fetchFormById(formId).then(f => f || fetchFormByName(formName)) : fetchFormByName(formName))
       .then(f => {
         if (!active) return;
         setForm(f || fallbackForm || null);
@@ -131,7 +135,7 @@ export function AssessmentFormView({
         setLoadedFor(formName);
       });
     return () => { active = false; };
-  }, [formName, fetchFormByName, fallbackForm]);
+  }, [formId, formName, fetchFormById, fetchFormByName, fallbackForm]);
 
   const items = useMemo(() => form?.schema?.items || [], [form]);
 

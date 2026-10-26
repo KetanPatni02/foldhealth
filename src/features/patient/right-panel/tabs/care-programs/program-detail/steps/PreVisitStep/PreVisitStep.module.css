@@ -12,8 +12,13 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
+/* Space under the header, kept inside the collapsible body so a closed
+   section adds none. */
+.sectionBody {
+  padding-top: var(--space-2);
+}
+.chevron { transition: transform var(--duration-medium) var(--ease-out); }
 .sectionHead {
   display: flex;
   align-items: center;

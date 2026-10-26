@@ -21,10 +21,6 @@ const JSA_FILTER_DEFS = [
   { key: 'assignee',      label: 'Assignee',           primary: true },
 ];
 const JSA_MORE_FILTER_ITEMS = JSA_FILTER_DEFS.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary }));
-const JSA_PRIMARY_KEYS = [];
-for (const fd of JSA_FILTER_DEFS) {
-  if (fd.primary) JSA_PRIMARY_KEYS.push(fd.key);
-}
 
 // WorklistShell column defs — sticky checkbox + sticky Members col on the
 // left, all JSA data columns in the middle, sticky Actions on the right.
@@ -58,17 +54,6 @@ export function JsaWorklistTable() {
   const [filterBarOpen, setFilterBarOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  // `null` = uncustomised (FilterBar autoFit picks visible chips from the
-  // primary set). Once the user toggles anything from More Filters, the
-  // custom set takes over.
-  const [visibleKeys, setVisibleKeys] = useState(null);
-  const toggleVisible = (k) => setVisibleKeys(prev => {
-    const base = prev ?? JSA_PRIMARY_KEYS;
-    const next = new Set(base);
-    if (next.has(k)) next.delete(k); else next.add(k);
-    return [...next];
-  });
-  const clearVisible = () => setVisibleKeys([]);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
@@ -131,6 +116,7 @@ export function JsaWorklistTable() {
   const filterNode = (
     <FilterBar
       autoFit
+      pinPrimary
       multiSelect
       leading={null}
       filterDefs={JSA_FILTER_DEFS}
@@ -145,9 +131,6 @@ export function JsaWorklistTable() {
       onSaveFilter={(name) => saveSavedFilter('JSA', name)}
       getOptions={(def) => filterOptions[def.key] || []}
       moreFilterItems={JSA_MORE_FILTER_ITEMS}
-      {...(visibleKeys !== null ? { visibleKeys } : {})}
-      onToggleVisible={toggleVisible}
-      onClearVisible={clearVisible}
     />
   );
 

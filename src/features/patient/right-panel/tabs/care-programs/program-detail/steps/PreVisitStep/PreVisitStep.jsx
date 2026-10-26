@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { AddIconMinimalist } from '../../../../../../../../components/Icon/AddIconMinimalist';
@@ -6,7 +6,10 @@ import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import { RadioButton } from '../../../../../../../../components/RadioButton/RadioButton';
+import { RingEmptyState } from '../../../../../../../../components/RingEmptyState/RingEmptyState';
+import { Collapse } from '../../../../../../../../components/Collapse/Collapse';
 import { preVisitForProgram } from '../../../../../../data/programActivityMock';
+import { SnapshotForm } from '../SnapshotForm/SnapshotForm';
 import styles from './PreVisitStep.module.css';
 
 // Collapsible section shell (General Info / Care Team / Pre-visit Assessment).
@@ -19,13 +22,16 @@ function Section({ title, right, children }) {
           <DownChevronIcon
             size={16}
             color="var(--neutral-300)"
+            className={styles.chevron}
             style={!open ? { transform: 'rotate(-90deg)' } : undefined}
           />
           <span className={styles.sectionTitle}>{title}</span>
         </button>
         {right}
       </div>
-      {open && children}
+      <Collapse open={open}>
+        <div className={styles.sectionBody}>{children}</div>
+      </Collapse>
     </div>
   );
 }
@@ -138,50 +144,76 @@ function PreVisitAssessment({ questions }) {
 }
 
 /**
- * PreVisitStep — program-specific Pre-visit content for the Program Detail
- * window. Layout and data are driven by the program code (SNP / TOC / HIU / DM).
+ * ProgramSnapshotStep: the program's Snapshot step. Its "<CODE> Snapshot"
+ * form from the Forms library, editable (SnapshotForm), then the Primary Care
+ * Team. A program without a Snapshot form shows its General Info instead.
  */
-export function PreVisitStep({ programCode }) {
+export function ProgramSnapshotStep({ programCode, patientId, programId, triggerType, triggerDate }) {
   const config = preVisitForProgram(programCode);
+  const trigger = useMemo(() => ({ type: triggerType, date: triggerDate }), [triggerType, triggerDate]);
 
   return (
     <div className={styles.container}>
-      <Section title="General Info">
-        {config.variant === 'snp' ? (
-          <div className={styles.generalSnp}>
-            <div className={styles.stackGrid}>
-              {config.general.top.map(f => (
-                <StackCell key={f.label} label={f.label} value={f.value} />
-              ))}
-            </div>
-            <div className={styles.payerTitle}>{config.general.payerTitle}</div>
-            <div className={styles.payerGrid}>
-              {config.general.payerCols.flat().map(f => (
-                <StackCell key={f.label} label={f.label} value={f.value} />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.sectioned}>
-            {config.sections.map(sec => (
-              <div key={sec.title} className={styles.subSection}>
-                <SubHead icon={sec.icon} title={sec.title} />
-                <KeyValueTable rows={sec.rows} />
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-
-      <Section title="Care Team">
+      <SnapshotForm
+        programCode={programCode}
+        patientId={patientId}
+        programId={programId}
+        trigger={trigger}
+        fallback={<GeneralInfo config={config} />}
+      />
+      <Section title="Primary Care Team">
         <CareTeam rows={config.careTeam} showAddRole={config.showAddRole} />
       </Section>
+    </div>
+  );
+}
 
-      {config.assessment && (
-        <Section title="Pre-visit Assessment">
-          <PreVisitAssessment questions={config.assessment} />
-        </Section>
+// The program's General Info (read only), for programs without a Snapshot form.
+function GeneralInfo({ config }) {
+  return (
+    <Section title="General Info">
+      {config.variant === 'snp' ? (
+        <div className={styles.generalSnp}>
+          <div className={styles.stackGrid}>
+            {config.general.top.map(f => (
+              <StackCell key={f.label} label={f.label} value={f.value} />
+            ))}
+          </div>
+          <div className={styles.payerTitle}>{config.general.payerTitle}</div>
+          <div className={styles.payerGrid}>
+            {config.general.payerCols.flat().map(f => (
+              <StackCell key={f.label} label={f.label} value={f.value} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className={styles.sectioned}>
+          {config.sections.map(sec => (
+            <div key={sec.title} className={styles.subSection}>
+              <SubHead icon={sec.icon} title={sec.title} />
+              <KeyValueTable rows={sec.rows} />
+            </div>
+          ))}
+        </div>
       )}
+    </Section>
+  );
+}
+
+/**
+ * PreVisitStep: the Pre-visit step, just the program's Pre-visit Assessment.
+ * (General Info and Care Team are the Snapshot step.)
+ */
+export function PreVisitStep({ programCode }) {
+  const config = preVisitForProgram(programCode);
+  if (!config.assessment) {
+    return <RingEmptyState icon="solar:clipboard-check-linear" label="No pre-visit assessment for this program" />;
+  }
+  return (
+    <div className={styles.container}>
+      <Section title="Pre-visit Assessment">
+        <PreVisitAssessment questions={config.assessment} />
+      </Section>
     </div>
   );
 }

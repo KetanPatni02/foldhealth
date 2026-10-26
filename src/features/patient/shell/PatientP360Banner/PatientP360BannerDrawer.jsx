@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Icon } from '../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../components/Icon/DownChevronIcon';
 import { PatientAppActiveIndicator } from '../../../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
-import { ConsentPopover } from '../../../../components/ConsentPopover/ConsentPopover';
+import { PatientConsentPopover } from '../../shared/PatientConsentPopover/PatientConsentPopover';
+import { usePatientConsent } from '../../hooks/usePatientConsent';
+import { consentPopoverPos, consentSummaryLabel } from './consentBadge';
 import { ScheduleDrawer } from '../../../../components/ScheduleDrawer/ScheduleDrawer';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../store/useAppStore';
@@ -56,10 +58,12 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
 
   const showToast = useAppStore(s => s.showToast);
   const updatePatient = useAppStore(s => s.updatePatient);
+  const updateP360Profile = useAppStore(s => s.updateP360Profile);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
   const display = usePatientDisplay(patient);
+  const { summary: consent } = usePatientConsent(patient.id);
 
   const noop = (label) => () => showToast(`${label} — coming soon`);
   // Shared by the row buttons and their overflow menu entries. An overflowed
@@ -77,13 +81,9 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
 
   const handleConsentClick = () => {
     if (consentPos) { setConsentPos(null); return; }
-    const rect = consentBadgeRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const popW = 320;
-    let left = rect.left;
-    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
-    setConsentPos({ top: rect.bottom + 4, left });
+    setConsentPos(consentPopoverPos(consentBadgeRef.current));
   };
+  const closeConsent = useCallback(() => setConsentPos(null), []);
 
   // The dropdown's scrim is aria-hidden, so Escape is the keyboard dismiss path.
   // Before this there was none at all.
@@ -125,7 +125,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
               <span className={styles.drawerMetaText}>{display.gender} • {display.dob || '—'} ({display.age})</span>
               <span className={styles.drawerMetaDot}>•</span>
               <button ref={consentBadgeRef} className={styles.drawerConsentBadge} onClick={handleConsentClick}>
-                Consent: 2/4
+                Consent: {consentSummaryLabel(consent)}
                 <DownChevronIcon size={12} color="var(--status-warning)" />
               </button>
             </div>
@@ -226,8 +226,10 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
               const existing = Array.isArray(p.opted_out_comms) ? p.opted_out_comms : [];
               const primary = patient.phone || p.plan_numbers_primary?.[0] || '';
               if (existing.some(e => e.includes(primary))) { showToast('Number is already blocked'); return; }
-              updatePatient(patient.id, { opted_out_comms: [...existing, primary ? `${primary} (Call, SMS)` : 'Primary phone (Call, SMS)'] });
-              showToast(`Blocked ${primary || 'primary number'} for calls and SMS`);
+              // opted_out_comms lives on p360_profiles, where the banner and
+              // Contact card read it (updatePatient wrote the patients table).
+              updateP360Profile(patient.id, { opted_out_comms: [...existing, primary ? `${primary} (Call, SMS)` : 'Primary phone (Call, SMS)'] })
+                .then(ok => showToast(ok ? `Blocked ${primary || 'primary number'} for calls and SMS` : 'Could not block the number'));
               return;
             }
             noop(MORE_MENU_LABELS[key] || 'Action')();
@@ -236,7 +238,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
       )}
 
       {showScheduleDrawer && <ScheduleDrawer initialPatientId={patient.id} source="patient_banner" onClose={() => setShowScheduleDrawer(false)} />}
-      {consentPos && <ConsentPopover pos={consentPos} onClose={() => setConsentPos(null)} />}
+      {consentPos && <PatientConsentPopover patientId={patient.id} pos={consentPos} onClose={closeConsent} />}
       {showProfileDropdown && drawerDropdownStyle && (
         <>
           <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setShowProfileDropdown(false); setDrawerDropdownStyle(null); }} />

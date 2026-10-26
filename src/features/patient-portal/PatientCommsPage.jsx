@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { Avatar } from '../../components/Avatar/Avatar';
@@ -7,6 +7,7 @@ import { MessageStatus } from '../../components/MessageStatus/MessageStatus';
 import { getPatientThread, sendAsPatient, markReadAsPatient, subscribeLocalComms } from '../messages/comms/commsRepo';
 import { initialsOf, dayLabel } from '../messages/comms/commsUtils';
 import { usePatientCallee } from './usePatientCallee';
+import { patientMediaSigner } from './patientMedia';
 import styles from './PatientCommsPage.module.css';
 
 const timeOnly = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -77,6 +78,7 @@ export function PatientCommsPage({ token }) {
 function PatientShell({ token, conversation, messages, onSent, reload }) {
   const visible = messages.filter(m => !m.internal && m.status !== 'draft' && m.kind === 'message');
   const call = usePatientCallee(conversation.patient_token);
+  const signUrl = useMemo(() => patientMediaSigner(token), [token]);
   const [draft, setDraft] = useState('');
   const [sendError, setSendError] = useState(null);
   const scrollRef = useRef(null);
@@ -168,6 +170,7 @@ function PatientShell({ token, conversation, messages, onSent, reload }) {
                       initials={initialsOf(sender)}
                       text={m.body}
                       attachment={m.meta?.attachment}
+                      signUrl={signUrl}
                       compact={compact}
                       time={timeOnly(m.created_at)}
                       status={mine ? <MessageStatus status={m.read_at ? 'read' : 'sent'} /> : null}

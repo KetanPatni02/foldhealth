@@ -15,16 +15,29 @@
  */
 
 import { requireUser } from '../_lib/requireUser.js';
+import { bodyWithinLimit } from '../_lib/limits.js';
 
 const MODEL = process.env.GOOGLE_AI_MODEL || 'gemini-3.8-flash';
-const ENDPOINT = (key) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 const RESPONSE_SCHEMA = {
   type: 'object',
   properties: { subject: { type: 'string' }, body: { type: 'string' } },
   required: ['subject', 'body'],
 };
+
+const REFERRAL_FIELDS = ['patientName', 'patientAge', 'patientSex', 'gap', 'providerName', 'providerSpecialty', 'reason', 'note', 'attachments', 'senderName'];
+const PATIENT_FIELDS = ['patientName', 'subject', 'notes', 'senderName'];
+
+// Only the documented fields reach the prompt, so extra body keys can't pad it.
+function pickFields(body, patient) {
+  if (!body || typeof body !== 'object') return null;
+  const d = {};
+  for (const k of patient ? PATIENT_FIELDS : REFERRAL_FIELDS) {
+    if (body[k] != null) d[k] = body[k];
+  }
+  return d;
+}
 
 function buildPatientPrompt(d) {
   return [
@@ -69,10 +82,12 @@ export default async function handler(req, res) {
   }
   const key = process.env.GOOGLE_AI_API_KEY;
   if (!key) {
-    return res.status(500).json({ error: { message: 'GOOGLE_AI_API_KEY is not set.' } });
+    console.error('[referral-email] GOOGLE_AI_API_KEY is not set');
+    return res.status(500).json({ error: { message: 'AI drafting is not set up on this deployment.' } });
   }
-  const d = req.body && typeof req.body === 'object' ? req.body : null;
-  const patientMode = d?.mode === 'patient';
+  if (!bodyWithinLimit(req, res)) return;
+  const patientMode = req.body?.mode === 'patient';
+  const d = pickFields(req.body, patientMode);
   if (!d || (!patientMode && !d.providerName)) {
     return res.status(400).json({ error: { message: 'Missing referral details' } });
   }
@@ -85,9 +100,9 @@ export default async function handler(req, res) {
   try {
     let upstream;
     for (let attempt = 0; attempt < 3; attempt++) {
-      upstream = await fetch(ENDPOINT(key), {
+      upstream = await fetch(ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: requestBody,
       });
       if (upstream.ok || (upstream.status !== 503 && upstream.status !== 429)) break;

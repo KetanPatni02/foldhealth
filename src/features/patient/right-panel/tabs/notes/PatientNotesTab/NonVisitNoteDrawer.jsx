@@ -27,7 +27,7 @@ import styles from './NonVisitNoteDrawer.module.css';
  *      also auto-attach their gap_code so the note lines up under the
  *      right care gap without an extra picker.
  */
-export function NonVisitNoteDrawer({ patient, onClose }) {
+export function NonVisitNoteDrawer({ patient, initialTitle = '', onClose }) {
   const upsertClinicalNote = useAppStore(s => s.upsertClinicalNote);
   const showToast = useAppStore(s => s.showToast);
   const hedisMembers = useAppStore(s => s.hedisMembers);
@@ -35,7 +35,7 @@ export function NonVisitNoteDrawer({ patient, onClose }) {
   const fetchNoteTemplates = useAppStore(s => s.fetchNoteTemplates);
 
   const [templateId, setTemplateId] = useState(''); // '' = free-form
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(initialTitle);
   const [body, setBody] = useState('');
   const [answers, setAnswers] = useState({});
   const [selectedGaps, setSelectedGaps] = useState([]);

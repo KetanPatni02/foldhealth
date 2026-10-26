@@ -10,6 +10,10 @@ import { CareManagementView } from './right-panel/tabs/care-management/CareManag
 import { OverviewTab } from './right-panel/tabs/overview/OverviewTab/OverviewTab';
 import { MonitoringTab } from './right-panel/tabs/monitoring/MonitoringTab';
 import { PatientNotesTab } from './right-panel/tabs/notes/PatientNotesTab';
+import { TimelineTab } from './right-panel/tabs/timeline/TimelineTab';
+import { DocumentsTab } from './right-panel/tabs/documents/DocumentsTab';
+import { AssessmentsTab } from './right-panel/tabs/assessments/AssessmentsTab';
+import { OrdersReferralsTab } from './right-panel/tabs/orders-referrals/OrdersReferralsTab';
 import { ClinicalNotePreviewDrawer } from '../tasks/ClinicalNotePreviewDrawer';
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { ProfileTab } from './left-panel/tabs/profile/ProfileTab/ProfileTab';
@@ -92,6 +96,7 @@ export function PatientDetailView() {
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
   const awvMembers = useAppStore(s => s.awvMembers);
+  const cmpMembers = useAppStore(s => s.cmpMembers);
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers);
   const pharmacyWorklistMembers = useAppStore(s => s.pharmacyWorklistMembers);
@@ -100,6 +105,7 @@ export function PatientDetailView() {
   const fetchPatients = useAppStore(s => s.fetchPatients);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
+  const fetchCmpMembers = useAppStore(s => s.fetchCmpMembers);
   const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
   const fetchPharmacyWorklistMembers = useAppStore(s => s.fetchPharmacyWorklistMembers);
@@ -113,6 +119,8 @@ export function PatientDetailView() {
   const hccMembersDidFetch = useAppStore(s => s.hccMembersDidFetch);
   const awvMembersLoading = useAppStore(s => s.awvMembersLoading);
   const awvMembersDidFetch = useAppStore(s => s.awvMembersDidFetch);
+  const cmpMembersLoading = useAppStore(s => s.cmpMembersLoading);
+  const cmpMembersDidFetch = useAppStore(s => s.cmpMembersDidFetch);
   const ccmWorklistLoading = useAppStore(s => s.ccmWorklistLoading);
   const ccmWorklistDidFetch = useAppStore(s => s.ccmWorklistDidFetch);
   const snpWorklistLoading = useAppStore(s => s.snpWorklistLoading);
@@ -149,6 +157,8 @@ export function PatientDetailView() {
     ? stackState
     : { programKey: primaryKey, ids: ['program'], activeId: 'program' };
   const [leftWidth, setLeftWidth] = useState(496);
+  // Overview > Customize opens from the tab bar, so the state lives here.
+  const [customizingOverview, setCustomizingOverview] = useState(false);
   // The HCC side panel opens at 30 / 35 / 35 (patient card / documents /
   // ICDs); null holds the card at 30% until it's dragged.
   const [diagLeftWidth, setDiagLeftWidth] = useState(null);
@@ -250,6 +260,7 @@ export function PatientDetailView() {
   const patient = patients.find(matchesId)
     || worklistMemberToPatient(hccMembers.find(matchesId))
     || worklistMemberToPatient(awvMembers?.find(matchesId))
+    || worklistMemberToPatient(cmpMembers?.find(matchesId))
     || worklistMemberToPatient(ccmWorklistMembers?.find(matchesId))
     || worklistMemberToPatient(snpWorklistMembers?.find(matchesId))
     || worklistMemberToPatient(pharmacyWorklistMembers?.find(matchesId))
@@ -283,6 +294,7 @@ export function PatientDetailView() {
     slicePending(patients, patientsDidFetch, patientsLoading)
     || slicePending(hccMembers, hccMembersDidFetch, hccMembersLoading)
     || slicePending(awvMembers, awvMembersDidFetch, awvMembersLoading)
+    || slicePending(cmpMembers, cmpMembersDidFetch, cmpMembersLoading)
     || slicePending(ccmWorklistMembers, ccmWorklistDidFetch, ccmWorklistLoading)
     || slicePending(snpWorklistMembers, snpWorklistDidFetch, snpWorklistLoading)
     || slicePending(pharmacyWorklistMembers, pharmacyWorklistDidFetch, pharmacyWorklistLoading)
@@ -304,6 +316,7 @@ export function PatientDetailView() {
     if (patients.length === 0) fetchPatients?.();
     if (hccMembers.length === 0) fetchHccMembers?.();
     if ((awvMembers?.length || 0) === 0) fetchAwvMembers?.();
+    if ((cmpMembers?.length || 0) === 0) fetchCmpMembers?.();
     if ((ccmWorklistMembers?.length || 0) === 0) fetchCcmWorklistMembers?.();
     if ((snpWorklistMembers?.length || 0) === 0) fetchSnpWorklistMembers?.();
     if ((pharmacyWorklistMembers?.length || 0) === 0) fetchPharmacyWorklistMembers?.();
@@ -333,9 +346,20 @@ export function PatientDetailView() {
   // One renderer for the right panel's tabs, shared by the standard layout
   // and the split (where they render in the patient card or the side panel).
   const renderRightTab = (tab) => (
-    tab === 'Overview' ? <OverviewTab patient={patientWithAppStatus} leftPanelOpen={!leftCollapsed} />
+    tab === 'Overview' ? (
+      <OverviewTab
+        patient={patientWithAppStatus}
+        leftPanelOpen={!leftCollapsed}
+        customizing={customizingOverview}
+        onCustomizeClose={() => setCustomizingOverview(false)}
+      />
+    )
       : tab === 'Monitoring' ? <MonitoringTab patient={patientWithAppStatus} />
         : tab === 'Notes' ? <PatientNotesTab patient={patientWithAppStatus} />
+        : tab === 'Timeline' ? <TimelineTab />
+        : tab === 'Documents' ? <DocumentsTab patient={patientWithAppStatus} />
+        : tab === 'Assessments' ? <AssessmentsTab patient={patientWithAppStatus} />
+        : tab === 'Orders & Referrals' ? <OrdersReferralsTab patient={patientWithAppStatus} />
           : tab === 'Care Management' ? <CareManagementView />
             : tab === 'Profile' ? <ProfileTab patient={patientWithAppStatus} />
               : tab === 'Tasks' ? <TasksTab />
@@ -542,6 +566,15 @@ export function PatientDetailView() {
             leftCollapsed={leftCollapsed}
             onToggleLeft={toggleLeft}
             extraTabs={leftCollapsed ? leftTabs : undefined}
+            actions={barActiveTab === 'Overview' ? (
+              <ActionButton
+                icon="solar:tuning-2-linear"
+                size="S"
+                tooltip="Customize Overview"
+                tooltipLeft
+                onClick={() => setCustomizingOverview(true)}
+              />
+            ) : null}
           />
           <div className={styles.tabContent}>
             {leftCollapsed && showingLeftContent ? (

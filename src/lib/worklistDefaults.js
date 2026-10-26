@@ -14,6 +14,7 @@ export const DEFAULT_WORKLIST_LABELS = [
   'HEDIS',
   'CCM',
   'JSA',
+  'CMP',
   'High Utilizers',
   'DM',
   'TCM',

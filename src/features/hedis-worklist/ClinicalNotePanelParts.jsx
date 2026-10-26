@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useCan } from '../../lib/useCan';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
@@ -62,6 +63,7 @@ export function HeaderActions({
   // already in review, the reviewer's job is to sign it.
   reviewerFlow = false,
 }) {
+  const can = useCan();
   const menuItems = reviewerFlow
     ? [
         { key: 'print', label: 'Sign and Print', icon: 'solar:printer-linear' },
@@ -75,6 +77,11 @@ export function HeaderActions({
           { key: 'submit', label: 'Submit for Review', icon: 'solar:upload-square-linear' },
           { key: 'print',  label: 'Sign and Print',    icon: 'solar:printer-linear' },
         ];
+  // Access Control "Sign and Amend EHR Notes": without it the sign actions
+  // go, an author's primary becomes Submit for Review, and a reviewer's
+  // primary stays visible but disabled with the reason.
+  const signAllowed = can('notes:sign');
+  const visibleMenu = signAllowed ? menuItems : menuItems.filter(i => i.key !== 'sign' && i.key !== 'print');
   const runMenu = (key) => {
     if (key === 'submit') onSubmitForReview();
     else if (key === 'sign') onSaveAndSign();
@@ -83,12 +90,16 @@ export function HeaderActions({
   // Reviewer primary is always Sign & Save → onSaveAndSign. Author
   // editing a submitted note routes primary to onSubmitForReview so
   // the reviewer is re-notified.
+  const authorWithoutSign = !signAllowed && !reviewerFlow && !authorEditingSubmitted;
   const effectivePrimaryLabel = reviewerFlow
     ? 'Sign & Save'
-    : authorEditingSubmitted ? 'Update and Save' : primaryLabel;
+    : authorEditingSubmitted ? 'Update and Save'
+      : authorWithoutSign ? 'Submit for Review' : primaryLabel;
   const primaryOnClick = reviewerFlow
     ? onSaveAndSign
-    : authorEditingSubmitted ? onSubmitForReview : onSaveAndSign;
+    : authorEditingSubmitted || authorWithoutSign ? onSubmitForReview : onSaveAndSign;
+  const primaryMenu = authorWithoutSign ? visibleMenu.filter(i => i.key !== 'submit') : visibleMenu;
+  const blockedReviewer = reviewerFlow && !signAllowed;
   return (
     <>
       <Button
@@ -103,10 +114,11 @@ export function HeaderActions({
       <Button
         variant="primary"
         size="L"
-        menuItems={menuItems}
+        menuItems={primaryMenu.length ? primaryMenu : undefined}
         onMenuSelect={runMenu}
         onClick={primaryOnClick}
-        disabled={!canSign}
+        disabled={!canSign || blockedReviewer}
+        disabledReason={blockedReviewer ? 'Your role can\'t sign notes' : undefined}
       >
         {effectivePrimaryLabel}
       </Button>

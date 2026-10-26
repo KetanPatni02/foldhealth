@@ -140,6 +140,227 @@ build requires esbuild ≥ 0.28 on Node 26.
   the Pharmacy Program) and `pharmacy_care_plan_template_seed.sql` (MAD / MAH /
   MAC care plan template), run in that order.
 
+- **Overview widgets redesign (Figma 1312-174/483/589/686).** Vitals tiles
+  can be added (recorded vitals, biomarkers, labs), removed and reordered per
+  patient for the whole care team (`patient_overview_vitals`). Care Plan
+  splits Goals / Interventions / Barriers with a short "why" line on items
+  that need attention. Gaps and Active Care Programs follow the new layouts.
+  Unity insights open from a lightbulb in each card header. Medications
+  leads with what changed: refill due or run out, new, stopped
+  (`cards/medHighlights.js`; refill fields from
+  `patient_medications_refill_migration.sql`). Risk & Acuity and Consent
+  left the Overview (they are in the banner). One type scale across the
+  screen: item titles 14, subtitles 13, captions 12.
+- **Overview: attention first, Reminders, missed visits.** Each Overview
+  widget now leads with what needs action and sums up the rest in one line.
+  Care Plan lists only the goals, interventions and barriers that need
+  attention (not met, past target or due, trending down, no owner, on hold,
+  new high-priority barrier; `attention/carePlanAttention.js`), topped up
+  with recently updated items. Active Care Programs flags no owner, not
+  started, attempted, unable to reach and ending soon (`programAttention.js`);
+  Vitals, Gaps and Notes put off-goal, urgent and unfinished items first;
+  Medications leads with changes since the program started; Care Team leads
+  with programs nobody owns; Health Chart names the domains below the clinic
+  average. Appointments gains a Missed tab (no-shows, cancellations, never
+  checked in, last 12 months, rebooked or not, with Reschedule). A new
+  Reminders card holds private, per-user reminders on the patient
+  (`patient_reminders`, owner-only RLS) with snooze, done and delete.
+- **Program access data layer (Phase 2B.1).** Who works in which care
+  program: `program_memberships` links a user to a program with an access
+  level (viewer, member, supervisor), a care team role and a vendor
+  organization (`vendor_organizations`); `access_override_log` keeps an
+  append-only record of supervisor overrides with their reason. The rules in
+  `src/features/patient/data/programAccess.js` decide view and edit rights,
+  overrides, BHI co-sign, and which patients and notifications belong in a
+  user's scope. Enforcement is in the app for now: database reads stay
+  signed-in only per `supabase/RLS_POSTURE.md`, while membership writes are
+  admin-only in the database. Admins and users with no memberships stay
+  unscoped, so nothing changes until someone is assigned. The signed-in
+  profile now carries `adminRole` and `clinicalRoles` so the app recognizes
+  admins the way the database does. Store: `fetchProgramAccess`,
+  `saveProgramMembership`, `logAccessOverride`; hook: `useProgramAccess`.
+  No UI yet. Needs `supabase/program_access_migration.sql` then
+  `supabase/program_access_seed.sql`.
+- **Patient consent and preferences (Phase 2A).** Patient consent is now
+  a record, not a "2/4" count: `patient_consents` keeps an append-only
+  history per program (CCM, APCM, RPM, BHI) and channel (call, SMS, email,
+  TCPA) with status, method, who captured it, expiry, witness and the signed
+  artifact, stored in a private `patient-consents` bucket and read through
+  signed URLs. `patient_preferences` holds channel per program, language,
+  interpreter need, health literacy and contact validity. The rules in
+  `src/features/patient/data/consentRules.js` decide whether billable work
+  can be recorded (a hard block without current consent), whether a patient
+  can be contacted on a channel (TCPA for texts and autodialed calls), and
+  whether they're eligible to enroll. Store: `fetchPatientConsents`,
+  `capturePatientConsent`, `savePatientPreferences`. A guided Capture
+  Consent drawer (consent for, decision, method, the script to read, then a
+  witness, a drawn signature through the new `SignaturePad` component, or an
+  uploaded form) opens from the banner's consent popover, which now shows
+  each consent's live state and an audit log, and from the Overview Consent
+  card. The banner count covers the patient's open billable enrollments.
+  Without current CCM consent no CCM time is recorded (2A.3): the store
+  refuses the write, the timer shows why with a Capture link and keeps the
+  time, and the billing log leaves unlogged time unclassified. Enrolling
+  checks eligibility (CCM needs two or more chronic conditions, RPM one)
+  and captures consent first, enrolling once it's given; a program whose
+  enrollments have all ended can be enrolled again. Gates stay off until
+  the consent table exists, so billing isn't switched off by a rollout.
+  The Profile tab's new Preferences view (2A.4) shows the preferred channel
+  per enrolled program, language and interpreter need, health literacy,
+  and whether each phone and email is valid, edited in a Contact
+  Preferences drawer. Outreach warns when the logged channel was declined
+  or withdrawn, the number is marked invalid, or a text has no TCPA
+  consent. Block Number now writes `p360_profiles.opted_out_comms`, which
+  the banner and Contact card read (it wrote the `patients` table).
+  Needs
+  `supabase/patient_consents_migration.sql` then
+  `supabase/patient_consents_seed.sql` (consent reads as missing and
+  captures stay session-only until then).
+- **Overview: Unity insights and Recap.** Each Overview widget now carries
+  its own Unity layer (Figma Reports pattern): a purple strip with the
+  widget's headline ("Missed Annual Wellness Visit on 04/10/2026 is not
+  rebooked.") over Recommendations rows, one per open item, each with its
+  next step (Reschedule, Create Task, Review Meds, Reply, Open Tasks) and a
+  Mark reviewed check the whole team sees (`patient_signal_reviews`). Items
+  are abnormal labs, ED visits and admissions, missed or cancelled visits
+  not yet rebooked, medication changes, messages awaiting a reply, vitals
+  off goal, overdue tasks and care gaps, and RAF jumps, new ones flagged
+  since the last touch (or the last 30 days). A Recap button in the Patient
+  Synopsis header (Unity gradient until you open it, an outline after)
+  opens a walkthrough of what happened since the last touch, or over 30 or
+  90 days: an At a Glance slide (counts, last touch, what's coming up, a
+  plain summary), then touchpoints, clinical events (with repeat ED use),
+  vitals with their trends, medication changes and program updates, each
+  event with who, when and how it went, and finally the open items with
+  their next steps. Each slide leads with what changed against the
+  period before (`recapChanges.js`) and a Unity summary of the section
+  (`/api/patient-recap-summary`, Gemini, one call for all sections); when
+  Unity can't answer, a summary written from the same facts stands in.
+  Story: `overview/attention/recapStory.js`; rules:
+  `overview/attention/attentionSignals.js`; shared pieces:
+  `src/components/UnityInsights` and `src/components/SlideshowDialog`. The
+  default lanes now lead with what moves (risk, care plan, gaps, suggested
+  actions, tasks), and sample-only reference cards start hidden; layouts
+  people already arranged are kept.
+  Cards are soft white surfaces on a tinted page (8px radius, no inner
+  rules) with one header style: icon, title, 44px, on a 16px edge.
+- **Care plan Linkage view.** The care plan's More menu switches between
+  Table View and Linkage View. Linkage nests each goal's interventions and
+  barriers beneath it with connecting lines, and lists anything not linked to a goal under
+  Unlinked at the bottom. Drag a row to another goal to move its link (or
+  onto Unlinked to drop it), or use a row's "Link to goal" and "Unlink from
+  goal" actions. A barrier linked to two goals shows under both; "Link to
+  goal" adds a goal to a barrier, while an intervention (one goal each)
+  moves. Writes reuse the existing save calls, so link history is logged as
+  before. The tree is the reusable `src/components/LinkageTree`.
+
+- **Patient Timeline.** The right panel's Timeline tab is the patient's
+  full timeline: labs (with range flags), ADT events, visits, diagnoses,
+  device readings, patient-reported outcomes, medication starts and stops,
+  notes, assessments, touchpoints (calls, messages, visits, appointments)
+  and program updates, newest first, filterable by category, type and
+  program. One stream (`data/patientStream.js`) reads the tables that already
+  hold each record. Touchpoints carry their program, billing program,
+  duration and vendor. Needs `supabase/patient_event_stream_migration.sql`.
+- **Care program lifecycle.** Program status is one list: New, Engaged,
+  Attempted, Unable to Reach, Declined, Enrolled, Active, Paused, Completed,
+  Discontinued, Re-enrolled (`data/programStatus.js`, `isProgramClosed`).
+  Closing a program (End Program, the row menu, or picking Completed /
+  Discontinued) asks for a reason (goal met, lost to follow-up, opt-out,
+  transferred, other) and logs it. A program can be enrolled again once its
+  last enrollment ended: the new instance is numbered (WLCP #2), starts as
+  Re-enrolled, and records who enrolled it and a planned end from the program
+  type's max duration. The program details panel shows the enrollment and
+  the previous enrollments with how each ended. Needs
+  `supabase/patient_care_program_lifecycle_migration.sql` (adds the columns
+  and keys rows per instance; the app falls back to the old key until then).
+- **One Outreach cell across worklists.** TOC IP, TCM, HEDIS, SNP, Annual
+  Visit, JSA and CMP render outreach with the shared `OutreachStatus`
+  component (Figma SNP-Story 8602:333343): the channel's icon (call, in-person,
+  video, SMS, app, email, letter), the result (Attended / Success in green;
+  Failed / Followup / Remove in red), the last attempt's date (M/D/YY) and
+  three attempt dots (earlier attempts peach, the latest in the result's
+  colour, all red once three attempts failed). `outreachStatusModel.js`
+  adapts each worklist's outreach data. The CMP worklist also has a View
+  Program button on each sub-program line.
+- **Automations (Settings > Automations).** Replaces Automation Rules with the
+  full automation experience from Figma: template library (grid and table,
+  preview, Use Template), My Automations by status with Run, History,
+  Duplicate and Delete, and a builder (triggers, conditions, actions, outcome
+  branches, delays, repeats, micro automations, duplicate-action warning,
+  autosaved working copy, Save and publish). A step-by-step test run checks
+  each step without touching real data. Analytics (Global and Node Level),
+  overview, email and SMS drilldowns and a per-member trace with Re-trigger
+  read run records, so every total adds up. Runs are simulated
+  (`src/features/automations/lib/simulate.js`); nothing is delivered. Content
+  > Emails warns before deleting an email an automation sends. Enrollment
+  rules became automations with the "enrolled in a care program" trigger and
+  keep auto-applying care plan templates. Needs
+  `supabase/automations_migration.sql` and `bun run seed`; until then the
+  screens use in-memory sample data. Design review and decisions:
+  `docs/features/automations-design-review.md`.
+- **Access Control.** Settings > Account > Access Control lists the roles
+  with their user counts and, for the selected role, Platform Access (nav bar
+  pages, Patient Details, Sign and Amend EHR Notes) and Settings Access
+  switches that save as they change. Roles can be created, duplicated,
+  renamed, deleted and have their permissions copied to others; built-in
+  roles keep their names. What a role can't see is hidden in the app (side
+  nav, Settings menu, the patient page, note signing); admins always see
+  everything. Saved in `access_roles` (`supabase/access_roles_migration.sql`).
+- **Verify ID on patient sends (VBC-25597).** Compose Email, New SMS, Send
+  Content, Send Assessment and the thread's new Send Forms / Send Article
+  drawers can protect their links. Ticking "Verify ID" applies the default
+  methods as a one-line summary (Edit to change, Save to fold back); anyone
+  picked who can't pass the methods is named and blocks Send. Links go out as
+  `/#/secure/<token>` links (the verification page isn't built yet), and a
+  protected SMS starts with "You have a secure message from Fold Health."
+- **Record Vitals.** The + on the patient Vitals tab opens Record New Vitals
+  (11 vitals, each showing its last reading). Readings save to
+  `patient_vitals` (`supabase/patient_vitals_migration.sql`) and the Vitals
+  table shows the latest three per vital; vitals with no readings yet show
+  sample history. Shared config: `vitals-labs/vitalsConfig.js`.
+- **Configurable program steps and the SNP Snapshot form.** In Settings >
+  Care Program Configuration > Steps, Add Step and the gear on every step set
+  its name, what it opens in the patient's program (a form from the Forms
+  library, a built-in screen, or nothing yet), its section, and Show /
+  Mandatory / Alert. Snapshot is its own step (first, above Outreach, for SNP
+  and TOC IP); Pre-visit now holds only the Pre-visit Assessment. A program's
+  Snapshot renders its "<CODE> Snapshot" form, editable and saved per patient
+  program in `form_responses`, above the Primary Care Team. The "SNP Snapshot"
+  form (Trigger Information, Member & Eligibility, Outreach & Engagement, Care
+  Plan, TOC, Risk Stratification) is seeded by
+  `supabase/snp_snapshot_form_migration.sql` / `bun run seed`.
+- **CMP worklist and sub-programs.** CMP (Care Management Program) is
+  enrolled per sub-program: SPD, Whole Child Model, Basic / Complex Case
+  Management, Coordination of Care, Maternity Program or Pediatrics Program.
+  Picking CMP under New Program on a member opens that list; sub-programs the
+  member already has are greyed out. Population > Worklists has a CMP
+  worklist, one row per member: like HEDIS's gaps, a member's sub-programs
+  stack inside the row (Sub Program, Program Sub Status (editable), Care Plan
+  Status, Assignee, Outreach, Next Action Due, Start Date, Due Date; View More
+  past two), while Member, Risk IQ and Tasks show once. Shared filter bar and
+  saved filters. Backed by `cmp_members` (`supabase/cmp_members_migration.sql`,
+  seeded by `bun run seed`) and a `sub_program` column on
+  `patient_care_programs` (`supabase/patient_care_programs_sub_program_migration.sql`).
+- **Consistent worklist filters.** Gender (Male, Female, Other), Language
+  (one searchable list) and Member Status now show the same options on every
+  worklist (`src/lib/memberFilters.js`), so SNP and CCM no longer show raw
+  codes. Every worklist uses the same filter bar layout: the primary filters
+  that fit show first, filters added from More Filters follow them and wrap
+  onto more lines, and More Filters | Clear All | Save Filter come last. CCM,
+  JSA and TCM group their secondary filters by domain in More Filters, and
+  CCM leads with the member filters. The HCC "View More" row is 8px shorter.
+- **Customize the patient Overview.** Each Overview column now scrolls on its
+  own. "Customize Overview" opens a kanban board (new `SortableLanes`
+  component): drag widgets between the three columns, reorder them, or move
+  them to Hidden. One arrangement drives every layout: at two columns,
+  Column 3 stacks under Column 1; at one, all three stack in order. Saved per
+  user in `user_panel_layouts` (`patientOverviewLayout`). Nine new widgets
+  read real data: Risk & Acuity, Contact & Reachability, Care Team, Caregiver
+  & Family, Consent, Medications and Diagnoses & Problems (p360 profile), and
+  Since Last Touch and Program Progress (patient monitoring). The left panel
+  Summary widgets are available too, hidden by default and marked "Sample
+  data" because they still show built-in data.
 - **Redesigned patient Overview.** The Overview tab is now a card dashboard:
   Unity Patient Synopsis, Health Chart, Highlights, Suggested Actions, Care
   Plan, Active Care Programs, Gaps, Recent Notes, Quick Actions, Upcoming
@@ -310,6 +531,16 @@ build requires esbuild ≥ 0.28 on Node 26.
   `supabase/account_lockout_migration.sql` and the Supabase Password
   Verification Hook.
 
+- **Care Program Configuration (Settings).** A new Settings section lists
+  every program type and lets you create new ones (blank or copied from
+  another program's steps). Each program has Overview, Steps, Worklists,
+  Care Team, Completion Criteria and Access tabs, saved to
+  `care_program_types`. Steps drive the patient's program view: switched-off
+  steps disappear, mandatory flags and order apply, and only active program
+  types can be enrolled. Built-in step ids are kept so saved step statuses
+  still line up. Worklists, Care Team, Completion Criteria and Access are
+  saved but don't yet change navigation or permissions.
+
 - **Care program in a right panel (floating sidebar).** A care program's ⋯
   menu, and the Care Plan's ⋯ menu, offer "Open in Right Panel" when the
   floating sidebar is on: the patient view becomes a patient card
@@ -333,6 +564,7 @@ build requires esbuild ≥ 0.28 on Node 26.
   when the OCR suggested them. "Create Test eFax" receives a fax about any
   patient read as a strong match, needs review, or no match. Stored in
   `efax_inbound` (`supabase/efax_inbound_migration.sql`).
+
 - **Settings → Billing: Billable, Billing History and Timer Access.**
   Billable lists unbilled members with Program Type, CPT Code, Provider,
   Date of Service and Members filters and a total. Billing History lists

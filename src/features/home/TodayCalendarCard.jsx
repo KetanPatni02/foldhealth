@@ -132,7 +132,7 @@ export function TodayCalendarCard({ dragHandleClassName }) {
   };
 
   const handleDrawerClose = () => setDrawerSlot(null);
-  const handleSave = () => { if (fetchAppointments) fetchAppointments(); };
+  const handleSave = () => { if (fetchAppointments) fetchAppointments({ force: true }); };
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 

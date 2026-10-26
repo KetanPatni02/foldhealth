@@ -223,7 +223,7 @@ export function CloneFromUserDrawer({ users, exclude, imported = [], target, onI
                         {tip(<>
                         <span className={styles.slot}>
                           <span className={styles.cloneDates}>{formatDate(b.startDate)} -</span>
-                          <span className={styles.cloneDates}>{b.endDate ? formatDate(b.endDate) : 'Present'}</span>
+                          <span className={styles.cloneDates}>{b.endDate ? formatDate(b.endDate) : 'Ongoing'}</span>
                         </span>
                       </>)}
                       </td>

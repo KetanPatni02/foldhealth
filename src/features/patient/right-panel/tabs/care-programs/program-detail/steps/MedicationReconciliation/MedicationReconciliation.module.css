@@ -246,10 +246,15 @@
 .viewNoteChevronOpen {
   transform: rotate(180deg);
 }
+/* Cancels the .extractedText gap so a closed note adds no space; the note's
+   own margin restores the same spacing when open. */
+.noteCollapse {
+  margin-top: calc(var(--space-1) * -1);
+}
 .noteLine {
   font-size: var(--font-base);
   color: var(--neutral-300);
-  margin-top: var(--space-1);
+  margin-top: calc(var(--space-1) * 2);
 }
 .noteLabel {
   color: var(--neutral-400);

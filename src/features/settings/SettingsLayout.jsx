@@ -1,5 +1,8 @@
 import { SettingsSubNav } from './SettingsSubNav';
 import { SECTION_LABELS } from './settingsNavItems';
+import { useCan } from '../../lib/useCan';
+import { settingsPermissionKey } from '../../lib/accessControl';
+import { EmptyState } from '../../components/EmptyState/EmptyState';
 import { AgentsTable } from './agents/AgentsTable';
 import { MessagesSettings } from './messages/MessagesSettings';
 import { EmbeddedComponentsSettings } from './embedded-components/EmbeddedComponentsSettings';
@@ -9,9 +12,11 @@ import { BillingPanel } from './billing/BillingPanel';
 import { CalendarSettings } from './calendar/CalendarSettings';
 import { MemberLeadsPanel } from './member-leads/MemberLeadsPanel';
 import { CarePlanLibraryPanel } from './care-plan-library/panel/CarePlanLibraryPanel/CarePlanLibraryPanel';
-import { AutomationRulesPanel } from './automation-rules/AutomationRulesPanel';
+import { AutomationsPanel } from '../automations/AutomationsPanel';
+import { isAutomationsTakeover } from '../automations/automationsView';
 import { CarePlanCreateView } from './care-plan-library/create/CarePlanCreateView/CarePlanCreateView';
 import { CarePlanTemplateView } from './care-plan-library/templates';
+import { CareProgramConfigPanel } from './care-program-config/CareProgramConfigPanel';
 import { useAppStore } from '../../store/useAppStore';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
@@ -37,7 +42,7 @@ function SettingsSubNavSlot({ activeItem, onItemClick }) {
 // queries; a static placeholder costs nothing.
 const IMPLEMENTED = new Set([
   'agents', 'member/leads', 'messages', 'embedded-components',
-  'content', 'care-plan-library', 'billing', 'account', 'calendar', 'automations',
+  'content', 'care-plan-library', 'care-program-config', 'billing', 'account', 'calendar', 'automations',
 ]);
 
 function ComingSoonPanel({ label }) {
@@ -62,6 +67,8 @@ export function SettingsLayout() {
   const saveCarePlanTemplate = useAppStore(s => s.saveCarePlanTemplate);
   const setCarePlanTab = useAppStore(s => s.setCarePlanTab);
   const showToast = useAppStore(s => s.showToast);
+  const automationsView = useAppStore(s => s.automationsView);
+  const can = useCan();
 
   // Editing a template owns the whole Settings area, same as New Care Plan.
   if (carePlanTemplateScreen) {
@@ -99,6 +106,30 @@ export function SettingsLayout() {
     );
   }
 
+  // Access Control hides sections in the sub-nav; this covers a link or a
+  // typed URL that opens one anyway.
+  if (!can(settingsPermissionKey(settingsNavItem))) {
+    return (
+      <div className={styles.layout}>
+        <SettingsSubNavSlot activeItem={settingsNavItem} onItemClick={setSettingsNavItem} />
+        <EmptyState
+          icon="solar:shield-cross-linear"
+          title="You don't have access to this section"
+          description="Your role doesn't include it. Ask your practice administrator if you need it."
+        />
+      </div>
+    );
+  }
+
+  // An open automation (builder, analytics, member trace) owns the whole Settings area.
+  if (settingsNavItem === 'automations' && isAutomationsTakeover(automationsView)) {
+    return (
+      <div className={styles.layout}>
+        <AutomationsPanel />
+      </div>
+    );
+  }
+
   if (!IMPLEMENTED.has(settingsNavItem)) {
     return (
       <div className={styles.layout}>
@@ -128,7 +159,9 @@ export function SettingsLayout() {
       ) : settingsNavItem === 'care-plan-library' ? (
         <CarePlanLibraryPanel />
       ) : settingsNavItem === 'automations' ? (
-        <AutomationRulesPanel />
+        <AutomationsPanel />
+      ) : settingsNavItem === 'care-program-config' ? (
+        <CareProgramConfigPanel />
       ) : (
         <AgentsTable />
       )}

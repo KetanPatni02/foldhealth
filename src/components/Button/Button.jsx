@@ -2,6 +2,7 @@ import { cloneElement, forwardRef, isValidElement, useRef, useState } from 'reac
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { MenuPopover } from '../MenuPopover/MenuPopover';
+import { Tooltip } from '../Tooltip/Tooltip';
 import styles from './Button.module.css';
 
 // Custom icon elements (leadingIconElement / trailingIconElement) inherit the
@@ -29,6 +30,9 @@ const tintIconElement = (el) =>
  * @param {boolean}  [props.iconOnly=false]          – Square icon-only button (no text)
  * @param {boolean}  [props.fullWidth=false]          – Full-width button
  * @param {boolean}  [props.disabled=false]
+ * @param {string}   [props.disabledReason]          – While disabled, why (e.g. "Pick a form"):
+ *                                                    shown in a tooltip on hover, so a greyed-out
+ *                                                    action never fails silently.
  * @param {Array}    [props.menuItems]               – When provided, renders the split-button
  *                                                    variant: main action on the left, a divider,
  *                                                    and a chevron on the right that opens a
@@ -53,6 +57,7 @@ export const Button = forwardRef(function Button(
     iconOnly = false,
     fullWidth = false,
     disabled = false,
+    disabledReason,
     menuItems,
     onMenuSelect,
     menuAriaLabel = 'More actions',
@@ -114,7 +119,7 @@ export const Button = forwardRef(function Button(
     .filter(Boolean)
     .join(' ');
 
-  return (
+  const button = (
     <button ref={ref} type={type} className={cls} disabled={disabled} {...rest}>
       {leadingIconElement && tintIconElement(leadingIconElement)}
       {!leadingIconElement && leadingIcon && (
@@ -127,6 +132,17 @@ export const Button = forwardRef(function Button(
       )}
     </button>
   );
+
+  // A disabled button gets no pointer events, so the reason's tooltip hangs
+  // off a wrapper (the button lets hovers through to it).
+  if (disabled && disabledReason) {
+    return (
+      <Tooltip label={disabledReason} placement="bottom" align="right" maxWidth={260} className={fullWidth ? styles.fullWidth : undefined}>
+        <span className={[styles.disabledWrap, fullWidth ? styles.fullWidth : ''].filter(Boolean).join(' ')}>{button}</span>
+      </Tooltip>
+    );
+  }
+  return button;
 });
 
 // ── Split-button body ─────────────────────────────────────────────────

@@ -1,0 +1,41 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.stepTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.muted {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+/* The script the care team reads aloud or the patient reads before signing. */
+.script {
+  margin: 0;
+  padding: var(--space-3);
+  border-left: 2px solid var(--primary-200);
+  border-radius: var(--space-1);
+  background: var(--neutral-50);
+  font-size: var(--font-base);
+  line-height: 1.5;
+  color: var(--neutral-400);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.date { width: 15rem; }

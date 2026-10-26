@@ -69,20 +69,6 @@
   padding-left: 0;
 }
 
-.flushContent .gapsWrapper :global([class*="colHeader"]) {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.flushContent .gapsWrapper :global([class*="colHeader"]) :global([class*="colStatus"]) {
-  padding-left: 0;
-}
-
-.flushContent .gapsWrapper :global([class*="row"]) {
-  padding-left: 0;
-  padding-right: 0;
-}
-
 /* Tab row: OverflowTabStrip fills height; search pinned on the right. */
 .tabRow {
   display: flex;

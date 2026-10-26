@@ -36,6 +36,9 @@ const ALIGNS = [
  * The ref exposes `insertHtml(html)`, which inserts at the last caret
  * position (insert actions open a picker first, so focus has moved away).
  *
+ * A pasted web address becomes a real link (info blue, underlined), so it
+ * reads as a link here and in the sent email.
+ *
  * @param {string}   props.value
  * @param {function} props.onChange
  * @param {string}   [props.notice] – the warning strip on top ('' hides it)
@@ -43,6 +46,10 @@ const ALIGNS = [
  * @param {Array<{ key: string, icon: string, label: string, onClick: function, disabled?: boolean }>} [props.actions]
  *   – the bottom bar; onClick receives the click event (for anchoring a picker)
  */
+const LINK_RE = /https?:\/\/[^\s<>"]+/;
+const LINK_RE_G = /https?:\/\/[^\s<>"]+/g;
+const escapeHtml = (t) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
 export const EmailEditor = forwardRef(function EmailEditor({
   value,
   onChange,
@@ -116,6 +123,20 @@ export const EmailEditor = forwardRef(function EmailEditor({
       f.replaceWith(span);
     });
     setSize(px);
+    saveSelection();
+    emit();
+  };
+
+  // A pasted web address becomes a real link (shown in info blue, underlined),
+  // so it reads as a link here and in the sent email.
+  const paste = (e) => {
+    const text = e.clipboardData?.getData('text/plain') || '';
+    if (!LINK_RE.test(text)) return;
+    e.preventDefault();
+    const html = escapeHtml(text)
+      .replace(LINK_RE_G, url => `<a href="${url}">${url}</a>`)
+      .replace(/\r?\n/g, '<br>');
+    document.execCommand('insertHTML', false, html);
     saveSelection();
     emit();
   };
@@ -202,6 +223,7 @@ export const EmailEditor = forwardRef(function EmailEditor({
         data-empty={empty ? 'true' : 'false'}
         data-placeholder={placeholder}
         onInput={emit}
+        onPaste={paste}
         onKeyUp={saveSelection}
         onMouseUp={saveSelection}
         onBlur={saveSelection}

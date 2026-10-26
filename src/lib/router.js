@@ -33,7 +33,7 @@ export function buildHash(...parts) {
 
 // Every store slice that can back a patient profile view. Order doesn't
 // matter — memberId is unique across the whole set post-unification.
-const PATIENT_SLICES = ['patients', 'hccMembers', 'awvMembers', 'jsaMembers', 'ccmWorklistMembers', 'snpWorklistMembers', 'pharmacyWorklistMembers', 'hedisMembers', 'allPatients'];
+const PATIENT_SLICES = ['patients', 'hccMembers', 'awvMembers', 'jsaMembers', 'cmpMembers', 'pharmacyWorklistMembers', 'ccmWorklistMembers', 'snpWorklistMembers', 'hedisMembers', 'allPatients'];
 
 // ── Patient profile tab slugs ──
 // The right-panel tab, the open care program, and its active step each get a
@@ -208,10 +208,23 @@ export function stateToHash(state) {
       const mlTab = state.memberLeadsTab || 'care-team';
       return buildHash('settings', 'member-leads', mlTab);
     }
+    if (settingsNavItem === 'care-program-config') {
+      if (!state.careProgramConfigId) return buildHash('settings', 'care-program-config');
+      return buildHash('settings', 'care-program-config', state.careProgramConfigId, state.careProgramConfigTab || 'overview');
+    }
     if (settingsNavItem === 'care-plan-library') {
       if (state.carePlanCreateOpen) return buildHash('settings', 'care-plan-library', 'create');
       const cplTab = state.carePlanTab || 'template';
       return buildHash('settings', 'care-plan-library', CARE_PLAN_TABS.includes(cplTab) ? cplTab : 'template');
+    }
+    // Automations: #/settings/automations[/templates]
+    //   …/<id>/edit · …/<id>/analytics[/node] · …/<id>/trace/<runMemberId>
+    if (settingsNavItem === 'automations') {
+      const v = state.automationsView || {};
+      if (v.screen === 'builder' && v.id) return buildHash('settings', 'automations', String(v.id), 'edit');
+      if (v.screen === 'analytics' && v.id) return buildHash('settings', 'automations', String(v.id), 'analytics', v.analyticsTab === 'node' ? 'node' : null);
+      if (v.screen === 'trace' && v.id && v.runMemberId) return buildHash('settings', 'automations', String(v.id), 'trace', String(v.runMemberId));
+      return buildHash('settings', 'automations', v.tab === 'templates' ? 'templates' : null);
     }
     // Sections without a panel yet still get a real path — clicking them
     // used to fall through to the agents branch, which yanked the user to
@@ -241,6 +254,7 @@ export function stateToHash(state) {
     'CCM': 'ccm',
     'JSA': 'jsa',
     'Pharmacy': 'pharmacy',
+    'CMP': 'cmp',
     'High Utilizers': 'high-utilizers',
     'DM': 'dm',
     'My Patients': 'my-patients',
@@ -308,6 +322,7 @@ const SETTINGS_SECTION_TO_NAV = {
   'messages': 'messages',
   'calls': 'calls',
   'care-plan-library': 'care-plan-library',
+  'care-program-config': 'care-program-config',
   'crm-widgets': 'crm-widgets',
   'embedded-components': 'embedded-components',
   'content': 'content',
@@ -470,6 +485,13 @@ export function hashToState(route, state = null) {
       updates.memberLeadsTab = route.tab || 'care-team';
       return updates;
     }
+    // Care Program Configuration — the open program type and its tab ride the URL.
+    if (route.section === 'care-program-config') {
+      updates.settingsNavItem = 'care-program-config';
+      updates.careProgramConfigId = route.tab || null;
+      updates.careProgramConfigTab = route.id || 'overview';
+      return updates;
+    }
     // Care Plan Library — tab + create overlay rides the URL so refresh restores it.
     if (route.section === 'care-plan-library') {
       updates.settingsNavItem = 'care-plan-library';
@@ -480,6 +502,19 @@ export function hashToState(route, state = null) {
       }
       updates.carePlanTab = CARE_PLAN_TABS.includes(route.tab) ? route.tab : 'template';
       updates.carePlanCreateOpen = false;
+      return updates;
+    }
+    if (route.section === 'automations') {
+      updates.settingsNavItem = 'automations';
+      const prev = state?.automationsView || {};
+      // A drawer asked for in state (failure toast) survives the hash sync for the same automation.
+      const keepDrawer = prev.screen === 'analytics' && prev.id === route.tab && route.id === 'analytics';
+      const view = { tab: prev.tab || 'mine', analyticsTab: 'global', runMemberId: null, drawer: keepDrawer ? prev.drawer || null : null };
+      if (route.tab && route.tab !== 'templates' && route.id === 'edit') Object.assign(view, { screen: 'builder', id: route.tab });
+      else if (route.tab && route.id === 'analytics') Object.assign(view, { screen: 'analytics', id: route.tab, analyticsTab: route.sub === 'node' ? 'node' : 'global' });
+      else if (route.tab && route.id === 'trace' && route.sub) Object.assign(view, { screen: 'trace', id: route.tab, runMemberId: route.sub });
+      else Object.assign(view, { screen: 'list', id: null, tab: route.tab === 'templates' ? 'templates' : 'mine' });
+      updates.automationsView = view;
       return updates;
     }
     // Every other known section slug (incl. not-yet-built panels) restores
@@ -535,6 +570,7 @@ export function hashToState(route, state = null) {
     'ccm': 'CCM',
     'jsa': 'JSA',
     'pharmacy': 'Pharmacy',
+    'cmp': 'CMP',
     'high-utilizers': 'High Utilizers',
     'dm': 'DM',
     'my-patients': 'My Patients',

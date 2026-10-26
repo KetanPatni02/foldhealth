@@ -7,6 +7,7 @@ import { Toggle } from '../../../components/Toggle/Toggle';
 import { SearchBar } from '../../../components/SearchBar/SearchBar';
 import { useAppStore } from '../../../store/useAppStore';
 import { formatTime } from '../messageUtils';
+import { openStoredLink } from '../../../lib/openSafeUrl';
 import { useReferralEmails } from './useReferralEmails';
 import { useCommsConversations, useCommsMessagesFor } from '../comms/useComms';
 import { PatientEmailThread } from '../comms/PatientEmailThread';
@@ -294,7 +295,7 @@ function EmailThread({ email }) {
                 {attachments.map(a => (
                   <li key={a.documentId || a.storagePath || a.name}>
                     {a.url ? (
-                      <a className={styles.attachment} href={a.url} target="_blank" rel="noopener noreferrer">
+                      <a className={styles.attachment} href={a.url} target="_blank" rel="noopener noreferrer" onClick={e => openStoredLink(e, a.url)}>
                         <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
                         {a.name}
                       </a>

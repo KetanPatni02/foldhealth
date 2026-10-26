@@ -14,6 +14,7 @@ import { useCommsMessages } from './useComms';
 import { addMessage, updateConversation, markConversationRead, findOrCreateConversation } from './commsRepo';
 import { sendSms, retrySend } from './commsSend';
 import { useBrowserCall } from './call/useBrowserCall';
+import { useAppStore } from '../../../store/useAppStore';
 import { formatDuration } from './call/rtc';
 import {
   initialsOf, patientMeta, callLook, fullStamp, dayLabel, patientLink, openInNewTab, formatPhone,
@@ -35,11 +36,15 @@ export function CommsThread({ conversation, patient, me }) {
   const [archiveOnSend, setArchiveOnSend] = useState(false);
   const [sending, setSending] = useState(false);
   const [pending, setPending] = useState([]);
+  // A form added from Send Form: who it goes to (SMS numbers) and its meta,
+  // used by the next Send; cleared once sent or when the box is emptied.
+  const [share, setShare] = useState(null);
   const scrollRef = useRef(null);
   const fileInputId = useId();
   const startCall = useBrowserCall(s => s.start);
   const callStatus = useBrowserCall(s => s.status);
   const channel = conversation.channel;
+  const openCommsDrawer = useAppStore(s => s.openCommsDrawer);
   const sender = { id: me?.id || null, name: me?.name || 'Care team' };
 
   useEffect(() => { markConversationRead(conversation); }, [conversation, messages.length]);
@@ -60,8 +65,9 @@ export function CommsThread({ conversation, patient, me }) {
     setPending([]);
     try {
       if (channel === 'sms' && !internal) {
-        if (!conversation.patient_phone) throw new Error('This patient has no phone number on file.');
-        await sendSms({ conversation, sender, to: conversation.patient_phone, body });
+        const to = share?.targets?.length ? share.targets : [conversation.patient_phone].filter(Boolean);
+        if (!to.length) throw new Error('This patient has no phone number on file.');
+        for (const phone of to) await sendSms({ conversation, sender, to: phone, body, meta: share?.meta });
       } else {
         // One message per file; the text rides with the last one.
         const items = files.length ? files : [null];
@@ -76,11 +82,13 @@ export function CommsThread({ conversation, patient, me }) {
             sender_name: sender.name,
             body: i === items.length - 1 ? body : '',
             status: 'sent',
-            ...(f ? { meta: { attachment: { url: f.url, name: f.name, size: f.size, type: f.type.startsWith('image/') ? 'image' : 'file' } } } : {}),
+            ...(f ? { meta: { attachment: { url: f.url, name: f.name, size: f.size, type: f.type.startsWith('image/') ? 'image' : 'file' } } }
+              : share?.meta && !internal ? { meta: share.meta } : {}),
           });
         }
       }
       files.forEach(f => URL.revokeObjectURL(f.previewUrl));
+      setShare(null);
       if (archiveOnSend) await updateConversation(conversation.id, { archived: true });
     } catch (err) {
       setDraft(body);
@@ -133,13 +141,18 @@ export function CommsThread({ conversation, patient, me }) {
     input.accept = accept;
     input.click();
   };
+  // Send Form / Send Article put their message in the box; Send sends it.
+  const insertShare = ({ text, meta, targets }) => {
+    setDraft(d => (d.trim() ? `${d.trimEnd()}\n${text}` : text));
+    setShare({ meta, targets });
+  };
   const tools = channel === 'call' ? [] : [
     {
       key: 'attach', icon: 'solar:paperclip-linear', tooltip: 'Attachment',
       onClick: channel === 'chat' ? () => pickFiles('image/*,video/*,.pdf,.doc,.docx,.txt') : undefined,
     },
-    { key: 'form', icon: 'solar:document-text-linear', tooltip: 'Send form' },
-    { key: 'article', icon: 'solar:notebook-minimalistic-linear', tooltip: 'Send article' },
+    { key: 'form', icon: 'solar:document-text-linear', tooltip: 'Send form', onClick: () => openCommsDrawer('forms', { conversation, onInsert: insertShare }) },
+    { key: 'article', icon: 'solar:notebook-minimalistic-linear', tooltip: 'Send article', onClick: () => openCommsDrawer('article', { conversation, onInsert: insertShare }) },
     { key: 'appointment', icon: 'solar:calendar-mark-linear', tooltip: 'Appointment link' },
     {
       key: 'media', icon: 'solar:gallery-wide-linear', tooltip: 'Media',
@@ -236,7 +249,7 @@ export function CommsThread({ conversation, patient, me }) {
 
       <MessageComposer
         value={draft}
-        onChange={setDraft}
+        onChange={(v) => { setDraft(v); if (!v.trim()) setShare(null); }}
         onSend={send}
         internal={internal}
         onInternalChange={channel === 'call' ? undefined : setInternal}

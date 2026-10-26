@@ -14,6 +14,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { formatFoldId, matchesFoldId } from '../../lib/foldId';
 import { formatBadgeCount } from '../../lib/formatBadgeCount';
 import { supabase } from '../../lib/supabase';
+import { clearUserStorage } from '../../lib/clearUserStorage';
 import styles from './TopBar.module.css';
 
 /* ── Get user initials from Supabase user_metadata ── */
@@ -95,6 +96,7 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    clearUserStorage();
     sessionStorage.removeItem('__auth_bypass');
     try { sessionStorage.removeItem('__auth_bypass_user'); } catch { /* */ }
     window.location.hash = '#/login';
@@ -267,7 +269,7 @@ const SETTINGS_BREADCRUMB = {
   account: 'Account',
   calendar: 'Calendar',
   billing: 'Billing',
-  automations: 'Automation Rules',
+  automations: 'Automations',
 };
 
 export function TopBar() {
@@ -353,6 +355,13 @@ export function TopBar() {
   const isTasks = activePage === 'tasks';
   const isCampaign = activePage === 'campaign';
   const settingsNavItem = useAppStore(s => s.settingsNavItem);
+  // Settings / Automations / <name> while an automation is open.
+  const automationTitle = useAppStore(s => {
+    const v = s.automationsView;
+    if (!v || v.screen === 'list' || !v.id) return null;
+    if (v.id === 'new') return s.automationNew?.name || 'New Automation';
+    return s.automations.find(a => a.id === v.id)?.name || null;
+  });
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const pgRuleBuilder = useAppStore(s => s.pgRuleBuilder);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
@@ -531,6 +540,14 @@ export function TopBar() {
             </>
           ) : isCampaign ? (
             <span className={styles.breadcrumbCurrent}>Campaign</span>
+          ) : isSettings && settingsNavItem === 'automations' && automationTitle ? (
+            <>
+              <span className={styles.breadcrumbLink}>Settings</span>
+              <span className={styles.sep}>/</span>
+              <button type="button" className={styles.breadcrumbLink} onClick={() => useAppStore.getState().openAutomationsList()}>Automations</button>
+              <span className={styles.sep}>/</span>
+              <span className={styles.breadcrumbCurrent}>{automationTitle}</span>
+            </>
           ) : isSettings ? (
             <>
               <span className={styles.breadcrumbLink}>Settings</span>

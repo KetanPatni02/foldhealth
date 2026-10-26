@@ -128,10 +128,20 @@ export function MessagesView() {
 
   useEffect(() => { refreshProfiles(); }, [refreshProfiles]);
 
+  // An UPDATE carries the changed row, so patch it in place; only a new or
+  // removed profile needs the list re-read. Re-reading every profile on
+  // every update made each sign-in anywhere refetch in every open tab.
   useEffect(() => {
+    const PROFILE_FIELDS = ['id', 'full_name', 'first_name', 'last_name', 'email', 'avatar_url'];
     const ch = supabase
       .channel('profiles-watch')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, refreshProfiles)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
+        const row = payload?.new;
+        if (payload?.eventType !== 'UPDATE' || !row?.id) { refreshProfiles(); return; }
+        const picked = Object.fromEntries(PROFILE_FIELDS.map(k => [k, row[k]]));
+        setAllProfiles(prev => prev.map(p => (p.id === row.id ? { ...p, ...picked } : p)));
+        setProfiles(prev => (prev[row.id] ? { ...prev, [row.id]: { ...prev[row.id], ...picked } } : prev));
+      })
       .subscribe();
     return () => ch.unsubscribe();
   }, [refreshProfiles]);
@@ -174,6 +184,15 @@ export function MessagesView() {
     if (currentUser) loadConversations();
   }, [currentUser, loadConversations, convRefreshKey]);
 
+  // Read through refs so opening a chat or a profile refresh doesn't tear
+  // the channel down and subscribe again.
+  const selectedUserIdRef = useRef(selectedUserId);
+  const allProfilesRef = useRef(allProfiles);
+  useEffect(() => {
+    selectedUserIdRef.current = selectedUserId;
+    allProfilesRef.current = allProfiles;
+  }, [selectedUserId, allProfiles]);
+
   useEffect(() => {
     if (!currentUser) return;
     const ch = supabase
@@ -190,8 +209,8 @@ export function MessagesView() {
         const row = payload?.new;
         if (!row || row.read_at) return;
         if (row.sender_id === currentUser.id) return;
-        if (row.sender_id === selectedUserId) return;
-        const sender = allProfiles.find(p => p.id === row.sender_id);
+        if (row.sender_id === selectedUserIdRef.current) return;
+        const sender = allProfilesRef.current.find(p => p.id === row.sender_id);
         const senderName = sender ? getDisplayName(sender) : 'Someone';
         const preview = (row.content || '').slice(0, 90);
         addNotification?.({
@@ -204,7 +223,7 @@ export function MessagesView() {
       })
       .subscribe();
     return () => ch.unsubscribe();
-  }, [currentUser, selectedUserId, allProfiles, addNotification]);
+  }, [currentUser, addNotification]);
 
   const handleConversationUpdate = useCallback(() => setConvRefreshKey(k => k + 1), []);
 

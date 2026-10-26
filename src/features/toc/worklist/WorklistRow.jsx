@@ -13,9 +13,12 @@ import { OutreachPopover } from '../../../components/OutreachPopover/OutreachPop
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../../store/useAppStore';
+import { LiveCallDuration } from './LiveCallDuration';
 import { FoldIdTag } from '../../../components/FoldIdTag/FoldIdTag';
 import { platformUsersForAssigneePicker } from '../../../lib/worklistAssignee';
 import styles from './WorklistRow.module.css';
+import { OutreachStatus } from '../../../components/OutreachStatus/OutreachStatus';
+import { outreachFromDots } from '../../../components/OutreachStatus/outreachStatusModel';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
 
@@ -33,9 +36,6 @@ function TocStatusBadge({ status }) {
 }
 
 function OutreachCell({ patient }) {
-  const dots = patient.outreachDots || ['pending','pending','pending'];
-  const hasSuccess = dots.includes('success');
-  const hasFailed = dots.includes('failed') && !hasSuccess;
   const [showPop, setShowPop] = useState(false);
   const [popPos, setPopPos] = useState({ top: 0, left: 0 });
   const cellRef = useRef(null);
@@ -72,33 +72,7 @@ function OutreachCell({ patient }) {
 
   return (
     <div className={styles.outreachWl} ref={cellRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <div className={styles.outreachWlMain}>
-        {hasSuccess ? (
-          <>
-            <Icon name="solar:phone-calling-bold" size={15} color="var(--status-success)" />
-            <div>
-              <div className={styles.outreachWlText}>Attended</div>
-              {patient.outreachDate && <div className={styles.outreachWlDate}>{patient.outreachDate}</div>}
-            </div>
-          </>
-        ) : hasFailed ? (
-          <>
-            <Icon name="solar:phone-bold" size={15} color="var(--status-error)" />
-            <div>
-              <div className={styles.outreachWlFailed}>Failed</div>
-              {patient.outreachDate && <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{patient.outreachDate}</div>}
-            </div>
-          </>
-        ) : (
-          <>
-            <Icon name="solar:phone-linear" size={15} color="var(--neutral-200)" />
-            <div className={styles.outreachWlNone}>—</div>
-          </>
-        )}
-      </div>
-      <div className={styles.dotsRow}>
-        {dots.map((d, i) => <div key={i} className={`${styles.dot} ${styles[d]}`} />)}
-      </div>
+      <OutreachStatus {...outreachFromDots(patient.outreachDots, { date: patient.outreachDate, attended: patient.outreachAttended })} />
       {showPop && createPortal(
         <OutreachPopover patient={patient} pos={popPos} onMouseEnter={handlePopEnter} onMouseLeave={handlePopLeave} />,
         document.body
@@ -182,7 +156,7 @@ export const WORKLIST_MIDDLE_COLUMNS = [
           {p.onCall ? (
             <span className={styles.outreachOncall}>
               <Icon name="solar:phone-calling-bold" size={14} />
-              On Call: {p.callDuration}
+              On Call: <LiveCallDuration patient={p} />
             </span>
           ) : (
             <span className={styles.outreachTime}>

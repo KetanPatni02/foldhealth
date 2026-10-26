@@ -15,6 +15,8 @@ import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import { MEASURE_NAMES } from './ClinicalNotePanel.utils';
 import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import styles from './HedisWorklistRow.module.css';
+import { OutreachStatus } from '../../components/OutreachStatus/OutreachStatus';
+import { outreachFromDots } from '../../components/OutreachStatus/outreachStatusModel';
 
 const LANG_MAP = {
   en: 'English', es: 'Spanish; Castilian', zh: 'Chinese', yue: 'Cantonese',
@@ -52,49 +54,9 @@ export const STATUS_BADGE_VARIANT = {
   'Closed - Other':                'ai-neutral',
 };
 
-// Outreach cell — mirrors the TOC worklist's outreach pattern.
+// Outreach: the shared worklist outreach status (icon, result, date, attempt dots).
 function OutreachCell({ member }) {
-  const dots = Array.isArray(member.outreachDots)
-    ? member.outreachDots
-    : ['pending', 'pending', 'pending'];
-  const hasSuccess = dots.includes('success');
-  const hasFailed = dots.includes('failed') && !hasSuccess;
-
-  return (
-    <div className={styles.outreachWl}>
-      <div className={styles.outreachWlMain}>
-        {hasSuccess ? (
-          <>
-            <Icon name="solar:phone-calling-bold" size={15} color="var(--status-success)" />
-            <div>
-              <div className={styles.outreachWlText}>Attended</div>
-              {member.outreachDate && (
-                <div className={styles.outreachWlDate}>{member.outreachDate}</div>
-              )}
-            </div>
-          </>
-        ) : hasFailed ? (
-          <>
-            <Icon name="solar:phone-bold" size={15} color="var(--status-error)" />
-            <div>
-              <div className={styles.outreachWlFailed}>Failed</div>
-              {member.outreachDate && (
-                <div className={styles.outreachWlDateMuted}>{member.outreachDate}</div>
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            <Icon name="solar:phone-linear" size={15} color="var(--neutral-200)" />
-            <div className={styles.outreachWlNone}>—</div>
-          </>
-        )}
-      </div>
-      <div className={styles.dotsRow}>
-        {dots.map((d, i) => <div key={i} className={`${styles.dot} ${styles[d]}`} />)}
-      </div>
-    </div>
-  );
+  return <OutreachStatus {...outreachFromDots(member.outreachDots, { date: member.outreachDate })} />;
 }
 
 /**

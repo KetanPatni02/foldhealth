@@ -28,6 +28,8 @@ import styles from './ColumnConfigPopover.module.css';
  *  - lockedBottom ({k,lb}[])           Non-toggleable rows pinned at bottom
  *                                      (default: [{ k:'actions', lb:'Action' }]).
  *  - width      (number)               Default 240.
+ *  - title      (string)               Default 'Show Columns'.
+ *  - emptyText  (string)               Shown when the search matches nothing.
  */
 export function ColumnConfigPopover({
   anchorRect,
@@ -40,6 +42,8 @@ export function ColumnConfigPopover({
   lockedTop = [{ k: 'member', lb: 'Member Name' }],
   lockedBottom = [{ k: 'actions', lb: 'Action' }],
   width = 240,
+  title = 'Show Columns',
+  emptyText = 'No columns match',
 }) {
   const [search, setSearch] = useState('');
 
@@ -98,17 +102,17 @@ export function ColumnConfigPopover({
         style={{ top, right, width }}
         onClick={(e) => e.stopPropagation()}
         role="group"
-        aria-label="Show columns"
+        aria-label={title}
       >
         <div className={styles.header}>
           <div className={styles.titleRow}>
-            <span className={styles.title}>Show Columns</span>
+            <span className={styles.title}>{title}</span>
             <CloseButton size={14} onClick={onClose} className={styles.close} />
           </div>
 
           <div className={styles.searchRow}>
             <Icon name="solar:magnifer-linear" size={16} color="var(--neutral-200)" />
-            <input aria-label="Search columns"
+            <input aria-label={`Search ${title.toLowerCase()}`}
               type="text"
               value={search}
               placeholder="Search"
@@ -124,7 +128,7 @@ export function ColumnConfigPopover({
           ))}
 
           {filtered.length === 0 && (
-            <div className={styles.empty}>No columns match</div>
+            <div className={styles.empty}>{emptyText}</div>
           )}
           {dragEnabled ? (
             <SortableList ids={filtered.map(c => c.k)} onReorder={(_ids, from, to) => onReorder(from, to)}>

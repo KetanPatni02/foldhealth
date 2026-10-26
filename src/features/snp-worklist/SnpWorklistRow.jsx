@@ -15,6 +15,8 @@ import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import styles from './SnpWorklistRow.module.css';
+import { OutreachStatus } from '../../components/OutreachStatus/OutreachStatus';
+import { outreachFromSummary } from '../../components/OutreachStatus/outreachStatusModel';
 
 const PROGRAM_SUB_STATUS_VARIANT = {
   'New':                  'toc-new',
@@ -52,34 +54,9 @@ const PROGRAM_SUB_STATUS_ITEMS = [
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
 
-const DOT_COLOR = { red: 'var(--status-error)', blue: 'var(--status-info)', grey: 'var(--neutral-200)' };
-
+// Outreach: the shared worklist outreach status (icon, result, date, attempt dots).
 function OutreachCell({ outreach }) {
-  if (!outreach) {
-    return (
-      <span className={styles.outreachNone}>
-        <Icon name="solar:phone-calling-linear" size={16} color="var(--neutral-200)" />
-        <span className={styles.mutedDash}>—</span>
-      </span>
-    );
-  }
-  const icon = outreach.kind === 'letter' ? 'solar:document-text-linear' : 'solar:phone-calling-linear';
-  return (
-    <span className={styles.outreachCell}>
-      <Icon name={icon} size={16} color="var(--status-error)" />
-      <span className={styles.outreachBody}>
-        <span className={styles.outreachStatus}>{outreach.status}</span>
-        <span className={styles.outreachDate}>{outreach.date}</span>
-        {outreach.dots?.length ? (
-          <span className={styles.dots}>
-            {outreach.dots.map((c, i) => (
-              <span key={i} className={styles.dot} style={{ background: DOT_COLOR[c] || DOT_COLOR.grey }} />
-            ))}
-          </span>
-        ) : null}
-      </span>
-    </span>
-  );
+  return <OutreachStatus {...outreachFromSummary(outreach)} />;
 }
 
 const TAG_VARIANT_BY_TONE = {
@@ -196,7 +173,7 @@ export const SNP_MIDDLE_COLUMNS = [
             patientName: m.name,
             // Patient context for the drawer's banner.
             patient: { initials: m.initials, name: m.name, gender: m.gender, age: m.age, memberId: m.memberId },
-            program: { id: m.programId, code: 'SNP', name: 'SNP Care Program' },
+            program: { id: m.programId, code: 'SNP', name: 'Special Needs Plan' },
           })}
           aria-label={`Review ${m.name}'s ${m.carePlanStatus.toLowerCase()} care plan`}
         >

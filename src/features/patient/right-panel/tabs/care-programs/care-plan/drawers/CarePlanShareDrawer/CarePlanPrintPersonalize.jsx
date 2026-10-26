@@ -10,7 +10,7 @@ import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/
 import { RadioOptionGroup } from '../../../../../../../../components/RadioOptionGroup/RadioOptionGroup';
 import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { TEMPLATE_SCOPES } from '../../lib/templateScope';
-import { DEMOGRAPHIC_FIELDS, FORMAT_OPTIONS, GROUP_BY_OPTIONS } from '../../lib/carePlanPrintSettings';
+import { CONTENT_TOGGLES, DEMOGRAPHIC_FIELDS, FORMAT_OPTIONS, GROUP_BY_OPTIONS } from '../../lib/carePlanPrintSettings';
 import styles from './CarePlanPrintPersonalize.module.css';
 
 const NO_PRESET = '__none';
@@ -190,13 +190,26 @@ export function CarePlanPrintPersonalize({
       </section>
 
       <section className={styles.group}>
-        <h3 className={styles.groupTitle}>Patient demographics</h3>
-        <div className={styles.checks}>
-          {DEMOGRAPHIC_FIELDS.map(f => (
-            <label key={f.key} className={styles.check}>
-              <Checkbox checked={settings.demographics.includes(f.key)} onCheckedChange={() => toggleDemo(f.key)} />
-              {f.label}
-            </label>
+        <h3 className={styles.groupTitle}>Content</h3>
+        <div className={styles.contentList}>
+          {CONTENT_TOGGLES.map(t => (
+            <div key={t.key} className={styles.contentItem}>
+              <div className={styles.contentHead}>
+                <span className={styles.contentLabel}>{t.label}</span>
+                <Switch checked={settings[t.key]} onChange={on => set({ [t.key]: on })} ariaLabel={t.label} />
+              </div>
+              <p className={styles.hint}>{t.hint}</p>
+              {t.key === 'showDemographics' && settings.showDemographics && (
+                <div className={styles.checks}>
+                  {DEMOGRAPHIC_FIELDS.map(f => (
+                    <label key={f.key} className={styles.check}>
+                      <Checkbox checked={settings.demographics.includes(f.key)} onCheckedChange={() => toggleDemo(f.key)} />
+                      {f.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </section>

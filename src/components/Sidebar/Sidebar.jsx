@@ -4,6 +4,8 @@ import { HelpPopover } from '../HelpPopover/HelpPopover';
 import { WhatsNewDrawer } from '../WhatsNewDrawer/WhatsNewDrawer';
 import { useAppStore } from '../../store/useAppStore';
 import { formatBadgeCount } from '../../lib/formatBadgeCount';
+import { useCan } from '../../lib/useCan';
+import { navPermissionKey } from '../../lib/accessControl';
 import styles from './Sidebar.module.css';
 
 const NAV_ITEMS = [
@@ -37,6 +39,7 @@ function openFeedbackPortal() {
 
 export function Sidebar() {
   const activePage = useAppStore(s => s.activePage);
+  const can = useCan();
   const theme = useAppStore(s => s.theme);
   const navStyle = useAppStore(s => s.navStyle);
   const requestNavigate = useAppStore(s => s.requestNavigate);
@@ -130,7 +133,7 @@ export function Sidebar() {
     const raf = requestAnimationFrame(() => setPillReady(true));
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePage]);
+  }, [activePage, can]); // `can`: a hidden item above shifts the active one
 
   // Re-measure on resize (font swap can change tile height, scrollbar
   // appearing can shift layout) so the pill never desyncs.
@@ -188,7 +191,7 @@ export function Sidebar() {
             aria-hidden="true"
           />
         )}
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter(item => can(navPermissionKey(item.page))).map((item) => {
           const isActive = activePage === item.page || (item.page === 'settings' && activePage === 'builder');
           return (
             <button

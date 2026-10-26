@@ -50,6 +50,8 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
   const requestCarePlanPanel = useAppStore(s => s.requestCarePlanPanel);
   const carePlanBulkMode = useAppStore(s => s.carePlanBulkMode);
   const toggleCarePlanBulkMode = useAppStore(s => s.toggleCarePlanBulkMode);
+  const carePlanLayout = useAppStore(s => s.carePlanLayout);
+  const setCarePlanLayout = useAppStore(s => s.setCarePlanLayout);
   const carePlanSearchText = useAppStore(s => s.carePlanSearchText);
   const setCarePlanSearchText = useAppStore(s => s.setCarePlanSearchText);
   const carePlanFiltersOpen = useAppStore(s => s.carePlanFiltersOpen);
@@ -135,6 +137,9 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
   const carePlanMoreItems = useMemo(() => {
     const items = [
       ...rightPanelItems,
+      carePlanLayout === 'linkage'
+        ? { key: 'layout', icon: 'solar:list-linear', label: 'Table View' }
+        : { key: 'layout', icon: 'solar:link-linear', label: 'Linkage View' },
       { key: 'ai-plan', iconElement: <Icon name="custom:ai" size={16} />, label: 'Draft Individualized Plan' },
       ...(canPause ? [planPaused
         ? { key: 'resume', icon: 'solar:play-circle-linear', label: 'Resume Care Plan' }
@@ -142,14 +147,24 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
       { key: 'template', icon: 'solar:bookmark-linear', label: 'Save as Template' },
       { key: 'note', icon: 'solar:notes-linear', label: 'Add Note' },
       { key: 'history', iconElement: <Icon name="custom:history" size={16} color="var(--neutral-400)" />, label: 'History' },
+      // Unsigned changes since the last signed version: discarding asks first.
+      ...(carePlanDraft.canDiscard ? [{
+        key: 'discard',
+        icon: 'solar:restart-linear',
+        label: 'Discard Changes',
+        danger: true,
+        disabled: !!viewedVersion,
+      }] : []),
     ];
     return items;
-  }, [rightPanelItems, canPause, planPaused]);
+  }, [rightPanelItems, carePlanLayout, canPause, planPaused, carePlanDraft.canDiscard, viewedVersion]);
 
   const handleCarePlanMoreSelect = (key) => {
     setCarePlanMoreMenu(null);
     if (rightPanel.select(key)) return;
-    if (key === 'bulk') toggleCarePlanBulkMode();
+    if (key === 'discard') setDiscardOpen(true);
+    else if (key === 'bulk') toggleCarePlanBulkMode();
+    else if (key === 'layout') setCarePlanLayout(carePlanLayout === 'linkage' ? 'tables' : 'linkage');
     else if (key === 'preview') requestCarePlanShare('preview');
     else requestCarePlanPanel(key);
   };
@@ -298,20 +313,6 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
                 Preview
               </Button>
               <span className={styles.headerDivider} aria-hidden="true" />
-              {carePlanDraft.canDiscard && (
-                <>
-                  <Button
-                    variant="secondary"
-                    size="L"
-                    leadingIcon="solar:restart-linear"
-                    disabled={!!viewedVersion}
-                    onClick={() => setDiscardOpen(true)}
-                  >
-                    Discard
-                  </Button>
-                  <span className={styles.headerDivider} aria-hidden="true" />
-                </>
-              )}
               <Button
                 variant="primary"
                 size="M"

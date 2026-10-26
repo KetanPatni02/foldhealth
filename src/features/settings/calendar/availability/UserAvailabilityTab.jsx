@@ -59,13 +59,25 @@ const COLUMNS = [
   { key: 'status', label: 'Status', width: 120 },
   { key: 'location', label: 'Location', width: 170 },
   { key: 'dates', label: 'Start & End Date', width: 200, sortKey: 'startDate', sortType: 'date' },
-  // Repeats shares the leftover width with Details but tops out at 224px (what a
-  // long monthly rule needs); past that, Details takes the rest. 835px is the
-  // fixed columns (User, Status, Location, Dates, Actions).
-  { key: 'repeats', label: 'Repeats', width: 'min(224px, calc((100% - 835px) / 2))' },
+  // Repeats fits its longest text on the page, up to 224px (see repeatsWidth);
+  // Details takes the rest.
+  { key: 'repeats', label: 'Repeats', width: 224 },
   { key: 'details', label: 'Details' },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 105 },
 ];
+const REPEATS_MAX = 224;
+const REPEATS_MIN = 96;
+const CELL_PADDING_X = 24;
+let measureCtx = null;
+// Width of the widest Repeats line (pattern or days) at the cell's type size.
+function repeatsWidth(lines) {
+  if (!lines.length) return REPEATS_MAX;
+  measureCtx ||= document.createElement('canvas').getContext('2d');
+  const body = getComputedStyle(document.body);
+  measureCtx.font = `400 ${body.getPropertyValue('--font-base').trim() || '14px'} ${body.fontFamily}`;
+  const widest = Math.max(...lines.map(t => measureCtx.measureText(t).width));
+  return Math.min(REPEATS_MAX, Math.max(REPEATS_MIN, Math.ceil(widest) + CELL_PADDING_X + 2));
+}
 const STATUS_FILTER = { Active: 'active', Upcoming: 'upcoming', Past: 'expired' };
 // The List opens on what's current: Active and Upcoming (Past is a pick away).
 const DEFAULT_STATUSES = ['Active', 'Upcoming'];
@@ -232,6 +244,11 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
   const lastPage = Math.max(1, Math.ceil(users.length / perPage));
   const pageNow = Math.min(page, lastPage);
   const rows = users.slice((pageNow - 1) * perPage, pageNow * perPage);
+  const columns = useMemo(() => {
+    const lines = rows.flatMap(u => (u.blocks || []).flatMap(b => cadenceText(b).split(' • ')));
+    const w = repeatsWidth(lines);
+    return COLUMNS.map(c => (c.key === 'repeats' ? { ...c, width: w } : c));
+  }, [rows]);
 
   // Show more opens at once and eases the rows in; Show less eases them out
   // first, then removes them.
@@ -476,7 +493,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
               <td className={styles.td}><Badge tone={look.tone} size="S" label={look.label} /></td>
               <td className={styles.td}><span className={styles.cellText}>{b.location}</span></td>
               <td className={`${styles.td} ${styles.datesTd}`}>
-                <span className={styles.cellText}>{formatDate(b.startDate)} – {b.endDate ? formatDate(b.endDate) : 'Present'}</span>
+                <span className={styles.cellText}>{formatDate(b.startDate)} – {b.endDate ? formatDate(b.endDate) : 'Ongoing'}</span>
               </td>
               <td className={styles.td}>
                 <span className={styles.repeats}>
@@ -595,7 +612,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
       <div className={styles.tableWrap}>
         <WorklistShell
           header={null}
-          columns={COLUMNS}
+          columns={columns}
           sortKey={sort?.key || null}
           sortDir={sort?.dir || null}
           // asc, then desc, then back to the default order.

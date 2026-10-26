@@ -16,6 +16,7 @@ import {
   historyTimelineStyles as htStyles,
 } from '../HistoryTimeline/HistoryTimeline';
 import styles from './ActivityLog.module.css';
+import { openSafeUrl } from '../../lib/openSafeUrl';
 
 // Render a comment body with the signed-in user's @-mentions painted in the
 // mention style (secondary-300, weight 500). Other users' mentions stay
@@ -450,7 +451,11 @@ function OutreachEntryBody({ entry }) {
   const [expanded, setExpanded] = useState(false);
   const hasNote = Boolean(entry.note && entry.note.trim());
   const hasCall = !!entry.callDetails;
-  const expandable = hasNote || hasCall;
+  // `details`: [{ label, value }] shown as a field list behind "View details"
+  // (empty values are skipped).
+  const details = (entry.details || []).filter(d => d && d.value != null && d.value !== '');
+  const hasDetails = details.length > 0;
+  const expandable = hasNote || hasCall || hasDetails;
 
   return (
     <>
@@ -472,13 +477,13 @@ function OutreachEntryBody({ entry }) {
             onClick={() => setExpanded(v => !v)}
           >
             {entry.outcome && <span className={styles.viewNoteDot} aria-hidden="true">•</span>}
-            View more
+            {hasDetails ? 'View details' : 'View more'}
             <DownChevronIcon size={11} color="currentColor" className={expanded ? styles.viewMoreChevronOpen : undefined} />
           </button>
         )}
       </div>
 
-      {expanded && (hasCall || hasNote) && (
+      {expanded && (hasCall || hasNote || hasDetails) && (
         <div className={styles.expandedCard}>
           {hasCall && (
             <>
@@ -526,6 +531,16 @@ function OutreachEntryBody({ entry }) {
                 )}
               </div>
             </>
+          )}
+          {!hasCall && hasDetails && (
+            <dl className={styles.detailsGrid}>
+              {details.map(d => (
+                <Fragment key={d.label}>
+                  <dt className={styles.detailsLabel}>{d.label}</dt>
+                  <dd className={styles.detailsValue}>{d.value}</dd>
+                </Fragment>
+              ))}
+            </dl>
           )}
           {!hasCall && hasNote && (
             <>
@@ -714,10 +729,7 @@ export function ClinicalNoteCardActions({ dc, draftLock = null, onOpenTask, onOp
       return;
     }
     if (dc.pdfDataUrl) {
-      try {
-        const w = window.open(dc.pdfDataUrl, '_blank');
-        w?.focus?.();
-      } catch (_) { /* popup blocker */ }
+      openSafeUrl(dc.pdfDataUrl);
     } else {
       showToast?.('Reopen note — coming soon');
     }

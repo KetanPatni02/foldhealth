@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { SideNav } from '../SideNav/SideNav';
 import { useAppStore } from '../../store/useAppStore';
 import { HEDIS_MEMBERS } from '../../features/hedis-worklist/data/mock';
+import { CMP_MEMBERS } from '../../features/cmp-worklist/data/mock';
 import styles from './SubNav.module.css';
 
 // Define which lists map to which filter criteria
@@ -14,6 +15,7 @@ const WORKLISTS = [
   { label: 'HEDIS', filter: null, view: 'hedis' },
   { label: 'CCM', filter: null, view: 'ccm' },
   { label: 'JSA', filter: null, view: 'jsa' },
+  { label: 'CMP', filter: null, view: 'cmp' },
   { label: 'High Utilizers', filter: { readmission: 'Yes' } },
   { label: 'DM', filter: null },
   { label: 'TCM', filter: null },
@@ -32,6 +34,7 @@ export function SubNav({ collapsed, width = 200 }) {
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers || []);
   const jsaMembers = useAppStore(s => s.jsaMembers || []);
   const pharmacyMembers = useAppStore(s => s.pharmacyWorklistMembers);
+  const cmpMembers = useAppStore(s => s.cmpMembers || []);
   const worklistCounts = useAppStore(s => s.worklistCounts);
   const fetchWorklistCounts = useAppStore(s => s.fetchWorklistCounts);
   const fetchWorklistOrder = useAppStore(s => s.fetchWorklistOrder);
@@ -109,6 +112,9 @@ export function SubNav({ collapsed, width = 200 }) {
       else if (list.view === 'snp') counts[list.label] = pick(snpWorklistMembers, wc?.snp);
       else if (list.view === 'jsa') counts[list.label] = pick(jsaMembers, wc?.jsa);
       else if (list.view === 'pharmacy') counts[list.label] = pick(pharmacyMembers, wc?.pharmacy);
+      // Members, not enrollments (one per CMP sub-program). Until cmp_members
+      // is in the badge counts, the mock (also the seed) gives the number.
+      else if (list.view === 'cmp') counts[list.label] = new Set((cmpMembers.length ? cmpMembers : CMP_MEMBERS).map(m => m.memberId || m.id)).size;
       else if (list.label === 'Annual Visit') counts[list.label] = pick(awvMembers, wc?.awv);
       else if (list.label === 'TCM') counts[list.label] = pick(patients, wc?.tcm);
       else if (list.label === 'TOC IP') {
@@ -118,7 +124,7 @@ export function SubNav({ collapsed, width = 200 }) {
       } else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, pharmacyMembers, worklistCounts]);
+  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, cmpMembers, pharmacyMembers, worklistCounts]);
 
   // Unique patient count across every worklist. Different worklists use
   // different id spaces (p1, hcc-42, ccmw-001), so we key the union on a

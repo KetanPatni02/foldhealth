@@ -5,7 +5,7 @@ import { Toggle } from '../../../../components/Toggle/Toggle';
 import { Switch } from '../../../../components/Switch/Switch';
 import { SECTIONS, WIDGETS, SAVINGS_CATEGORIES, SCOPE_OPTIONS } from './employerImpactConfig';
 import { defaultLayout, savingsKey } from './employerImpactLayout';
-import { SortableItem, SortableList } from './SortableParts';
+import { SortableItem, SortableList } from '../../../../components/SortableList/SortableList';
 import styles from './UpdateDashboardDrawer.module.css';
 
 const SECTION_TITLES = Object.fromEntries(SECTIONS.map(s => [s.id, s.heading || s.title]));

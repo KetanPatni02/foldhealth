@@ -10,6 +10,7 @@ const REQUESTS = [
 export function PriorAuthWidget() {
   return (
     <PanelSection
+      icon="solar:document-medicine-linear"
       title="Prior Authorization Requests"
       actions={<ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add Prior Authorization" />}
     >
