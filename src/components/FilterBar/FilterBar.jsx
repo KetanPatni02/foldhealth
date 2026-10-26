@@ -49,6 +49,10 @@ export function FilterBar({
   pinPrimary = false,
   saveMenuItems,
   onSaveMenuSelect,
+  // 'inline': the bar sits inside a section (P360 tabs, Figma 6063:261110)
+  // rather than under a page header: no border or background, tighter
+  // spacing, and Clear All as a primary link with its icon.
+  variant = 'page',
 } = {}) {
   const storeActiveFilters = useAppStore(s => s.activeFilters);
   const storeSetFilter = useAppStore(s => s.setFilter);
@@ -313,6 +317,7 @@ export function FilterBar({
       onSaveFilter={() => effectiveOnSaveFilter()}
       onOpenSaveDialog={() => setSaveDialogOpen(true)}
       clearAllLabel={clearAllLabel}
+      clearAllIcon={variant === 'inline'}
       saveLabel={saveLabel}
       saveMenuItems={saveMenuItems}
       onSaveMenuSelect={(key) => (key === 'new' && showInternalSaveDialog ? setSaveDialogOpen(true) : onSaveMenuSelect?.(key))}
@@ -320,7 +325,7 @@ export function FilterBar({
   );
 
   return (
-    <div className={styles.filterBar}>
+    <div className={[styles.filterBar, variant === 'inline' ? styles.inline : ''].filter(Boolean).join(' ')}>
       <div className={styles.filterRow} ref={setChipsRef}>
         {leadingNode && <span ref={leadingRef} className={styles.leading}>{leadingNode}</span>}
         {visibleKeys.map(k => (

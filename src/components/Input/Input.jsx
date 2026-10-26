@@ -284,6 +284,14 @@ export const Input = forwardRef(function Input(
   // don't use the structural extras. Keeps flex/grid parents happy.
   const needsWrapper = label || helperText || activeError || usesShell;
 
+  // The browser steps a focused number field on mouse wheel, so scrolling the
+  // page past one silently changes the value. Dropping focus lets the wheel
+  // scroll the page instead.
+  const handleWheel = (e) => {
+    if (type === 'number' && document.activeElement === e.currentTarget) e.currentTarget.blur();
+    props.onWheel?.(e);
+  };
+
   if (!needsWrapper) {
     const inputCls = [
       styles.input,
@@ -309,6 +317,7 @@ export const Input = forwardRef(function Input(
         onChange={handleChange}
         aria-invalid={isError || undefined}
         {...props}
+        onWheel={handleWheel}
       />
     );
   }
@@ -371,6 +380,7 @@ export const Input = forwardRef(function Input(
       onChange={handleShellChange}
       aria-invalid={isError || undefined}
       {...restProps}
+      onWheel={handleWheel}
     />
   );
 

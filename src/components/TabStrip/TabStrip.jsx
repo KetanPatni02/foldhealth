@@ -25,6 +25,7 @@ import styles from './TabStrip.module.css';
  *                                          right (edit button, action group).
  *                                          Sits on the same row as the tabs
  *                                          past a flex spacer.
+ *  - className   string                 — extra class on the row.
  *  - balanceTabs boolean (default false) — each tab grows equally to fill the
  *                                          row (email builder side panels).
  *  - embeddedBaseline boolean (default false) — when embedded, draw the bar's
@@ -41,6 +42,7 @@ export function TabStrip({
   trailing,
   size = 'M',
   balanceTabs = false,
+  className,
 }) {
   const rowRef = useRef(null);
   const tabRefs = useRef(new Map());
@@ -73,6 +75,7 @@ export function TabStrip({
     !embedded && fullWidth ? styles.fullWidth : '',
     size === 'S' ? styles.sizeS : '',
     balanceTabs ? styles.balanceTabs : '',
+    className || '',
   ].filter(Boolean).join(' ');
 
   return (

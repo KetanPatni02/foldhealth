@@ -1,14 +1,55 @@
 import { useMemo, useState } from 'react';
+import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
 import { ActivityLog } from '../../../../../components/ActivityLog/ActivityLog';
 import { Avatar } from '../../../../../components/Avatar/Avatar';
-import { FilterChip } from '../../../../../components/FilterChip/FilterChip';
+import { FilterBar } from '../../../../../components/FilterBar/FilterBar';
 import { Icon } from '../../../../../components/Icon/Icon';
+import { Input } from '../../../../../components/Input/Input';
+import { SubTabs } from '../../../../../components/SubTabs/SubTabs';
 import { TimelineSkeleton } from '../../../../../components/TimelineSkeleton/TimelineSkeleton';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { usePatientStream } from '../../../hooks/usePatientStream';
 import { STREAM_CATEGORIES, filterStream } from '../../../data/patientStream';
 import { TONE_COLOR, kindMeta } from './streamKinds';
 import styles from './TimelineTab.module.css';
+
+// The header's quick views (Figma 727:245146). A dotted view keeps the stream
+// kinds it lists; the dot is the colour those kinds' tiles use.
+const VISIT_KINDS = ['encounter', 'visit', 'in_person', 'ip_visit', 'er_visit', 'appointment', 'adt'];
+const VIEWS = [
+  { key: 'all', label: 'All' },
+  { key: 'since', label: 'Since Last Visit' },
+  { key: 'visits', label: 'Visits', dot: 'var(--accent-cyan)', kinds: VISIT_KINDS },
+  { key: 'notes', label: 'Notes', dot: 'var(--accent-pink)', kinds: ['note'] },
+  { key: 'labs', label: 'Labs/Imaging', dot: 'var(--accent-blue)', kinds: ['lab', 'imaging'] },
+  { key: 'pami', label: 'PAMI', dot: 'var(--accent-light-green)', kinds: ['diagnosis', 'allergy', 'medication', 'med_start', 'med_stop', 'immunization'] },
+  { key: 'procedure', label: 'Procedure', dot: 'var(--accent-amber)', kinds: ['procedure'] },
+];
+const VIEW_TABS = VIEWS.map(v => ({
+  key: v.key,
+  label: v.dot ? <><span className={styles.dot} style={{ color: v.dot }} aria-hidden="true">•</span>{v.label}</> : v.label,
+}));
+
+/** The events a quick view keeps. Since Last Visit: after the latest visit up to now. */
+function inView(events, key) {
+  const view = VIEWS.find(v => v.key === key);
+  if (view?.kinds) return events.filter(e => view.kinds.includes(e.kind));
+  if (key === 'since') {
+    const now = Date.now();
+    const last = events.filter(e => VISIT_KINDS.includes(e.kind) && e.at <= now).reduce((max, e) => Math.max(max, e.at), -Infinity);
+    return Number.isFinite(last) ? events.filter(e => e.at > last) : events;
+  }
+  return events;
+}
+
+const FILTER_DEFS = [
+  { key: 'categories', label: 'Category', primary: true },
+  { key: 'kinds', label: 'Type', primary: true },
+  { key: 'programs', label: 'Program', primary: true },
+];
+
+const matches = (e, q) => [e.title, e.detail, e.actor, e.program, kindMeta(e.kind).label]
+  .some(v => v && String(v).toLowerCase().includes(q));
 
 const CATEGORY_LABEL = Object.fromEntries(STREAM_CATEGORIES.map(c => [c.value, c.label]));
 const CATEGORY_VALUE = Object.fromEntries(STREAM_CATEGORIES.map(c => [c.label, c.value]));
@@ -85,6 +126,10 @@ export function TimelineTab() {
   const [categories, setCategories] = useState([]);
   const [kinds, setKinds] = useState([]);
   const [programs, setPrograms] = useState([]);
+  const [view, setView] = useState('all');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Options come from what this patient's stream actually has.
   const kindOptions = useMemo(() => [...new Set(events.map(e => kindMeta(e.kind).label))].sort(), [events]);
@@ -95,34 +140,95 @@ export function TimelineTab() {
     return m;
   }, [events]);
 
-  const shown = useMemo(() => filterStream(events, {
-    categories: categories.map(l => CATEGORY_VALUE[l]),
-    kinds: kinds.flatMap(l => labelToKinds.get(l) || []),
-    programs,
-  }), [events, categories, kinds, programs, labelToKinds]);
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filteredEvents = filterStream(inView(events, view), {
+      categories: categories.map(l => CATEGORY_VALUE[l]),
+      kinds: kinds.flatMap(l => labelToKinds.get(l) || []),
+      programs,
+    });
+    return q ? filteredEvents.filter(e => matches(e, q)) : filteredEvents;
+  }, [events, view, query, categories, kinds, programs, labelToKinds]);
   const entries = useMemo(() => toEntries(shown), [shown]);
-  const filtered = categories.length || kinds.length || programs.length;
+  const filterCount = categories.length + kinds.length + programs.length;
+  const filtered = filterCount || view !== 'all' || query.trim();
+
+  const closeSearch = () => { setSearchOpen(false); setQuery(''); };
 
   return (
     <div className={styles.wrapper}>
       <div className={styles.inner}>
-      <div className={styles.toolbar}>
-        <span className={styles.title}>Timeline</span>
-        <div className={styles.filters}>
-          <FilterChip size="S" label="Category" options={STREAM_CATEGORIES.map(c => CATEGORY_LABEL[c.value])} selected={categories} onChange={setCategories} />
-          <FilterChip size="S" label="Type" options={kindOptions} selected={kinds} onChange={setKinds} searchable />
-          {programOptions.length > 0 && (
-            <FilterChip size="S" label="Program" options={programOptions} selected={programs} onChange={setPrograms} />
-          )}
+      {/* Searching swaps the whole row for the search field (Figma 106:54694). */}
+      {searchOpen ? (
+        <div className={`${styles.toolbar} ${styles.searchRow}`}>
+          <Input
+            autoFocus
+            leadingIcon="solar:magnifer-linear"
+            placeholder="Search Timeline"
+            aria-label="Search timeline"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') closeSearch(); }}
+            trailingAction="solar:close-linear"
+            trailingActionLabel="Close search"
+            onTrailingAction={closeSearch}
+            wrapperClassName={styles.searchField}
+          />
         </div>
+      ) : (
+      <div className={styles.toolbar}>
+        <SubTabs
+          className={styles.views}
+          tabs={VIEW_TABS}
+          activeKey={view}
+          onChange={setView}
+          leading={(
+            <>
+              <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" aria-label="Search timeline" onClick={() => setSearchOpen(true)} />
+              <span className={styles.divider} aria-hidden="true" />
+            </>
+          )}
+        />
+        <span className={styles.divider} aria-hidden="true" />
+        <ActionButton
+          icon="custom:filter"
+          size="L"
+          tooltip="Filters"
+          tooltipLeft
+          aria-label="Filters"
+          active={filtersOpen}
+          count={filterCount ? String(filterCount) : undefined}
+          onClick={() => setFiltersOpen(o => !o)}
+        />
       </div>
+      )}
+      {filtersOpen && (
+        <FilterBar
+          variant="inline"
+          multiSelect
+          leading={null}
+          filterDefs={programOptions.length ? FILTER_DEFS : FILTER_DEFS.filter(d => d.key !== 'programs')}
+          filters={{ categories, kinds, programs }}
+          onFilterChange={(key, vals) => ({ categories: setCategories, kinds: setKinds, programs: setPrograms })[key](vals)}
+          onClearAll={() => { setCategories([]); setKinds([]); setPrograms([]); }}
+          getOptions={def => ({
+            categories: STREAM_CATEGORIES.map(c => CATEGORY_LABEL[c.value]),
+            kinds: kindOptions,
+            programs: programOptions,
+          })[def.key]}
+          showMoreFilters={false}
+          showSaveFilter={false}
+        />
+      )}
       {loading
         ? <TimelineSkeleton rows={6} />
         : (
-          <ActivityLog
-            entries={entries}
-            emptyLabel={filtered ? 'Nothing matches these filters.' : 'Nothing recorded for this patient yet.'}
-          />
+          <div className={styles.log}>
+            <ActivityLog
+              entries={entries}
+              emptyLabel={filtered ? 'Nothing matches these filters.' : 'Nothing recorded for this patient yet.'}
+            />
+          </div>
         )}
       </div>
     </div>

@@ -19,10 +19,32 @@ const step = (v, dir) => {
   return String(Math.max(0, Math.round((n + dir * inc) * 10) / 10));
 };
 
+const num = (v) => (v === '' || v == null ? null : Number(v));
+
+/**
+ * BMI from height and weight (703 × lbs ÷ in²), one decimal. Uses what was
+ * entered here, falling back to the last recorded reading for the other one,
+ * and only once height or weight was entered now, so an old BMI isn't saved
+ * again. '' when it can't be worked out.
+ */
+function calcBmi(values, history) {
+  const [ft, inch] = values.ht || ['', ''];
+  const [lbs] = values.wt || [''];
+  if (num(ft) == null && num(inch) == null && num(lbs) == null) return '';
+  const lastHt = history.ht?.[0];
+  const inches = num(ft) != null || num(inch) != null
+    ? (num(ft) || 0) * 12 + (num(inch) || 0)
+    : lastHt ? Number(lastHt.value) * 12 + Number(lastHt.value2 || 0) : null;
+  const weight = num(lbs) ?? (history.wt?.[0] ? Number(history.wt[0].value) : null);
+  if (!inches || !weight) return '';
+  return String(Math.round((703 * weight / (inches * inches)) * 10) / 10);
+}
+
 /**
  * Record New Vitals (Figma 67:131374): one card per vital with its last
  * reading on top. Only vitals with a value are saved; a two-part vital
- * (Blood Pressure, Height) needs its first number.
+ * (Blood Pressure, Height) needs its first number. BMI isn't typed: it
+ * follows height and weight (calcBmi).
  *
  * history – { [vital_key]: readings newest first } from vitalsHistory()
  */
@@ -39,14 +61,17 @@ export function RecordVitalsDrawer({ patientId, history = {}, onClose }) {
     return { ...s, [key]: pair };
   });
 
+  const bmi = calcBmi(values, history);
+  const entered = useMemo(() => ({ ...values, bmi: [bmi, ''] }), [values, bmi]);
+
   const readings = useMemo(() => VITALS
-    .filter(v => (values[v.key]?.[0] ?? '') !== '')
+    .filter(v => (entered[v.key]?.[0] ?? '') !== '')
     .map(v => ({
       vital_key: v.key,
-      value: values[v.key][0],
-      value2: v.parts === 2 ? (values[v.key][1] || (v.key === 'ht' ? '0' : null)) : null,
+      value: entered[v.key][0],
+      value2: v.parts === 2 ? (entered[v.key][1] || (v.key === 'ht' ? '0' : null)) : null,
       recorded_on: on,
-    })), [values, on]);
+    })), [entered, on]);
 
   // A BP needs both numbers; Height can leave inches empty (counts as 0).
   const incompleteBp = readings.some(r => r.vital_key === 'bp' && !r.value2);
@@ -78,7 +103,8 @@ export function RecordVitalsDrawer({ patientId, history = {}, onClose }) {
 
         {VITALS.map(v => {
           const last = history[v.key]?.[0];
-          const pair = values[v.key] || ['', ''];
+          const pair = entered[v.key] || ['', ''];
+          const auto = v.key === 'bmi';
           return (
             <div key={v.key} className={styles.card}>
               {last && (
@@ -95,12 +121,13 @@ export function RecordVitalsDrawer({ patientId, history = {}, onClose }) {
                       type="number"
                       min={0}
                       step="any"
-                      placeholder="value"
+                      placeholder={auto ? 'Auto' : 'value'}
                       aria-label={v.parts === 2 ? `${v.name} ${v.units[i] || (i ? 'second' : 'first')}` : v.name}
                       value={pair[i]}
+                      readOnly={auto}
                       onChange={(e) => set(v.key, i, e.target.value)}
-                      onStepUp={() => set(v.key, i, step(pair[i], 1))}
-                      onStepDown={() => set(v.key, i, step(pair[i], -1))}
+                      onStepUp={auto ? undefined : () => set(v.key, i, step(pair[i], 1))}
+                      onStepDown={auto ? undefined : () => set(v.key, i, step(pair[i], -1))}
                       wrapperClassName={styles.num}
                     />
                     {v.units[i] && <span className={styles.unit}>{v.units[i]}</span>}

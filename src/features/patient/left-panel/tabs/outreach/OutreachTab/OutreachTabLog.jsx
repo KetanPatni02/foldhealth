@@ -3,6 +3,7 @@ import { Icon } from '../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { SmsIcon } from '../../../../../../components/Icon/SmsIcon';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { Collapse } from '../../../../../../components/Collapse/Collapse';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { LOG_TYPE_ICON } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
@@ -110,6 +111,7 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
                 <DownChevronIcon
                   size={11}
                   color="var(--neutral-400)"
+                  className={styles.chevron}
                   style={expanded ? { transform: 'rotate(180deg)' } : undefined}
                 />
               </button>
@@ -122,74 +124,76 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
             )}
           </div>
 
-          {expanded && (hasNote || log.callDetails) && (
-            <div className={styles.logExpandedCard}>
-              {log.type === 'Call' && log.callDetails ? (
-                <>
-                  <div className={styles.logExpandedLabel}>Call Details:</div>
-                  <div className={styles.logExpandedCallMeta}>
-                    via: <strong>{log.callDetails.via}</strong>
-                    <span className={styles.logExpandedMetaDot}>·</span>
-                    To: <strong>{log.callDetails.to}</strong>
-                    <span className={styles.logExpandedMetaDot}>·</span>
-                    Duration: <strong>{log.callDetails.durationMin}mins</strong>
-                  </div>
+          {(hasNote || log.callDetails) && (
+            <Collapse open={expanded} className={styles.logExpandedCollapse}>
+              <div className={styles.logExpandedCard}>
+                {log.type === 'Call' && log.callDetails ? (
+                  <>
+                    <div className={styles.logExpandedLabel}>Call Details:</div>
+                    <div className={styles.logExpandedCallMeta}>
+                      via: <strong>{log.callDetails.via}</strong>
+                      <span className={styles.logExpandedMetaDot}>·</span>
+                      To: <strong>{log.callDetails.to}</strong>
+                      <span className={styles.logExpandedMetaDot}>·</span>
+                      Duration: <strong>{log.callDetails.durationMin}mins</strong>
+                    </div>
 
-                  {(hasNote || (Array.isArray(log.callDetails.transcript) && log.callDetails.transcript.length > 0)) && (
-                    <div className={styles.logExpandedNoteLabel}>Note :</div>
-                  )}
+                    {(hasNote || (Array.isArray(log.callDetails.transcript) && log.callDetails.transcript.length > 0)) && (
+                      <div className={styles.logExpandedNoteLabel}>Note :</div>
+                    )}
 
-                  {Array.isArray(log.callDetails.transcript) && log.callDetails.transcript.length > 0 && (
-                    <div className={styles.logTranscriptCard}>
-                      <div className={styles.logTranscriptCaption}>Call Transcript</div>
-                      {log.callDetails.transcript.slice(0, 2).map((t, i) => (
-                        <div key={i} className={styles.logTranscriptLine}>
-                          <div>{t.speaker} - {t.t}</div>
-                          <div>{t.text}</div>
-                        </div>
-                      ))}
-                      {log.callDetails.transcript.length > 2 && (
-                        <button type="button" className={styles.logTranscriptMore}>
-                          Show More
-                          <DownChevronIcon size={11} color="var(--primary-300)" />
+                    {Array.isArray(log.callDetails.transcript) && log.callDetails.transcript.length > 0 && (
+                      <div className={styles.logTranscriptCard}>
+                        <div className={styles.logTranscriptCaption}>Call Transcript</div>
+                        {log.callDetails.transcript.slice(0, 2).map((t, i) => (
+                          <div key={i} className={styles.logTranscriptLine}>
+                            <div>{t.speaker} - {t.t}</div>
+                            <div>{t.text}</div>
+                          </div>
+                        ))}
+                        {log.callDetails.transcript.length > 2 && (
+                          <button type="button" className={styles.logTranscriptMore}>
+                            Show More
+                            <DownChevronIcon size={11} color="var(--primary-300)" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {hasNote && (
+                      <p className={styles.logExpandedNote}>{log.note}</p>
+                    )}
+
+                    <div className={styles.logExpandedActions}>
+                      {log.callDetails.recordingUrl && (
+                        <button type="button" className={styles.logExpandedAction}>
+                          <Icon name="solar:play-circle-linear" size={13} color="var(--neutral-400)" />
+                          Call Recording
+                        </button>
+                      )}
+                      {log.callDetails.transcriptUrl && (
+                        <button type="button" className={styles.logExpandedAction}>
+                          <Icon name="solar:document-text-linear" size={13} color="var(--neutral-400)" />
+                          Transcript
                         </button>
                       )}
                     </div>
-                  )}
-
-                  {hasNote && (
-                    <p className={styles.logExpandedNote}>{log.note}</p>
-                  )}
-
-                  <div className={styles.logExpandedActions}>
-                    {log.callDetails.recordingUrl && (
-                      <button type="button" className={styles.logExpandedAction}>
-                        <Icon name="solar:play-circle-linear" size={13} color="var(--neutral-400)" />
-                        Call Recording
-                      </button>
+                  </>
+                ) : (
+                  <>
+                    <div className={styles.logExpandedCallMeta}>
+                      Duration: <strong>5mins</strong>
+                    </div>
+                    {hasNote && (
+                      <>
+                        <div className={styles.logExpandedNoteLabel}>Note :</div>
+                        <p className={styles.logExpandedNote}>{log.note}</p>
+                      </>
                     )}
-                    {log.callDetails.transcriptUrl && (
-                      <button type="button" className={styles.logExpandedAction}>
-                        <Icon name="solar:document-text-linear" size={13} color="var(--neutral-400)" />
-                        Transcript
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={styles.logExpandedCallMeta}>
-                    Duration: <strong>5mins</strong>
-                  </div>
-                  {hasNote && (
-                    <>
-                      <div className={styles.logExpandedNoteLabel}>Note :</div>
-                      <p className={styles.logExpandedNote}>{log.note}</p>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
+                  </>
+                )}
+              </div>
+            </Collapse>
           )}
         </div>
       </div>
@@ -210,10 +214,11 @@ export function LogGroup({ label, logs, onEdit, onDelete }) {
         <DownChevronIcon
           size={13}
           color="var(--neutral-400)"
+          className={styles.chevron}
           style={collapsed ? { transform: 'rotate(-90deg)' } : undefined}
         />
       </button>
-      {!collapsed && (
+      <Collapse open={!collapsed}>
         <div className={styles.logGroupEntries}>
           {logs.map((log, i) => (
             <LogEntry
@@ -225,7 +230,7 @@ export function LogGroup({ label, logs, onEdit, onDelete }) {
             />
           ))}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

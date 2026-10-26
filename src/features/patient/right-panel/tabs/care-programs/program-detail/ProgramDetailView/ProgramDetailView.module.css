@@ -131,7 +131,9 @@
   padding: 0;
   cursor: pointer;
 }
+.expandIcon { transition: transform var(--duration-medium) var(--ease-out); }
 .expandIconRotated { transform: rotate(180deg); }
+.expandCollapse { flex-shrink: 0; }
 
 /* ── Expanded program details panel ── */
 .expandPanel {
@@ -292,6 +294,7 @@
   cursor: pointer;
 }
 .sectionHeader:hover { background: var(--neutral-50); }
+.chevron { transition: transform var(--duration-medium) var(--ease-out); }
 .sectionName {
   font-size: var(--font-base);
   color: var(--neutral-400);

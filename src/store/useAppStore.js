@@ -91,6 +91,7 @@ import { resolvePatientForCall } from '../lib/patientCall';
 import { reportPersistFailure } from './lib/reportPersistFailure';
 import { createResyncGate, isRealUserId } from './lib/resyncGate';
 import { BUILT_IN_ROLES } from '../lib/accessControl';
+import { sampleAssessmentSeed, pickAssessmentForms } from '../features/patient/right-panel/tabs/assessments/assessmentSeed';
 import { isPastDate, parseDuration, formatDuration } from './lib/taskDateUtils';
 import {
   campaignSendRowToJs,
@@ -102,6 +103,8 @@ import {
   formRowToJs,
   clinicalNoteRowToJs,
   clinicalNoteVersionRowToJs,
+  patientFormResponseRowToJs,
+  assessmentSendRowToJs,
 } from './lib/contentStoreMappers';
 import {
   mapCarePlanGoalRow,
@@ -224,7 +227,9 @@ import { buildSeedHccActivityFeed } from '../features/hcc/seed/buildSeedHccActiv
 import { createShellSlice } from './slices/shellSlice';
 import { createAutomationsSlice } from './slices/automationsSlice';
 import { rowToCrm, sampleCrmActivities } from '../features/patient/data/crmActivity';
+import { rowToReferral, sampleReferralsFor } from '../features/patient/data/patientReferrals';
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
+import { createPatientOrdersSlice } from './slices/patientOrdersSlice';
 
 // patientId → in-flight fetchPatientConsents request.
 const consentFetches = new Map();
@@ -350,6 +355,7 @@ export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
   ...createAutomationsSlice(set, get),
   ...createHccWorklistFiltersSlice(set, get),
+  ...createPatientOrdersSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
   // keyed by member id. Falls back to the bundled MONITORING_SEED until
@@ -564,6 +570,27 @@ export const useAppStore = create((set, get) => ({
     track('patient.vitals_recorded', { count: rows.length });
     set(s => ({ patientVitals: { ...s.patientVitals, [patientId]: [...data, ...(s.patientVitals[patientId] || [])] } }));
     return { data };
+  },
+  // Rows pinned to the top of the Vitals/Labs tables: { [patientId]: row ids }.
+  // Absent until loaded, and null when the patient has none saved yet (the
+  // tab then uses its default pins).
+  patientVitalPins: {},
+  fetchPatientVitalPins: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_vital_pins').select('pinned').eq('patient_id', String(patientId)).maybeSingle();
+    if (error) return;
+    set(s => ({ patientVitalPins: { ...s.patientVitalPins, [patientId]: data?.pinned ?? null } }));
+  },
+  setPatientVitalPins: async (patientId, pinned) => {
+    const before = get().patientVitalPins[patientId];
+    set(s => ({ patientVitalPins: { ...s.patientVitalPins, [patientId]: pinned } }));
+    const { error } = await supabase.from('patient_vital_pins')
+      .upsert({ patient_id: String(patientId), pinned, updated_at: new Date().toISOString() }, { onConflict: 'patient_id' });
+    // Until patient_vital_pins is migrated, pins hold for the session only.
+    if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
+      set(s => ({ patientVitalPins: { ...s.patientVitalPins, [patientId]: before } }));
+      get().showToast?.('Could not update pinned rows');
+    }
   },
   fetchStickyNotes: async (patientId) => {
     const { data } = await supabase.from('sticky_notes').select('*').eq('patient_id', patientId).order('created_at', { ascending: true });
@@ -1091,6 +1118,54 @@ export const useAppStore = create((set, get) => ({
     set(s => ({
       patientCrmActivities: { ...s.patientCrmActivities, [patientId]: list },
       patientCrmActivitiesLoadedFor: { ...s.patientCrmActivitiesLoadedFor, [patientId]: true },
+    }));
+  },
+
+  // Orders & Referrals tab: the patient's referrals, newest first. Sample
+  // rows stand in only while patient_referrals is missing.
+  // Documents tab folders added with Add Category (document_categories),
+  // shared across patients. Until the table exists they last the session.
+  documentCategories: [],
+  documentCategoriesLoaded: false,
+  fetchDocumentCategories: async () => {
+    if (get().documentCategoriesLoaded) return;
+    set({ documentCategoriesLoaded: true });
+    const { data, error } = await supabase.from('document_categories').select('key, name').order('created_at');
+    if (error) return;
+    set(s => ({ documentCategories: [...(data || []), ...s.documentCategories.filter(c => !(data || []).some(d => d.key === c.key))] }));
+  },
+  addDocumentCategory: async (name) => {
+    const label = String(name || '').trim();
+    if (!label) return null;
+    const existing = get().documentCategories.find(c => c.name.toLowerCase() === label.toLowerCase());
+    if (existing) return existing.key;
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'folder';
+    const key = `custom_${slug}_${Math.random().toString(36).slice(2, 6)}`;
+    set(s => ({ documentCategories: [...s.documentCategories, { key, name: label }] }));
+    const { error } = await supabase.from('document_categories').insert({ key, name: label, created_by: get().currentActorName?.() || null });
+    if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
+      set(s => ({ documentCategories: s.documentCategories.filter(c => c.key !== key) }));
+      get().showToast?.('Could not add the category');
+      return null;
+    }
+    return key;
+  },
+  patientReferrals: {},           // { [patientId]: referral[] }
+  patientReferralsLoadedFor: {},  // { [patientId]: true }: gates the skeleton
+  fetchPatientReferrals: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_referrals')
+      .select('*').eq('patient_id', String(patientId)).order('created_at', { ascending: false });
+    const missing = error && (error.code === '42P01' || error.code === 'PGRST205');
+    if (error && !missing) console.warn('fetchPatientReferrals:', error.message);
+    set(s => ({
+      patientReferrals: {
+        ...s.patientReferrals,
+        [patientId]: missing
+          ? [...(s.patientReferrals[patientId] || []).filter(r => r.local), ...sampleReferralsFor(patientId)]
+          : (data || []).map(rowToReferral),
+      },
+      patientReferralsLoadedFor: { ...s.patientReferralsLoadedFor, [patientId]: true },
     }));
   },
 
@@ -2030,7 +2105,7 @@ export const useAppStore = create((set, get) => ({
       supabase.from('call_sessions').select('id, name, status, dir, created_at').eq('patient_id', id).limit(200),
       supabase.from('clinical_notes').select('id, form_type, status, author_name, signed_by_name, signed_at, created_at').eq('patient_id', id).limit(200),
       supabase.from('appointments')
-        .select('id, appointment_type_name, mode, location, primary_user, date, time_start, status, reason_for_visit')
+        .select('id, appointment_type_name, mode, location, primary_user, secondary_users, date, time_start, status, reason_for_visit')
         .eq('patient_id', id).limit(200),
       supabase.from('form_responses').select('id, form_id, status, completed_at, created_at').eq('patient_id', id).eq('status', 'completed').limit(200),
     ]);
@@ -2050,6 +2125,78 @@ export const useAppStore = create((set, get) => ({
         },
       },
     }));
+  },
+
+  // ── P360 Assessments tab ──
+  // Per patient: the Forms library forms they were sent or filled, their
+  // form_responses, and the sends (patient_assessment_sends_migration.sql).
+  // A missing sends table or form_responses.patient_id column reads as none.
+  patientAssessments: {},
+  patientAssessmentsLoading: {},
+  fetchPatientAssessments: async (patientId, { force = false } = {}) => {
+    if (!patientId) return;
+    const id = String(resolvePatientStoreId(get(), patientId));
+    if (!force && (get().patientAssessments[id] || get().patientAssessmentsLoading[id])) return;
+    set(s => ({ patientAssessmentsLoading: { ...s.patientAssessmentsLoading, [id]: true } }));
+    const MISSING = new Set(['42P01', 'PGRST205', '42703']);
+    const rowsOf = (res, label) => {
+      if (res.error && !MISSING.has(res.error.code)) console.warn(`fetchPatientAssessments ${label}:`, res.error.message);
+      return res.error ? [] : (res.data || []);
+    };
+    const responsesQuery = (select) => supabase.from('form_responses').select(select)
+      .eq('patient_id', id).order('created_at', { ascending: false }).limit(300);
+    const [firstResponsesRes, sendsRes] = await Promise.all([
+      responsesQuery('*, created_by_profile:profiles!created_by(id, full_name)'),
+      supabase.from('patient_assessment_sends').select('*').eq('patient_id', id)
+        .order('sent_at', { ascending: false }).limit(300),
+    ]);
+    const responsesRes = firstResponsesRes.error?.code === 'PGRST200' ? await responsesQuery('*') : firstResponsesRes;
+    let responses = rowsOf(responsesRes, 'form_responses').map(patientFormResponseRowToJs);
+    let sends = rowsOf(sendsRes, 'patient_assessment_sends').map(assessmentSendRowToJs);
+    const FORM_COLUMNS = 'id, name, description, category, form_type, status, schema, scoring, settings';
+    // Until patient_assessment_sends is migrated (and seeded), the tab shows
+    // the seed's own sample sends and responses on real assessment forms, so
+    // the screen isn't empty. Once the table exists, only real rows show.
+    if (MISSING.has(sendsRes.error?.code) && !responses.length) {
+      const candidates = rowsOf(await supabase.from('forms').select(FORM_COLUMNS).limit(300), 'forms');
+      const sample = sampleAssessmentSeed(id, pickAssessmentForms(candidates));
+      sends = sample.sends.map(assessmentSendRowToJs);
+      responses = sample.responses
+        .map((r, i) => ({ ...r, id: `sample-${id}-${i + 1}`, created_at: r.completed_at || sample.sends[i]?.sent_at }))
+        .map(patientFormResponseRowToJs);
+    }
+    const formIds = [...new Set([...responses, ...sends].map(r => r.formId).filter(Boolean))];
+    const forms = formIds.length
+      ? rowsOf(await supabase.from('forms')
+        .select(FORM_COLUMNS)
+        .in('id', formIds), 'forms').map(formRowToJs)
+      : [];
+    set(s => ({
+      patientAssessments: { ...s.patientAssessments, [id]: { forms, responses, sends } },
+      patientAssessmentsLoading: { ...s.patientAssessmentsLoading, [id]: false },
+    }));
+  },
+
+  // One send record per form (Send Assessment drawer). Best effort: the
+  // message itself already went out, so a missing table only logs.
+  recordAssessmentSends: async ({ patientId, formIds, sentByName, channels = [], programCodes = [] }) => {
+    if (!patientId || !formIds?.length) return;
+    const id = String(resolvePatientStoreId(get(), patientId));
+    const sentById = await get()._resolveUpdatedBy();
+    const rows = formIds.map(formId => ({
+      patient_id: id,
+      form_id: formId,
+      sent_by_id: sentById,
+      sent_by_name: sentByName || null,
+      channels,
+      program_codes: programCodes,
+    }));
+    const { error } = await supabase.from('patient_assessment_sends').insert(rows);
+    if (error) {
+      console.warn('recordAssessmentSends:', error.message);
+      return;
+    }
+    if (get().patientAssessments[id]) get().fetchPatientAssessments(id, { force: true });
   },
 
   fetchPatientProgramActivity: async (patientId, { force = false } = {}) => {
@@ -5333,6 +5480,7 @@ export const useAppStore = create((set, get) => ({
         fileUrl:     r.file_url,
         storagePath: r.storage_path,
         ext:         r.ext,
+        category:    r.category,
       }));
       set({ programDocuments: rows, programDocumentsDidFetch: true });
     } catch (e) {
@@ -6420,8 +6568,9 @@ export const useAppStore = create((set, get) => ({
   // Worklist row menu → Comms drawers (Send SMS / Send Email / Send
   // Education / Send Assessment). `row` is the worklist row; it's matched to
   // its all_patients record so the drawers have the email and phone. Returns
-  // false for actions it doesn't handle.
-  runPatientRowAction: (key, row) => {
+  // false for actions it doesn't handle. `drawerProps` go to the Send
+  // Education / Send Assessment drawer (e.g. initialFormIds for a resend).
+  runPatientRowAction: (key, row, drawerProps = {}) => {
     const types = { 'Send SMS': 'sms', 'Send Email': 'email', 'Send Education': 'content', 'Send Assessment': 'assessment' };
     const type = types[key];
     if (!type || !row) return false;
@@ -6435,7 +6584,7 @@ export const useAppStore = create((set, get) => ({
         || { id, name: row.name, email: row.email || '', phone: row.phone || '' };
       if (type === 'sms') get().openCommsDrawer('sms', { initialPatient: patient });
       else if (type === 'email') get().openCommsDrawer('email', { initial: { patient, to: patient.email ? [patient.email] : [] } });
-      else get().openCommsDrawer(type, { patient });
+      else get().openCommsDrawer(type, { patient, ...drawerProps });
     })();
     return true;
   },

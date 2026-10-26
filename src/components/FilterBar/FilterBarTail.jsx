@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
+import { Icon } from '../Icon/Icon';
 import { MenuPopover } from '../MenuPopover/MenuPopover';
 import styles from './FilterBar.module.css';
 
@@ -15,6 +16,7 @@ export function FilterBarTail({
   onSaveFilter,
   onOpenSaveDialog,
   clearAllLabel = 'Clear All',
+  clearAllIcon = false,
   saveLabel = 'Save Filter',
   saveMenuItems,
   onSaveMenuSelect,
@@ -46,6 +48,7 @@ export function FilterBarTail({
         <>
           {hasAction('moreFilters') && <span className={styles.vDivider} />}
           <button className={styles.clearAll} onClick={onClearAll}>
+            {clearAllIcon && <Icon name="solar:close-circle-linear" size={16} color="currentColor" />}
             {clearAllLabel}
           </button>
           {(hasAction('saveFilter') || hasAction('saveFilterDialog')) && (

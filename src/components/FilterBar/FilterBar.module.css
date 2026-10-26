@@ -9,6 +9,17 @@
   animation: filterSlide .15s ease;
 }
 
+/* Inline variant: inside a section, under its own header (Figma 6063:261110). */
+.inline {
+  background: none;
+  border-bottom: none;
+  padding: 0 calc(var(--space-3) / 2);
+}
+.inline .filterRow,
+.inline .tail { gap: calc(var(--space-3) / 2); }
+.inline .clearAll { color: var(--primary-300); }
+.inline .clearAll:hover { color: var(--primary-400); }
+
 .filterRow {
   display: flex;
   align-items: center;
@@ -192,6 +203,9 @@
 }
 
 .clearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--font-md);
   color: var(--neutral-300);
   cursor: pointer;

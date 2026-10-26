@@ -3,6 +3,7 @@ import { Icon } from '../../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPopover';
+import { Collapse } from '../../../../../../../components/Collapse/Collapse';
 import { CloseButton } from '../../../../../../../components/CloseButton/CloseButton';
 import { BannerExpandIcon } from '../../../../../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../../../../../hcc/DiagPanel/ReviewProgressPopover';
@@ -77,7 +78,7 @@ export function ProgramDetailViewHeader({
           <button type="button" className={styles.expandBtn}
             aria-label={detailsExpanded ? 'Collapse details' : 'Expand details'}
             aria-expanded={detailsExpanded} onClick={() => setDetailsExpanded(e => !e)}>
-            <BannerExpandIcon size={16} className={detailsExpanded ? styles.expandIconRotated : ''} />
+            <BannerExpandIcon size={16} className={`${styles.expandIcon} ${detailsExpanded ? styles.expandIconRotated : ''}`} />
           </button>
         </div>
         <div className={styles.headerRight}>
@@ -145,7 +146,9 @@ export function ProgramDetailViewHeader({
         </div>
       )}
 
-      {detailsExpanded && <ProgramDetailExpandPanel program={program} />}
+      <Collapse open={detailsExpanded} className={styles.expandCollapse}>
+        <ProgramDetailExpandPanel program={program} />
+      </Collapse>
     </>
   );
 }

@@ -5,6 +5,7 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
 import { Toggle } from '../../../../../../components/Toggle/Toggle';
+import { Collapse } from '../../../../../../components/Collapse/Collapse';
 import { PatientAppActiveIndicator } from '../../../../../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
 import { resolvePatientDisplay } from '../../../../../../lib/patientDisplay';
 import { usePatientConsent } from '../../../../hooks/usePatientConsent';
@@ -39,14 +40,16 @@ function Section({ title, actionIcon = 'solar:pen-linear', onEdit, children }) {
               (right) states without two separate icon glyphs. */}
           <DownChevronIcon
             size={12}
-            className={collapsed ? styles.chevronCollapsed : undefined}
+            className={[styles.chevron, collapsed ? styles.chevronCollapsed : ''].filter(Boolean).join(' ')}
           />
         </button>
         {onEdit && (
           <ActionButton icon={actionIcon} size="S" tooltip={`Edit ${title.toLowerCase()}`} onClick={onEdit} />
         )}
       </div>
-      {!collapsed && <div className={styles.grid}>{children}</div>}
+      <Collapse open={!collapsed}>
+        <div className={styles.grid}>{children}</div>
+      </Collapse>
     </div>
   );
 }

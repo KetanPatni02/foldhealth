@@ -7,6 +7,7 @@ import { ActionButton } from '../../../../../../../../components/ActionButton/Ac
 import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import { RadioButton } from '../../../../../../../../components/RadioButton/RadioButton';
 import { RingEmptyState } from '../../../../../../../../components/RingEmptyState/RingEmptyState';
+import { Collapse } from '../../../../../../../../components/Collapse/Collapse';
 import { preVisitForProgram } from '../../../../../../data/programActivityMock';
 import { SnapshotForm } from '../SnapshotForm/SnapshotForm';
 import styles from './PreVisitStep.module.css';
@@ -21,13 +22,16 @@ function Section({ title, right, children }) {
           <DownChevronIcon
             size={16}
             color="var(--neutral-300)"
+            className={styles.chevron}
             style={!open ? { transform: 'rotate(-90deg)' } : undefined}
           />
           <span className={styles.sectionTitle}>{title}</span>
         </button>
         {right}
       </div>
-      {open && children}
+      <Collapse open={open}>
+        <div className={styles.sectionBody}>{children}</div>
+      </Collapse>
     </div>
   );
 }

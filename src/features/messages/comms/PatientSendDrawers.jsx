@@ -433,12 +433,12 @@ export function SendContentDrawer({ patient, onClose }) {
 }
 
 // ── Send Assessment ──────────────────────────────────────────────────────
-export function SendAssessmentDrawer({ patient, onClose }) {
+export function SendAssessmentDrawer({ patient, initialFormIds, onClose }) {
   const memberPick = useMember(patient);
   const { recipient, me } = useRecipient(memberPick.member || patient);
   const templates = useEmailTemplates(recipient, me);
   const [forms, setForms] = useState([]);
-  const [formIds, setFormIds] = useState([]);
+  const [formIds, setFormIds] = useState(() => (initialFormIds || []).map(String));
   const [templateId, setTemplateId] = useState(DEFAULT_TEMPLATE);
   const [busy, setBusy] = useState(false);
   const [verifyId, setVerifyId] = useState(DEFAULT_ID_VERIFICATION);
@@ -483,7 +483,18 @@ export function SendAssessmentDrawer({ patient, onClose }) {
         meta: { kind: 'assessment', formIds: picked.map(f => f.id) },
         verifyId: activeVerify,
       });
-      if (ok) onClose();
+      if (ok) {
+        useAppStore.getState().recordAssessmentSends({
+          patientId: recipient.id,
+          formIds: picked.map(f => f.id),
+          sentByName: me?.name,
+          channels: [...new Set(sendTo.targets.flatMap((t) => {
+            const ch = channelsFor('emailOrSms', t);
+            return ch.email ? ['email'] : ch.sms ? ['sms'] : [];
+          }))],
+        });
+        onClose();
+      }
     } catch {
       toast.error('Could not send the forms.');
     } finally {

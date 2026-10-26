@@ -48,7 +48,8 @@
   align-items: center;
   gap: var(--space-1);
 }
-.num { width: 5rem; }
+/* Wide enough for "value" or a reading like 120.5 beside the stepper. */
+.num { width: 6rem; }
 .unit {
   font-size: var(--font-base);
   line-height: 1.2;

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
+import { Collapse } from '../../../../../../../components/Collapse/Collapse';
 import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
 import { DateRangePopover } from '../../../../../../../components/DateRangePopover/DateRangePopover';
 import { getOpenIcdsForMember } from '../../../../../../hcc/data/icds';
@@ -101,19 +102,21 @@ function DiagnosisGapRow({ item }) {
           <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
         </div>
       </div>
-      {expanded && item.icds.length > 0 && (
-        <div className={styles.icdList} role="table" aria-label={`ICDs linked to ${item.raw}`}>
-          <div className={styles.icdHeaderRow} role="row">
-            <span className={styles.icdHeaderCell} role="columnheader">ICD Code</span>
-            <span className={styles.icdHeaderCell} role="columnheader">Description</span>
-          </div>
-          {item.icds.map(icd => (
-            <div key={icd.code} className={styles.icdRow} role="row">
-              <span className={styles.icdCode} role="cell">{icd.code}</span>
-              <span className={styles.icdDesc} role="cell" title={icd.desc}>{icd.desc}</span>
+      {item.icds.length > 0 && (
+        <Collapse open={expanded}>
+          <div className={styles.icdList} role="table" aria-label={`ICDs linked to ${item.raw}`}>
+            <div className={styles.icdHeaderRow} role="row">
+              <span className={styles.icdHeaderCell} role="columnheader">ICD Code</span>
+              <span className={styles.icdHeaderCell} role="columnheader">Description</span>
             </div>
-          ))}
-        </div>
+            {item.icds.map(icd => (
+              <div key={icd.code} className={styles.icdRow} role="row">
+                <span className={styles.icdCode} role="cell">{icd.code}</span>
+                <span className={styles.icdDesc} role="cell" title={icd.desc}>{icd.desc}</span>
+              </div>
+            ))}
+          </div>
+        </Collapse>
       )}
     </div>
   );

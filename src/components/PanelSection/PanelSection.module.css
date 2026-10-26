@@ -58,6 +58,10 @@ button.titleBtn {
   cursor: pointer;
 }
 
+.chevron {
+  transition: transform var(--duration-medium) var(--ease-out);
+}
+
 .title {
   font-size: var(--font-base);
   font-weight: 500;
