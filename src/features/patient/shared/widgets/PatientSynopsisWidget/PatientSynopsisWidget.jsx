@@ -84,18 +84,20 @@ export function PatientSynopsisWidget() {
         </>
       )}
     >
-      <div className={[styles.text, expanded ? styles.expanded : ''].join(' ')}>
-        <SynopsisContent />
+      <div className={styles.container}>
+        <div className={[styles.text, expanded ? styles.expanded : ''].join(' ')}>
+          <SynopsisContent />
+        </div>
+        <Button
+          variant="ghost"
+          size="S"
+          trailingIcon={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+          className={styles.seeMore}
+          onClick={() => setExpanded(v => !v)}
+        >
+          {expanded ? 'See Less' : 'See More'}
+        </Button>
       </div>
-      <Button
-        variant="ghost"
-        size="S"
-        trailingIcon={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-        className={styles.seeMore}
-        onClick={() => setExpanded(v => !v)}
-      >
-        {expanded ? 'See Less' : 'See More'}
-      </Button>
       <UnityFooter
         visibility="internal"
         generatedOn="11/09/2025, 2:30 PM"

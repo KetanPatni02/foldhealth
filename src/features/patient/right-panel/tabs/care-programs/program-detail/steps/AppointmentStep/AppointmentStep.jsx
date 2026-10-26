@@ -7,6 +7,7 @@ import { ActionButton } from '../../../../../../../../components/ActionButton/Ac
 import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ScheduleDrawer } from '../../../../../../../../components/ScheduleDrawer/ScheduleDrawer';
 import { toast } from '../../../../../../../../components/Toast/sonnerToast';
+import { Collapse } from '../../../../../../../../components/Collapse/Collapse';
 import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import styles from './AppointmentStep.module.css';
@@ -131,18 +132,20 @@ export function AppointmentStep({ patientId, programCode, stepName = 'Appointmen
       <div className={styles.section}>
         <div className={styles.sectionHead}>
           <button type="button" className={styles.collapseToggle} onClick={() => setUpcomingOpen(o => !o)} aria-expanded={upcomingOpen}>
-            <DownChevronIcon size={16} color="var(--neutral-300)" style={upcomingOpen ? undefined : { transform: 'rotate(-90deg)' }} />
+            <DownChevronIcon size={16} color="var(--neutral-300)" className={styles.chevron} style={upcomingOpen ? undefined : { transform: 'rotate(-90deg)' }} />
             <span className={styles.sectionTitle}>Upcoming Appointments &amp; Reminders</span>
           </button>
           {upcomingOpen && (
             <ActionButton size="S" tooltip="Add" onClick={() => setScheduleOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           )}
         </div>
-        {upcomingOpen && (
-          all.length > 0
-            ? <ApptTable rows={all} />
-            : <div className={styles.sectionEmpty}>No upcoming appointments or reminders.</div>
-        )}
+        <Collapse open={upcomingOpen} className={styles.sectionCollapse}>
+          <div className={styles.sectionBody}>
+            {all.length > 0
+              ? <ApptTable rows={all} />
+              : <div className={styles.sectionEmpty}>No upcoming appointments or reminders.</div>}
+          </div>
+        </Collapse>
       </div>
 
       {scheduleOpen && (

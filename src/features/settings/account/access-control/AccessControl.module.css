@@ -56,17 +56,20 @@
 }
 
 /* ── Dialogs ── */
-.copyDialog { max-width: 480px; }
-.copyHeader { align-items: center; text-align: center; }
+/* Copy Permissions follows ReasonDialog: the shell's padding is cleared and
+   .copyBody owns the spacing. */
+.copyDialog { max-width: 460px; padding: 0; }
+.copyBody { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); }
+.copyTitle { margin: 0; font-size: var(--font-lg); font-weight: 600; color: var(--neutral-500); }
+.copyDesc { margin: calc(var(--space-2) * -1) 0 0; font-size: var(--font-md); color: var(--neutral-300); line-height: var(--leading-normal); }
 .strong { font-weight: 500; color: var(--neutral-500); }
+.copyField { display: flex; flex-direction: column; gap: var(--space-2); }
 .copyList {
-  max-height: 260px; overflow-y: auto; display: flex; flex-direction: column;
-  border: 0.5px solid var(--neutral-150); border-radius: 8px; padding: var(--space-2) var(--space-4);
+  height: 240px; overflow-y: auto; display: flex; flex-direction: column;
 }
 .copyRow { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; font-size: var(--font-base); color: var(--neutral-400); cursor: pointer; }
-.copyFooter { display: flex; flex-direction: row; gap: var(--space-2); }
-.footerBtn { flex: 1; min-width: 0; display: flex; }
-.footerBtn > * { flex: 1; }
+.copyEmpty { margin: auto; font-size: var(--font-base); color: var(--neutral-300); }
+.copyFooter { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-top: var(--space-1); }
 
 .usersDialog { max-width: 640px; display: flex; flex-direction: column; gap: var(--space-3); }
 .usersTable { display: flex; flex-direction: column; border: 0.5px solid var(--neutral-150); border-radius: 8px; overflow: hidden; }

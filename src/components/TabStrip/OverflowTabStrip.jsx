@@ -133,6 +133,7 @@ export function OverflowTabStrip({ items, activeKey, onChange, itemAction, moreA
         onChange={onChange}
         embedded
         fullWidth={false}
+        className={styles.strip}
       />
 
       {(overflow.length > 0 || alwaysMore) && (

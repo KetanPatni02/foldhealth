@@ -137,8 +137,8 @@ export const Button = forwardRef(function Button(
   // off a wrapper (the button lets hovers through to it).
   if (disabled && disabledReason) {
     return (
-      <Tooltip label={disabledReason} placement="bottom" align="right" maxWidth={260}>
-        <span className={styles.disabledWrap}>{button}</span>
+      <Tooltip label={disabledReason} placement="bottom" align="right" maxWidth={260} className={fullWidth ? styles.fullWidth : undefined}>
+        <span className={[styles.disabledWrap, fullWidth ? styles.fullWidth : ''].filter(Boolean).join(' ')}>{button}</span>
       </Tooltip>
     );
   }

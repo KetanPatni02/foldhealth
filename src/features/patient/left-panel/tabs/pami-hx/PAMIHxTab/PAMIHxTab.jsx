@@ -16,6 +16,8 @@ import { RingEmptyState } from '../../../../../../components/RingEmptyState/Ring
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
+import { ProfileTable } from '../../../../../../components/ProfileTable/ProfileTable';
+import { profileRowClass, profileCellClass } from '../../../../../../components/ProfileTable/profileTableClasses';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { formatClinicalDate, formatDaysAgo } from '../../../../../../lib/clinicalDates';
 import styles from './PAMIHxTab.module.css';
@@ -52,15 +54,21 @@ function Badge({ label }) {
   return <span className={styles.badge}>{label}</span>;
 }
 
-function ColHeader({ nameLabel = 'Name', statusLabel = 'Status' }) {
-  return (
-    <div className={styles.colHeader}>
-      <span className={styles.colName}>{nameLabel}</span>
-      <span className={styles.colStatus}>{statusLabel}</span>
-      <span className={styles.colActions} />
-    </div>
-  );
-}
+// Problems, Allergies, Medications and Immunizations share these columns so
+// their Status columns line up from section to section.
+const STATUS_COLUMNS = [
+  { key: 'name', label: 'Name' },
+  { key: 'status', label: 'Status', width: 100 },
+  { key: 'actions', label: '', width: 40 },
+];
+
+const EVENT_COLUMNS = [
+  { key: 'name', label: 'Event Name' },
+  // Fits "Reconcile", so the name takes the rest of the row.
+  { key: 'actions', label: '', width: 120, align: 'right' },
+];
+
+const rowClass = `${profileRowClass} ${styles.row}`;
 
 function FooterLink({ label, onClick }) {
   return (
@@ -69,15 +77,6 @@ function FooterLink({ label, onClick }) {
         {label}
         <Icon name="solar:alt-arrow-right-linear" size={10} color="var(--primary-300)" />
       </button>
-    </div>
-  );
-}
-
-function DataRow({ children, actions }) {
-  return (
-    <div className={styles.row}>
-      {children}
-      {actions || <span className={styles.actionsSpacer} aria-hidden="true" />}
     </div>
   );
 }
@@ -176,15 +175,17 @@ function AddBtn({ onClick, disabled }) {
 
 function ClinicalEventRow({ event }) {
   return (
-    <DataRow key={event.id}>
-      <div className={styles.nameCell}>
-        <span className={styles.name}>{event.title}</span>
-        <div className={styles.metaRow}>
-          <span className={styles.meta}>Reported on: {formatClinicalDate(event.reportedOn)}</span>
-          {event.meta && <><span className={styles.metaDot}>•</span><span className={styles.meta}>{event.meta}</span></>}
+    <tr className={rowClass}>
+      <td className={profileCellClass}>
+        <div className={styles.nameCell}>
+          <span className={styles.name}>{event.title}</span>
+          <div className={styles.metaRow}>
+            <span className={styles.meta}>Reported on: {formatClinicalDate(event.reportedOn)}</span>
+            {event.meta && <><span className={styles.metaDot}>•</span><span className={styles.meta}>{event.meta}</span></>}
+          </div>
         </div>
-      </div>
-      <div className={styles.eventAction}>
+      </td>
+      <td className={`${profileCellClass} ${styles.actionsTd}`}>
         <button className={styles.actionLink} onClick={NOOP}>
           <Icon
             name={event.action === 'Reconcile' ? 'solar:refresh-linear' : 'solar:eye-linear'}
@@ -193,8 +194,8 @@ function ClinicalEventRow({ event }) {
           />
           {event.action}
         </button>
-      </div>
-    </DataRow>
+      </td>
+    </tr>
   );
 }
 
@@ -203,25 +204,27 @@ function ProblemRow({ item, onRemove }) {
   // by bullets, with no trailing separator.
   const meta = [item.onsetLabel || item.date, item.type, item.severity].filter(Boolean);
   return (
-    <div className={styles.row}>
-      <div className={styles.nameCell}>
-        <span className={styles.name}>{item.title}</span>
-        <div className={styles.metaRow}>
-          {meta.map((part, i) => (
-            <span key={part} className={styles.meta}>
-              {i > 0 && <span className={styles.metaDot}>•</span>}
-              {part}
-            </span>
-          ))}
+    <tr className={rowClass}>
+      <td className={profileCellClass}>
+        <div className={styles.nameCell}>
+          <span className={styles.name}>{item.title}</span>
+          <div className={styles.metaRow}>
+            {meta.map((part, i) => (
+              <span key={part} className={styles.meta}>
+                {i > 0 && <span className={styles.metaDot}>•</span>}
+                {part}
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className={styles.statusCell}>
+      </td>
+      <td className={profileCellClass}>
         <span className={styles.statusActive}>{item.status}</span>
-      </div>
-      {onRemove
-        ? <RowMenu label={item.title} onRemove={() => onRemove(item)} />
-        : <span className={styles.actionsSpacer} aria-hidden="true" />}
-    </div>
+      </td>
+      <td className={profileCellClass}>
+        <RowMenu label={item.title} onRemove={onRemove && (() => onRemove(item))} />
+      </td>
+    </tr>
   );
 }
 
@@ -232,39 +235,49 @@ function AllergyRow({ item, onRemove }) {
     item.sinceDate ? `Since ${formatClinicalDate(item.sinceDate)}` : '',
   ].filter(Boolean);
   return (
-    <DataRow key={item.id} actions={<RowMenu label={item.title} onRemove={onRemove && (() => onRemove(item))} />}>
-      <div className={styles.nameCell}>
-        <span className={styles.name}>{item.title}</span>
-        <div className={styles.metaRow}>
-          {meta.map((part, i) => (
-            <span key={part} className={styles.meta}>
-              {i > 0 && <span className={styles.metaDot}>•</span>}
-              {part}
-            </span>
-          ))}
+    <tr className={rowClass}>
+      <td className={profileCellClass}>
+        <div className={styles.nameCell}>
+          <span className={styles.name}>{item.title}</span>
+          <div className={styles.metaRow}>
+            {meta.map((part, i) => (
+              <span key={part} className={styles.meta}>
+                {i > 0 && <span className={styles.metaDot}>•</span>}
+                {part}
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className={styles.statusCell}>
+      </td>
+      <td className={profileCellClass}>
         <span className={styles.statusNeutral}>{item.status || 'Active'}</span>
-      </div>
-    </DataRow>
+      </td>
+      <td className={profileCellClass}>
+        <RowMenu label={item.title} onRemove={onRemove && (() => onRemove(item))} />
+      </td>
+    </tr>
   );
 }
 
 function MedicationRow({ item, onRemove }) {
   return (
-    <DataRow key={item.id} actions={<RowMenu label={item.name} onRemove={onRemove && (() => onRemove(item))} />}>
-      <div className={styles.nameCell}>
-        <span className={styles.name}>{item.name}</span>
-        <span className={styles.meta}>
-          {item.start ? `Start: ${formatClinicalDate(item.start)}` : ''}{item.stop ? ` • Stop: ${formatClinicalDate(item.stop)}` : ''}
-        </span>
-        {item.sig && <span className={styles.meta}>{item.sig}</span>}
-      </div>
-      <div className={styles.statusCell}>
+    <tr className={rowClass}>
+      <td className={profileCellClass}>
+        <div className={styles.nameCell}>
+          <span className={styles.name}>{item.name}</span>
+          <span className={styles.meta}>
+            {item.start ? `Start: ${formatClinicalDate(item.start)}` : ''}{item.stop ? ` • Stop: ${formatClinicalDate(item.stop)}` : ''}
+          </span>
+          {item.sig && <span className={styles.meta}>{item.sig}</span>}
+        </div>
+      </td>
+      <td className={profileCellClass}>
         <span className={styles.statusNeutral}>{item.status}</span>
-      </div>
-    </DataRow>
+      </td>
+      <td className={profileCellClass}>
+        <RowMenu label={item.name} onRemove={onRemove && (() => onRemove(item))} />
+      </td>
+    </tr>
   );
 }
 
@@ -275,22 +288,27 @@ function ImmunizationRow({ item, onRemove }) {
     dose,
   ].filter(Boolean);
   return (
-    <DataRow key={item.id} actions={<RowMenu label={item.title} onRemove={onRemove && (() => onRemove(item))} />}>
-      <div className={styles.nameCell}>
-        <span className={styles.name}>{item.title}</span>
-        <div className={styles.metaRow}>
-          {meta.map((part, i) => (
-            <span key={part} className={styles.meta}>
-              {i > 0 && <span className={styles.metaDot}>•</span>}
-              {part}
-            </span>
-          ))}
+    <tr className={rowClass}>
+      <td className={profileCellClass}>
+        <div className={styles.nameCell}>
+          <span className={styles.name}>{item.title}</span>
+          <div className={styles.metaRow}>
+            {meta.map((part, i) => (
+              <span key={part} className={styles.meta}>
+                {i > 0 && <span className={styles.metaDot}>•</span>}
+                {part}
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className={styles.statusCell}>
+      </td>
+      <td className={profileCellClass}>
         <span className={styles.statusNeutral}>{item.status}</span>
-      </div>
-    </DataRow>
+      </td>
+      <td className={profileCellClass}>
+        <RowMenu label={item.title} onRemove={onRemove && (() => onRemove(item))} />
+      </td>
+    </tr>
   );
 }
 
@@ -330,30 +348,42 @@ function SocialHistoryRow({ item }) {
 
 function ReportRow({ item }) {
   return (
-    <div className={styles.row}>
-      <div className={styles.nameCell}>
-        <span className={styles.name}>{item.title}</span>
-        <span className={styles.meta}>Issued On: {formatClinicalDate(item.issuedOn)}</span>
-      </div>
-      <div className={styles.reportActionsCell}>
-        <ActionButton icon="solar:eye-linear" size="S" tooltip="View" />
-        <span className={styles.reportActionDivider} />
-        <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" />
-      </div>
-    </div>
+    <tr className={rowClass}>
+      <td className={profileCellClass}>
+        <div className={styles.nameCell}>
+          <span className={styles.name}>{item.title}</span>
+          <span className={styles.meta}>Issued On: {formatClinicalDate(item.issuedOn)}</span>
+        </div>
+      </td>
+      <td className={profileCellClass}>
+        <div className={styles.reportActionsCell}>
+          <ActionButton icon="solar:eye-linear" size="S" tooltip="View" />
+          <span className={styles.reportActionDivider} />
+          <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" />
+        </div>
+      </td>
+    </tr>
   );
 }
 
-function ReportColHeader({ nameLabel }) {
-  return (
-    <div className={styles.colHeader}>
-      <span className={styles.colName}>{nameLabel}</span>
-      <div className={styles.reportColActions}>
-        <ActionButton icon="solar:sort-linear" size="S" tooltip="Sort" />
-        <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-      </div>
-    </div>
-  );
+// The Sort / Filter buttons head the actions column, above each row's
+// View / Download.
+function reportColumns(nameLabel) {
+  return [
+    { key: 'name', label: nameLabel },
+    {
+      key: 'actions',
+      label: '',
+      width: 88,
+      align: 'right',
+      thLabel: (
+        <div className={styles.reportColActions}>
+          <ActionButton icon="solar:sort-linear" size="S" tooltip="Sort" />
+          <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+        </div>
+      ),
+    },
+  ];
 }
 
 // — Section components —
@@ -370,13 +400,9 @@ function RecentClinicalEvents({ updates, loading }) {
           </div>
         ) : (
           <div className={styles.card}>
-            <div className={styles.colHeader}>
-              <span className={styles.colName}>Event Name</span>
-              <span className={styles.colActions} />
-            </div>
             {loading
               ? <CardSkeleton rows={3} />
-              : updates.map(ev => <ClinicalEventRow key={ev.id} event={ev} />)}
+              : <ProfileTable columns={EVENT_COLUMNS} rows={updates} renderRow={ev => <ClinicalEventRow key={ev.id} event={ev} />} />}
           </div>
         )}
       </CollapseWrapper>
@@ -415,17 +441,20 @@ function ProblemsSection({ patientId }) {
           </div>
         ) : (
         <div className={styles.card}>
-          <ColHeader />
           {loading ? (
             <CardSkeleton rows={3} />
           ) : (
-            active.map(item => (
-              <ProblemRow
-                key={item.id}
-                item={item}
-                onRemove={p => removePatientProblem(patientId, p.id)}
-              />
-            ))
+            <ProfileTable
+              columns={STATUS_COLUMNS}
+              rows={active}
+              renderRow={item => (
+                <ProblemRow
+                  key={item.id}
+                  item={item}
+                  onRemove={p => removePatientProblem(patientId, p.id)}
+                />
+              )}
+            />
           )}
           {resolvedCount > 0 && (
             <FooterLink
@@ -477,16 +506,21 @@ function AllergiesSection({ patientId }) {
           </div>
         ) : (
         <div className={styles.card}>
-          <ColHeader />
           {loading
             ? <CardSkeleton rows={3} />
-            : active.map(item => (
-              <AllergyRow
-                key={item.id}
-                item={item}
-                onRemove={a => removePatientAllergy(patientId, a.id)}
+            : (
+              <ProfileTable
+                columns={STATUS_COLUMNS}
+                rows={active}
+                renderRow={item => (
+                  <AllergyRow
+                    key={item.id}
+                    item={item}
+                    onRemove={a => removePatientAllergy(patientId, a.id)}
+                  />
+                )}
               />
-            ))}
+            )}
           {pastCount > 0 && (
             <FooterLink
               label={`Past (${pastCount})`}
@@ -537,16 +571,21 @@ function MedicationsSection({ patientId }) {
           </div>
         ) : (
         <div className={styles.card}>
-          <ColHeader />
           {loading
             ? <CardSkeleton rows={3} />
-            : active.map(item => (
-              <MedicationRow
-                key={item.id}
-                item={item}
-                onRemove={m => removePatientMedication(patientId, m.id)}
+            : (
+              <ProfileTable
+                columns={STATUS_COLUMNS}
+                rows={active}
+                renderRow={item => (
+                  <MedicationRow
+                    key={item.id}
+                    item={item}
+                    onRemove={m => removePatientMedication(patientId, m.id)}
+                  />
+                )}
               />
-            ))}
+            )}
           {stoppedCount > 0 && (
             <FooterLink
               label={`Stopped (${stoppedCount})`}
@@ -597,16 +636,21 @@ function ImmunizationsSection({ patientId }) {
           </div>
         ) : (
         <div className={styles.card}>
-          <ColHeader />
           {loading
             ? <CardSkeleton rows={3} />
-            : active.map(item => (
-              <ImmunizationRow
-                key={item.id}
-                item={item}
-                onRemove={i => removePatientImmunization(patientId, i.id)}
+            : (
+              <ProfileTable
+                columns={STATUS_COLUMNS}
+                rows={active}
+                renderRow={item => (
+                  <ImmunizationRow
+                    key={item.id}
+                    item={item}
+                    onRemove={i => removePatientImmunization(patientId, i.id)}
+                  />
+                )}
               />
-            ))}
+            )}
           {completedCount > 0 && (
             <FooterLink
               label={`Completed (${completedCount})`}
@@ -652,10 +696,9 @@ function ReportsSection({ title, nameLabel, emptyLabel, emptyIcon, reports, load
           </div>
         ) : (
           <div className={styles.card}>
-            <ReportColHeader nameLabel={nameLabel} />
             {loading
               ? <CardSkeleton rows={2} />
-              : reports.map(item => <ReportRow key={item.id} item={item} />)}
+              : <ProfileTable columns={reportColumns(nameLabel)} rows={reports} renderRow={item => <ReportRow key={item.id} item={item} />} />}
           </div>
         )}
       </CollapseWrapper>

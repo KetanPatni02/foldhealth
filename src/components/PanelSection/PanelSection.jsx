@@ -2,6 +2,7 @@ import { Fragment, createContext, useContext, useState } from 'react';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
+import { Collapse } from '../Collapse/Collapse';
 import styles from './PanelSection.module.css';
 
 // Overview cards reuse Summary-tab sections. Inside a card they drop the
@@ -52,6 +53,7 @@ export function PanelSection({ title, actions, defaultCollapsed = false, plain =
             <DownChevronIcon
               size={12}
               color="var(--neutral-300)"
+              className={styles.chevron}
               style={collapsed ? { transform: 'rotate(-90deg)' } : undefined}
             />
             <span className={styles.title}>{title}</span>
@@ -59,7 +61,9 @@ export function PanelSection({ title, actions, defaultCollapsed = false, plain =
         )}
         {!collapsed && actions && <div className={styles.actions}>{actions}</div>}
       </div>
-      {!collapsed && <div className={styles.body}>{children}</div>}
+      <Collapse open={!collapsed}>
+        <div className={styles.body}>{children}</div>
+      </Collapse>
     </section>
   );
 }

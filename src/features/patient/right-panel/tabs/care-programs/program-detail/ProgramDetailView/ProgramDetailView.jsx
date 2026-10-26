@@ -24,6 +24,7 @@ import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/Con
 import { ProgramHistoryDrawer } from '../ProgramHistoryDrawer/ProgramHistoryDrawer.jsx';
 import { useProgramHistory } from '../ProgramHistoryDrawer/useProgramHistory';
 import { toast } from '../../../../../../../components/Toast/sonnerToast';
+import { Collapse } from '../../../../../../../components/Collapse/Collapse';
 import { CloseProgramDialog } from '../shared/CloseProgramDialog/CloseProgramDialog.jsx';
 import { PROGRAM_STATUS_OPTIONS } from '../../../../../data/programStatus';
 import { useProgramDetailView } from './useProgramDetailView';
@@ -182,10 +183,12 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
               return (
                 <div key={step.id}>
                   <SectionHeader name={step.name} expanded={expanded} onToggle={() => v.toggleSection(step.id)} />
-                  {expanded && step.children.map(child => (
-                    <StepItem key={child.id} step={child} isActive={v.activeStep === child.id}
-                      onClick={() => v.setActiveStep(child.id)} isChild />
-                  ))}
+                  <Collapse open={expanded}>
+                    {step.children.map(child => (
+                      <StepItem key={child.id} step={child} isActive={v.activeStep === child.id}
+                        onClick={() => v.setActiveStep(child.id)} isChild />
+                    ))}
+                  </Collapse>
                 </div>
               );
             }

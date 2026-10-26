@@ -175,8 +175,10 @@ export function HealthMapWidget({ compact = false }) {
         <LoadingState onComplete={() => setView('generated')} />
       ) : (
         <>
-          <div className={[styles.chart, compact ? styles.compact : ''].join(' ')}>
-            <HealthRadarChart data={chartData} name={activeToggle === 'clinic' ? 'Clinic' : 'Patient'} />
+          <div className={styles.container}>
+            <div className={[styles.chart, compact ? styles.compact : ''].join(' ')}>
+              <HealthRadarChart data={chartData} name={activeToggle === 'clinic' ? 'Clinic' : 'Patient'} />
+            </div>
           </div>
 
           {view === 'patientGenerated' && (

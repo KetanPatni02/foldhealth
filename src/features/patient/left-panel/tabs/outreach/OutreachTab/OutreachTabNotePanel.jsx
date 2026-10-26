@@ -3,6 +3,7 @@ import { Icon } from '../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { Switch } from '../../../../../../components/Switch/Switch';
 import { Textarea } from '../../../../../../components/Textarea/Textarea';
+import { Collapse } from '../../../../../../components/Collapse/Collapse';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
 import { OUTCOME_CHOICES_BY_STATUS } from './OutreachTab.utils';
@@ -28,6 +29,7 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
           <span className={styles.notePanelName}>{title}</span>
           <DownChevronIcon
             size={14} color="var(--neutral-400)"
+            className={styles.chevron}
             style={expanded ? undefined : { transform: 'rotate(-90deg)' }}
           />
         </button>
@@ -71,8 +73,8 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
         </div>
       </div>
 
-      {expanded && (
-        <>
+      <Collapse open={expanded}>
+        <div className={styles.notePanelBody}>
           {outcomes.length > 0 && (
             <div className={styles.outcomeRow}>
               <span className={styles.outcomeRowLabel}>Outcome:</span>
@@ -91,8 +93,8 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
             value={note}
             onChange={e => onNoteChange(e.target.value)}
           />
-        </>
-      )}
+        </div>
+      </Collapse>
     </div>
   );
 }

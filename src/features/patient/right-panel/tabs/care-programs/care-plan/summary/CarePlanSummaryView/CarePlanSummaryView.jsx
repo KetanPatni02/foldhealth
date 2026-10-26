@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { Collapse } from '../../../../../../../../components/Collapse/Collapse';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { Button } from '../../../../../../../../components/Button/Button';
@@ -728,7 +729,7 @@ function BarriersTable({ rows, onOpen, onStatusMenu, programOverlap }) {
             <span className={sharedRow.closedBarriersLabel}>Closed Barriers</span>
             <span className={sharedRow.completedCount}>{closedRows.length}</span>
           </button>
-          {closedOpen && (
+          <Collapse open={closedOpen}>
             <table className={sharedRow.closedBarriersTable}>
               <colgroup>
                 <col style={{ width: GBI_COL_WIDTH.priority }} />
@@ -748,7 +749,7 @@ function BarriersTable({ rows, onOpen, onStatusMenu, programOverlap }) {
                 ))}
               </tbody>
             </table>
-          )}
+          </Collapse>
         </div>
       )}
     </div>

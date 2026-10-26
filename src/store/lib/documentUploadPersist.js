@@ -65,6 +65,9 @@ export async function persistProgramDocument(doc, file) {
       file_url:     fileUrl,
       storage_path: storagePath,
       ext:          extOf(file?.name || doc.name),
+      // Only patient Documents tab uploads send it, so program uploads keep
+      // working before program_documents_category_migration.sql runs.
+      ...(doc.category ? { category: doc.category } : {}),
     });
     if (error) reportPersistFailure(`persistProgramDocument.insert(${doc.id})`, error);
   } catch (e) {

@@ -6,6 +6,7 @@ import { Avatar } from '../../../../../../components/Avatar/Avatar';
 import { AvatarGroup } from '../../../../../../components/AvatarGroup/AvatarGroup';
 import { ActivityLog, MetaLine, ViewMoreButton } from '../../../../../../components/ActivityLog/ActivityLog';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { Collapse } from '../../../../../../components/Collapse/Collapse';
 import { historyTimelineStyles as htStyles } from '../../../../../../components/HistoryTimeline/HistoryTimeline';
 import { carePlanLogItem } from '../../care-programs/care-plan/lib/carePlanLogItem';
 import { activityIcon, STATUS_COLOR } from '../programActivity';
@@ -32,6 +33,9 @@ export function ProgramActivityDay({ day, onOpenVersion, versionGlance, onOpenIt
   const [openStacks, setOpenStacks] = useState(() => new Set());
   const [openNotes, setOpenNotes] = useState(() => new Set());
   const [openVersions, setOpenVersions] = useState(() => new Set());
+  // The version card fetches the plan's history when it mounts, so it only
+  // mounts once its entry has been opened, then stays for the close animation.
+  const [seenVersions, setSeenVersions] = useState(() => new Set());
 
   const programBadge = code => (code ? <Badge tone="primary" size="XS" label={code} /> : null);
 
@@ -56,10 +60,19 @@ export function ProgramActivityDay({ day, onOpenVersion, versionGlance, onOpenIt
             <div className={htStyles.headlineRow}>
               <span className={htStyles.headline}>Changes in Care Plan</span>
               <span className={styles.hoverReveal}>
-                <ViewMoreButton expanded={open} onToggle={() => setOpenVersions(s => toggleIn(s, item.id))} leadingDot />
+                <ViewMoreButton
+                  expanded={open}
+                  onToggle={() => {
+                    setOpenVersions(s => toggleIn(s, item.id));
+                    setSeenVersions(s => (s.has(item.id) ? s : new Set(s).add(item.id)));
+                  }}
+                  leadingDot
+                />
               </span>
             </div>
-            {open && versionGlance?.(item)}
+            <Collapse open={open}>
+              {seenVersions.has(item.id) && versionGlance?.(item)}
+            </Collapse>
           </div>
           <span className={styles.versionRight}>
             {programBadge(programCode)}

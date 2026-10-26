@@ -91,6 +91,7 @@ export function SectionHeader({ name, expanded, onToggle }) {
       <DownChevronIcon
         size={16}
         color="var(--neutral-300)"
+        className={styles.chevron}
         style={expanded ? undefined : { transform: 'rotate(-90deg)' }}
       />
       <span className={styles.sectionName}>{name}</span>

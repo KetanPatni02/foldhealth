@@ -4,6 +4,7 @@ import { Badge } from '../../../../../components/Badge/Badge';
 import { Button } from '../../../../../components/Button/Button';
 import { Icon } from '../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
+import { Collapse } from '../../../../../components/Collapse/Collapse';
 import { Link } from '../../../../../components/Link/Link';
 import { Toggle } from '../../../../../components/Toggle/Toggle';
 import { Alert } from '../../../../../components/Alert/Alert';
@@ -89,25 +90,27 @@ function ProgramCard({ program, defaultExpanded, onAction }) {
           className={[styles.programChevron, expanded ? styles.programChevronOpen : ''].filter(Boolean).join(' ')}
         />
       </button>
-      {expanded && hasSteps && (
-        <div className={styles.steps}>
-          {program.steps.map((s, i) => (
-            <div key={i} className={[styles.step, styles[`step_${s.status}`]].filter(Boolean).join(' ')}>
-              <StepDot status={s.status} />
-              <div className={styles.stepBody}>
-                <span className={styles.stepLabel}>{s.label}</span>
-                {s.sub && <span className={styles.stepSub}>{s.sub}</span>}
+      {hasSteps && (
+        <Collapse open={expanded}>
+          <div className={styles.steps}>
+            {program.steps.map((s, i) => (
+              <div key={i} className={[styles.step, styles[`step_${s.status}`]].filter(Boolean).join(' ')}>
+                <StepDot status={s.status} />
+                <div className={styles.stepBody}>
+                  <span className={styles.stepLabel}>{s.label}</span>
+                  {s.sub && <span className={styles.stepSub}>{s.sub}</span>}
+                </div>
+                {s.meta && <span className={styles.stepMeta}>{s.meta}</span>}
+                {s.action && (
+                  <Button variant="secondary" size="S" onClick={() => onAction(s.action)}>
+                    <Icon name={s.action === 'Schedule' ? 'solar:calendar-linear' : 'solar:pen-2-linear'} size={13} />
+                    {s.action}
+                  </Button>
+                )}
               </div>
-              {s.meta && <span className={styles.stepMeta}>{s.meta}</span>}
-              {s.action && (
-                <Button variant="secondary" size="S" onClick={() => onAction(s.action)}>
-                  <Icon name={s.action === 'Schedule' ? 'solar:calendar-linear' : 'solar:pen-2-linear'} size={13} />
-                  {s.action}
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </Collapse>
       )}
     </div>
   );
@@ -432,8 +435,10 @@ function StorySection({ events }) {
                       />
                     </button>
                   </div>
-                  {!isCollapsed && event.body && (
-                    <p className={styles.storyCardBody}>{event.body}</p>
+                  {event.body && (
+                    <Collapse open={!isCollapsed}>
+                      <p className={styles.storyCardBody}>{event.body}</p>
+                    </Collapse>
                   )}
                 </div>
               </div>

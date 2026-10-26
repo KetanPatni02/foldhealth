@@ -69,6 +69,10 @@
 .moreItemAction:hover { background: var(--neutral-100); color: var(--primary-300); }
 .moreItemAction:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 1px; }
 
+/* The tabs take only their own width, so More sits right after the last
+   visible tab instead of at the row's far end. */
+.strip { flex: 0 1 auto; }
+
 .row {
   display: flex;
   gap: 12px;

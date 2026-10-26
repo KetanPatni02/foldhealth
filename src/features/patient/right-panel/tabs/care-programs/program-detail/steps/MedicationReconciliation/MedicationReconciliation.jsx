@@ -7,6 +7,7 @@ import { Select } from '../../../../../../../../components/Select/Select';
 import { DatePicker } from '../../../../../../../../components/DatePicker/DatePicker';
 import { Textarea } from '../../../../../../../../components/Textarea/Textarea';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { Collapse } from '../../../../../../../../components/Collapse/Collapse';
 import { AIIcon } from '../../../../../../../../components/Icon/AIIcon';
 import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { RingEmptyState } from '../../../../../../../../components/RingEmptyState/RingEmptyState';
@@ -1192,10 +1193,12 @@ export function MedicationReconciliation({ programCode } = {}) {
                           </>
                         )}
                       </div>
-                      {noteExpanded[m.id] && m.note && (
-                        <div className={styles.noteLine}>
-                          <span className={styles.noteLabel}>Note:</span> {m.note}
-                        </div>
+                      {m.note && (
+                        <Collapse open={!!noteExpanded[m.id]} className={styles.noteCollapse}>
+                          <div className={styles.noteLine}>
+                            <span className={styles.noteLabel}>Note:</span> {m.note}
+                          </div>
+                        </Collapse>
                       )}
                     </div>
                     <div className={styles.extractedActions}>

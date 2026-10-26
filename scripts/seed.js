@@ -20,7 +20,10 @@ import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../sr
 import { HCC_MEMBER_BY_NAME, HCC_MEMBERS } from '../src/features/hcc/data/mock.js';
 import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
 import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmActivity.js';
+import { sampleReferralsFor, referralToRow } from '../src/features/patient/data/patientReferrals.js';
+import { sampleOrdersFor, orderToRow } from '../src/features/patient/data/patientOrders.js';
 import { SAMPLE_VITALS } from '../src/features/patient/left-panel/tabs/vitals-labs/vitalsConfig.js';
+import { sampleAssessmentSeed, pickAssessmentForms } from '../src/features/patient/right-panel/tabs/assessments/assessmentSeed.js';
 import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comms/educationLibrary.js';
 import { sampleFaxes, faxToRow } from '../src/features/messages/efax/efaxData.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
@@ -58,6 +61,7 @@ import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js'
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
 import { priorLabResultsFor } from '../src/features/hedis-worklist/labs/labMock.js';
 import { buildPatientSnapshot, snapshotToRow } from '../src/lib/patientSnapshot.js';
+import { SAMPLE_PATIENT_DOCUMENTS, patientDocumentToRow } from '../src/features/patient/right-panel/tabs/documents/documentsData.js';
 
 // Astrana phlebotomists who perform the LSC capillary blood lead test.
 const LSC_PHLEBOTOMISTS = [
@@ -1022,6 +1026,29 @@ async function main() {
   const { error: pve } = await supabase.from('patient_vitals').upsert(vitalRows, { onConflict: 'id' });
   if (pve) { console.error('  ✗', pve.message); } else { console.log(`  ✓ ${vitalRows.length} rows`); }
 
+  // Patient Documents tab: Annette Brave's documents (program_code NULL).
+  console.log('Seeding program_documents (patient documents)...');
+  const patientDocRows = SAMPLE_PATIENT_DOCUMENTS.map(patientDocumentToRow);
+  const { error: pde } = await supabase.from('program_documents').upsert(patientDocRows, { onConflict: 'id' });
+  if (pde) { console.error('  ✗', pde.message); } else { console.log(`  ✓ ${patientDocRows.length} rows`); }
+
+  // P360 Assessments: sends and responses for the first published forms in
+  // the library, on the demo patient.
+  console.log('Seeding patient_assessment_sends + form_responses (P360 Assessments)...');
+  {
+    const { data: allForms, error: sfErr } = await supabase.from('forms').select('id, name, form_type, schema').limit(300);
+    const seedForms = pickAssessmentForms(allForms || []);
+    if (sfErr || !seedForms.length) {
+      console.error('  ✗', sfErr?.message || 'no assessment forms to send');
+    } else {
+      const { sends, responses } = sampleAssessmentSeed(PAMI_DEMO_PATIENT, seedForms);
+      const { error: sendErr } = await supabase.from('patient_assessment_sends').upsert(sends, { onConflict: 'id' });
+      if (sendErr) { console.error('  ✗', sendErr.message, '(run supabase/patient_assessment_sends_migration.sql first)'); } else { console.log(`  ✓ ${sends.length} sends`); }
+      const { error: respErr } = await supabase.from('form_responses').upsert(responses, { onConflict: 'form_id,session_id' });
+      if (respErr) { console.error('  ✗', respErr.message, '(form_responses.patient_id comes from supabase/automation_rules_migration.sql)'); } else { console.log(`  ✓ ${responses.length} responses`); }
+    }
+  }
+
   // Components: Print Report Header / Footer Options 1–4 (Option 1 is the
   // default Report Header and Report Footer).
   console.log('Seeding email_header_footer_presets (report headers + footers)...');
@@ -1152,6 +1179,16 @@ async function main() {
     .from('patient_crm_activities')
     .upsert(crmRows, { onConflict: 'id' });
   if (crmErr) { console.error('  ✗', crmErr.message); } else { console.log(`  ✓ ${crmRows.length} activities`); }
+
+  console.log('Seeding patient_referrals (Orders & Referrals)...');
+  const referralRows = sampleReferralsFor(PAMI_DEMO_PATIENT).map(referralToRow);
+  const { error: refErr } = await supabase.from('patient_referrals').upsert(referralRows, { onConflict: 'id' });
+  if (refErr) { console.error('  ✗', refErr.message); } else { console.log(`  ✓ ${referralRows.length} referrals`); }
+
+  console.log('Seeding patient_orders (Orders & Referrals: Lab, Imaging)...');
+  const orderRows = sampleOrdersFor(PAMI_DEMO_PATIENT).map(orderToRow);
+  const { error: orderErr } = await supabase.from('patient_orders').upsert(orderRows, { onConflict: 'id' });
+  if (orderErr) { console.error('  ✗', orderErr.message); } else { console.log(`  ✓ ${orderRows.length} orders`); }
 
   console.log('Seeding user_availability (Settings → Calendar)...');
   const availRows = sampleAvailability().map(blockToRow);

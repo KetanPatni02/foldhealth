@@ -11,6 +11,9 @@ import { OverviewTab } from './right-panel/tabs/overview/OverviewTab/OverviewTab
 import { MonitoringTab } from './right-panel/tabs/monitoring/MonitoringTab';
 import { PatientNotesTab } from './right-panel/tabs/notes/PatientNotesTab';
 import { TimelineTab } from './right-panel/tabs/timeline/TimelineTab';
+import { DocumentsTab } from './right-panel/tabs/documents/DocumentsTab';
+import { AssessmentsTab } from './right-panel/tabs/assessments/AssessmentsTab';
+import { OrdersReferralsTab } from './right-panel/tabs/orders-referrals/OrdersReferralsTab';
 import { ClinicalNotePreviewDrawer } from '../tasks/ClinicalNotePreviewDrawer';
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { ProfileTab } from './left-panel/tabs/profile/ProfileTab/ProfileTab';
@@ -346,6 +349,9 @@ export function PatientDetailView() {
       : tab === 'Monitoring' ? <MonitoringTab patient={patientWithAppStatus} />
         : tab === 'Notes' ? <PatientNotesTab patient={patientWithAppStatus} />
         : tab === 'Timeline' ? <TimelineTab />
+        : tab === 'Documents' ? <DocumentsTab patient={patientWithAppStatus} />
+        : tab === 'Assessments' ? <AssessmentsTab patient={patientWithAppStatus} />
+        : tab === 'Orders & Referrals' ? <OrdersReferralsTab patient={patientWithAppStatus} />
           : tab === 'Care Management' ? <CareManagementView />
             : tab === 'Profile' ? <ProfileTab patient={patientWithAppStatus} />
               : tab === 'Tasks' ? <TasksTab />

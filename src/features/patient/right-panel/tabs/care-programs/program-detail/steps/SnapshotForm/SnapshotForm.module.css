@@ -8,7 +8,6 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
 }
 .sectionToggle {
   display: inline-flex;
@@ -22,6 +21,7 @@
   border-bottom: 0.5px solid var(--neutral-150);
   cursor: pointer;
 }
+.chevron { transition: transform var(--duration-medium) var(--ease-out); }
 .closed { transform: rotate(-90deg); }
 .sectionTitle {
   font-size: var(--font-base);
@@ -33,6 +33,9 @@
   display: grid;
   grid-template-columns: repeat(var(--snapshot-columns, 3), minmax(0, 1fr));
   gap: var(--space-4) var(--space-4);
+  /* Space under the section toggle, kept inside the collapsible body so a
+     closed section adds none. */
+  margin-top: var(--space-3);
 }
 @media (max-width: 900px) {
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

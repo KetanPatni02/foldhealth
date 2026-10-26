@@ -70,7 +70,7 @@ export function CommsTab({ patient }) {
           <ConvAvatar conversation={c} />
           <div className={msgStyles.convInfo}>
             <div className={msgStyles.convNameRow}>
-              <div className={[msgStyles.convName, c.unread_count ? '' : msgStyles.muted].join(' ')}>
+              <div className={[msgStyles.convName, c.unread_count ? '' : styles.readName].join(' ')}>
                 {c.channel === 'chat' ? (c.group_name || `Care for ${c.patient_name}`) : c.channel === 'email' ? (c.subject || 'Email') : c.patient_name}
               </div>
               <div className={msgStyles.convTime}>{formatTime(c.last_message_at)}</div>

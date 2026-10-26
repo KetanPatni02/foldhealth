@@ -3,6 +3,7 @@ import { Avatar } from '../../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../../components/Icon/Icon';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
+import { Collapse } from '../../../../components/Collapse/Collapse';
 import { useAppStore } from '../../../../store/useAppStore';
 import { formatFoldId } from '../../../../lib/foldId';
 import { usePatientDisplay } from '../../hooks/usePatientDisplay';
@@ -264,8 +265,8 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         <div ref={dockRef} className={styles.timerDockSlot} data-ccm-timer-dock />
       </div>
 
-      {expanded && (
-        bannerSize === 'wide' ? (
+      <Collapse open={expanded}>
+        {bannerSize === 'wide' ? (
           <div className={styles.expandedGrid}>
             <ExpandedDemographics p={p} />
             <ExpandedHealthStatus p={p} movedMetrics programCodes={programCodes} />
@@ -274,8 +275,8 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
           </div>
         ) : (
           <QuickViewExpanded p={p} programCodes={programCodes} />
-        )
-      )}
+        )}
+      </Collapse>
       {consentPos && <PatientConsentPopover patientId={patient.id} pos={consentPos} onClose={closeConsent} />}
     </div>
   );
