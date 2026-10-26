@@ -33,11 +33,15 @@ const prefersReducedMotion = () => typeof window !== 'undefined'
  *   primary?: React.ReactNode }>} props.steps – a function `body` gets `goTo` to jump to another step
  * @param {React.ReactNode} [props.footerStart] – left pane footer (secondary links)
  * @param {number} [props.autoplayMs=7000] – 0 turns autoplay off
+ * @param {{ x: number, y: number }} [props.origin] – viewport point the dialog grows from and
+ *   shrinks back to (the centre of the control that opened it)
  */
 export function SlideshowDialog({
-  open, onOpenChange, title, subtitle, leading, headerExtra, steps, footerStart, autoplayMs = 7000,
+  open, onOpenChange, title, subtitle, leading, headerExtra, steps, footerStart, autoplayMs = 7000, origin,
 }) {
   const [index, setIndex] = useState(0);
+  // +1 moving down the steps, -1 moving back up: the slide enters from that side.
+  const [dir, setDir] = useState(1);
   const [auto, setAuto] = useState(true);
   const [paused, setPaused] = useState(false);
   const count = steps.length;
@@ -51,13 +55,16 @@ export function SlideshowDialog({
     setWasOpen(open);
     if (open) {
       setIndex(0);
+      setDir(1);
       setAuto(true);
     }
   }
 
   const go = (i) => {
+    const next = Math.max(0, Math.min(count - 1, i));
     setAuto(false);
-    setIndex(Math.max(0, Math.min(count - 1, i)));
+    setDir(next >= current ? 1 : -1);
+    setIndex(next);
   };
   const goTo = (key) => {
     const i = steps.findIndex(s => s.key === key);
@@ -74,6 +81,11 @@ export function SlideshowDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={styles.dialog}
+        // The dialog is centred in the viewport, so the trigger's offset from
+        // the viewport centre is its offset from the dialog's centre.
+        style={origin ? {
+          transformOrigin: `calc(50% + ${Math.round(origin.x - window.innerWidth / 2)}px) calc(50% + ${Math.round(origin.y - window.innerHeight / 2)}px)`,
+        } : undefined}
         onKeyDown={onKeyDown}
         onPointerEnter={() => setPaused(true)}
         onPointerLeave={() => setPaused(false)}
@@ -107,7 +119,7 @@ export function SlideshowDialog({
                               animationDuration: `${autoplayMs}ms`,
                               animationPlayState: paused ? 'paused' : 'running',
                             }}
-                            onAnimationEnd={() => setIndex(v => Math.min(count - 1, v + 1))}
+                            onAnimationEnd={() => { setDir(1); setIndex(v => Math.min(count - 1, v + 1)); }}
                           />
                         )}
                       </span>
@@ -131,7 +143,7 @@ export function SlideshowDialog({
 
           <div className={styles.right}>
             {step && (
-              <div key={step.key} className={styles.slide}>
+              <div key={step.key} className={`${styles.slide} ${dir < 0 ? styles.slideBack : ''}`}>
                 <header className={styles.slideHead}>
                   <span className={styles.eyebrow}>
                     <Icon name={step.icon} size={14} />

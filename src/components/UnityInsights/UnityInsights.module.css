@@ -25,10 +25,52 @@
 
 .stripButton {
   cursor: pointer;
+  transition: background-color 120ms ease-out;
 }
 
 .stripButton:hover {
   background: color-mix(in srgb, var(--primary-200) 35%, var(--primary-100));
+}
+
+/* Feedback lands on press, not on release. */
+.stripButton:active {
+  background: color-mix(in srgb, var(--primary-200) 60%, var(--primary-100));
+  transition: none;
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Height animates through grid rows (0fr to 1fr): a transition starts from
+   the current value, so reversing mid-way is seamless. */
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 260ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 180ms ease-out;
+}
+
+.collapseOpen {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.collapseInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapse { transition: opacity 150ms ease-out; }
+  .chevron { transition: none; }
 }
 
 .stripButton:focus-visible {

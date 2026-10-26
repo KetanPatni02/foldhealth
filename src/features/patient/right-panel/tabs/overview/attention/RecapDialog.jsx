@@ -241,6 +241,8 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
   const [open, setOpen] = useState(false);
   // The recap's "now": the moment it was opened.
   const [openedAt, setOpenedAt] = useState(null);
+  // Where the Recap button sits, so the dialog grows out of it and returns to it.
+  const [origin, setOrigin] = useState(null);
   const [period, setPeriod] = useState('30');
   const { events, signals, open: openSignals, reviews, since, memberId } = attention;
   const vitals = useMemo(() => overviewVitals(overview, memberId), [overview, memberId]);
@@ -248,7 +250,9 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
   const savePanelLayout = useAppStore(s => s.savePanelLayout);
   const signature = useMemo(() => recapSignature(openSignals, events), [openSignals, events]);
   const seen = !!memberId && seenMap?.[memberId] === signature;
-  const openRecap = () => {
+  const openRecap = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
     setOpenedAt(Date.now());
     setOpen(true);
     if (memberId && !seen) savePanelLayout(SEEN_KEY, { ...(seenMap || {}), [memberId]: signature });
@@ -609,6 +613,7 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
       <SlideshowDialog
         open={open}
         onOpenChange={setOpen}
+        origin={origin}
         autoplayMs={AUTOPLAY_MS}
         leading={(
           <span className={styles.brand}>

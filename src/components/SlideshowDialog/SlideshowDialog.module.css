@@ -39,6 +39,7 @@
   font-size: var(--font-xl);
   font-weight: 500;
   line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
   color: var(--neutral-500);
 }
 
@@ -79,8 +80,17 @@
   cursor: pointer;
 }
 
+.step {
+  transition: background-color 120ms ease-out;
+}
+
 .step:hover {
   background: var(--neutral-50);
+}
+
+.step:active {
+  background: var(--neutral-75);
+  transition: none;
 }
 
 .step:focus-visible {
@@ -198,9 +208,20 @@
   animation: slideIn 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* The slide arrives from the direction of travel: from below when moving
+   down the steps, from above when going back. */
 @keyframes slideIn {
-  from { opacity: 0; transform: translateY(var(--space-1)); }
+  from { opacity: 0; transform: translateY(var(--space-2)); }
   to { opacity: 1; transform: none; }
+}
+
+@keyframes slideInBack {
+  from { opacity: 0; transform: translateY(calc(-1 * var(--space-2))); }
+  to { opacity: 1; transform: none; }
+}
+
+.slideBack {
+  animation-name: slideInBack;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -231,6 +252,7 @@
   font-size: var(--font-2xl);
   font-weight: 500;
   line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
   color: var(--neutral-500);
   text-wrap: balance;
 }

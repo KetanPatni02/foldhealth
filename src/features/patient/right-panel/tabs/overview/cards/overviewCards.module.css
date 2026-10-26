@@ -99,8 +99,11 @@
   position: relative;
 }
 
-/* Rows sit apart on whitespace; a clickable one tints on hover. */
+/* Rows sit apart on whitespace; a clickable one tints on hover and
+   answers the press itself at once. */
+.clickRow { transition: background-color 120ms ease-out; }
 .clickRow:hover { background: var(--neutral-25); }
+.clickRow:active { background: var(--neutral-50); transition: none; }
 
 .stretch::after {
   content: '';
@@ -298,6 +301,8 @@
   font-size: var(--font-2xl);
   font-weight: 500;
   line-height: var(--leading-tight);
+  /* Large figures read tighter; body text keeps default tracking. */
+  letter-spacing: -0.01em;
   color: var(--neutral-500);
   font-variant-numeric: tabular-nums;
 }
@@ -537,6 +542,7 @@
   font-size: var(--font-xl);
   font-weight: 600;
   line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
   color: var(--neutral-400);
 }
 

@@ -16,6 +16,7 @@ import styles from './UnityInsights.module.css';
  *    and its actions in a cell on the right.
  *
  * Wrap them in UnityInsights so they share one frame under the card body.
+ * UnityInsightCollapse animates the sections under a strip open and shut.
  */
 export function UnityInsights({ children }) {
   return <div className={styles.insights}>{children}</div>;
@@ -35,7 +36,7 @@ export function UnityInsightStrip({ children, onToggle, expanded = false }) {
         <DownChevronIcon
           size={12}
           color="var(--primary-300)"
-          style={expanded ? { transform: 'rotate(180deg)' } : undefined}
+          className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}
         />
       )}
     </>
@@ -45,6 +46,22 @@ export function UnityInsightStrip({ children, onToggle, expanded = false }) {
     <button type="button" className={`${styles.strip} ${styles.stripButton}`} aria-expanded={expanded} onClick={onToggle}>
       {content}
     </button>
+  );
+}
+
+/**
+ * The sections under a strip, growing open and shut from their current
+ * height, so a second click mid-way reverses smoothly. Closed content stays
+ * mounted but is inert, so it's out of the tab order and hidden from
+ * assistive tech.
+ *
+ * @param {boolean} props.open
+ */
+export function UnityInsightCollapse({ open, children }) {
+  return (
+    <div className={`${styles.collapse} ${open ? styles.collapseOpen : ''}`} inert={!open || undefined}>
+      <div className={styles.collapseInner}>{children}</div>
+    </div>
   );
 }
 

@@ -50,6 +50,23 @@ const OVERVIEW_SKELETONS = {
   vitals: ['solar:heart-pulse-linear', 'Vitals'],
 };
 
+// Marks a lane's scroll edges (data-at-top / data-at-end) so CSS can fade
+// only the edge where content continues. Re-checks on scroll and whenever a
+// card in the lane changes size (data landing, a strip opening). Used as a
+// ref callback; React 19 runs the returned cleanup on unmount.
+function trackScrollEdges(el) {
+  if (!el) return undefined;
+  const mark = () => {
+    el.dataset.atTop = String(el.scrollTop <= 1);
+    el.dataset.atEnd = String(el.scrollTop + el.clientHeight >= el.scrollHeight - 1);
+  };
+  mark();
+  el.addEventListener('scroll', mark, { passive: true });
+  const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(mark);
+  if (ro) { ro.observe(el); [...el.children].forEach(c => ro.observe(c)); }
+  return () => { el.removeEventListener('scroll', mark); ro?.disconnect(); };
+}
+
 function useElementWidth(ref) {
   const [width, setWidth] = useState(0);
   useLayoutEffect(() => {
@@ -181,7 +198,7 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
         {columns.map((column, i) => (
           // Each column scrolls on its own, so a long middle column never
           // drags the narrow ones out of view.
-          <div key={i} className={styles.column}>
+          <div key={i} ref={trackScrollEdges} className={styles.column}>
             {column.map(key => (
               <OverviewWidgetKeyContext.Provider key={key} value={key}>{card(key)}</OverviewWidgetKeyContext.Provider>
             ))}
