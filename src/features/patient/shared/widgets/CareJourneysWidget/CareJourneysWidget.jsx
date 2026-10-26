@@ -68,6 +68,7 @@ export function CareJourneysWidget() {
 
   return (
     <PanelSection
+      icon="solar:routing-2-linear"
       title="Care Journeys"
       actions={(
         <>

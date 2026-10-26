@@ -68,6 +68,7 @@ export function CareUtilizationWidget() {
   return (
     <PanelSection
       plain={embedded}
+      icon="solar:hospital-linear"
       title="Care Utilization Summary"
       actions={<BadgeSelect value={year} options={YEARS} onChange={setYear} />}
     >

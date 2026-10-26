@@ -40,10 +40,11 @@ export function useAttentionSignals(patient, overview) {
 
   return useMemo(() => ({
     ...built,
+    events,
     memberId,
     reviews,
     open: built.signals.filter(s => !reviews[s.id]),
     reviewed: built.signals.filter(s => reviews[s.id]),
     loading: streamLoading || overview === undefined,
-  }), [built, memberId, reviews, streamLoading, overview]);
+  }), [built, events, memberId, reviews, streamLoading, overview]);
 }

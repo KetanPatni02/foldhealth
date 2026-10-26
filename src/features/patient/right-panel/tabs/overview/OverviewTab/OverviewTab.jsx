@@ -126,6 +126,18 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
   if (!patient) return null;
 
   const overviewLoading = overview === undefined;
+  const recap = (
+    <RecapButton
+      patient={patient}
+      overview={overview}
+      attention={attention}
+      run={runSignal}
+      review={reviewSignal}
+      onOpenTimeline={() => setPatientProfileTab('Timeline')}
+    />
+  );
+  // The Recap lives in the Synopsis header; with Synopsis hidden it keeps a row of its own.
+  const synopsisShown = !layout.hidden.includes('synopsis');
   const card = (key) => {
     if (overviewLoading && OVERVIEW_SKELETONS[key]) {
       const [icon, title] = OVERVIEW_SKELETONS[key];
@@ -133,7 +145,7 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
     }
     if (SUMMARY_WIDGETS.has(key)) return <SummaryWidgetCard key={key} widget={key} />;
     switch (key) {
-      case 'synopsis': return <SynopsisCard key={key} overview={overview} />;
+      case 'synopsis': return <SynopsisCard key={key} overview={overview} action={recap} />;
       case 'healthChart': return <HealthChartCard key={key} overview={overview} />;
       case 'highlights': return <HighlightsCard key={key} patient={patient} patientId={patient.id} overview={overview} />;
       case 'suggestedActions': return <SuggestedActionsCard key={key} memberId={memberId} patientId={patient.id} overview={overview} actions={actions} />;
@@ -164,15 +176,7 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
   return (
     <OverviewInsightsContext.Provider value={insights}>
     <div className={styles.overview}>
-      <div className={styles.toolbar}>
-        <RecapButton
-          patient={patient}
-          attention={attention}
-          run={runSignal}
-          review={reviewSignal}
-          onOpenTimeline={() => setPatientProfileTab('Timeline')}
-        />
-      </div>
+      {!synopsisShown && <div className={styles.toolbar}>{recap}</div>}
       <div ref={gridRef} className={styles.grid} style={{ gridTemplateColumns: OVERVIEW_COLUMN_TEMPLATE[columnCount] }}>
         {columns.map((column, i) => (
           // Each column scrolls on its own, so a long middle column never

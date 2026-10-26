@@ -29,13 +29,14 @@ export function SignalActions({ signal, onRun, onReview, primary = false }) {
 
 /**
  * The Unity layer at the foot of an Overview card: the widget's headline
- * strip (click to fold) over its recommendations, one per open signal.
+ * strip, which unfolds its recommendations, one per open signal.
  * Renders nothing when the widget has no open signals.
  */
 export function CardInsights() {
   const ctx = useContext(OverviewInsightsContext);
   const widgetKey = useContext(OverviewWidgetKeyContext);
-  const [open, setOpen] = useState(true);
+  // Folded to the strip so a card with several items stays short; click to expand.
+  const [open, setOpen] = useState(false);
   const signals = (ctx && widgetKey && ctx.byWidget[widgetKey]) || [];
   if (!signals.length) return null;
   return (

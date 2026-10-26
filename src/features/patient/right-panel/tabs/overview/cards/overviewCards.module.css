@@ -8,12 +8,11 @@
 
 /* Medications card: changes since the program began, under the list. */
 .medChanges {
-  padding-top: var(--space-2);
-  border-top: 0.5px solid var(--neutral-100);
+  padding-top: var(--space-3);
 }
 
 .medChanges .sectionLabel {
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-4);
 }
 
 .sectionLabel {
@@ -100,11 +99,7 @@
   position: relative;
 }
 
-.clickRow { border-radius: var(--space-1); }
-
-.clickRow + .clickRow,
-.listRow + .listRow { border-top: 0.5px solid var(--neutral-100); }
-
+/* Rows sit apart on whitespace; a clickable one tints on hover. */
 .clickRow:hover { background: var(--neutral-25); }
 
 .stretch::after {
@@ -173,7 +168,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-4) var(--space-3);
 }
 
 .chipButton {
@@ -188,7 +183,7 @@
 
 /* One program and its steps; programs are separated by a rule. */
 .programBlock + .programBlock {
-  border-top: 0.5px solid var(--neutral-100);
+  margin-top: var(--space-2);
 }
 
 /* ── Synopsis ── */
@@ -279,19 +274,17 @@
 .stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
+  gap: var(--space-4);
 }
 
 .statsTwo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
+/* A label over a large figure, on the card itself rather than in a box. */
 .stat {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--space-1) / 2);
+  gap: var(--space-1);
   min-width: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: calc(var(--space-1) * 1.5);
-  background: var(--neutral-50);
 }
 
 .statValue {
@@ -302,9 +295,11 @@
 }
 
 .statNumber {
-  font-size: var(--font-lg);
+  font-size: var(--font-2xl);
   font-weight: 500;
+  line-height: var(--leading-tight);
   color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
 }
 
 .progressRow {
@@ -318,7 +313,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3);
+  padding: var(--space-1) var(--space-4) var(--space-3);
 }
 
 .consentBlock p { margin: 0; }
@@ -352,7 +347,7 @@
 }
 
 /* ── Gaps ── */
-.tabs { padding: var(--space-2) var(--space-3) 0; }
+.tabs { padding: 0 var(--space-4); }
 
 .tabRow { flex-wrap: wrap; }
 
@@ -414,18 +409,20 @@
 }
 
 .listBody .empty {
-  padding-left: var(--space-3);
-  padding-right: var(--space-3);
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
 }
 
-.listBody > button {
-  margin-left: var(--space-1);
+/* "View N more" under a card list: its label lines up with the rows. */
+.listBody > button,
+.listBody .listMore {
+  margin-left: var(--space-2);
   margin-bottom: var(--space-2);
 }
 
 .listNote {
   margin: 0;
-  padding: 0 var(--space-3) var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
 }
 
 /* ── Vitals ── */
@@ -477,20 +474,16 @@
   min-width: 0;
   scroll-snap-align: start;
   overflow: hidden;
-  border: 0.5px solid var(--vital-tone);
-  border-radius: var(--space-2);
+  border-radius: calc(var(--space-1) * 1.5);
+  /* Tinted by tone instead of outlined. */
   background:
-    linear-gradient(57deg, transparent 61%, color-mix(in srgb, var(--vital-tone) 10%, transparent) 100%),
-    var(--neutral-0);
+    linear-gradient(160deg, transparent 40%, color-mix(in srgb, var(--vital-tone) 12%, transparent) 100%),
+    var(--neutral-25);
 }
 
 .vital[data-tone="error"] { --vital-tone: var(--status-error-dark); }
 .vital[data-tone="warning"] { --vital-tone: var(--status-warning-dark); }
 
-.vital[data-tone="error"],
-.vital[data-tone="warning"] {
-  border-color: color-mix(in srgb, var(--vital-tone) 35%, var(--neutral-0));
-}
 
 .vitalBody {
   display: flex;
