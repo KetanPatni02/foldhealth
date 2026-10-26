@@ -106,16 +106,15 @@ export function HomeView() {
   const handleLayoutChange = useCallback((next) => {
     setLayout(prev => {
       const seen = new Set(next.map(l => l.i));
-      const merged = [...next, ...prev.filter(l => !seen.has(l.i))];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-      return merged;
+      return [...next, ...prev.filter(l => !seen.has(l.i))];
     });
   }, []);
+  // Saved here rather than in the updater, which React may run twice.
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(layout)); } catch { /* private mode */ }
+  }, [layout]);
 
-  const resetLayout = useCallback(() => {
-    setLayout(DEFAULT_LAYOUT);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_LAYOUT));
-  }, []);
+  const resetLayout = useCallback(() => setLayout(DEFAULT_LAYOUT), []);
 
   const changeView = useCallback((next) => {
     setView(next);
