@@ -71,6 +71,10 @@
       "destination": "/api/ai?route=care-plan-individualized"
     },
     {
+      "source": "/api/patient-recap-summary",
+      "destination": "/api/ai?route=patient-recap-summary"
+    },
+    {
       "source": "/s/:section",
       "destination": "/api/share?s=:section"
     },

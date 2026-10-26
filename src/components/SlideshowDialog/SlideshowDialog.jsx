@@ -8,27 +8,34 @@ const prefersReducedMotion = () => typeof window !== 'undefined'
   && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 /**
- * SlideshowDialog: a two-pane walkthrough. The left pane lists the steps
- * (icon tile, title, one-line summary) with the current one marked by an
- * accent bar; the right pane shows that step's slide: a preview area, a
- * heading and a description. Steps advance on their own every `autoplayMs`
- * (the accent bar fills as the timer runs, and pauses while the pointer is
- * over the dialog) until the reader picks a step or uses Previous / Next.
- * No autoplay under prefers-reduced-motion.
+ * SlideshowDialog: a two-pane walkthrough. The white left pane lists the
+ * steps (icon, title, one-line summary, an optional count) with the current
+ * one tinted and marked by an accent bar. The tinted right pane shows that
+ * step's slide: a small eyebrow, the headline (the one thing to read
+ * first), an optional description, then a preview and a detail body. The
+ * slide scrolls on its own while both footers stay put.
+ *
+ * Steps advance on their own every `autoplayMs` (the accent bar fills as the
+ * timer runs, and pauses while the pointer is over the dialog) until the
+ * reader picks a step or uses Previous / Next. No autoplay under
+ * prefers-reduced-motion.
  *
  * @param {boolean} props.open
  * @param {(open: boolean) => void} props.onOpenChange
  * @param {React.ReactNode} props.title
  * @param {React.ReactNode} [props.subtitle]
  * @param {React.ReactNode} [props.leading] – above the title (a logo, an avatar)
+ * @param {React.ReactNode} [props.headerExtra] – under the subtitle (a period switch)
  * @param {Array<{ key: string, icon: string, iconColor?: string, title: string, summary?: React.ReactNode,
- *   heading?: React.ReactNode, description?: React.ReactNode, preview?: React.ReactNode,
- *   primary?: React.ReactNode }>} props.steps
+ *   count?: React.ReactNode, eyebrow?: React.ReactNode, heading?: React.ReactNode,
+ *   description?: React.ReactNode, preview?: React.ReactNode,
+ *   body?: React.ReactNode | ((api: { goTo: (key: string) => void }) => React.ReactNode),
+ *   primary?: React.ReactNode }>} props.steps – a function `body` gets `goTo` to jump to another step
  * @param {React.ReactNode} [props.footerStart] – left pane footer (secondary links)
  * @param {number} [props.autoplayMs=7000] – 0 turns autoplay off
  */
 export function SlideshowDialog({
-  open, onOpenChange, title, subtitle, leading, steps, footerStart, autoplayMs = 7000,
+  open, onOpenChange, title, subtitle, leading, headerExtra, steps, footerStart, autoplayMs = 7000,
 }) {
   const [index, setIndex] = useState(0);
   const [auto, setAuto] = useState(true);
@@ -52,6 +59,10 @@ export function SlideshowDialog({
     setAuto(false);
     setIndex(Math.max(0, Math.min(count - 1, i)));
   };
+  const goTo = (key) => {
+    const i = steps.findIndex(s => s.key === key);
+    if (i >= 0) go(i);
+  };
 
   const onKeyDown = (e) => {
     if (e.target.closest?.('input, textarea, [contenteditable]')) return;
@@ -73,6 +84,7 @@ export function SlideshowDialog({
               {leading && <div className={styles.leading}>{leading}</div>}
               <DialogTitle className={styles.title}>{title}</DialogTitle>
               {subtitle && <DialogDescription className={styles.subtitle}>{subtitle}</DialogDescription>}
+              {headerExtra && <div className={styles.headerExtra}>{headerExtra}</div>}
             </div>
             <ol className={styles.steps}>
               {steps.map((s, i) => {
@@ -99,11 +111,14 @@ export function SlideshowDialog({
                           />
                         )}
                       </span>
-                      <span className={styles.tile}>
-                        <Icon name={s.icon} size={16} color={s.iconColor || 'var(--neutral-400)'} />
+                      <span className={styles.stepIcon}>
+                        <Icon name={s.icon} size={16} color={s.iconColor || (active ? 'var(--primary-300)' : 'var(--neutral-300)')} />
                       </span>
                       <span className={styles.stepText}>
-                        <span className={styles.stepTitle}>{s.title}</span>
+                        <span className={styles.stepTitleRow}>
+                          <span className={styles.stepTitle}>{s.title}</span>
+                          {s.count != null && <span className={styles.stepCount}>{s.count}</span>}
+                        </span>
                         {s.summary && <span className={styles.stepSummary}>{s.summary}</span>}
                       </span>
                     </button>
@@ -117,11 +132,16 @@ export function SlideshowDialog({
           <div className={styles.right}>
             {step && (
               <div key={step.key} className={styles.slide}>
-                <div className={styles.preview}>{step.preview}</div>
-                <div className={styles.copy}>
+                <header className={styles.slideHead}>
+                  <span className={styles.eyebrow}>
+                    <Icon name={step.icon} size={14} />
+                    {step.eyebrow ?? step.title}
+                  </span>
                   <h3 className={styles.heading}>{step.heading ?? step.title}</h3>
-                  {step.description && <p className={styles.description}>{step.description}</p>}
-                </div>
+                  {step.description && <div className={styles.description}>{step.description}</div>}
+                </header>
+                {step.preview && <div className={styles.preview}>{step.preview}</div>}
+                {step.body && <div className={styles.body}>{typeof step.body === 'function' ? step.body({ goTo }) : step.body}</div>}
               </div>
             )}
             <div className={`${styles.footer} ${styles.footerEnd}`}>

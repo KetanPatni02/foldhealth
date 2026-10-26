@@ -25,9 +25,13 @@
 }
 
 .embedded .header {
-  min-height: 0;
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 0.5px solid var(--neutral-150);
+  /* One height whether or not the header carries buttons, so titles line up. */
+  min-height: calc(var(--space-10) + var(--space-1));
+  padding: var(--space-2) var(--space-4);
+}
+
+.embedded .title {
+  font-size: var(--font-lg);
 }
 
 .embedded .body {
@@ -35,8 +39,13 @@
 }
 
 .embedded .item {
-  padding-left: var(--space-3);
-  padding-right: var(--space-3);
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+/* Inside a card, rows are separated by space rather than rules. */
+.embedded .item + .item {
+  border-top: none;
 }
 
 .embedded .more {
@@ -96,9 +105,10 @@ button.titleBtn {
   padding: var(--space-2) 0;
 }
 
+/* Lines a full-bleed card list up with the card's header. */
 .inset {
-  padding-left: var(--space-3);
-  padding-right: var(--space-3);
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
 }
 
 .alignTop {

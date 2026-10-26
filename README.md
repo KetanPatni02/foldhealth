@@ -81,13 +81,25 @@ build requires esbuild ≥ 0.28 on Node 26.
   are abnormal labs, ED visits and admissions, missed or cancelled visits
   not yet rebooked, medication changes, messages awaiting a reply, vitals
   off goal, overdue tasks and care gaps, and RAF jumps, new ones flagged
-  since the last touch (or the last 30 days). A Recap pill at the top left
-  opens a walkthrough of them, one slide per widget, that plays on its own.
-  Rules: `overview/attention/attentionSignals.js`; shared pieces:
+  since the last touch (or the last 30 days). A Recap button in the Patient
+  Synopsis header (Unity gradient until you open it, an outline after)
+  opens a walkthrough of what happened since the last touch, or over 30 or
+  90 days: an At a Glance slide (counts, last touch, what's coming up, a
+  plain summary), then touchpoints, clinical events (with repeat ED use),
+  vitals with their trends, medication changes and program updates, each
+  event with who, when and how it went, and finally the open items with
+  their next steps. Each slide leads with what changed against the
+  period before (`recapChanges.js`) and a Unity summary of the section
+  (`/api/patient-recap-summary`, Gemini, one call for all sections); when
+  Unity can't answer, a summary written from the same facts stands in.
+  Story: `overview/attention/recapStory.js`; rules:
+  `overview/attention/attentionSignals.js`; shared pieces:
   `src/components/UnityInsights` and `src/components/SlideshowDialog`. The
   default lanes now lead with what moves (risk, care plan, gaps, suggested
   actions, tasks), and sample-only reference cards start hidden; layouts
   people already arranged are kept.
+  Cards are soft white surfaces on a tinted page (8px radius, no inner
+  rules) with one header style: icon, title, 44px, on a 16px edge.
 - **Care plan Linkage view.** The care plan's More menu switches between
   Table View and Linkage View. Linkage nests each goal's interventions and
   barriers beneath it with connecting lines, and lists anything not linked to a goal under

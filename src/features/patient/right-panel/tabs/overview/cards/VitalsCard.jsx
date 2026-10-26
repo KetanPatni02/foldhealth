@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DashboardCard, DashboardCardBody } from '../../../../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../../../../components/Icon/Icon';
-import { OVERVIEW_SEED } from '../../../../data/overviewData';
+import { overviewVitals } from './vitalsData';
 import {
   ResponsiveContainer, AreaChart, Area, YAxis, Tooltip, ReferenceLine,
 } from '../../../../../../components/LazyRecharts/LazyRecharts';
@@ -111,19 +111,61 @@ function VitalTrend({ values, diastolic, color, target, unit, measuredAt, latest
   );
 }
 
+/** One vital: goal, latest reading with its change, age, and the trend with the goal line. */
+export function VitalTile({ vital: v }) {
+  const tone = v.tone === 'error' || v.tone === 'warning' || v.tone === 'success' ? v.tone : 'success';
+  const color = TONE_COLOR[tone];
+  const when = ageLabel(v.measuredAt);
+  const icon = v.sourceIcon || SOURCE_ICON[v.key];
+  return (
+    <article className={styles.vital} data-tone={tone}>
+      <div className={styles.vitalBody}>
+        {(v.goalFrom || v.goalTo) && (
+          <p className={styles.vitalGoal}>
+            Goal:
+            {v.goalFrom && <span>{v.goalFrom}</span>}
+            {v.goalFrom && v.goalTo && <span aria-hidden="true">→</span>}
+            {v.goalTo && <span>{v.goalTo}</span>}
+          </p>
+        )}
+        <p className={styles.vitalName}>{v.label}</p>
+        <p className={styles.vitalValueRow}>
+          <span className={styles.vitalReading}>
+            <span className={styles.vitalValue}>{v.value}</span>
+            {v.unit && <span className={styles.vitalUnit}>{v.unit}</span>}
+          </span>
+          {v.change && (
+            <span className={styles.vitalPill}>
+              <Icon name={v.direction === 'down' ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-up-linear'} size={10} />
+              {v.change}
+            </span>
+          )}
+        </p>
+        {(when || icon) && (
+          <p className={styles.vitalMeta}>
+            {when}
+            {when && icon && <span aria-hidden="true">•</span>}
+            {icon && <Icon name={icon} size={12} />}
+          </p>
+        )}
+      </div>
+      <VitalTrend
+        values={v.series}
+        diastolic={v.diastolicSeries}
+        color={color}
+        target={goalTarget(v.goalTo)}
+        goal={v.goalTo}
+        unit={v.unit}
+        measuredAt={v.measuredAt}
+        latestValue={v.value}
+        dual={v.key === 'bp'}
+      />
+    </article>
+  );
+}
+
 export function VitalsCard({ overview, memberId }) {
-  const seeded = Object.fromEntries((OVERVIEW_SEED[memberId]?.vitals || []).map(v => [v.key, v]));
-  const vitals = (overview?.vitals || []).map(v => {
-    const sample = seeded[v.key];
-    return {
-      ...v,
-      goalFrom: v.goalFrom || sample?.goalFrom,
-      goalTo: v.goalTo || sample?.goalTo,
-      // Sample diastolic history (BP), like the goals, until the row carries its own.
-      diastolicSeries: v.diastolicSeries || sample?.diastolicSeries,
-      sourceIcon: v.sourceIcon || sample?.sourceIcon,
-    };
-  });
+  const vitals = overviewVitals(overview, memberId);
   const scroller = useRef(null);
   const [edges, setEdges] = useState({ left: false, right: false });
 
@@ -172,57 +214,7 @@ export function VitalsCard({ overview, memberId }) {
           <p className={styles.empty}>No vitals recorded.</p>
         ) : (
           <div className={styles.vitalsRow} ref={scroller}>
-            {vitals.map(v => {
-              const tone = v.tone === 'error' || v.tone === 'warning' || v.tone === 'success' ? v.tone : 'success';
-              const color = TONE_COLOR[tone];
-              const when = ageLabel(v.measuredAt);
-              const icon = v.sourceIcon || SOURCE_ICON[v.key];
-              return (
-                <article key={v.key} className={styles.vital} data-tone={tone}>
-                  <div className={styles.vitalBody}>
-                    {(v.goalFrom || v.goalTo) && (
-                      <p className={styles.vitalGoal}>
-                        Goal:
-                        {v.goalFrom && <span>{v.goalFrom}</span>}
-                        {v.goalFrom && v.goalTo && <span aria-hidden="true">→</span>}
-                        {v.goalTo && <span>{v.goalTo}</span>}
-                      </p>
-                    )}
-                    <p className={styles.vitalName}>{v.label}</p>
-                    <p className={styles.vitalValueRow}>
-                      <span className={styles.vitalReading}>
-                        <span className={styles.vitalValue}>{v.value}</span>
-                        {v.unit && <span className={styles.vitalUnit}>{v.unit}</span>}
-                      </span>
-                      {v.change && (
-                        <span className={styles.vitalPill}>
-                          <Icon name={v.direction === 'down' ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-up-linear'} size={10} />
-                          {v.change}
-                        </span>
-                      )}
-                    </p>
-                    {(when || icon) && (
-                      <p className={styles.vitalMeta}>
-                        {when}
-                        {when && icon && <span aria-hidden="true">•</span>}
-                        {icon && <Icon name={icon} size={12} />}
-                      </p>
-                    )}
-                  </div>
-                  <VitalTrend
-                    values={v.series}
-                    diastolic={v.diastolicSeries}
-                    color={color}
-                    target={goalTarget(v.goalTo)}
-                    goal={v.goalTo}
-                    unit={v.unit}
-                    measuredAt={v.measuredAt}
-                    latestValue={v.value}
-                    dual={v.key === 'bp'}
-                  />
-                </article>
-              );
-            })}
+            {vitals.map(v => <VitalTile key={v.key} vital={v} />)}
           </div>
         )}
       </DashboardCardBody>

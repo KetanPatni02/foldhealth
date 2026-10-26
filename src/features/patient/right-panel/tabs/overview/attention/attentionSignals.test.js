@@ -62,6 +62,13 @@ describe('buildAttentionSignals', () => {
     expect(s.detail).toContain('Follow-up not planned');
   });
 
+  it('flags repeat ED visits from encounters, not a single one', () => {
+    const ed = (n, d) => ({ id: `e${n}`, category: 'clinical', kind: 'encounter', at: daysAgo(d), title: 'Visit: Emergency department visit, level 4' });
+    expect(buildAttentionSignals({ events: [ed(1, 40)], now: NOW }).signals).toEqual([]);
+    const [s] = buildAttentionSignals({ events: [ed(1, 40), ed(2, 100), ed(3, 300)], now: NOW }).signals;
+    expect(s).toMatchObject({ kind: 'adt', severity: 'high', title: '2 ED visits in 6 months', action: { key: 'addTask' } });
+  });
+
   it('keeps vitals off goal as standing signals, keyed to the reading', () => {
     const vitals = [
       { key: 'bp', tone: 'error', label: 'Blood Pressure', value: '142/88', unit: 'mmHg', goalTo: '120/80', change: '3.5%', direction: 'up', measuredAt: '05/08/2025' },

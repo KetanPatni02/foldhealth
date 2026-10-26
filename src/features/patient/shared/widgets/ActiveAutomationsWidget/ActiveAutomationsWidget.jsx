@@ -26,6 +26,7 @@ export function ActiveAutomationsWidget() {
 
   return (
     <PanelSection
+      icon="solar:bolt-linear"
       title="Active Automations"
       actions={<ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh" />}
     >
