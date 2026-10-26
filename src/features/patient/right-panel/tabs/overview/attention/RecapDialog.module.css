@@ -165,6 +165,7 @@
   font-size: var(--font-2xl);
   font-weight: 500;
   line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
   color: var(--neutral-500);
   font-variant-numeric: tabular-nums;
 }
@@ -263,8 +264,17 @@
   cursor: pointer;
 }
 
+.sectionRow {
+  transition: background-color 120ms ease-out;
+}
+
 .sectionRow:hover {
   background: var(--neutral-25);
+}
+
+.sectionRow:active {
+  background: var(--neutral-50);
+  transition: none;
 }
 
 .sectionRow:focus-visible {

@@ -26,6 +26,8 @@
 }
 
 .column {
+  --fade-top: 0%;
+  --fade-end: 0%;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -36,7 +38,19 @@
   padding-bottom: var(--space-3);
   /* Room for the scrollbar so it never covers card borders. */
   scrollbar-gutter: stable;
+  /* Scroll edges instead of hard cuts: content softens out only where more
+     of it continues past the edge. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    var(--neutral-0) var(--fade-top),
+    var(--neutral-0) calc(100% - var(--fade-end)),
+    transparent 100%
+  );
 }
+
+.column[data-at-top="false"] { --fade-top: var(--space-4); }
+.column[data-at-end="false"] { --fade-end: var(--space-8); }
 
 /* Cards keep their natural height inside the scrolling column. */
 .column > * {

@@ -3,7 +3,7 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Button } from '../../../../../../components/Button/Button';
 import {
-  UnityInsightHeader, UnityInsightStrip, UnityInsights, UnityRecommendation,
+  UnityInsightCollapse, UnityInsightHeader, UnityInsightStrip, UnityInsights, UnityRecommendation,
 } from '../../../../../../components/UnityInsights/UnityInsights';
 import { OverviewInsightsContext, OverviewWidgetKeyContext } from './OverviewInsightsContext';
 import { ACTION_ICON, widgetInsightSummary } from './widgetInsights';
@@ -44,20 +44,18 @@ export function CardInsights() {
       <UnityInsightStrip expanded={open} onToggle={() => setOpen(v => !v)}>
         {widgetInsightSummary(widgetKey, signals)}
       </UnityInsightStrip>
-      {open && (
-        <>
-          <UnityInsightHeader title="Recommendations:" />
-          {signals.map(s => (
-            <UnityRecommendation
-              key={s.id}
-              title={s.title}
-              description={s.detail}
-              aside={s.isNew ? <Badge tone="info" size="S" label="New" /> : null}
-              actions={<SignalActions signal={s} onRun={ctx.run} onReview={ctx.review} />}
-            />
-          ))}
-        </>
-      )}
+      <UnityInsightCollapse open={open}>
+        <UnityInsightHeader title="Recommendations:" />
+        {signals.map(s => (
+          <UnityRecommendation
+            key={s.id}
+            title={s.title}
+            description={s.detail}
+            aside={s.isNew ? <Badge tone="info" size="S" label="New" /> : null}
+            actions={<SignalActions signal={s} onRun={ctx.run} onReview={ctx.review} />}
+          />
+        ))}
+      </UnityInsightCollapse>
     </UnityInsights>
   );
 }

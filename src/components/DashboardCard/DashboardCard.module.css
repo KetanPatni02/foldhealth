@@ -12,6 +12,17 @@
   border-radius: var(--space-2);
   box-shadow: var(--shadow-card);
   overflow: hidden;
+  /* Arrives with a short fade when its data replaces the skeleton. */
+  animation: cardIn 180ms ease-out both;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: none; }
 }
 
 /* AI wash: the gradient sits on a pseudo-element so it can be faded without
