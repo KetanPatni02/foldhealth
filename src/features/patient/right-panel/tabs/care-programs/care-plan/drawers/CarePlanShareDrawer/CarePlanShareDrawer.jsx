@@ -17,6 +17,9 @@ import clinicLogoUrl from '../../../../../../../../assets/trailhead-clinics-logo
 import {
   DEFAULT_PRINT_SETTINGS, demographicRows, findPatientRecord, normalizePrintSettings, samePrintSettings,
 } from '../../lib/carePlanPrintSettings';
+import { historySection, labSection, medicationSection, printContentSections } from '../../lib/carePlanPrintContent';
+import { onlyRecentChanges } from '../../lib/carePlanRecentChanges';
+import { buildCarePlanSnapshot } from '../../lib/carePlanDraft';
 import { CarePlanPrintPersonalize } from './CarePlanPrintPersonalize';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { buildCarePlanDownloadFilename } from '../../lib/carePlanExport';
@@ -293,6 +296,20 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
   const print = usePrintPresets();
   const { settings: printSettings } = print;
 
+  // Personalize > Content: medications and history load only when asked for;
+  // lab readings come with the plan.
+  const medications = useAppStore(s => s.patientMedications[patientId]);
+  const pamiHistory = useAppStore(s => s.patientPamiRecords[patientId]?.history);
+  const liveSlice = useAppStore(s => s.patientCarePlans[key]);
+  const fetchPatientMedications = useAppStore(s => s.fetchPatientMedications);
+  const fetchPatientPamiRecords = useAppStore(s => s.fetchPatientPamiRecords);
+  useEffect(() => {
+    if (printSettings.showMedications) fetchPatientMedications(patientId);
+  }, [printSettings.showMedications, patientId, fetchPatientMedications]);
+  useEffect(() => {
+    if (printSettings.showHistory && !pamiHistory) fetchPatientPamiRecords(patientId);
+  }, [printSettings.showHistory, pamiHistory, patientId, fetchPatientPamiRecords]);
+
   // Header / footer components (Settings > Content > Components) and the
   // fonts and clinic logo they're drawn with.
   const savedHeaders = useAppStore(s => s.customReportHeaderPresets);
@@ -349,13 +366,18 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
     showCarePlanNote: printSettings.showCarePlanNote,
     groupBy: printSettings.groupBy,
     carePlanNote: printSettings.showCarePlanNote ? carePlanNote?.detail || '' : '',
-    demographics: demographicRows(patientRecord, printSettings.demographics),
+    demographics: printSettings.showDemographics ? demographicRows(patientRecord, printSettings.demographics) : [],
+    sections: printContentSections({
+      labs: printSettings.showLabs ? labSection(data.goals, liveSlice?.measurements) : null,
+      medications: printSettings.showMedications ? medicationSection(medications) : null,
+      history: printSettings.showHistory ? historySection(pamiHistory) : null,
+    }),
     header: printSettings.showHeader ? headerImage || null : null,
     // undefined: the standard footer line; null: none.
     footer: !printSettings.showFooter ? null : (footerComponent ? footerImage || undefined : undefined),
     // A header shows the logo itself, so the page body doesn't repeat it.
     logo: printSettings.showHeader ? null : logo,
-  }), [printSettings, carePlanNote, patientRecord, headerImage, footerImage, footerComponent, logo, assets.fonts]);
+  }), [printSettings, carePlanNote, patientRecord, headerImage, footerImage, footerComponent, logo, assets.fonts, data.goals, liveSlice?.measurements, medications, pamiHistory]);
 
   const [shareFilters, setShareFilters] = useState(() => ({ ...SHARE_FILTERS_DEFAULT }));
   const rangeFieldRef = useRef(null);
@@ -456,12 +478,28 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
   // filters and checkboxes leave out, signed by whoever signed it.
   const pdfParts = useMemo(() => versionParts.map((p) => {
     const keep = (list, opts, off) => (list || []).filter(x => matchesShareFilters(x, shareFilters, opts) && !off.has(x.id));
-    const partSelection = {
+    let partSelection = {
       conditions: (p.data.conditions || []).map(x => x.label),
       goals: keep(p.data.goals, filterCtx, goalOff),
       interventions: keep(p.data.interventions, { ...filterCtx, kind: 'intervention' }, intvOff),
       barriers: keep(p.data.barriers, filterCtx, barrierOff),
     };
+    // Recent changes only: this version against the one before it (the draft
+    // against the latest signed version).
+    let changesNote = '';
+    if (printSettings.recentChangesOnly) {
+      const signedSnapshots = (versions || []).filter(v => v.snapshot).toSorted((a, b) => b.versionNumber - a.versionNumber);
+      const prev = p.key === 'draft'
+        ? signedSnapshots[0]
+        : signedSnapshots.find(v => v.versionNumber < p.versionNumber);
+      const after = p.key === 'draft'
+        ? (liveSlice ? buildCarePlanSnapshot(liveSlice) : p.data)
+        : (signedSnapshots.find(v => v.versionNumber === p.versionNumber)?.snapshot || p.data);
+      partSelection = onlyRecentChanges(partSelection, prev?.snapshot || null, after);
+      changesNote = prev
+        ? `Recent changes only: what was added, changed or removed since version ${prev.versionNumber}.`
+        : 'Recent changes only: there is no earlier version, so everything on the plan is new.';
+    }
     const progresses = partSelection.goals.map(g => Number(g.progress)).filter(n => Number.isFinite(n));
     return {
       meta: {
@@ -471,6 +509,7 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
         versionBanner: versionParts.length > 1
           ? [p.label, p.signedBy || p.signedAt ? `Signed${p.signedBy ? ` by ${p.signedBy}` : ''}${p.signedAt ? ` on ${versionFmt(p.signedAt)}` : ''}` : (p.key === 'draft' ? 'Unsigned changes' : '')].filter(Boolean).join('  •  ')
           : '',
+        changesNote,
         plan: docMeta.plan ? {
           ...docMeta.plan,
           signedBy: p.signedBy ?? docMeta.plan.signedBy,
@@ -480,7 +519,7 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
       },
       selection: partSelection,
     };
-  }), [versionParts, docMeta, shareFilters, filterCtx, goalOff, intvOff, barrierOff]);
+  }), [versionParts, docMeta, shareFilters, filterCtx, goalOff, intvOff, barrierOff, printSettings.recentChangesOnly, versions, liveSlice]);
 
   const handleDownload = async () => {
     const base = buildCarePlanDownloadFilename({
