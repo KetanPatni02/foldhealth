@@ -145,7 +145,8 @@ button.titleBtn {
 }
 
 .itemTitle {
-  font-size: var(--font-md);
+  /* A dashboard can set one type scale for every row (the patient Overview). */
+  font-size: var(--item-title-size, var(--font-md));
   font-weight: 400;
   line-height: var(--leading-normal);
   color: var(--neutral-500);
@@ -167,7 +168,7 @@ button.titleBtn {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-1);
-  font-size: var(--font-sm);
+  font-size: var(--item-meta-size, var(--font-sm));
   line-height: var(--leading-normal);
   color: var(--neutral-200);
 }

@@ -1,10 +1,12 @@
-// Overview cards backed by the patient's p360_profiles row: risk, contact
-// and reachability, care team, caregivers, consent, medications, diagnoses.
+// Overview cards backed by the patient's p360_profiles row: contact and
+// reachability, care team, caregivers, medications, diagnoses.
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { CappedRows } from './CappedRows';
-import { MedChangesSection } from './MedChangesSection';
+import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { formatClinicalDate } from '../../../../../../lib/clinicalDates';
+import { medHighlights, RECENT_DAYS } from './medHighlights';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Avatar } from '../../../../../../components/Avatar/Avatar';
 import { Icon } from '../../../../../../components/Icon/Icon';
@@ -13,10 +15,8 @@ import { findWorklistMember, icdFromText } from './overviewItemActions';
 import { useP360Profile } from './useP360Profile';
 import styles from './overviewCards.module.css';
 import { isProgramClosed } from '../../../../data/programStatus';
-import { consentSections } from '../../../../data/consentDisplay';
-import { usePatientConsent } from '../../../../hooks/usePatientConsent';
 import { Button } from '../../../../../../components/Button/Button';
-import { CardInsights } from '../attention/CardInsights';
+import { CardHeaderActions, CardInsights } from '../attention/CardInsights';
 
 const AddMedicationsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddMedicationsDrawer/AddMedicationsDrawer').then(m => ({ default: m.AddMedicationsDrawer })));
 const AddProblemsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddProblemsDrawer/AddProblemsDrawer').then(m => ({ default: m.AddProblemsDrawer })));
@@ -26,52 +26,15 @@ const list = v => (Array.isArray(v) ? v.filter(Boolean) : []);
 // Shared frame: skeleton while the profile loads, one empty line without one.
 function ProfileCard({ patientId, icon, title, count, bodyClassName, children }) {
   const profile = useP360Profile(patientId);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   if (profile === undefined) return <DashboardCardSkeleton icon={icon} title={title} rows={2} />;
   return (
-    <DashboardCard icon={icon} title={title} count={profile ? count?.(profile) : null}>
+    <DashboardCard icon={icon} title={title} count={profile ? count?.(profile) : null} actions={<CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}></CardHeaderActions>}>
+      <CardInsights open={insightsOpen} />
       <DashboardCardBody className={bodyClassName}>
         {profile ? children(profile) : <p className={styles.empty}>No profile data for this patient yet.</p>}
       </DashboardCardBody>
-      <CardInsights />
     </DashboardCard>
-  );
-}
-
-function acuityTone(acuity) {
-  if (/high/i.test(acuity || '')) return 'error';
-  if (/rising|medium/i.test(acuity || '')) return 'warning';
-  if (/low/i.test(acuity || '')) return 'success';
-  return 'grey';
-}
-
-export function RiskAcuityCard({ patientId }) {
-  return (
-    <ProfileCard patientId={patientId} icon="solar:graph-up-linear" title="Risk & Acuity">
-      {(p) => {
-        const change = Number(p.raf_change) || 0;
-        return (
-          <div className={`${styles.stats} ${styles.statsTwo}`}>
-            <div className={styles.stat}>
-              <span className={styles.muted}>RAF score</span>
-              <span className={styles.statValue}>
-                <span className={styles.statNumber}>{p.raf_score ?? '–'}</span>
-                {change !== 0 && (
-                  <span className={`${styles.muted} ${change > 0 ? styles.textError : styles.textSuccess}`}>
-                    {change > 0 ? '▲' : '▼'} {Math.abs(change)} since last
-                  </span>
-                )}
-              </span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.muted}>Acuity</span>
-              <span className={styles.statValue}>
-                {p.acuity ? <Badge tone={acuityTone(p.acuity)} size="S" label={p.acuity} /> : <span className={styles.muted}>Not set</span>}
-              </span>
-            </div>
-          </div>
-        );
-      }}
-    </ProfileCard>
   );
 }
 
@@ -200,111 +163,94 @@ export function CaregiversCard({ patientId }) {
   );
 }
 
-export function ConsentCard({ patientId }) {
-  const openConsentCapture = useAppStore(s => s.openConsentCapture);
-  const { consents, programs, summary, loaded } = usePatientConsent(patientId);
-  const title = 'Consent';
-  if (!loaded) return <DashboardCardSkeleton icon="solar:shield-check-linear" title={title} rows={2} />;
-  const required = consentSections(consents, programs)[0].items.filter(i => summary.byScope[i.scope]);
-  const missing = summary.total - summary.given;
-  const pct = summary.total ? Math.round((summary.given / summary.total) * 100) : 0;
+// The patient's medications (the PAMI/Hx tab's records) with what changed
+// leading: refills due or run out, new starts and recent stops (medHighlights).
+// Everything stopped sits behind the Discontinued link.
+const MED_CHANGE = {
+  out: { label: 'Ran out', tone: 'error', meta: d => `Ran out ${d}` },
+  refill: { label: 'Refill due', tone: 'warning', meta: d => `Refill due ${d}` },
+  new: { label: 'New', tone: 'success', meta: d => `Started ${d}` },
+  stopped: { label: 'Stopped', tone: 'grey', meta: d => `Stopped ${d}` },
+};
+const pad2 = n => String(n).padStart(2, '0');
+const fmtDay = (ms) => { const d = new Date(ms); return `${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}/${d.getFullYear()}`; };
+const MED_SUMMARY = [['out', 'ran out', 'ran out'], ['refill', 'refill due', 'refills due'], ['new', 'new', 'new'], ['stopped', 'stopped', 'stopped']];
+
+export function MedicationsCard({ patientId }) {
+  const stored = useAppStore(s => s.patientMedications[patientId]);
+  const fetchPatientMedications = useAppStore(s => s.fetchPatientMedications);
+  const [drawer, setDrawer] = useState(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [openedAt] = useState(() => Date.now());
+
+  useEffect(() => { if (patientId) fetchPatientMedications(patientId); }, [patientId, fetchPatientMedications]);
+
+  if (!stored) return <DashboardCardSkeleton icon="solar:pill-linear" title="Medications" />;
+  const { rows, counts } = medHighlights(stored, openedAt);
+  const active = stored.filter(m => (m.status || 'Active') !== 'Stopped').length;
+  const stopped = stored.length - active;
+  const summary = MED_SUMMARY.filter(([k]) => counts[k]).map(([k, one, many]) => `${counts[k]} ${counts[k] === 1 ? one : many}`);
+
   return (
     <DashboardCard
-      icon="solar:shield-check-linear"
-      title={title}
-      actions={<Button variant="ghost" size="S" onClick={() => openConsentCapture(patientId)}>Capture consent</Button>}
+      icon="solar:pill-linear"
+      title="Medications"
+      count={active || null}
+      actions={(
+        <CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}>
+          <ActionButton size="S" icon="solar:add-linear" tooltip="Add medication" tooltipLeft onClick={() => setDrawer('add')} />
+        </CardHeaderActions>
+      )}
     >
+      <CardInsights open={insightsOpen} />
       <DashboardCardBody className={styles.listBody}>
-        {!summary.total ? (
-          <p className={styles.empty}>No open program needs consent.</p>
+        {rows.length === 0 ? (
+          <p className={styles.empty}>No active medications on file.</p>
         ) : (
-          <>
-            <div className={styles.consentBlock}>
-              <div className={styles.progressRow}>
-                <span className={styles.muted}>{summary.given} of {summary.total} on file</span>
-                <span className={styles.bar} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Consents on file">
-                  <span className={styles.barFill} style={{ width: `${pct}%` }} />
-                </span>
-              </div>
-              <p className={missing ? `${styles.muted} ${styles.textWarning}` : styles.muted}>
-                {missing
-                  ? `${missing} consent${missing === 1 ? ' is' : 's are'} missing. Billable work for that program stays blocked until it's captured.`
-                  : 'All required consents are on file.'}
-              </p>
+          <div className={styles.medTable}>
+            <p className={styles.medSummary}>
+              {summary.length ? `${summary.join(' • ')} in the last ${RECENT_DAYS} days` : `No changes in the last ${RECENT_DAYS} days`}
+            </p>
+            <div className={styles.medHead}>
+              <span className={styles.medMain}>Name</span>
+              <span className={styles.medStatus}>Status</span>
             </div>
-            {required.map(item => (
-              <PanelSectionItem
-                key={item.id}
-                inset
-                leading={<Icon name={item.icon} size={16} color={item.color} />}
-                title={item.label}
-                meta={item.status}
-                trailing={item.state !== 'given' && (
-                  <Button variant="ghost" size="S" onClick={() => openConsentCapture(patientId, { scopeType: 'program', scope: item.scope })}>Capture</Button>
-                )}
-              />
-            ))}
-          </>
+            <CappedRows
+              items={rows}
+              limit={5}
+              render={({ med: m, change, date }) => {
+                const c = MED_CHANGE[change];
+                const when = c ? c.meta(fmtDay(date)) : (m.start && `Start: ${formatClinicalDate(m.start)}`);
+                const meta = [when, change === 'stopped' ? m.stopReason : m.sig].filter(Boolean).join(' • ');
+                return (
+                  <button key={m.id} type="button" className={styles.medRow} onClick={() => setDrawer(change === 'stopped' ? 'stopped' : 'add')}>
+                    <span className={styles.medMain}>
+                      <span className={styles.medName}>{m.name}</span>
+                      {meta && <span className={styles.medMeta}>{meta}</span>}
+                    </span>
+                    <span className={styles.medStatus}>
+                      {c ? <Badge tone={c.tone} size="S" label={c.label} /> : <span className={styles.medMeta}>{m.status || 'Active'}</span>}
+                    </span>
+                  </button>
+                );
+              }}
+            />
+          </div>
+        )}
+        {stopped > 0 && (
+          <div className={styles.medDiscontinued}>
+            <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-right-linear" onClick={() => setDrawer('stopped')}>
+              Discontinued ({stopped})
+            </Button>
+          </div>
         )}
       </DashboardCardBody>
-      <CardInsights />
-    </DashboardCard>
-  );
-}
-
-// Changes since the program began lead; the full active list is one click
-// away, so a long medication list doesn't bury what changed.
-export function MedicationsCard({ patientId }) {
-  const [open, setOpen] = useState(false);
-  const [showActive, setShowActive] = useState(false);
-  return (
-    <>
-      <ProfileCard patientId={patientId} icon="solar:pill-linear" title="Medications" count={p => list(p.medication_orders).length || null} bodyClassName={styles.listBody}>
-        {(p) => {
-          const meds = list(p.medication_orders);
-          if (meds.length === 0) {
-            return (
-              <>
-                <p className={styles.empty}>No active medications on file.</p>
-                <MedChangesSection patientId={patientId} />
-              </>
-            );
-          }
-          return (
-            <>
-              <MedChangesSection patientId={patientId} />
-              <Button
-                variant="ghost"
-                size="S"
-                className={styles.listMore}
-                trailingIcon={showActive ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-                onClick={() => setShowActive(v => !v)}
-              >
-                {showActive ? 'Hide active medications' : `Active medications (${meds.length})`}
-              </Button>
-              {showActive && meds.map(m => (
-                <div key={m} className={styles.clickRow}>
-                  <PanelSectionItem
-                    inset
-                    leading={<span className={`${styles.tile} ${styles.info}`}><Icon name="solar:pill-linear" size={16} /></span>}
-                    title={(
-                      <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => setOpen(true)}>
-                        {m}
-                      </button>
-                    )}
-                  />
-                </div>
-              ))}
-            </>
-          );
-        }}
-      </ProfileCard>
-      {open && (
+      {drawer && (
         <Suspense fallback={null}>
-          <AddMedicationsDrawer patientId={patientId} onClose={() => setOpen(false)} />
+          <AddMedicationsDrawer patientId={patientId} focus={drawer === 'stopped' ? 'stopped' : undefined} onClose={() => setDrawer(null)} />
         </Suspense>
       )}
-    </>
+    </DashboardCard>
   );
 }
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { Avatar } from '../../../../../../components/Avatar/Avatar';
@@ -7,7 +8,7 @@ import { usePatientConversations } from './usePatientConversations';
 import { CappedRows } from './CappedRows';
 import { awaitingReply, waitLabel } from './awaitingReply';
 import styles from './overviewCards.module.css';
-import { CardInsights } from '../attention/CardInsights';
+import { CardHeaderActions, CardInsights } from '../attention/CardInsights';
 
 const CHANNEL = {
   sms: { label: 'SMS', icon: 'solar:chat-line-linear' },
@@ -24,6 +25,7 @@ const TONE_CLASS = { error: styles.textError, warning: styles.textWarning };
  */
 export function AwaitingReplyCard({ patient }) {
   const goToComms = useAppStore(s => s.goToComms);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   // Same match as the Comms tab: the patient's id, or the name for threads without one.
   const conversations = usePatientConversations(patient);
   const threads = conversations === null ? null : awaitingReply(conversations);
@@ -31,7 +33,8 @@ export function AwaitingReplyCard({ patient }) {
   if (threads === null) return <DashboardCardSkeleton icon="solar:chat-unread-linear" title="Awaiting Reply" />;
 
   return (
-    <DashboardCard icon="solar:chat-unread-linear" title="Awaiting Reply" count={threads.length || null}>
+    <DashboardCard icon="solar:chat-unread-linear" title="Awaiting Reply" count={threads.length || null} actions={<CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}></CardHeaderActions>}>
+      <CardInsights open={insightsOpen} />
       <DashboardCardBody className={styles.listBody}>
         {threads.length === 0 ? (
           <p className={styles.empty}>No messages waiting on the team.</p>
@@ -68,7 +71,6 @@ export function AwaitingReplyCard({ patient }) {
           />
         )}
       </DashboardCardBody>
-      <CardInsights />
     </DashboardCard>
   );
 }

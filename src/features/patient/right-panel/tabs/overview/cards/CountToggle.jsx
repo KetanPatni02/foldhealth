@@ -1,0 +1,25 @@
+import { Toggle } from '../../../../../../components/Toggle/Toggle';
+import styles from './overviewCards.module.css';
+
+/**
+ * The Overview's tab switch: a small Toggle whose segments carry a count
+ * chip (Goals 8). `items` are { key, label, count }; count is optional.
+ */
+export function CountToggle({ items, active, onChange }) {
+  return (
+    <Toggle
+      size="S"
+      items={items.map(({ key, label, count }) => ({
+        key,
+        label: (
+          <span className={styles.toggleLabel}>
+            {label}
+            {count != null && <span className={styles.toggleCount}>{count}</span>}
+          </span>
+        ),
+      }))}
+      active={active}
+      onChange={onChange}
+    />
+  );
+}

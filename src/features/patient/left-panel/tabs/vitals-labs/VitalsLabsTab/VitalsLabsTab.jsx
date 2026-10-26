@@ -9,7 +9,7 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { ProfileTable } from '../../../../../../components/ProfileTable/ProfileTable';
 import { profileRowClass, profileCellClass } from '../../../../../../components/ProfileTable/profileTableClasses';
 import { useAppStore } from '../../../../../../store/useAppStore';
-import { VITALS, formatVital, vitalsHistory } from '../vitalsConfig';
+import { VITALS, TABLE_SECTIONS, formatVital, vitalsHistory } from '../vitalsConfig';
 import { RecordVitalsDrawer } from '../RecordVitalsDrawer/RecordVitalsDrawer';
 import styles from './VitalsLabsTab.module.css';
 
@@ -50,36 +50,6 @@ function cssVar(name) {
 }
 
 // ── Table data ──────────────────────────────────────────────────────────────
-
-const TABLE_SECTIONS = [
-  {
-    id: 'biomarkers', title: 'Biomarkers',
-    rows: [
-      { id: 'bg',  name: 'Blood Glucose',      unit: 'mg/dL',
-        values: [{ v: '85', date: '3/9/25' }, { v: '92', date: '3/1/25' }, { v: '78', date: '2/24/25' }] },
-      { id: 'rhr', name: 'Resting Heart Rate', unit: 'bpm',
-        values: [{ v: '72', date: '3/9/25' }, { v: '68', date: '3/1/25' }, { v: '75', date: '2/24/25', flag: true }] },
-    ],
-  },
-  {
-    id: 'activity', title: 'Activity',
-    rows: [
-      { id: 'steps', name: 'Steps', unit: 'steps',
-        values: [{ v: '5,675', date: '3/9/25' }, { v: '4,321', date: '3/1/25', flag: true }, { v: '7,890', date: '2/24/25' }] },
-    ],
-  },
-  {
-    id: 'lab', title: 'Lab Monitoring',
-    rows: [
-      { id: 'hba1c', name: 'HbA1c',             unit: '%',
-        values: [{ v: '6.8', date: '3/9/25' }, { v: '7.2', date: '3/1/25', flag: true }, { v: '6.5', date: '2/24/25' }] },
-      { id: 'chol',  name: 'Total Cholesterol',  unit: 'mg/dL',
-        values: [{ v: '185', date: '3/9/25' }, { v: '210', date: '3/1/25', flag: true }, { v: '195', date: '2/24/25' }] },
-      { id: 'ldl',   name: 'LDL',               unit: 'mg/dL',
-        values: [{ v: '112', date: '3/9/25' }, { v: '130', date: '3/1/25', flag: true }, { v: '118', date: '2/24/25' }] },
-    ],
-  },
-];
 
 // Pinned until the patient has pins saved (patient_vital_pins).
 const DEFAULT_PINS = ['bp', 'spo2', 'bg'];

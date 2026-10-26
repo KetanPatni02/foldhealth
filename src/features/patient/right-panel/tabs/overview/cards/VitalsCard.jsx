@@ -1,13 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DashboardCard, DashboardCardBody } from '../../../../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../../../../components/Icon/Icon';
-import { overviewVitals } from './vitalsData';
+import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { ColumnConfigPopover } from '../../../../../../components/ColumnConfigPopover/ColumnConfigPopover';
+import { useAppStore } from '../../../../../../store/useAppStore';
+import { vitalsHistory } from '../../../../left-panel/tabs/vitals-labs/vitalsConfig';
+import { shownVitals, vitalCatalog } from './vitalsData';
 import {
   ResponsiveContainer, AreaChart, Area, YAxis, Tooltip, ReferenceLine,
 } from '../../../../../../components/LazyRecharts/LazyRecharts';
 import { goalTarget } from './vitalGoal';
 import styles from './overviewCards.module.css';
-import { CardInsights } from '../attention/CardInsights';
+import { CardHeaderActions, CardInsights } from '../attention/CardInsights';
 
 const TONE_COLOR = {
   error: 'var(--status-error-dark)',
@@ -135,7 +139,7 @@ export function VitalTile({ vital: v }) {
             {v.unit && <span className={styles.vitalUnit}>{v.unit}</span>}
           </span>
           {v.change && (
-            <span className={styles.vitalPill}>
+            <span className={styles.vitalChange}>
               <Icon name={v.direction === 'down' ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-up-linear'} size={10} />
               {v.change}
             </span>
@@ -164,13 +168,32 @@ export function VitalTile({ vital: v }) {
   );
 }
 
-export function VitalsCard({ overview, memberId }) {
-  // Readings off goal lead; in-range ones follow.
-  const TONE_ORDER = { error: 0, warning: 1 };
-  const vitals = overviewVitals(overview, memberId)
-    .sort((a, b) => (TONE_ORDER[a.tone] ?? 2) - (TONE_ORDER[b.tone] ?? 2));
+export function VitalsCard({ overview, memberId, patientId }) {
+  const rows = useAppStore(s => s.patientVitals[patientId]);
+  const fetchPatientVitals = useAppStore(s => s.fetchPatientVitals);
+  const savedKeys = useAppStore(s => s.overviewVitalKeys[patientId]);
+  const fetchOverviewVitalKeys = useAppStore(s => s.fetchOverviewVitalKeys);
+  const setOverviewVitalKeys = useAppStore(s => s.setOverviewVitalKeys);
   const scroller = useRef(null);
   const [edges, setEdges] = useState({ left: false, right: false });
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [configRect, setConfigRect] = useState(null);
+
+  useEffect(() => {
+    if (!patientId) return;
+    fetchPatientVitals(patientId);
+    fetchOverviewVitalKeys(patientId);
+  }, [patientId, fetchPatientVitals, fetchOverviewVitalKeys]);
+
+  const catalog = useMemo(() => vitalCatalog(overview, memberId, vitalsHistory(rows)), [overview, memberId, rows]);
+  // The care team's order when they have saved one; otherwise readings off goal lead.
+  const vitals = useMemo(() => {
+    const TONE_ORDER = { error: 0, warning: 1 };
+    const shown = shownVitals(catalog, overview, savedKeys);
+    return savedKeys ? shown : shown.sort((a, b) => (TONE_ORDER[a.tone] ?? 2) - (TONE_ORDER[b.tone] ?? 2));
+  }, [catalog, overview, savedKeys]);
+  const shownKeys = vitals.map(v => v.key);
+  const shownSet = new Set(shownKeys);
 
   useEffect(() => {
     const el = scroller.current;
@@ -197,31 +220,72 @@ export function VitalsCard({ overview, memberId }) {
     el.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap), behavior: 'smooth' });
   };
 
+  // The popover lists the shown tiles in order, then the rest of the catalog.
+  const columns = [
+    ...vitals,
+    ...catalog.filter(t => !shownSet.has(t.key)),
+  ].map(t => ({ k: t.key, lb: t.label }));
+  const hidden = new Set(columns.filter(c => !shownSet.has(c.k)).map(c => c.k));
+  const toggleVital = (key) => setOverviewVitalKeys(patientId, shownSet.has(key) ? shownKeys.filter(k => k !== key) : [...shownKeys, key]);
+  const moveVital = (from, to) => {
+    const keys = columns.map(c => c.k);
+    keys.splice(keys.indexOf(to), 0, ...keys.splice(keys.indexOf(from), 1));
+    setOverviewVitalKeys(patientId, keys.filter(k => shownSet.has(k)));
+  };
+
   return (
     <DashboardCard
       icon="solar:heart-pulse-linear"
       title="Vitals"
-      actions={vitals.length > 0 ? (
-        <span className={styles.vitalNavs}>
-          <button type="button" className={styles.vitalNav} aria-label="Previous vitals" disabled={!edges.left} onClick={() => scrollByCard(-1)}>
-            <Icon name="solar:alt-arrow-left-linear" size={16} />
-          </button>
-          <button type="button" className={styles.vitalNav} aria-label="Next vitals" disabled={!edges.right} onClick={() => scrollByCard(1)}>
-            <Icon name="solar:alt-arrow-right-linear" size={16} />
-          </button>
-        </span>
-      ) : null}
+      actions={(
+        <CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}>
+          <span className={styles.headerActions}>
+            <ActionButton
+              size="S"
+              icon="solar:add-linear"
+              tooltip="Add or reorder vitals"
+              tooltipLeft
+              active={!!configRect}
+              disabled={!patientId}
+              onClick={(e) => setConfigRect(configRect ? null : e.currentTarget.getBoundingClientRect())}
+            />
+            {vitals.length > 0 && (
+              <>
+                <span className={styles.headerDivider} />
+                <ActionButton size="S" icon="solar:alt-arrow-left-linear" tooltip="Previous" disabled={!edges.left} onClick={() => scrollByCard(-1)} />
+                <ActionButton size="S" icon="solar:alt-arrow-right-linear" tooltip="Next" tooltipLeft disabled={!edges.right} onClick={() => scrollByCard(1)} />
+              </>
+            )}
+          </span>
+        </CardHeaderActions>
+      )}
     >
+      <CardInsights open={insightsOpen} />
       <DashboardCardBody>
         {vitals.length === 0 ? (
-          <p className={styles.empty}>No vitals recorded.</p>
+          <p className={styles.empty}>No vitals on this widget. Use + to add vitals and biomarkers.</p>
         ) : (
           <div className={styles.vitalsRow} ref={scroller}>
             {vitals.map(v => <VitalTile key={v.key} vital={v} />)}
           </div>
         )}
       </DashboardCardBody>
-      <CardInsights />
+      {configRect && (
+        <ColumnConfigPopover
+          anchorRect={configRect}
+          title="Vitals & biomarkers"
+          emptyText="No vitals match"
+          columns={columns}
+          hidden={hidden}
+          onToggle={toggleVital}
+          onReorder={moveVital}
+          onReset={() => setOverviewVitalKeys(patientId, null)}
+          onClose={() => setConfigRect(null)}
+          lockedTop={[]}
+          lockedBottom={[]}
+          width={260}
+        />
+      )}
     </DashboardCard>
   );
 }

@@ -3,26 +3,21 @@ import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../.
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { PriorityIcon } from '../../../../../../components/PriorityIcon/PriorityIcon';
 import { Button } from '../../../../../../components/Button/Button';
+import { Icon } from '../../../../../../components/Icon/Icon';
+import { CountToggle } from './CountToggle';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { GbiStatusButton, gbiStatusMenuItems } from '../../care-programs/care-plan/tables/carePlanTableShared';
-import { carePlanAttention } from '../attention/carePlanAttention';
+import { carePlanByKind } from '../attention/carePlanAttention';
+import { CappedRows } from './CappedRows';
 import styles from './overviewCards.module.css';
 
 const GoalPreviewDrawer = lazy(() => import('../../care-programs/care-plan/drawers/GoalPreviewDrawer/GoalPreviewDrawer').then(m => ({ default: m.GoalPreviewDrawer })));
 const InterventionPreviewDrawer = lazy(() => import('../../care-programs/care-plan/drawers/InterventionPreviewDrawer/InterventionPreviewDrawer').then(m => ({ default: m.InterventionPreviewDrawer })));
 const BarrierDetailDrawer = lazy(() => import('../../care-programs/care-plan/drawers/BarrierDetailDrawer/BarrierDetailDrawer').then(m => ({ default: m.BarrierDetailDrawer })));
 
-// Up to five rows: what needs attention, then recently updated items.
-const LIMIT = 5;
-const KIND_LABEL = { goal: 'Goal', intervention: 'Intervention', barrier: 'Barrier' };
+const KINDS = [['goal', 'Goals'], ['intervention', 'Interventions'], ['barrier', 'Barriers']];
 const REASON_CLASS = { error: styles.textError, warning: styles.textWarning };
-
-// The owner's name, or nothing for the "Unassigned" placeholder (its row says "No owner").
-function personName(assignee) {
-  const name = typeof assignee === 'string' ? assignee : assignee?.name;
-  return name && name !== 'Unassigned' ? name : null;
-}
 
 export function CarePlanCard({ patientId, actions }) {
   const plans = useAppStore(s => s.patientCarePlans);
@@ -34,6 +29,7 @@ export function CarePlanCard({ patientId, actions }) {
   const [goal, setGoal] = useState(null);
   const [intervention, setIntervention] = useState(null);
   const [barrier, setBarrier] = useState(null);
+  const [kind, setKind] = useState(null);
 
   // The clock the attention rules read (past due, new this month), taken once per mount.
   const [openedAt] = useState(() => Date.now());
@@ -58,16 +54,17 @@ export function CarePlanCard({ patientId, actions }) {
     }
     return merged;
   }, [plans, patientId]);
-  const focus = useMemo(
-    () => carePlanAttention({ goals, interventions, barriers, now: openedAt, limit: LIMIT }),
+  const byKind = useMemo(
+    () => carePlanByKind({ goals, interventions, barriers, now: openedAt }),
     [goals, interventions, barriers, openedAt],
   );
 
   if (!loaded && loading !== false) return <DashboardCardSkeleton icon="solar:clipboard-list-linear" title="Care Plan" />;
 
-  const empty = focus.total === 0;
-  const shown = focus.items.slice(0, LIMIT);
-  const quiet = focus.open - focus.attention;
+  const empty = goals.length + interventions.length + barriers.length === 0;
+  // Until the reader picks, open on the first kind with something to act on.
+  const active = kind ?? (KINDS.find(([k]) => byKind[k].some(e => e.reason)) || KINDS[0])[0];
+  const list = byKind[active];
 
   const openItem = (kind, item) => {
     const next = { item, program: item.program };
@@ -87,50 +84,55 @@ export function CarePlanCard({ patientId, actions }) {
     <DashboardCard
       icon="solar:clipboard-list-linear"
       title="Care Plan"
-      count={focus.attention || null}
-      actions={<Button variant="ghost" size="S" onClick={actions.openCarePlan}>Open care plan</Button>}
+      tabs={!empty && (
+        <CountToggle
+          items={KINDS.map(([key, label]) => ({ key, label, count: byKind[key].length }))}
+          active={active}
+          onChange={setKind}
+        />
+      )}
+      actions={<Button variant="secondary" size="S" trailingIcon="solar:arrow-right-linear" onClick={actions.openCarePlan}>Open Care Plan</Button>}
     >
       <DashboardCardBody className={styles.listBody}>
         {empty ? (
           <p className={styles.empty}>No care plan yet. Open the care plan to add goals, interventions and barriers.</p>
-        ) : shown.length === 0 ? (
-          <p className={styles.empty}>Nothing in the care plan needs attention. {focus.open} open {focus.open === 1 ? 'item is' : 'items are'} on track.</p>
+        ) : list.length === 0 ? (
+          <p className={styles.empty}>No open {KINDS.find(([k]) => k === active)[1].toLowerCase()}.</p>
         ) : (
-          <>
-            {shown.map(({ kind, item, reason, tone }) => (
-              <div key={`${kind}-${item.program?.id || ''}-${item.id || item.title}`} className={styles.clickRow}>
-                <PanelSectionItem
-                  inset
-                  leading={<PriorityIcon priority={item.priority} title={item.priority ? `${item.priority} priority` : 'No priority'} />}
-                  title={(
-                    <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => openItem(kind, item)}>
-                      {item.title}
-                    </button>
-                  )}
-                  meta={[
-                    KIND_LABEL[kind],
-                    <span key="why" className={REASON_CLASS[tone]}>{reason}</span>,
-                    kind === 'goal'
-                      ? item.currentValue && `Current ${item.currentValue}${item.customUnit ? ` ${item.customUnit}` : ''}`
-                      : personName(item.assignee),
-                  ]}
-                  trailing={(
-                    <span className={`${styles.statusSlotWide} ${styles.aboveStretch}`}>
-                      <GbiStatusButton
-                        value={item.status || 'Not Started'}
-                        disabled={!item.id || !item.program?.id}
-                        onOpen={(rect) => setStatusMenu({ type: kind, item, rect })}
-                      />
-                    </span>
-                  )}
-                />
-              </div>
-            ))}
-            <p className={`${styles.muted} ${styles.listNote}`}>
-              {focus.attention > LIMIT ? `${focus.attention - LIMIT} more need attention. ` : ''}
-              {quiet > 0 ? `${quiet} other open ${quiet === 1 ? 'item is' : 'items are'} on track.` : ''}
-            </p>
-          </>
+          <div className={styles.dividedRows}>
+            <CappedRows
+              items={list}
+              resetKey={active}
+              render={({ kind: k, item, tone, detail }) => (
+                <div key={`${k}-${item.program?.id || ''}-${item.id || item.title}`} className={styles.clickRow}>
+                  <PanelSectionItem
+                    inset
+                    leading={<PriorityIcon priority={item.priority} title={item.priority ? `${item.priority} priority` : 'No priority'} />}
+                    title={(
+                      <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => openItem(k, item)}>
+                        {item.title}
+                      </button>
+                    )}
+                    meta={detail && (
+                      <span className={`${styles.why} ${REASON_CLASS[tone] || ''}`}>
+                        <Icon name="solar:star-shine-linear" size={12} />
+                        {detail}
+                      </span>
+                    )}
+                    trailing={(
+                      <span className={`${styles.statusSlotWide} ${styles.aboveStretch}`}>
+                        <GbiStatusButton
+                          value={item.status || 'Not Started'}
+                          disabled={!item.id || !item.program?.id}
+                          onOpen={(rect) => setStatusMenu({ type: k, item, rect })}
+                        />
+                      </span>
+                    )}
+                  />
+                </div>
+              )}
+            />
+          </div>
         )}
       </DashboardCardBody>
       {statusMenu && (

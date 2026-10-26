@@ -31,7 +31,6 @@ export function CareProgramsCard({ patientId }) {
   const programs = (careProgramsByPatient[patientId] || []).filter(p => !isProgramClosed(p.status));
   // Programs that need someone to act come first, each with why.
   const rows = programAttention(programs, openedAt);
-  const flagged = rows.filter(r => r.reason).length;
   const goToCarePrograms = () => setPatientProfileTab('Care Programs');
   const openProgram = (prog) => {
     setPatientProfileTab('Care Programs');
@@ -42,40 +41,38 @@ export function CareProgramsCard({ patientId }) {
     <DashboardCard
       icon="solar:stethoscope-linear"
       title="Active Care Programs"
-      count={flagged || null}
+      count={programs.length || null}
       actions={<Button variant="ghost" size="S" onClick={goToCarePrograms}>View all</Button>}
     >
       <DashboardCardBody className={styles.listBody}>
         {programs.length === 0 ? (
           <p className={styles.empty}>Not enrolled in any care program.</p>
-        ) : rows.slice(0, VISIBLE).map(({ program: prog, reason, tone }) => (
-          <PanelSectionItem
-            key={prog.id}
-            inset
-            title={<button type="button" className={styles.titleButton} onClick={() => openProgram(prog)}>{prog.name}</button>}
-            meta={[
-              reason && <span key="why" className={REASON_CLASS[tone]}>{reason}</span>,
-              prog.assignee !== 'Unassigned' && prog.assignee,
-              prog.startDate !== '—' && `Started ${prog.startDate}`,
-            ]}
-            trailing={(
-              <span className={styles.trail}>
-                <span className={styles.programTrailing}>
-                  <span className={`${styles.bar} ${styles.barFixed}`} role="progressbar" aria-valuenow={prog.progress} aria-valuemin={0} aria-valuemax={100} aria-label={`${prog.name} progress`}>
-                    <span className={styles.barFill} style={{ width: `${prog.progress}%` }} />
+        ) : (
+          <div className={styles.dividedRows}>
+            {rows.slice(0, VISIBLE).map(({ program: prog, reason, tone }) => (
+              <PanelSectionItem
+                key={prog.id}
+                inset
+                title={<button type="button" className={styles.titleButton} onClick={() => openProgram(prog)}>{prog.name}</button>}
+                meta={[
+                  reason && <span key="why" className={REASON_CLASS[tone]}>{reason}</span>,
+                  reason !== 'No owner' && (prog.assignee || 'Unassigned'),
+                  prog.startDate !== '—' && `Started ${prog.startDate}`,
+                ]}
+                trailing={(
+                  <span className={styles.trail}>
+                    <span className={styles.programTrailing}>
+                      <span className={`${styles.bar} ${styles.barFixed}`} role="progressbar" aria-valuenow={prog.progress} aria-valuemin={0} aria-valuemax={100} aria-label={`${prog.name} progress`}>
+                        <span className={styles.barFill} style={{ width: `${prog.progress}%` }} />
+                      </span>
+                      <span className={`${styles.muted} ${styles.pct}`}>{prog.progress}%</span>
+                    </span>
+                    <span className={styles.statusSlotWide}><Badge tone="primary" size="S" label={prog.status} /></span>
                   </span>
-                  <span className={`${styles.muted} ${styles.pct}`}>{prog.progress}%</span>
-                </span>
-                <span className={styles.statusSlotWide}><Badge tone="primary" size="S" label={prog.status} /></span>
-              </span>
-            )}
-          />
-        ))}
-        {programs.length > VISIBLE && (
-          <p className={`${styles.muted} ${styles.listNote}`}>
-            {flagged > VISIBLE ? `${flagged - VISIBLE} more need attention. ` : ''}
-            {programs.length - flagged > 0 ? `${programs.length - flagged} on track.` : ''}
-          </p>
+                )}
+              />
+            ))}
+          </div>
         )}
       </DashboardCardBody>
     </DashboardCard>

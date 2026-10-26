@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { DashboardCard, DashboardCardBody } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { CappedRows } from './CappedRows';
-import { SubTabs } from '../../../../../../components/SubTabs/SubTabs';
+import { CountToggle } from './CountToggle';
 import { PriorityIcon } from '../../../../../../components/PriorityIcon/PriorityIcon';
 import { Checkbox } from '../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Button } from '../../../../../../components/Button/Button';
@@ -12,7 +12,7 @@ import { groupTasksForTab } from '../../../../left-panel/tabs/tasks/TasksTab/gro
 import { TaskDetailDrawer } from '../../../../../tasks/TaskDetailDrawer';
 import { tasksForPatient } from './patientTasks';
 import styles from './overviewCards.module.css';
-import { CardInsights } from '../attention/CardInsights';
+import { CardHeaderActions, CardInsights } from '../attention/CardInsights';
 
 const VISIBLE = 3;
 const OWNER_OPTIONS = ['Mine', 'Others'];
@@ -23,6 +23,7 @@ export function TasksCard({ patient, actions }) {
   const updateTask = useAppStore(s => s.updateTask);
   const [pickedTab, setTab] = useState(null);
   const [openTaskId, setOpenTaskId] = useState(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   // Mine / Others, so work someone else already owns isn't picked up twice.
   const [owner, setOwner] = useState([]);
   const myName = useAppStore(s => s.currentUserProfile?.name || '');
@@ -54,17 +55,17 @@ export function TasksCard({ patient, actions }) {
       icon="solar:checklist-linear"
       title="Tasks"
       count={groups.pending.length + groups.overdue.length || null}
-      actions={<Button variant="ghost" size="S" onClick={actions.addTask}>Add task</Button>}
+      actions={<CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}><Button variant="ghost" size="S" onClick={actions.addTask}>Add task</Button></CardHeaderActions>}
     >
+      <CardInsights open={insightsOpen} />
       <div className={`${styles.tabs} ${styles.tabsWithFilter}`}>
-          <SubTabs
-          className={styles.tabRow}
-          tabs={[
-            { key: 'pending', label: `Open (${groups.pending.length})` },
-            { key: 'overdue', label: `Overdue (${groups.overdue.length})` },
+        <CountToggle
+          items={[
+            { key: 'pending', label: 'Open', count: groups.pending.length },
+            { key: 'overdue', label: 'Overdue', count: groups.overdue.length },
             { key: 'completed', label: 'Completed' },
           ]}
-          activeKey={tab}
+          active={tab}
           onChange={setTab}
         />
         <FilterChip size="S" singleSelect label="Owner" options={OWNER_OPTIONS} selected={owner} onChange={setOwner} />
@@ -115,7 +116,6 @@ export function TasksCard({ patient, actions }) {
           onSelectTask={next => setOpenTaskId(next?.id ?? null)}
         />
       )}
-      <CardInsights />
     </DashboardCard>
   );
 }

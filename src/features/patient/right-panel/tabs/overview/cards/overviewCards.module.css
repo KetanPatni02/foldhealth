@@ -6,21 +6,10 @@
   color: var(--neutral-200);
 }
 
-/* Medications card: changes since the program began, under the list. */
-.medChanges {
-  padding-top: var(--space-3);
-}
-
-.medChanges .sectionLabel {
-  padding: 0 var(--space-4);
-}
-
 .sectionLabel {
   margin: var(--space-1) 0 0;
-  font-size: var(--font-2xs);
+  font-size: var(--font-sm);
   font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--neutral-200);
 }
 
@@ -65,7 +54,6 @@
   height: 22px;
   min-height: 22px;
   padding: 0 var(--space-1);
-  font-size: var(--font-xs);
 }
 
 .suggestClose {
@@ -224,7 +212,7 @@
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
-  font-size: var(--font-md);
+  font-size: var(--font-base);
   line-height: var(--leading-normal);
   color: var(--neutral-400);
 }
@@ -274,55 +262,6 @@
 }
 
 /* ── Care plan ── */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.statsTwo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-/* A label over a large figure, on the card itself rather than in a box. */
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  min-width: 0;
-}
-
-.statValue {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1);
-  flex-wrap: wrap;
-}
-
-.statNumber {
-  font-size: var(--font-2xl);
-  font-weight: 500;
-  line-height: var(--leading-tight);
-  /* Large figures read tighter; body text keeps default tracking. */
-  letter-spacing: -0.01em;
-  color: var(--neutral-500);
-  font-variant-numeric: tabular-nums;
-}
-
-.progressRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0;
-}
-
-.consentBlock {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-4) var(--space-3);
-}
-
-.consentBlock p { margin: 0; }
-
 .progressPct {
   font-size: var(--font-sm);
   font-weight: 500;
@@ -352,9 +291,7 @@
 }
 
 /* ── Gaps ── */
-.tabs { padding: 0 var(--space-4); }
-
-.tabRow { flex-wrap: wrap; }
+.tabs { padding: var(--space-2) var(--space-4) 0; }
 
 /* Tabs on the left, a filter chip on the right. */
 .tabsWithFilter {
@@ -372,9 +309,9 @@
   padding: calc(var(--space-1) / 2) var(--space-1);
   border-radius: var(--space-1);
   background: var(--neutral-50);
-  font-size: var(--font-2xs);
+  font-size: var(--font-sm);
   font-weight: 500;
-  color: var(--neutral-300);
+  color: var(--neutral-200);
   white-space: nowrap;
 }
 
@@ -433,37 +370,24 @@
 .listNote {
   margin: 0;
   padding: 0 var(--space-4) var(--space-2);
+  font-size: var(--font-md);
+}
+
+/* ── Card header actions: groups split by a 1px × 16px divider ── */
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.headerDivider {
+  width: 1px;
+  height: var(--space-4);
+  margin: 0 var(--space-1);
+  background: var(--neutral-150);
 }
 
 /* ── Vitals ── */
-.vitalNavs {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.vitalNav {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--space-6);
-  height: var(--space-6);
-  padding: 0;
-  border: 0.5px solid var(--placeholder-text);
-  border-radius: var(--space-1);
-  background: var(--neutral-0);
-  color: var(--neutral-400);
-  cursor: pointer;
-}
-
-.vitalNav:disabled {
-  border-color: transparent;
-  background: var(--neutral-50);
-  color: var(--neutral-200);
-  cursor: default;
-}
-
 .vitalsRow {
   display: flex;
   gap: var(--space-3);
@@ -481,14 +405,16 @@
   flex: 1 1 0;
   min-width: 156px;
   height: 170px;
-  min-width: 0;
   scroll-snap-align: start;
   overflow: hidden;
-  border-radius: calc(var(--space-1) * 1.5);
-  /* Tinted by tone instead of outlined. */
-  background:
-    linear-gradient(160deg, transparent 40%, color-mix(in srgb, var(--vital-tone) 12%, transparent) 100%),
-    var(--neutral-25);
+  border: 1px solid transparent;
+  border-radius: calc(var(--space-1) * 2);
+  background: var(--neutral-0);
+  transition: border-color 150ms ease;
+}
+
+.vital:hover {
+  border-color: color-mix(in srgb, var(--vital-tone) 60%, transparent);
 }
 
 .vital[data-tone="error"] { --vital-tone: var(--status-error-dark); }
@@ -511,7 +437,7 @@
   margin: 0;
   font-size: var(--font-sm);
   line-height: var(--leading-tight);
-  color: var(--placeholder-text);
+  color: var(--neutral-200);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -520,9 +446,9 @@
 .vitalName {
   margin: 0;
   font-size: var(--font-base);
-  font-weight: 500;
+  font-weight: 400;
   line-height: var(--leading-tight);
-  color: var(--neutral-300);
+  color: var(--neutral-500);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -558,15 +484,11 @@
   white-space: nowrap;
 }
 
-.vitalPill {
+.vitalChange {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: calc(var(--space-1) / 2);
   flex-shrink: 0;
-  min-width: 18px;
-  padding: calc(var(--space-1) / 2) var(--space-1);
-  border-radius: var(--space-1);
-  background: color-mix(in srgb, var(--vital-tone) 12%, var(--neutral-0));
   color: var(--vital-tone);
   font-size: var(--font-sm);
   line-height: var(--leading-tight);
@@ -640,5 +562,115 @@
   margin: var(--space-2) 0 0;
   font-size: var(--font-sm);
   line-height: var(--leading-normal);
-  color: var(--neutral-300);
+  color: var(--neutral-200);
 }
+
+/* ── Care Plan, Gaps, Programs: rows split by a hairline, as in Figma ── */
+.dividedRows > div:not(:last-child) {
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.dividedRows .listMore {
+  margin-top: var(--space-1);
+}
+
+/* Segment label with its count chip (Goals 8). */
+.toggleLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.toggleCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--space-4);
+  padding: 0 calc(var(--space-1) / 2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: calc(var(--space-1) / 2);
+  font-size: var(--font-sm);
+  line-height: var(--leading-normal);
+  color: var(--neutral-200);
+}
+
+/* Why a care plan item needs attention, under its title. */
+.why {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* ── Medications: a Name / Status table, as on the PAMI/Hx tab ── */
+.medHead,
+.medRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+
+.medHead {
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-md);
+  line-height: var(--leading-tight);
+  color: var(--neutral-200);
+}
+
+.medRow {
+  width: 100%;
+  border: none;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.medRow:hover { background: var(--neutral-25); }
+
+.medMain {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+
+.medName,
+.medMeta {
+  overflow: hidden;
+  font-size: var(--font-md);
+  line-height: var(--leading-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.medName { font-size: var(--font-base); color: var(--neutral-500); }
+.medMeta { color: var(--neutral-200); }
+
+.medStatus {
+  display: flex;
+  flex: 0 0 100px;
+}
+
+/* What changed, above the table. */
+.medSummary {
+  margin: 0;
+  padding: var(--space-2) var(--space-4) var(--space-1);
+  font-size: var(--font-md);
+  line-height: var(--leading-tight);
+  color: var(--neutral-200);
+}
+
+.medTable .listMore {
+  margin-top: var(--space-1);
+}
+
+.medDiscontinued {
+  display: flex;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+}
+
+.medDiscontinued > button { color: var(--primary-300); }

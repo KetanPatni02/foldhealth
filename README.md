@@ -37,6 +37,17 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Overview widgets redesign (Figma 1312-174/483/589/686).** Vitals tiles
+  can be added (recorded vitals, biomarkers, labs), removed and reordered per
+  patient for the whole care team (`patient_overview_vitals`). Care Plan
+  splits Goals / Interventions / Barriers with a short "why" line on items
+  that need attention. Gaps and Active Care Programs follow the new layouts.
+  Unity insights open from a lightbulb in each card header. Medications
+  leads with what changed: refill due or run out, new, stopped
+  (`cards/medHighlights.js`; refill fields from
+  `patient_medications_refill_migration.sql`). Risk & Acuity and Consent
+  left the Overview (they are in the banner). One type scale across the
+  screen: item titles 14, subtitles 13, captions 12.
 - **Overview: attention first, Reminders, missed visits.** Each Overview
   widget now leads with what needs action and sums up the rest in one line.
   Care Plan lists only the goals, interventions and barriers that need

@@ -7,6 +7,11 @@
   min-height: 0;
   overflow: hidden;
   background: var(--neutral-50);
+  /* One type scale for every card: item titles 14, subtitles 13. */
+  --item-title-size: var(--font-base);
+  --item-meta-size: var(--font-md);
+  --insight-description-size: var(--font-md);
+  --insight-description-color: var(--neutral-200);
 }
 
 /* The Recap pill, top left above the lanes. */

@@ -6,7 +6,7 @@ import { Icon } from '../../../../../../components/Icon/Icon';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { gapForHighlight, openOverviewGap } from './overviewItemActions';
 import styles from './overviewCards.module.css';
-import { CardInsights } from '../attention/CardInsights';
+import { CardHeaderActions, CardInsights } from '../attention/CardInsights';
 
 const AddMedicationsDrawer = lazy(() => import('../../../../left-panel/tabs/pami-hx/AddMedicationsDrawer/AddMedicationsDrawer').then(m => ({ default: m.AddMedicationsDrawer })));
 const CareGapDetailDrawer = lazy(() => import('../../../../../hedis-worklist/CareGapDetailDrawer').then(m => ({ default: m.CareGapDetailDrawer })));
@@ -29,6 +29,7 @@ export function HighlightsCard({ overview, patient, patientId }) {
   const openDiagPanel = useAppStore(s => s.openDiagPanel);
   const [medsOpen, setMedsOpen] = useState(false);
   const [careGap, setCareGap] = useState(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const highlights = overview?.highlights || [];
   const who = patient || { id: patientId };
   const needsGaps = highlights.some(h => h.kind === 'lab' || h.kind === 'risk');
@@ -49,7 +50,8 @@ export function HighlightsCard({ overview, patient, patientId }) {
   };
 
   return (
-    <DashboardCard icon="solar:lightbulb-minimalistic-linear" title="Highlights" count={highlights.length || null}>
+    <DashboardCard icon="solar:lightbulb-minimalistic-linear" title="Highlights" count={highlights.length || null} actions={<CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}></CardHeaderActions>}>
+      <CardInsights open={insightsOpen} />
       <DashboardCardBody className={styles.listBody}>
         {highlights.length === 0 ? (
           <p className={styles.empty}>Nothing notable recently.</p>
@@ -92,7 +94,6 @@ export function HighlightsCard({ overview, patient, patientId }) {
           />
         </Suspense>
       )}
-      <CardInsights />
     </DashboardCard>
   );
 }

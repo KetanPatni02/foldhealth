@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carePlanAttention } from './carePlanAttention';
+import { carePlanAttention, carePlanByKind } from './carePlanAttention';
 
 const NOW = new Date(2026, 9, 26, 12).getTime();
 const DAY = 24 * 3600 * 1000;
@@ -65,5 +65,26 @@ describe('carePlanAttention', () => {
     const r = carePlanAttention({ goals, now: NOW, limit: 5 });
     expect(r.items.map(i => [i.item.id, i.tone])).toEqual([['flag', 'error'], ['recent', 'info']]);
     expect(r.attention).toBe(1);
+  });
+});
+
+describe('carePlanByKind', () => {
+  const now = new Date('2026-10-26T12:00:00Z').getTime();
+  it('splits open items by kind, flagged first, each with a why line', () => {
+    const out = carePlanByKind({
+      now,
+      goals: [
+        { id: 'g1', title: 'Steps', status: 'In Progress', priority: 'low' },
+        { id: 'g2', title: 'A1c', status: 'Not Met', currentValue: '8.2', targetValue: '7', comparator: '<', category: 'Others', customUnit: '%' },
+        { id: 'g3', title: 'Done', status: 'Met' },
+      ],
+      interventions: [{ id: 'i1', title: 'Call', status: 'Not Started', priority: 'high', assignee: 'Unassigned' }],
+      barriers: [],
+    });
+    expect(out.goal.map(e => e.item.id)).toEqual(['g2', 'g1']);
+    expect(out.goal[0].detail).toBe('Not met. Current 8.2 %, target < 7 %.');
+    expect(out.goal[1].detail).toBeNull();
+    expect(out.intervention[0].detail).toBe('High priority with no one assigned.');
+    expect(out.barrier).toEqual([]);
   });
 });

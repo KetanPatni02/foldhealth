@@ -19,7 +19,7 @@ import { TasksCard } from '../cards/TasksCard';
 import { RemindersCard } from '../cards/RemindersCard';
 import { VitalsCard } from '../cards/VitalsCard';
 import {
-  CaregiversCard, CareTeamCard, ConditionsCard, ConsentCard, ContactCard, MedicationsCard, RiskAcuityCard,
+  CaregiversCard, CareTeamCard, ConditionsCard, ContactCard, MedicationsCard,
 } from '../cards/ProfileCards';
 import { ProgramProgressCard, SinceLastTouchCard } from '../cards/MonitoringCards';
 import { AwaitingReplyCard } from '../cards/AwaitingReplyCard';
@@ -176,12 +176,10 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
       case 'tasks': return <TasksCard key={key} patient={patient} actions={actions} />;
       case 'reminders': return <RemindersCard key={key} patient={patient} />;
       case 'awaitingReply': return <AwaitingReplyCard key={key} patient={patient} />;
-      case 'vitals': return <VitalsCard key={key} memberId={memberId} overview={overview} />;
-      case 'riskAcuity': return <RiskAcuityCard key={key} patientId={patient.id} />;
+      case 'vitals': return <VitalsCard key={key} memberId={memberId} patientId={patient.id} overview={overview} />;
       case 'contact': return <ContactCard key={key} patientId={patient.id} />;
       case 'careTeam': return <CareTeamCard key={key} patientId={patient.id} />;
       case 'caregivers': return <CaregiversCard key={key} patientId={patient.id} />;
-      case 'consent': return <ConsentCard key={key} patientId={patient.id} />;
       case 'medications': return <MedicationsCard key={key} patientId={patient.id} />;
       case 'conditions': return <ConditionsCard key={key} patientId={patient.id} patient={patient} />;
       case 'sinceLastTouch': return <SinceLastTouchCard key={key} memberId={memberId} />;
