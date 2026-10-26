@@ -5,7 +5,6 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Button } from '../../components/Button/Button';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
-import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
@@ -15,69 +14,16 @@ import { useWorklistColumns } from '../../components/WorklistColumns/useWorklist
 import { PharmacyWorklistRow } from './PharmacyWorklistRow';
 import { PharmacyGapDetailDrawer } from './PharmacyGapDetailDrawer';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
-import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
+import { FilterChipBar } from '../hcc/FilterChipBar';
+import { FilterNameDialog } from '../hcc/FilterNameDialog';
+import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
+import { planAutoAssignment } from './pharmacyRules';
 import { CareGapDetailDrawer } from '../hedis-worklist/CareGapDetailDrawer';
 import { PHARMACY_MIDDLE_COLUMNS, PHARMACY_HIDDEN_BY_DEFAULT } from './pharmacyColumns';
-import { isActiveGap, daysFromToday, daysLeftBucket, enrichPharmacyMember, measureDrugs, normMemberId, otherGapsCountBucket } from './pharmacyWorklist.utils';
+import { enrichPharmacyMember, measureDrugs, normMemberId } from './pharmacyWorklist.utils';
+import { FILTER_DEF_MAP, MORE_FILTER_ITEMS, PRIMARY_FILTER_KEYS, dynamicFilterOptions, memberMatchesFilters } from './pharmacyFilters';
 import { MEASURE_NAMES as HEDIS_MEASURE_NAMES } from '../hedis-worklist/CareGapDetailDrawer.utils';
 import styles from './PharmacyWorklistTable.module.css';
-
-// Health plan and book of business are filters, not separate spaces. Days
-// Left and Overdue stay filters though their columns are gone: fewer
-// columns, never fewer filters.
-const FILTER_KEYS = [
-  { key: 'priority',       label: 'Priority',         primary: true },
-  { key: 'gap',            label: 'Pharmacy Gap',     primary: true },
-  { key: 'gapStatus',      label: 'Gap Status',       primary: true },
-  { key: 'progress',       label: 'Progress',         primary: true },
-  { key: 'daysLeft',       label: 'Days Left',        primary: true },
-  { key: 'overdue',        label: 'Overdue',          primary: true },
-  { key: 'claimRecon',     label: 'Claim Reconciliation', primary: true },
-  { key: 'assignee',       label: 'Assigned to',      primary: true },
-  { key: 'subStatus',      label: 'Gap Sub-Status',   primary: false },
-  { key: 'otherGapsCount', label: 'Open Care Gaps (count)', primary: false },
-  { key: 'otherGap',       label: 'Open Care Gap',    primary: false },
-  { key: 'healthPlan',     label: 'Health Plan',      primary: false },
-  { key: 'bookOfBusiness', label: 'Book of Business', primary: false },
-  { key: 'ipa',            label: 'IPA',              primary: false },
-  { key: 'barrier',        label: 'Barrier',          primary: false },
-  { key: 'language',       label: 'Language',         primary: false },
-];
-
-const openGaps = (m) => m.gaps.filter(g => isActiveGap(g.status));
-const isPast = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
-function overdueTags(m) {
-  const tags = [];
-  if (openGaps(m).some(g => isPast(g.nextFillDue))) tags.push('Refill overdue');
-  if (m.gaps.some(g => g.recon?.status === 'Claim not matched')) tags.push('Claim not matched');
-  if (isPast(m.followUpDue)) tags.push('Follow-up overdue');
-  return tags.length ? tags : ['Not overdue'];
-}
-
-// Multi-valued buckets (a member has several gaps) return arrays.
-const BUCKET_FN = {
-  priority:       (m) => m.priority,
-  gap:            (m) => m.measureCodes,
-  gapStatus:      (m) => [...new Set(m.gaps.map(g => g.status.gap))],
-  subStatus:      (m) => [...new Set(m.gaps.map(g => g.status.label))],
-  progress:       (m) => m.progress.label,
-  daysLeft:       (m) => [...new Set(openGaps(m).map(g => daysLeftBucket(g.failDate)))],
-  overdue:        overdueTags,
-  claimRecon:     (m) => m.reconStatuses,
-  assignee:       (m) => m.assigneeName || 'Unassigned',
-  otherGapsCount: (m) => otherGapsCountBucket(m.otherCareGapsCount),
-  otherGap:       (m) => m.otherCareGaps.map(g => g.code),
-  healthPlan:     (m) => m.healthPlan || null,
-  bookOfBusiness: (m) => m.bookOfBusiness || null,
-  ipa:            (m) => m.ipa || null,
-  barrier:        (m) => m.barrier || 'None',
-  language:       (m) => (m.language || 'en').toUpperCase(),
-};
-const bucketsOf = (key, m) => [].concat(BUCKET_FN[key](m) ?? []);
-
-const MORE_FILTER_ITEMS = FILTER_KEYS.map(f => ({ k: f.key, label: f.label, primary: f.primary }));
-const PRIMARY_FILTER_KEYS = FILTER_KEYS.filter(f => f.primary).map(f => f.key);
-const KEY_ORDER = Object.fromEntries(FILTER_KEYS.map((f, i) => [f.key, i]));
 
 // Default order is triage order: priority, then the soonest fail date.
 // A header sort overrides it; clearing the sort returns here.
@@ -111,15 +57,18 @@ export function PharmacyWorklistTable() {
   const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const showToast = useAppStore(s => s.showToast);
   const filters = useAppStore(s => s.pharmacyFilters);
-  const setFilter = useAppStore(s => s.setPharmacyFilter);
   const clearFilters = useAppStore(s => s.clearPharmacyFilters);
   const saveSavedFilter = useAppStore(s => s.saveSavedFilter);
-  // A selected saved filter stays selected while edited: Go Back / Save Changes / Copy Filter.
-  const savedActions = useSavedFilterActions('Pharmacy', filters, clearFilters);
+  const authUserId = useAppStore(s => s.authUserId);
+  const careTeams = useAppStore(s => s.hccCareTeams);
+  const fetchCareTeams = useAppStore(s => s.fetchHccCareTeams);
+  const autoAssign = useAppStore(s => s.autoAssignPharmacy);
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const [autoAssignOpen, setAutoAssignOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);
-  const [visibleFilterKeys, setVisibleFilterKeys] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -147,19 +96,20 @@ export function PharmacyWorklistTable() {
   ])), [hedisMembers]);
 
   const enriched = useMemo(
-    () => members.map(m => enrichPharmacyMember(m, { hedisGapsByMember })).toSorted(byTriage),
+    // A member whose gaps are all First Fill or Not Eligible stays off the worklist.
+    () => members.map(m => enrichPharmacyMember(m, { hedisGapsByMember }))
+      .filter(m => m.gaps.length || !m.measures?.length)
+      .toSorted(byTriage),
     [members, hedisGapsByMember],
   );
 
-  const filterOptions = useMemo(() => {
-    const opts = {};
-    for (const { key } of FILTER_KEYS) {
-      const set = new Set();
-      for (const m of enriched) for (const v of bucketsOf(key, m)) set.add(v);
-      opts[key] = [...set].toSorted();
-    }
-    return opts;
-  }, [enriched]);
+  const filterCtx = useMemo(() => ({ authUserId }), [authUserId]);
+  // Who auto-assignment would pick, shown before it runs.
+  const autoAssignPlan = useMemo(
+    () => (autoAssignOpen ? planAutoAssignment(enriched, careTeams, platformUsers) : []),
+    [autoAssignOpen, enriched, careTeams, platformUsers],
+  );
+  const dynamicOpts = useMemo(() => dynamicFilterOptions(enriched, filterCtx), [enriched, filterCtx]);
 
   const filtered = useMemo(() => {
     let rows = enriched;
@@ -172,31 +122,17 @@ export function PharmacyWorklistTable() {
         (m.measures || []).some(x => measureDrugs(x).toLowerCase().includes(q)),
       );
     }
-    for (const { key } of FILTER_KEYS) {
-      const vals = filters[key];
-      if (!vals?.length) continue;
-      const valSet = new Set(vals);
-      rows = rows.filter(m => bucketsOf(key, m).some(v => valSet.has(v)));
-    }
-    return rows;
-  }, [enriched, searchQuery, filters]);
+    return rows.filter(m => memberMatchesFilters(m, filters, filterCtx));
+  }, [enriched, searchQuery, filters, filterCtx]);
 
   const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered);
+  // The drawer's previous / next follow the rows as shown.
+  const setWorklistOrder = useAppStore(s => s.setPharmacyWorklistOrder);
+  useEffect(() => { setWorklistOrder(sorted.map(m => m.id)); }, [sorted, setWorklistOrder]);
   const handleSort = (field) => {
     if (sortKey !== field) setSort(field, 'asc');
     else if (sortDir === 'asc') setSort(field, 'desc');
     else clearSort();
-  };
-
-  const visibleKeys = useMemo(() => {
-    const active = FILTER_KEYS.filter(f => filters[f.key]?.length).map(f => f.key);
-    return [...new Set([...(visibleFilterKeys ?? PRIMARY_FILTER_KEYS), ...active])]
-      .toSorted((a, b) => KEY_ORDER[a] - KEY_ORDER[b]);
-  }, [visibleFilterKeys, filters]);
-  const toggleVisible = (k) => {
-    const next = new Set(visibleFilterKeys ?? PRIMARY_FILTER_KEYS);
-    if (next.has(k)) next.delete(k); else next.add(k);
-    setVisibleFilterKeys([...next]);
   };
 
   const paginated = useMemo(() => {
@@ -238,6 +174,9 @@ export function PharmacyWorklistTable() {
         onHistory={() => showToast('History – coming soon')}
         rightExtras={
           <>
+            <Button variant="secondary" size="S" leadingIcon="solar:users-group-rounded-linear" onClick={() => { fetchCareTeams(); setAutoAssignOpen(true); }}>
+              Auto-assign
+            </Button>
             <SavedFiltersChip list="Pharmacy" />
             <span className={styles.titleDivider} />
           </>
@@ -245,26 +184,41 @@ export function PharmacyWorklistTable() {
       />
 
       {filterBarOpen && (
-        <FilterBar
-          filterDefs={FILTER_KEYS}
-          filters={filters}
-          onFilterChange={(k, vals) => setFilter(k, vals)}
-          onClearAll={savedActions.onClearAll}
-          clearAllLabel={savedActions.clearAllLabel}
-          saveLabel={savedActions.saveLabel}
-          saveMenuItems={savedActions.saveMenuItems}
-          onSaveMenuSelect={savedActions.onSaveMenuSelect}
-          hasActive={savedActions.edited || undefined}
-          onSaveFilter={(name) => saveSavedFilter('Pharmacy', name)}
-          getOptions={(def) => filterOptions[def.key] || []}
-          multiSelect
-          visibleKeys={visibleKeys}
-          onToggleVisible={toggleVisible}
-          onClearVisible={() => setVisibleFilterKeys(null)}
+        <FilterChipBar
+          list="Pharmacy"
+          filterDefMap={FILTER_DEF_MAP}
           moreFilterItems={MORE_FILTER_ITEMS}
-          leading={null}
+          primaryFilterKeys={PRIMARY_FILTER_KEYS}
+          dynamicOpts={dynamicOpts}
+          onSaveFilter={() => setSaveDialogOpen(true)}
         />
       )}
+      {autoAssignOpen && (
+        <ConfirmDialog
+          variant="primary"
+          icon="solar:users-group-rounded-linear"
+          title="Auto-assign members"
+          description={autoAssignPlan.length
+            ? `${autoAssignPlan.length} unassigned member${autoAssignPlan.length === 1 ? '' : 's'} will be assigned by IPA, then health plan, using the PHARM care team in Settings > Care Teams. Members whose gaps are all Not savable are skipped.`
+            : 'No unassigned member matches a PHARM care team rule. Set up routing by IPA or health plan in Settings > Care Teams. Members whose gaps are all Not savable are never assigned.'}
+          confirmLabel={autoAssignPlan.length ? `Assign ${autoAssignPlan.length}` : 'OK'}
+          onCancel={() => setAutoAssignOpen(false)}
+          onConfirm={() => {
+            if (autoAssignPlan.length) {
+              const n = autoAssign();
+              showToast(`${n} member${n === 1 ? '' : 's'} auto-assigned`);
+            }
+            setAutoAssignOpen(false);
+          }}
+        />
+      )}
+      <FilterNameDialog
+        open={saveDialogOpen}
+        title="Save Filter"
+        submitLabel="Save"
+        onSubmit={(name) => { saveSavedFilter('Pharmacy', name); setSaveDialogOpen(false); }}
+        onCancel={() => setSaveDialogOpen(false)}
+      />
 
       <div className={styles.tableScroll}>
         {loading && members.length === 0 ? (

@@ -37,6 +37,25 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Pharmacy gap status model, filters, rules and reports.** Pharmacy gaps
+  follow the status model spec: Open, In Progress, Pending Claim, Closed,
+  Met for Year, Failed for Year and Excluded (First Fill and Not Eligible stay
+  off the worklist), with one sub-status per gap and five Claim
+  Reconciliation values. Only a matched Part D claim closes a gap; a fill
+  logged in Fold is Pending Claim, and a reversal reopens it. The team sets
+  only Open and In Progress, and a hand-set status lapses once a newer fill or
+  claim arrives. The worklist adds plan / Fold source markers, Savability and
+  seven more optional columns, and 70 filters on the shared filter chip bar.
+  Outreach rules add the outreach queue, pickup reminders, escalation to the
+  prescriber, and Auto-assign by IPA or health plan from a PHARM care team.
+  Analytics > Pharmacy Adherence reports outcomes, provider groups,
+  productivity and claim data quality. Pharmacy Gap Details is now one drawer
+  per member: the member's assignee and Progress head it, a "Pharmacy Gap:
+  All | MAD | MAH | MAC" toggle scopes the gap table, the tabs and the
+  actions, so one outreach or verification call covers one gap or all of
+  them, and each gap row opens to its details (claim, savability, attempts). Migrations:
+  `pharmacy_status_model_migration.sql`, `pharmacy_status_model_seed.sql`,
+  `pharmacy_care_team_seed.sql`.
 - **Pharmacy claim reversals and projected fills.** A confirmed pickup or a
   fill date entered by hand recalculates PDC, next fill and the absolute fail
   date, and the gap shows Completed with a Projected tag until a matching

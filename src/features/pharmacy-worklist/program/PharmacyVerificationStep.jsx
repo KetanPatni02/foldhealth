@@ -10,7 +10,7 @@ import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import {
-  MEASURE_NAMES, MEASURE_ORDER, isActiveGap, addDaysMdy, fillDueTone, measureStatus, medLabel, parseMdy, pdcTone, todayMdy,
+  MEASURE_NAMES, MEASURE_ORDER, isActiveGap, addDaysMdy, fillDueTone, measureStatus, medLabel, pdcTone, todayMdy,
 } from '../pharmacyWorklist.utils';
 import { Switch } from '../../../components/Switch/Switch';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -22,6 +22,9 @@ import styles from './PharmacyVerificationStep.module.css';
 // So the coordinator calls the pharmacy and asks, per drug: last fill date,
 // refilled?, picked up?, refills remaining? The answers drive the next action.
 const REVERSAL_CHECK_DAYS = 14;
+// A fill on the shelf or not refilled is followed up within 2–3 days (the
+// pickup reminder cadence).
+const SHELF_FOLLOW_UP_DAYS = 3;
 const REFILL_RECHECK_DAYS = 30;
 
 const TONE_CLASS = { error: styles.toneError };
@@ -33,22 +36,16 @@ function isAnswered(a) {
   return true;
 }
 
-// Picked up + refills that reach Dec 31 → "good for the year".
-function goodForYear(med, a) {
-  if (a.pickedUp !== 'Yes') return false;
-  const covered = parseMdy(addDaysMdy(todayMdy(), med.daysSupply * (1 + Number(a.refillsRemaining || 0))));
-  const yearEnd = Date.UTC(new Date().getFullYear(), 11, 31);
-  return covered >= yearEnd;
-}
-
-function nextAction(med, a) {
+// A call never closes a gap: a confirmed pickup makes it Pending Claim, and
+// only the matching Part D claim closes it.
+function nextAction(a) {
   if (!isAnswered(a)) return null;
   const zeroRefills = Number(a.refillsRemaining) === 0;
   if (a.refilled === 'Yes' && a.pickedUp === 'Yes') {
     return {
       tone: 'success',
-      label: goodForYear(med, a) ? 'Gap closed · good for the year' : 'Gap closed',
-      detail: zeroRefills ? 'No refills left — request a new Rx before the next due date.' : null,
+      label: 'Pickup confirmed · awaiting claim',
+      detail: zeroRefills ? 'No refills left: request a new Rx before the next due date.' : 'The gap closes when the matching Part D claim arrives.',
     };
   }
   if (a.refilled === 'Yes') {
@@ -233,11 +230,22 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
       })),
     }, { pickedUpCodes, pendingCodes, refillsByMed, status: 'In Progress' });
 
-    // Follow-ups: re-check the next gap report for a reversal; confirm any
-    // refill request reached the pharmacy a month out.
-    const followUps = [{ name: `Check gap report for claim reversal: ${member.name}`, due: addDaysMdy(today, REVERSAL_CHECK_DAYS) }];
+    // Follow-ups: re-check the gap report for a reversal of what was picked
+    // up (until Astrana's reversal fields drive Fold's own reversal watch);
+    // chase a fill on the shelf or not refilled; confirm any refill request
+    // reached the pharmacy a month out.
+    const followUps = pickedUpCodes.length
+      ? [{ name: `Check gap report for claim reversal: ${pickedUpCodes.join(', ')} (${member.name})`, due: addDaysMdy(today, REVERSAL_CHECK_DAYS) }]
+      : [];
     for (const g of gaps) {
-      if (answerFor(g.code).refillRequestSent) {
+      const a = answerFor(g.code);
+      if (a.pickedUp !== 'Yes') {
+        followUps.push({
+          name: a.refilled === 'Yes' ? `Pickup reminder: ${g.code} on the shelf (${member.name})` : `Follow up: ${g.code} not refilled (${member.name})`,
+          due: addDaysMdy(today, SHELF_FOLLOW_UP_DAYS),
+        });
+      }
+      if (a.refillRequestSent) {
         followUps.push({ name: `Confirm refill request received: ${g.code} (${member.name})`, due: addDaysMdy(today, REFILL_RECHECK_DAYS) });
       }
     }
@@ -309,7 +317,7 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
                 <tr className={styles.actionRow}>
                   <td className={styles.qCol}><span className={styles.qLabel}>Next action</span></td>
                   {gaps.map(g => {
-                    const action = nextAction(g.med, answerFor(g.code));
+                    const action = nextAction(answerFor(g.code));
                     return (
                       <td key={g.code}>
                         {action ? (

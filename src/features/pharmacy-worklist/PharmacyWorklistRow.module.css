@@ -181,10 +181,11 @@
 .gapLinkName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gapLinkStatus { color: var(--neutral-300); }
 
-/* Claim detail is capped so the column stays narrow; full text on hover. */
-.reconDetail { display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+/* A value with its plan-provided / Fold-calculated marker beside it. */
+.valueWithMark { display: inline-flex; align-items: center; gap: var(--space-1); }
+.sourceMark { display: inline-flex; }
 
-/* "Claim not matched" rework flag: opens the drug's claim history. */
+/* "Rework task open" under Claim Reconciliation: opens the task. */
 .reworkLink {
   background: none; border: none; padding: 0; cursor: pointer;
   font-size: var(--font-md); color: var(--status-error);

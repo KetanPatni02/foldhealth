@@ -16,7 +16,6 @@ import styles from './PharmacyWorklistRow.module.css';
 
 const MAX_INLINE_GAPS = 2;
 
-const AUTO_STATUS = '__auto';
 const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
 
@@ -58,8 +57,8 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
 
   const cellCtx = {
     setPharmacyAssignee,
-    openGap: (code) => openPharmacyGapDrawer(m.id, code),
-    openClaimRework: (code, medId) => openPharmacyGapDrawer(m.id, code, { medId, view: 'claims' }),
+    openGap: (code) => openPharmacyGapDrawer(m.id, code, { focus: true }),
+    openClaimRework: (code, medId) => openPharmacyGapDrawer(m.id, code, { medId, view: 'claims', focus: true }),
     openCareGap: onOpenCareGap,
     eligibleUsers,
     openGapStatusMenu: (code, rect) => setGapStatusMenu(cur => (cur?.code === code ? null : { code, rect })),
@@ -69,10 +68,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
     toggleExpanded: () => setExpanded(v => !v),
   };
   const menuGap = gapStatusMenu && m.gaps.find(g => g.code === gapStatusMenu.code);
-  const gapStatusItems = menuGap ? [
-    ...MANUAL_GAP_STATUSES.map(s => ({ key: s, label: s, selected: s === menuGap.status.gap })),
-    ...(menuGap.status.manual ? [{ key: AUTO_STATUS, label: 'Use status from data' }] : []),
-  ] : [];
+  const gapStatusItems = menuGap ? MANUAL_GAP_STATUSES.map(s => ({ key: s, label: s, selected: s === menuGap.status.gap })) : [];
 
   const handleNameClick = (e) => {
     e.stopPropagation();
@@ -150,6 +146,12 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
 
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
+          <ActionButton
+            icon="solar:eye-linear"
+            size="L"
+            tooltip="View all gaps"
+            onClick={(e) => { e.stopPropagation(); openPharmacyGapDrawer(m.id, null); }}
+          />
           <ActionButton ref={callBtnRef} icon="solar:phone-linear" size="L" tooltip="Call patient" onClick={handleCallClick} />
           <span className={styles.actionDivider} />
           <div className={styles.relative}>
@@ -178,7 +180,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
             anchorRect={gapStatusMenu.rect}
             items={gapStatusItems}
             onSelect={(key) => {
-              setPharmacyGapStatus(m.id, menuGap.code, key === AUTO_STATUS ? null : key);
+              setPharmacyGapStatus(m.id, menuGap.code, key);
               setGapStatusMenu(null);
             }}
             onClose={() => setGapStatusMenu(null)}

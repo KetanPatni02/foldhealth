@@ -210,3 +210,76 @@
 .chevron { flex-shrink: 0; transition: transform 0.15s ease; }
 .chevronRight { transform: rotate(-90deg); }
 .chevronUp { transform: rotate(180deg); }
+
+/* ── Compact (Pharmacy Gap Details), after the CIS dose list ── */
+.cGroup { display: flex; flex-direction: column; }
+/* Gap title line: no card, only a stroke below. */
+.cGroupHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2) var(--space-1);
+  border: none;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--font-base);
+  line-height: var(--leading-tight);
+}
+.cGroupHead:focus-visible { outline: 2px solid var(--primary-200); outline-offset: -2px; }
+.cCode { font-weight: 500; color: var(--neutral-400); }
+.cName { font-weight: 400; color: var(--neutral-400); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cCount { margin-left: auto; font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
+
+/* Checkbox, Rx, Last Fill, Recent Fill, Next Fill, PDC, Barrier, actions. */
+.cTable { display: flex; flex-direction: column; }
+.cRow {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 88px 100px 88px 44px 52px;
+  column-gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-1);
+  font-size: var(--font-base);
+  line-height: var(--leading-tight);
+  color: var(--neutral-500);
+}
+.cHead {
+  padding-block: var(--space-1);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.cMedRow { border-bottom: 0.5px solid var(--neutral-150); cursor: pointer; row-gap: 0.125rem; }
+.cMedRow:hover { background: var(--neutral-25); }
+.cDiscontinued { color: var(--neutral-300); }
+.cPick { display: inline-flex; }
+.cRx { min-width: 0; overflow-wrap: anywhere; }
+/* Recent Fill: a light chip that opens the calendar. */
+.cChip { border: none; background: none; padding: 0; cursor: pointer; display: inline-flex; }
+.cChip:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; border-radius: 4px; }
+.cChipEmpty { color: var(--neutral-300); }
+.cChipFooter { display: flex; justify-content: flex-end; padding-top: var(--space-2); }
+/* Note and details, fixed at the right of the first line. */
+.cActions { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
+.cNote { display: inline-flex; }
+/* Second line: class, claim match, barrier, quantity, supply, prescriber,
+   pharmacy, dot-separated. */
+.cMeta {
+  grid-column: 2 / 7;
+  grid-row: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  font-size: var(--font-md);
+  line-height: var(--leading-tight);
+  color: var(--neutral-300);
+  cursor: default;
+}
+.cMeta > * + *::before { content: '·'; margin: 0 var(--space-1); color: var(--neutral-200); }
+.cMatchOk { color: var(--status-success); }
+.cMatchPending { color: var(--status-warning); }
+.cBarrierText { color: var(--status-error); }

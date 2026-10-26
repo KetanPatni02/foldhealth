@@ -10,7 +10,8 @@ import styles from './OutreachTab.module.css';
 function LogRowMenu({ log, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
-  if (!onEdit && !onDelete) return null;
+  // A locked call (e.g. a pharmacy verification) is one fixed record.
+  if ((!onEdit && !onDelete) || log.locked) return null;
   const items = [
     ...(onEdit ? [{ key: 'edit', icon: 'solar:pen-2-linear', label: 'Edit' }] : []),
     ...(onDelete ? [{ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true }] : []),

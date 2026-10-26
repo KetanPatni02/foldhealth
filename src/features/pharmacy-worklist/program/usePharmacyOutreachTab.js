@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { useOutreachTab } from '../../patient/left-panel/tabs/outreach/OutreachTab/useOutreachTab';
-import { MEASURE_ORDER } from '../pharmacyWorklist.utils';
+import { MEASURE_ORDER, callKey } from '../pharmacyWorklist.utils';
 import { schemaOutcomeItems } from '../interventionSchema';
 import { fillEventFor, setsRecentFill } from '../fillEvents';
 import { mapOutcomesToIntervention } from '../outcomeMapping';
@@ -20,14 +20,15 @@ const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'O
 // member — and still shows it after leaving and reopening the step.
 function toLogGroups(callHistory) {
   const groups = [];
-  (callHistory || []).forEach((c, i) => {
+  (callHistory || []).forEach((c) => {
     const [mm, dd, yyyy] = c.date.split('/');
     const key = `${mm}-${yyyy}`;
     let g = groups.find(x => x.id === key);
     if (!g) { g = { id: key, label: `${MONTH[Number(mm) - 1]} ${yyyy}`, logs: [] }; groups.push(g); }
     const verification = c.kind === 'pharmacy-verification';
     g.logs.push({
-      id: `ph-${i}-${c.date}`,
+      id: callKey(c),
+      locked: !!c.locked,
       type: c.type || 'Call',
       date: `${mm}/${dd}`,
       time: c.time || '',
@@ -53,6 +54,8 @@ const CALL_TYPES = [...DEFAULT_CALL_TYPES, 'Pharmacy', 'Prescriber'];
 export function usePharmacyOutreachTab(member, { programCode = 'PHARM', ...options } = {}) {
   const logPharmacyOutreach = useAppStore(s => s.logPharmacyOutreach);
   const logPharmacyInterventions = useAppStore(s => s.logPharmacyInterventions);
+  const editPharmacyOutreach = useAppStore(s => s.editPharmacyOutreach);
+  const deletePharmacyOutreach = useAppStore(s => s.deletePharmacyOutreach);
 
   // OutreachTab reads this once per mount (it keeps its own feed after that,
   // and a save appends to both it and the store).
@@ -66,9 +69,18 @@ export function usePharmacyOutreachTab(member, { programCode = 'PHARM', ...optio
   // One outreach → one call-history row covering every measure it touched,
   // so the worklist Outreach cell counts it once. Pickup outcomes update the
   // measure and its medications' fill dates (see fillEvents.js).
-  const handleSaved = (saved, { isEdit }) => {
+  const handleSaved = (saved, { isEdit, editedId }) => {
     const entries = saved.filter(e => MEASURE_ORDER.includes(e.programs[0]));
-    if (isEdit || !member || !entries.length) return;
+    if (!member || !entries.length) return;
+    // An edit saves the changed line back to the call it belongs to; it does
+    // not replay pickups or fills.
+    if (isEdit) {
+      const e = entries[0];
+      editPharmacyOutreach(member.id, editedId, {
+        measure: e.programs[0], outcome: e.outcome, note: e.note, type: e.type, date: e.date, time: e.time,
+      });
+      return;
+    }
     const first = entries[0];
     const outcomesOf = (e) => (e.outcomes?.length ? e.outcomes : [e.outcome]);
     // Same outcomes on every measure (a common note) read once; differing
@@ -80,6 +92,10 @@ export function usePharmacyOutreachTab(member, { programCode = 'PHARM', ...optio
       .map(e => e.programs[0]);
     const firstOutcome = outcomesOf(first)[0] || '';
     logPharmacyOutreach(member.id, {
+      id: `out-${first.id}`,
+      // The feed lines this call was saved from, so editing or deleting one
+      // finds the call.
+      logIds: entries.map(e => e.id),
       date: `${first.date}/${new Date().getFullYear()}`,
       time: first.time,
       type: first.type,
@@ -127,6 +143,8 @@ export function usePharmacyOutreachTab(member, { programCode = 'PHARM', ...optio
     outcomeItems: measureOutcomeItems,
     callTypeOptions: CALL_TYPES,
     onSaved: handleSaved,
+    // One feed line can stand for a call over several gaps: all of them go.
+    onDeleted: (log) => { if (member && log.programs?.length) deletePharmacyOutreach(member.id, log.id, log.programs); },
     ...options,
   });
 }

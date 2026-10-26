@@ -24,6 +24,7 @@ import { AiAnalyticsView } from './views/AiAnalyticsView';
 import { SdohView } from './views/SdohView';
 import { ActionRulesView } from './views/ActionRulesView';
 import { EmployerImpactView } from './views/employer/EmployerImpactView';
+import { PharmacyReportsView } from './views/pharmacy/PharmacyReportsView';
 import s from './AnalyticsLayout.module.css';
 
 class ViewErrorBoundary extends React.Component {
@@ -45,7 +46,7 @@ const VIEW_MAP = {
   care: CareView, network: NetworkView, shared: SharedSavingsView,
   roi: RoiView, tools: ToolUsageView, platformops: PlatformOpsView,
   aianalytics: AiAnalyticsView, sdoh: SdohView, actionrules: ActionRulesView,
-  employer: EmployerImpactView,
+  employer: EmployerImpactView, pharmacy: PharmacyReportsView,
 };
 
 // Views that render their own title and filters in place of the shared header.
@@ -53,9 +54,10 @@ const SELF_HEADED_VIEWS = new Set(['employer']);
 // Views laid out edge to edge, with their own full-bleed rows, instead of padded.
 const FLUSH_CANVAS_VIEWS = new Set(['employer']);
 // Views that leave out the data-source recency bar.
-const NO_RECENCY_VIEWS = new Set(['employer']);
+const NO_RECENCY_VIEWS = new Set(['employer', 'pharmacy']);
 // Views that leave out the global slicer bar (Organization, Period, Quarter, Persona).
-const NO_SLICER_VIEWS = new Set(['employer']);
+// Pharmacy has its own filters (health plan, IPA, measure).
+const NO_SLICER_VIEWS = new Set(['employer', 'pharmacy']);
 
 const PERIODS = [
   { value: '2026-03', label: 'Mar 2026' },
@@ -279,7 +281,9 @@ export function AnalyticsLayout() {
                   the chip reads "Practice ⌄" idle and
                   "Practice : Patel Family Medicine ✕" once picked. Options
                   are the label strings (all entries except the "All
-                  Practices" sentinel); we look up the value on change. */}
+                  Practices" sentinel); we look up the value on change.
+                  Views without the global slicers don't take it either. */}
+              {!NO_SLICER_VIEWS.has(view) && (
               <FilterChip
                 label="Practice"
                 options={PRACTICES.filter(p => p.value !== 'all').map(p => p.label)}
@@ -294,6 +298,7 @@ export function AnalyticsLayout() {
                 }}
                 singleSelect
               />
+              )}
               <Button
                 variant="secondary"
                 size="L"

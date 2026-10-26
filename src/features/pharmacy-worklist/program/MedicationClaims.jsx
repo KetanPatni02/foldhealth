@@ -19,10 +19,13 @@ const CLAIM_BADGE = {
   Rejected: { tone: 'error', icon: 'solar:forbidden-circle-linear' },
   Deleted: { tone: 'grey', icon: 'solar:trash-bin-minimalistic-linear' },
 };
+// Where a fill confirmed in Fold stands against its claim.
 const MATCH_BADGE = {
-  Verified: { tone: 'success', label: 'Claim verified' },
-  'Pending claim': { tone: 'grey', label: 'Pending claim' },
-  'Not matched': { tone: 'error', label: 'Claim not matched' },
+  verified: { tone: 'success', label: 'Claim matched' },
+  pending: { tone: 'grey', label: 'Awaiting claim' },
+  'no-claim': { tone: 'error', label: 'Claim not matched' },
+  'other-coverage': { tone: 'error', label: 'Non–Part D claim' },
+  voided: { tone: 'error', label: 'Fill reversed' },
 };
 // Claim fields still waiting on Astrana's feed definition.
 const PENDING_FIELDS = 'Status values, transaction type, claim ID and sequence, fill and reversal dates, BIN / PCN / group, the negative-value rule and deleted-claim handling are pending confirmation from Astrana.';
@@ -38,8 +41,24 @@ const eventAt = (c) => parseMdy(c.reversalDate || c.processedDate || c.date) ?? 
 const byEvent = (a, b) => eventAt(a) - eventAt(b) || TXN_RANK[a.txnType] - TXN_RANK[b.txnType] || a.claimSeq - b.claimSeq;
 
 function ClaimStatusBadge({ claim }) {
-  if (claim.effect === 'Not Part D') return <Badge size="S" tone="info" icon="solar:shield-linear" label={`${claim.coverage}`} />;
-  if (claim.effect === 'Superseded') return <Badge size="S" tone="grey" label="Superseded" />;
+  if (claim.effect === 'Not Part D') {
+    return (
+      <Tooltip label="Billed outside Part D: does not count in PDC" placement="bottom">
+        <span><Badge size="S" tone="info" icon="solar:shield-linear" label={`Non–Part D · ${claim.coverage}`} /></span>
+      </Tooltip>
+    );
+  }
+  if (claim.effect === 'Superseded') return <Badge size="S" tone="grey" label="Replaced by a newer version" />;
+  // A reversal line (a Reversal transaction, or negative values linked to a
+  // fill) cancels its fill, whatever status the feed sent with it.
+  if (claim.effect === 'Reversal') return <Badge size="S" tone={CLAIM_BADGE.Reversed.tone} icon={CLAIM_BADGE.Reversed.icon} label="Reversal" />;
+  if (claim.effect === 'Invalid') {
+    return (
+      <Tooltip label="Days supply 0, or a negative value not linked to a fill: held for review and not counted in PDC" placement="bottom">
+        <span><Badge size="S" tone="warning" icon="solar:eye-linear" label="Held for review" /></span>
+      </Tooltip>
+    );
+  }
   const status = claim.effect === 'Reversed' && claim.claimStatus === 'Paid' ? 'Reversed' : (claim.claimStatus || 'Paid');
   const b = CLAIM_BADGE[status] || CLAIM_BADGE.Paid;
   return <Badge size="S" tone={b.tone} icon={b.icon} label={status} />;
@@ -60,6 +79,7 @@ function claimStory(rows) {
     if (c.txnType === 'Reversal') return `Reversed ${c.reversalDate || c.date}`;
     if (c.txnType === 'Rebill') return `Rebilled ${c.date} (seq ${c.claimSeq})`;
     if (c.effect === 'Not Part D') return `Billed to ${c.coverage} ${c.date}`;
+    if (c.effect === 'Invalid') return `Held for review ${c.date}`;
     if (['Cancelled', 'Rejected', 'Deleted'].includes(c.claimStatus)) return `${c.claimStatus} ${c.date}`;
     return `Billed ${c.date}`;
   }).join(' → ');
@@ -151,7 +171,7 @@ function ClaimDetail({ med, claim, onBack, onOpen }) {
 }
 
 function ClaimRow({ c, onOpen }) {
-  const muted = c.voided || c.effect === 'Superseded' || c.txnType === 'Reversal';
+  const muted = c.voided || c.effect === 'Superseded' || c.effect === 'Invalid' || c.txnType === 'Reversal';
   return (
     <div className={`${styles.dataTableRow} ${styles.claimsGrid} ${muted ? styles.rowVoid : ''}`}>
       <span className={styles.idCell}>
@@ -166,7 +186,7 @@ function ClaimRow({ c, onOpen }) {
       <span className={styles.rowMeta}>{c.txnType}</span>
       <span className={styles.rowMeta}>{c.claimSeq}{c.current ? ' · Current' : ''}</span>
       <ClaimStatusBadge claim={c} />
-      <span className={`${styles.claimAmount} ${c.voided || c.effect === 'Superseded' ? styles.struck : ''}`}>{money(total(c))}</span>
+      <span className={`${styles.claimAmount} ${c.voided || c.effect === 'Superseded' || c.effect === 'Invalid' ? styles.struck : ''}`}>{money(total(c))}</span>
     </div>
   );
 }
@@ -174,7 +194,7 @@ function ClaimRow({ c, onOpen }) {
 // A fill confirmed in Fold (by hand, from a pickup or a refill approval):
 // projected until its claim matches, so it never reads as a claim.
 function FillRow({ f }) {
-  const b = MATCH_BADGE[f.match.status];
+  const b = MATCH_BADGE[f.match.kind];
   return (
     <div className={`${styles.dataTableRow} ${styles.claimsGrid} ${styles.rowFill}`}>
       <span className={styles.idCell}>
@@ -185,7 +205,7 @@ function FillRow({ f }) {
       <span className={styles.rowMeta}>Fold fill</span>
       <span className={styles.rowMeta}>—</span>
       <span className={styles.badges}>
-        {f.match.status !== 'Verified' && <Badge size="S" tone="warning" label="Projected" />}
+        {f.match.kind !== 'verified' && <Badge size="S" tone="warning" label="Projected" />}
         <Badge size="S" tone={b.tone} label={b.label} />
       </span>
       <span className={styles.claimAmount}>—</span>

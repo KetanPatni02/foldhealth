@@ -1,7 +1,9 @@
 import { Badge } from '../../components/Badge/Badge';
+import { Icon } from '../../components/Icon/Icon';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { HoverCard } from '../../components/HoverCard/HoverCard';
-import { GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, isActiveGap, medLabel, pdcTone } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, PROGRESS_TONE, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, isActiveGap, medLabel, pdcTone } from './pharmacyWorklist.utils';
+import { useAppStore } from '../../store/useAppStore';
 import styles from './PharmacyWorklistRow.module.css';
 
 // The measure code (MAD / MAH / MAC) as a neutral chip with its full name on
@@ -54,12 +56,33 @@ function projectedHint(medications) {
   return `Projected from the fill confirmed on ${fill.date}${fill.how ? ` (${fill.how})` : ''}, pending a matching claim`;
 }
 
+// Where a number comes from: the plan file or Fold's own calculation from
+// claims. Projected values carry their own underline instead.
+const SOURCE_MARK = {
+  Plan: { icon: 'solar:document-text-linear', label: 'Plan-provided' },
+  Calculated: { icon: 'solar:calculator-minimalistic-linear', label: 'Fold-calculated from claims' },
+};
+function SourceMark({ source }) {
+  const mark = SOURCE_MARK[source];
+  if (!mark) return null;
+  return (
+    <Tooltip label={mark.label} placement="bottom">
+      <span className={styles.sourceMark} aria-label={mark.label}><Icon name={mark.icon} size={12} color="var(--neutral-300)" /></span>
+    </Tooltip>
+  );
+}
+
 // A date alone. Projected dates show their evidence; `alertHint` makes it red
 // and says why.
-export function DateOnly({ date, projected, medications, alertHint }) {
+export function DateOnly({ date, projected, medications, alertHint, source }) {
   if (!date) return <Dash />;
   if (projected) return <FlagValue className={styles.dateText} tone="projected" hint={projectedHint(medications)}>{date}</FlagValue>;
-  return <FlagValue className={styles.dateText} tone={alertHint ? 'alert' : null} hint={alertHint}>{date}</FlagValue>;
+  return (
+    <span className={styles.valueWithMark}>
+      <FlagValue className={styles.dateText} tone={alertHint ? 'alert' : null} hint={alertHint}>{date}</FlagValue>
+      <SourceMark source={source} />
+    </span>
+  );
 }
 
 const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
@@ -84,7 +107,7 @@ export function DueDate({ date, alert = true }) {
 export function FailDateValue({ gap }) {
   const d = daysFromToday(gap.failDate);
   const alert = isActiveGap(gap.status) && d != null && d <= 14;
-  return <DateOnly date={gap.failDate} projected={gap.failDateSource === 'Projected'} medications={gap.medications} alertHint={alert ? failDateHint(d) : null} />;
+  return <DateOnly date={gap.failDate} projected={gap.failDateSource === 'Projected'} source={gap.failDateSource} medications={gap.medications} alertHint={alert ? failDateHint(d) : null} />;
 }
 
 // A gap's next fill due: red when overdue on an open gap.
@@ -93,6 +116,7 @@ export function NextFillDueValue({ gap }) {
     <DateOnly
       date={gap.nextFillDue}
       projected={gap.nextFillDueSource === 'Projected'}
+      source={gap.nextFillDueSource}
       medications={gap.medications}
       alertHint={isActiveGap(gap.status) ? overdueHint(gap.nextFillDue) : null}
     />
@@ -158,7 +182,6 @@ export function OpenCareGaps({ gaps, onOpen }) {
   );
 }
 
-const PROGRESS_TONE = { Complete: 'success', 'Partially complete': 'primary', 'In progress': 'primary', 'Not started': 'white' };
 
 export function ProgressCell({ progress }) {
   return (
@@ -184,35 +207,48 @@ export function PdcValue({ pdc, open, source, medications }) {
     return <FlagValue className={styles.pdc} tone="projected" hint={projectedHint(medications)}>{pdc}%</FlagValue>;
   }
   const below = open && pdcTone(pdc) === 'error';
-  return <FlagValue className={styles.pdc} tone={below ? 'alert' : null} hint="Below the 80% PDC target">{pdc}%</FlagValue>;
+  return (
+    <span className={styles.valueWithMark}>
+      <FlagValue className={styles.pdc} tone={below ? 'alert' : null} hint="Below the 80% PDC target">{pdc}%</FlagValue>
+      <SourceMark source={source} />
+    </span>
+  );
 }
 
-// Claim match for the gap's confirmed fills. "Claim not matched" is a rework
-// flag: it opens that drug's claim history next to outreach logging.
-export function ClaimReconCell({ recon, showCode, followUpTask, onRework }) {
-  const flagged = recon.status === 'Claim not matched';
+// Where the gap's latest fill stands against the claim feed. The badge opens
+// that drug's claim history; a rework task, once created, shows on the line
+// below and opens the task.
+export function ClaimReconCell({ recon, showCode, followUpTask, onOpenClaims }) {
+  const openTask = useAppStore(s => s.openTaskFromNotification);
+  const label = recon.status === 'Awaiting claim' && recon.daysLeft != null
+    ? `Awaiting claim · ${recon.daysLeft > 0 ? `${recon.daysLeft}d left` : 'window ends today'}`
+    : recon.status;
   return (
     <span className={styles.stack}>
-      <Badge size="S" tone={RECON_TONE[recon.status]} label={showCode ? `${recon.status} · ${recon.code}` : recon.status} />
-      {flagged ? (
-        <Tooltip label={recon.detail} placement="bottom">
-          <button type="button" className={styles.reworkLink} onClick={onRework}>
-            {followUpTask ? 'Rework task created · open claims' : 'Rework: open claims'}
-          </button>
-        </Tooltip>
-      ) : (
-        <Tooltip label={recon.detail} placement="bottom">
-          <span className={`${styles.subText} ${styles.reconDetail}`}>{recon.detail}</span>
-        </Tooltip>
+      <Tooltip label={recon.detail} placement="bottom">
+        <button type="button" className={styles.badgeBtn} onClick={onOpenClaims} aria-label={`${recon.status}: open claim history`}>
+          <Badge size="S" tone={RECON_TONE[recon.status]} label={showCode ? `${label} · ${recon.code}` : label} />
+        </button>
+      </Tooltip>
+      {recon.rework && followUpTask?.taskId != null && (
+        <button type="button" className={styles.reworkLink} onClick={() => openTask?.(followUpTask.taskId)}>Rework task open</button>
       )}
     </span>
   );
 }
 
-// Prior-year PDC per year when the plan sends it; Yes / No (non-compliant)
-// otherwise.
-export function PriorYearPdc({ years, nonCompliant }) {
-  if (!years?.length) return <span className={styles.cellText}>{nonCompliant ? 'Non-compliant' : 'Compliant'}</span>;
+// Prior-year PDC per year when the plan sends it; otherwise the plan's
+// compliance flag, with its year so both read the same way.
+export function PriorYearPdc({ years, nonCompliant, year }) {
+  if (!years?.length) {
+    return (
+      <span className={styles.cellText}>
+        <span className={styles.subText}>{year}</span>
+        <Sep />
+        <span className={nonCompliant ? styles.toneError : ''}>{nonCompliant ? 'Non-compliant' : 'Compliant'}</span>
+      </span>
+    );
+  }
   return (
     <span className={styles.stack}>
       {years.map(y => (
@@ -236,13 +272,31 @@ export function SubStatus({ label, suffix }) {
   );
 }
 
-// Gap status badge with its sub-status on the line below.
+// Gap status badge with its sub-status on the line below. Statuses Fold
+// sets say why on hover.
 export function GapStatus({ status, size = 'S' }) {
   if (!status) return <Dash />;
   return (
     <span className={styles.stack}>
-      <Badge size={size} tone={GAP_STATUS_TONE[status.gap]} label={status.gap} />
+      <Tooltip label={status.label ? '' : status.detail} placement="bottom">
+        <span><Badge size={size} tone={GAP_STATUS_TONE[status.gap]} label={status.gap} /></span>
+      </Tooltip>
       <SubStatus label={status.label} />
     </span>
+  );
+}
+
+const SAVABILITY_TONE = { Safe: 'success', Savable: 'primary', 'Not savable': 'error' };
+const SAVABILITY_HINT = {
+  Safe: 'PDC stays at or above 80% to year end with no further fills',
+  Savable: 'Allowable gap days remain: the gap can still reach 80%',
+  'Not savable': 'No allowable gap days left: 80% can no longer be reached this year',
+};
+export function SavabilityBadge({ value }) {
+  if (!value) return <Dash />;
+  return (
+    <Tooltip label={SAVABILITY_HINT[value]} placement="bottom">
+      <span><Badge size="S" tone={SAVABILITY_TONE[value]} label={value} /></span>
+    </Tooltip>
   );
 }

@@ -11,9 +11,12 @@ import { Select } from '../../../components/Select/Select';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
+import { Tooltip } from '../../../components/Tooltip/Tooltip';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { MedicationClaims } from './MedicationClaims';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
-import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, pdcTone } from '../pharmacyWorklist.utils';
+import { DatePickerPopover } from '../../../components/DatePicker/DatePickerPopover';
+import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, medicationStatus, pdcTone, todayMdy } from '../pharmacyWorklist.utils';
 import { MeasureCode, SubStatus } from '../PharmacyCells';
 import { BARRIERS } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -65,20 +68,62 @@ const fillMatchOf = (d, plan) => {
   return fill ? { fill, ...matchFill(fill, annotateClaims(d.refills), plan) } : null;
 };
 
-// Tag for a fill date confirmed in Fold: Projected until its claim matches;
-// a rework link when the claim did not match.
+// Tag for a fill date confirmed in Fold: Projected until its claim matches,
+// then Claim matched. A reversed claim, no claim, or one billed outside
+// Part D is a rework link to the drug's Claim History.
 function FillMatchTag({ match, onRework }) {
   if (!match) return null;
-  if (match.status === 'Verified') return <Badge size="S" tone="success" icon="solar:check-circle-linear" label="Claim verified" />;
-  if (match.status === 'Not matched') {
-    return (
-      <button type="button" className={styles.reworkLink} onClick={(e) => { e.stopPropagation(); onRework?.(); }} title={match.detail}>
-        Claim not matched
-      </button>
-    );
-  }
-  return <Badge size="S" tone="warning" label="Projected" />;
+  if (match.kind === 'verified') return <Badge size="S" tone="success" icon="solar:check-circle-linear" label="Claim matched" />;
+  if (match.kind === 'pending') return <Badge size="S" tone="warning" label="Projected" />;
+  return (
+    <button type="button" className={styles.reworkLink} onClick={(e) => { e.stopPropagation(); onRework?.(); }} title={match.detail}>
+      {match.kind === 'voided' ? 'Fill reversed' : 'Claim not matched'}
+    </button>
+  );
 }
+
+// The fill's claim match as words for the compact row's second line.
+function FillMatchText({ match, onRework }) {
+  if (match.kind === 'verified') return <span className={styles.cMatchOk}>Claim matched</span>;
+  if (match.kind === 'pending') return <span className={styles.cMatchPending}>Projected</span>;
+  return (
+    <button type="button" className={styles.reworkLink} onClick={onRework} title={match.detail}>
+      {match.kind === 'voided' ? 'Fill reversed' : 'Claim not matched'}
+    </button>
+  );
+}
+
+// Recent Fill as a light date chip that opens the calendar, as on the CIS
+// dose list (DoseDateField), so a row is not a form field.
+function RecentFillChip({ date, label, onChange }) {
+  const [rect, setRect] = useState(null);
+  const pick = (iso) => { setRect(null); onChange(fromIso(iso)); };
+  return (
+    <>
+      <button type="button" className={styles.cChip} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())} aria-haspopup="dialog" aria-label={`${label}: ${date || 'not set'}`}>
+        <Badge tone="white" size="S" label={date || 'Set date'} className={date ? undefined : styles.cChipEmpty} />
+      </button>
+      {rect && (
+        <DatePickerPopover
+          open
+          value={toIso(date)}
+          anchorRect={rect}
+          max={toIso(todayMdy())}
+          onChange={pick}
+          onClose={() => setRect(null)}
+          footer={date ? (
+            <div className={styles.cChipFooter}>
+              <Button variant="secondary" size="S" onClick={() => pick('')}>Clear date</Button>
+            </div>
+          ) : null}
+        />
+      )}
+    </>
+  );
+}
+
+// Medication statuses that call for action read red.
+const URGENT_MED_STATUSES = new Set(['Refill overdue', 'Fill reversed', 'Not matched – rework']);
 
 export function MedicationDetail({ med, memberRowId, interventionLog, plan, initialTab }) {
   // Barrier & Intervention log entries for this medication's measure.
@@ -246,7 +291,10 @@ function classGroups(x) {
 // refill-approved outreach) is editable and drives next fill and PDC. Clicking a medication opens its details and refill history.
 // `onOpenMed` lets a host (the gap drawer) show a medication in its own
 // side workspace instead of the stacked drawer.
-export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
+// `compact` (Pharmacy Gap Details): the gap table above already shows each
+// gap's status, PDC and dates, so each gap card is just its drugs, and each
+// drug row keeps the fill columns; the rest is a click away in its details.
+export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compact = false }) {
   const fromProfile = usePharmacyProgramMember();
   const member = memberProp || fromProfile;
   const focus = useAppStore(s => s.pharmacyFocusGap);
@@ -311,6 +359,91 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
     ? all.flatMap(x => x.medications.map(d => ({ ...d, measure: x.code }))).find(d => d.id === openId)
     : null;
 
+  // Compact (Pharmacy Gap Details), after the CIS dose list: a gap title line
+  // with only a bottom stroke ("MAD (Medication Adherence for Diabetes)",
+  // count on the right), then the drugs outside any card. Each drug is two
+  // lines: Rx and the fill columns, then quantity, days supply, prescriber
+  // and pharmacy; a note icon (when the drug has one) and its details sit in
+  // a fixed column on the right.
+  const renderCompactGroup = (x) => {
+    const expanded = isExpanded(x.code);
+    const keys = activeKeys([x]);
+    return (
+      <div key={x.code} className={styles.cGroup}>
+        <button type="button" className={styles.cGroupHead} onClick={() => toggle(x.code)} aria-expanded={expanded}>
+          <DownChevronIcon size={16} className={`${styles.chevron} ${expanded ? '' : styles.chevronRight}`} />
+          <span className={styles.cCode}>{x.code}</span>
+          <span className={styles.cName}>({MEASURE_NAMES[x.code]})</span>
+          <span className={styles.cCount}>{x.medications.length} medication{x.medications.length === 1 ? '' : 's'}</span>
+        </button>
+        {expanded && (
+          <div className={styles.cTable} role="table" aria-label={`${x.code} medications`}>
+            <div className={`${styles.cRow} ${styles.cHead}`} role="row">
+              <span role="columnheader">
+                {keys.length > 0 && (
+                  <Checkbox checked={checkState(keys)} onCheckedChange={() => setMany(keys, checkState(keys) !== true)} aria-label={`Select all ${x.code} medications`} />
+                )}
+              </span>
+              <span role="columnheader">Rx</span>
+              <span role="columnheader">Last Fill</span>
+              <span role="columnheader" title="A date entered here is projected until a matching Part D claim arrives">Recent Fill</span>
+              <span role="columnheader">Next Fill</span>
+              <span role="columnheader">PDC</span>
+              <span role="columnheader" aria-label="Actions" />
+            </div>
+            {classGroups(x).flatMap(g => g.meds.map(d => ({ ...d, cls: g.cls }))).map(d => {
+              const dc = d.status === 'Discontinued';
+              const note = [d.internalNotes, d.notesToMd && `To MD: ${d.notesToMd}`].filter(Boolean).join(' · ');
+              const match = dc ? null : fillMatchOf(d, member.healthPlan);
+              const meta = [
+                d.qty != null && `Qty ${d.qty}`,
+                d.daysSupply != null && `${d.daysSupply} days supply`,
+                d.prescriber?.name,
+                d.pharmacy?.name,
+              ].filter(Boolean);
+              return (
+                <div key={d.id} className={`${styles.cRow} ${styles.cMedRow} ${dc ? styles.cDiscontinued : ''}`} role="row" onClick={() => openDrug(d.id)}>
+                  <span className={styles.cPick} onClick={e => e.stopPropagation()}>
+                    {!dc && <Checkbox checked={picked.has(pickKey(x.code, d.id))} onCheckedChange={() => togglePick(pickKey(x.code, d.id))} aria-label={`Select ${d.name}`} />}
+                  </span>
+                  <span className={styles.cRx}>{d.name} {d.strength} {d.unit}</span>
+                  <span>{d.lastFill || '—'}</span>
+                  <span onClick={e => e.stopPropagation()}>
+                    {dc ? (d.recentFill || '—') : (
+                      <RecentFillChip
+                        date={d.recentFill}
+                        label={`${d.name} recent fill date`}
+                        onChange={(mdy) => setRecentFill(member.id, x.code, d.id, mdy || null)}
+                      />
+                    )}
+                  </span>
+                  <span className={riskClass(d.measure, fillDueTone(d.nextFill))}>{d.nextFill || '—'}</span>
+                  <span className={riskClass(d.measure, pdcTone(d.pdc))}>{d.pdc == null ? '—' : `${d.pdc}%`}</span>
+                  <span className={styles.cActions} onClick={e => e.stopPropagation()}>
+                    {note && (
+                      <Tooltip label={note} placement="bottom" maxWidth={260}>
+                        <span className={styles.cNote} aria-label="Has a note"><Icon name="solar:notes-linear" size={16} color="var(--neutral-300)" /></span>
+                      </Tooltip>
+                    )}
+                    <ActionButton icon="solar:eye-linear" size="S" tooltip="View details" onClick={() => openDrug(d.id)} />
+                  </span>
+                  {/* Second line: class, the fill's claim match, a barrier if
+                      any, then quantity, supply, prescriber and pharmacy. */}
+                  <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
+                    <span>{d.cls}{dc ? ' · Discontinued' : ''}</span>
+                    {match && <FillMatchText match={match} onRework={() => openDrug(d.id, 'claims')} />}
+                    {d.nonAdherenceReason && <span className={styles.cBarrierText}>Barrier: {d.nonAdherenceReason}</span>}
+                    {meta.map(t => <span key={t}>{t}</span>)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (!member) {
     return (
       <div className={styles.empty}>
@@ -335,10 +468,12 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
         )}
         <span className={styles.count}>{all.length} gap{all.length === 1 ? '' : 's'} · {medCount} medication{medCount === 1 ? '' : 's'}</span>
       </div>
-      <p className={styles.helper}>
-        <Icon name="solar:info-circle-linear" size={14} color="var(--neutral-300)" />
-        A Recent Fill date entered here is projected: it updates PDC, next fill and fail date, but the gap only closes when a matching Part D claim arrives.
-      </p>
+      {!compact && (
+        <p className={styles.helper}>
+          <Icon name="solar:info-circle-linear" size={14} color="var(--neutral-300)" />
+          A Recent Fill date entered here is projected: it updates PDC, next fill and fail date, but the gap only closes when a matching Part D claim arrives.
+        </p>
+      )}
 
       {picked.size > 0 && (
         <div className={styles.bulkBar} role="region" aria-label="Set recent fill for selected medications">
@@ -352,7 +487,8 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
         </div>
       )}
 
-      {shown.map(x => {
+      {compact && shown.map(x => renderCompactGroup(x))}
+      {!compact && shown.map(x => {
         const expanded = isExpanded(x.code);
         return (
           <section key={x.code} className={`${styles.gapCard} ${x.code === focusCode ? styles.gapCardFocus : ''}`}>
@@ -361,15 +497,15 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                 <DownChevronIcon size={14} className={`${styles.chevron} ${expanded ? '' : styles.chevronRight}`} />
                 <MeasureCode code={x.code} />
                 <span className={styles.groupName}>{MEASURE_NAMES[x.code]}</span>
-                {x.code === focusCode && <span className={styles.groupMeta}>Opened from worklist</span>}
+                {!compact && x.code === focusCode && <span className={styles.groupMeta}>Opened from worklist</span>}
                 <span className={styles.groupMeta}>{x.medications.length} medication{x.medications.length === 1 ? '' : 's'}</span>
               </span>
-              <span className={styles.gapCardMeta}>
+              {!compact && <span className={styles.gapCardMeta}>
                 <Badge size="S" tone={GAP_STATUS_TONE[x.st.gap]} label={x.st.gap} />
                 <SubStatus label={x.st.label} />
                 <span className={styles.groupMeta}>{x.pdcProjected != null ? 'Projected PDC' : 'PDC'} <b className={riskClass(x.code, pdcTone(effectivePdc(x)))}>{effectivePdc(x) == null ? '—' : `${effectivePdc(x)}%`}</b></span>
                 <span className={styles.groupMeta}>Next due <b className={riskClass(x.code, fillDueTone(x.nextFillDue))}>{x.nextFillDue || '—'}</b></span>
-              </span>
+              </span>}
             </button>
 
             {expanded && (
@@ -385,8 +521,11 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                             aria-label={`Select all ${x.code} medications`}
                           />
                         )}
-                      </th><th>Rx</th><th>Last Fill</th><th>Recent Fill</th><th>Next Fill</th><th>PDC</th><th>MPR</th>
-                      <th>DS</th><th>Quantity</th><th>Barrier</th><th>Prescriber</th><th>Pharmacy</th><th aria-label="Open" />
+                      </th><th>Rx</th><th>Last Fill</th>
+                      <th>{compact ? <span title="A date entered here is projected until a matching Part D claim arrives">Recent Fill</span> : 'Recent Fill'}</th>
+                      <th>Next Fill</th><th>PDC</th>
+                      {!compact && <><th>MPR</th><th>DS</th><th>Quantity</th><th>Barrier</th><th>Prescriber</th><th>Pharmacy</th></>}
+                      <th aria-label="Open" />
                     </tr>
                   </thead>
                   <tbody>
@@ -395,7 +534,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                       return (
                         <Fragment key={g.cls}>
                           <tr className={styles.groupRow}>
-                            <td colSpan={13}>
+                            <td colSpan={compact ? 7 : 13}>
                               <span className={styles.groupHead}>
                                 <span className={styles.groupName}>{g.cls}</span>
                                 <span className={styles.groupMeta}>{g.meds.length} medication{g.meds.length === 1 ? '' : 's'}</span>
@@ -420,7 +559,9 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                               </td>
                               <td className={styles.rxCell}>
                                 <span className={styles.rxName}>{d.name} {d.strength} {d.unit}</span>
-                                <span className={styles.rxGeneric}>{d.generic}{d.status === 'Discontinued' ? ' · Discontinued' : ''}</span>
+                                <span className={styles.rxGeneric}>
+                                  {d.generic} · <span className={URGENT_MED_STATUSES.has(medicationStatus(d, member.healthPlan)) ? styles.toneError : ''}>{medicationStatus(d, member.healthPlan)}</span>
+                                </span>
                               </td>
                               <td>{d.lastFill}</td>
                               {d.status === 'Discontinued' ? (
@@ -437,12 +578,14 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                               )}
                               <td className={riskClass(d.measure, fillDueTone(d.nextFill))}>{d.nextFill}</td>
                               <td className={riskClass(d.measure, pdcTone(d.pdc))}>{d.pdc == null ? '—' : `${d.pdc}%`}</td>
-                              <td>{d.mpr ?? '—'}</td>
-                              <td>{d.daysSupply}</td>
-                              <td>{d.qty}</td>
-                              <td>{d.nonAdherenceReason ? <Badge size="S" tone="grey" label={d.nonAdherenceReason} /> : '—'}</td>
-                              <td>{d.prescriber?.name || '—'}</td>
-                              <td>{d.pharmacy?.name || '—'}</td>
+                              {!compact && <>
+                                <td>{d.mpr ?? '—'}</td>
+                                <td>{d.daysSupply}</td>
+                                <td>{d.qty}</td>
+                                <td>{d.nonAdherenceReason ? <Badge size="S" tone="grey" label={d.nonAdherenceReason} /> : '—'}</td>
+                                <td>{d.prescriber?.name || '—'}</td>
+                                <td>{d.pharmacy?.name || '—'}</td>
+                              </>}
                               <td className={styles.openCell}>
                                 <DownChevronIcon size={14} className={`${styles.chevron} ${styles.chevronRight}`} />
                               </td>

@@ -36,8 +36,12 @@ export function useOutreachTab({
   // "HCC Gaps" mode (same data the Diagnosis Gaps panel shows).
   memberName,
   // Called after a save with the new log entries, so a host can mirror them
-  // into its own persisted activity feed (the Care Gap drawer does).
+  // into its own persisted activity feed (the Care Gap drawer does). On an
+  // edit, `editedId` is the id of the log that changed.
   onSaved,
+  // Called after a log is deleted from the feed, so a host can delete it
+  // from its own record too.
+  onDeleted,
   // Program Activity Log code for saved entries when the pills are not
   // themselves programs (e.g. MAD / MAH / MAC pills inside the PHARM program).
   activityProgramCode = null,
@@ -284,6 +288,7 @@ export function useOutreachTab({
 
     onSaved?.(newEntries, {
       isEdit: editingIdRef.current != null,
+      editedId: editingIdRef.current,
       callDetails: showCallDetails ? {
         via: callViaNumber,
         to: calledToNumber,
@@ -329,6 +334,7 @@ export function useOutreachTab({
       }
       return next;
     });
+    onDeleted?.(log);
   };
 
   const filteredLogGroups = useMemo(() => {
@@ -366,6 +372,7 @@ export function useOutreachTab({
     type, setType,
     datetime, setDatetime,
     selectedProgs,
+    setSelectedProgs,
     outcome, setOutcome: changeOutcome,
     separateNotes, setSeparateNotes,
     sharedPanel,

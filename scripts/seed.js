@@ -795,6 +795,8 @@ function pharmacyWorklistToRow(m) {
     days_in_queue:     m.daysInQueue ?? null,
     prescriber:        m.prescriber ?? null,
     pharmacy:          m.pharmacy ?? null,
+    eligibility_status: m.eligibilityStatus || 'Active',
+    term_date:         m.termDate ?? null,
     phones:            m.phones ?? [],
     call_history:      m.callHistory ?? [],
     intervention_log:  m.interventionLog ?? [],

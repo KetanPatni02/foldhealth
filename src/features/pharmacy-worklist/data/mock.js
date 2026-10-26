@@ -591,11 +591,32 @@ const CLAIM_SCENARIOS = {
   })),
 };
 
+// One measure per gap status the claim scenarios above don't reach.
+const STATUS_SCENARIOS = {
+  // Plan file: one more fill guarantees 80% PDC for the year (Met for Year).
+  '19408|MAH': (x) => ({ ...x, oneFillToInvincible: true }),
+  // Plan file: excluded from the measure.
+  '19408|MAC': (x) => ({ ...x, excluded: true, exclusionType: 'Hospice' }),
+  // One fill in the class: First Fill, held off the worklist until a second
+  // fill on a different date.
+  '19409|MAH': (x) => {
+    const [d] = x.medications.filter(y => y.status !== 'Discontinued');
+    const [first] = d.refills;
+    return recomputeMeasure({ ...x, firstFill: true, medications: [{ ...d, lastFill: first.date, refills: [first] }] });
+  },
+};
+
+// Eligibility file: a termed member's gaps are all Not Eligible.
+const ELIGIBILITY = {
+  19410: { eligibilityStatus: 'Termed', termDate: '10/15/2026' },
+};
+
 // Pickups confirmed by the pharmacy, kept as their own records (who logged
 // them, when, from where), apart from claims. Also mirrored as confirmed
 // fills on each active drug of the measure.
 const PICKUPS = [
   { memberRowId: '19401', measureCode: 'MAD', pickupDate: '10/09/2026', source: 'Pharmacy call', loggedBy: 'Priya Natarajan' },
+  { memberRowId: '19404', measureCode: 'MAD', pickupDate: '10/20/2026', source: 'Pharmacy call', loggedBy: 'Marcus Reyes', note: 'Picked up; waiting for the Part D claim.' },
   { memberRowId: '19402', measureCode: 'MAC', pickupDate: '09/22/2026', source: 'Pharmacy call', loggedBy: 'Priya Natarajan' },
   { memberRowId: '19406', measureCode: 'MAD', pickupDate: '09/30/2026', source: 'Pharmacy verification', loggedBy: 'Marcus Reyes' },
   { memberRowId: '19407', measureCode: 'MAD', pickupDate: '10/18/2026', source: 'Pharmacy call', loggedBy: 'Priya Natarajan', note: 'Picked up at the counter; claim not on the plan feed yet.' },
@@ -609,6 +630,7 @@ function withPickupsAndScenarios(m) {
     ({ measures } = applyPickup({ ...m, measures }, [p.measureCode], p.pickupDate, `Pickup confirmed by ${p.source === 'Pharmacy call' ? 'call' : 'pharmacy'}`));
   }
   measures = measures.map(x => (CLAIM_SCENARIOS[`${m.id}|${x.code}`] ? CLAIM_SCENARIOS[`${m.id}|${x.code}`](x, m) : x));
+  measures = measures.map(x => (STATUS_SCENARIOS[`${m.id}|${x.code}`] ? STATUS_SCENARIOS[`${m.id}|${x.code}`](x) : x));
   // The newest pickup is also the latest call on record.
   const callHistory = m.id === '19407'
     ? [{ date: '10/18/2026', contact: 'Pharmacy', outcome: 'Confirmed medication pickup date', result: 'success', by: 'Priya Natarajan', note: 'Picked up at the counter.', measures: ['MAD'] }, ...(m.callHistory || [])]
@@ -625,7 +647,7 @@ export const PHARMACY_PICKUP_CONFIRMATIONS = PICKUPS.map((p, i) => ({
 
 export const PHARMACY_WORKLIST_MEMBERS = BASE_MEMBERS
   .map((m, i) => completeMeasures(m, i))
-  .map(m => ({ sourcePriority: null, ...m, ...SOURCE_FIELDS[m.id] }))
+  .map(m => ({ sourcePriority: null, eligibilityStatus: 'Active', termDate: null, ...m, ...SOURCE_FIELDS[m.id], ...ELIGIBILITY[m.id] }))
   .map(withClaimFields)
   .map(withPriorYearPdc)
   .map(withPickupsAndScenarios);

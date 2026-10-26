@@ -1,7 +1,8 @@
 import { supabase } from '../../lib/supabase';
 import { detachSaved, hydrateListFilters } from '../lib/worklistListFilters';
 import { applyPendingPickup, applyPickup, applyRecentFill, recomputeMeasure, withManualRecentFill } from '../../features/pharmacy-worklist/fillEvents';
-import { enrichPharmacyMember, reconcileMeasure, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
+import { planAutoAssignment } from '../../features/pharmacy-worklist/pharmacyRules';
+import { addDaysMdy, callMatchesLog, enrichPharmacyMember, measureStatus, parseMdy, reconcileMeasure, setPlanTimers, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
 
 function rowToMember(r) {
   return {
@@ -35,6 +36,8 @@ function rowToMember(r) {
     patientId: r.patient_id,
     sourcePriority: r.source_priority ?? null,
     otherCareGaps: r.other_care_gaps || [],
+    eligibilityStatus: r.eligibility_status || 'Active',
+    termDate: r.term_date ?? null,
   };
 }
 
@@ -59,7 +62,19 @@ const pickupToRow = (p) => ({
 const COLUMN_TO_FIELD = {
   status: 'status', status_manual: 'statusManual', assignee_id: 'assigneeId', assignee_name: 'assigneeName', assignee_initials: 'assigneeInitials',
   measures: 'measures', call_history: 'callHistory', intervention_log: 'interventionLog', barrier: 'barrier',
+  follow_up_due: 'followUpDue',
 };
+
+// A fill left on the shelf brings the follow-up forward to the next pickup
+// reminder (every 2–3 days). The follow-up stays its own date: one already
+// sooner is kept.
+const PICKUP_FOLLOW_UP_DAYS = 3;
+function withPickupFollowUp(m, date, changes) {
+  const due = addDaysMdy(date, PICKUP_FOLLOW_UP_DAYS);
+  if (m.followUpDue && parseMdy(m.followUpDue) <= parseMdy(due)) return m.followUpDue;
+  changes.push(`Follow-up due ${due} (pickup reminder)`);
+  return due;
+}
 
 const MED_FIELD_LABEL = {
   status: 'Status', sig: 'SIG', conditions: 'Conditions', nonAdherenceReason: 'Reason for non-adherence',
@@ -132,10 +147,13 @@ export function createPharmacyWorklistSlice(set, get) {
       if (get().pharmacyWorklistDidFetch) return;
       set({ pharmacyWorklistDidFetch: true, pharmacyWorklistLoading: true, pharmacyWorklistError: null });
 
-      const { data, error } = await supabase
-        .from('pharmacy_worklist_members')
-        .select('*')
-        .order('id', { ascending: true });
+      const [{ data, error }, timers] = await Promise.all([
+        supabase.from('pharmacy_worklist_members').select('*').order('id', { ascending: true }),
+        supabase.from('pharmacy_plan_timers').select('*'),
+      ]);
+      // Claim timers per plan; without the table the built-in defaults stay.
+      if (timers.error) console.warn('fetchPharmacyPlanTimers failed:', timers.error.message);
+      else if (timers.data?.length) setPlanTimers(timers.data);
 
       // A failed fetch is shown as an error with Retry, never papered over
       // with mock patients: staff must not act on rows that are not real.
@@ -232,14 +250,14 @@ export function createPharmacyWorklistSlice(set, get) {
       update(id, m => ({
         ...m,
         measures: m.measures.map(x => (x.code !== code ? x
-          : status ? { ...x, status, statusManual: true } : { ...x, statusManual: false })),
+          : status ? { ...x, status, statusManual: true, statusManualSince: todayMdy() } : { ...x, statusManual: false })),
       }), ['measures'], {
         t: 'status_change', title: status ? `${code} status changed` : `${code} status set from data`, from: prev, to,
       });
     },
 
-    // A fill confirmed in Fold whose claim did not match (none inside the
-    // plan's window, reversed, or billed to other coverage) needs rework.
+    // A fill whose claim did not match (none inside the plan's window), was
+    // reversed, or was billed outside Part D needs rework.
     // Create that follow-up task once per fill; the marker on the measure
     // keeps it from being created again.
     // Runs when the worklist loads, in each viewer's browser; the tasks
@@ -250,7 +268,9 @@ export function createPharmacyWorklistSlice(set, get) {
       for (const row of get().pharmacyWorklistMembers) {
         for (const x of row.measures || []) {
           const recon = reconcileMeasure(x, row.healthPlan);
-          if (recon?.status !== 'Claim not matched') continue;
+          if (!recon?.rework) continue;
+          // Not savable gaps get no follow-up.
+          if (measureStatus(x, row).gap === 'Failed for Year') continue;
           const key = `pharm-claim-unmatched-${row.id}-${x.code}-${recon.medId}-${recon.fillDate}`;
           if (x.claimFollowUpTask?.key === key || claimTasksTried.has(key)) continue;
           claimTasksTried.add(key);
@@ -258,7 +278,7 @@ export function createPharmacyWorklistSlice(set, get) {
           // of racing the unique index.
           const { data: existing } = await supabase.from('tasks').select('id').eq('source_key', key).maybeSingle();
           const created = existing || await get().createTask({
-            name: `Rework: ${x.code} claim not matched`,
+            name: `Rework: ${x.code} ${recon.status.toLowerCase()}`,
             status: 'pending', priority: 'high', due_date: todayMdy(),
             assigned_to: row.assigneeName || null, assigned_to_id: row.assigneeId || null, member: row.name,
             labels: [], meta: '', pool: null, mentions: [], attachments: 0, comments: 0,
@@ -286,6 +306,24 @@ export function createPharmacyWorklistSlice(set, get) {
       }), ['assignee_id', 'assignee_name', 'assignee_initials'], {
         t: 'assignee_change', title: 'Assignee changed', note: `${prev} → ${user?.name || 'Unassigned'}`,
       });
+    },
+
+    // Patient-level auto-assignment by IPA, then health plan, from the PHARM
+    // care teams (see planAutoAssignment). Returns how many were assigned.
+    autoAssignPharmacy: () => {
+      const members = get().pharmacyWorklistMembers.map(m => enrichPharmacyMember(m));
+      const plan = planAutoAssignment(members, get().hccCareTeams, get().platformUsers);
+      for (const p of plan) {
+        update(p.memberId, m => ({
+          ...m,
+          assigneeId: p.user.id,
+          assigneeName: p.user.name,
+          assigneeInitials: p.user.initials,
+        }), ['assignee_id', 'assignee_name', 'assignee_initials'], {
+          t: 'assignee_change', title: 'Auto-assigned', note: `Unassigned → ${p.user.name} (${p.rule})`,
+        });
+      }
+      return plan.length;
     },
 
     // Medication Review edits (status, SIG, condition, non-adherence reason,
@@ -318,19 +356,56 @@ export function createPharmacyWorklistSlice(set, get) {
         let changes = [];
         if (pickupCodes.length) ({ measures, changes } = applyPickup({ ...m, measures }, pickupCodes, entry.date, 'Pickup confirmed by call'));
         if (pendingCodes.length) measures = applyPendingPickup({ ...m, measures }, pendingCodes, entry.date);
-        // Pickups already added their fill above; refill approvals add theirs
-        // here. Either way only drugs with an older latest fill change.
+        // Pickups already added their fill above, so this only reaches drugs
+        // with an older latest fill.
         if (recentFillCodes.length) measures = applyRecentFill({ ...m, measures }, recentFillCodes, entry.date, recentFillOutcome, changes);
         // Any outreach puts the member In Progress. Gaps never close here; a
         // pickup is the gap's sub-status.
         const status = 'In Progress';
         if (status !== m.status) changes.push(`Status ${m.status} → ${status}`);
-        return { ...m, status, measures, callHistory: [entry, ...(m.callHistory || [])], _changes: changes };
-      }, ['status', 'call_history', 'measures'], (changes) => ({
+        const followUpDue = pendingCodes.length ? withPickupFollowUp(m, entry.date, changes) : m.followUpDue;
+        return { ...m, status, measures, followUpDue, callHistory: [entry, ...(m.callHistory || [])], _changes: changes };
+      }, ['status', 'call_history', 'measures', 'follow_up_due'], (changes) => ({
         t: 'outreach', title: `Outreach · ${entry.contact} (${(entry.measures || []).join(', ')})`,
         outcome: entry.outcome, outcomeColor: entry.result === 'failed' ? 'var(--status-error)' : 'var(--status-success)',
         note: [entry.note, ...changes].filter(Boolean).join('\n'),
       }));
+    },
+
+    // An outreach edited in the feed: the line (one measure of the call) is
+    // saved back to the member's call history and logged in Activity. When
+    // the call covered several measures with their own outcomes, only this
+    // measure's part changes. Locked calls are never edited.
+    editPharmacyOutreach: (memberRowId, logId, { measure, outcome, note, type, date, time }) => {
+      update(memberRowId, m => ({
+        ...m,
+        callHistory: (m.callHistory || []).map(c => {
+          if (c.locked || !callMatchesLog(c, logId)) return c;
+          const parts = (c.outcome || '').split('; ');
+          const perMeasure = (c.measures || []).length > 1 && parts.some(p => p.startsWith(`${measure}: `));
+          return {
+            ...c,
+            // An older call keyed by its content keeps that key once edited.
+            id: c.id || String(logId),
+            outcome: perMeasure ? parts.map(p => (p.startsWith(`${measure}: `) ? `${measure}: ${outcome}` : p)).join('; ') : outcome,
+            note, type, time,
+            date: date ? `${date}/${c.date.slice(6)}` : c.date,
+          };
+        }),
+      }), ['call_history'], { t: 'outreach', title: `Outreach edited (${measure})`, outcome, note });
+    },
+
+    // An outreach deleted from the feed: that measure leaves the call, and
+    // the call goes once no measure is left. Logged in Activity.
+    deletePharmacyOutreach: (memberRowId, logId, measures) => {
+      update(memberRowId, m => ({
+        ...m,
+        callHistory: (m.callHistory || []).flatMap(c => {
+          if (c.locked || !callMatchesLog(c, logId)) return [c];
+          const left = (c.measures || []).filter(x => !measures.includes(x));
+          return left.length ? [{ ...c, measures: left, logIds: (c.logIds || []).filter(id => id !== logId) }] : [];
+        }),
+      }), ['call_history'], { t: 'outreach', title: `Outreach deleted (${measures.join(', ')})` });
     },
 
     // Pharmacy verification call, locked: one call-history entry for every
@@ -349,8 +424,9 @@ export function createPharmacyWorklistSlice(set, get) {
           ...x,
           medications: x.medications.map(d => (refillsByMed[d.id] == null ? d : { ...d, refillsRemaining: refillsByMed[d.id] })),
         }));
-        return { ...m, status: status || m.status, measures, callHistory: [entry, ...(m.callHistory || [])], _changes: changes };
-      }, ['status', 'call_history', 'measures'], (changes) => ({
+        const followUpDue = pendingCodes.length ? withPickupFollowUp(m, entry.date, changes) : m.followUpDue;
+        return { ...m, status: status || m.status, measures, followUpDue, callHistory: [entry, ...(m.callHistory || [])], _changes: changes };
+      }, ['status', 'call_history', 'measures', 'follow_up_due'], (changes) => ({
         t: 'call', title: `Pharmacy verification · ${entry.contact} (locked)`,
         outcome: entry.outcome, outcomeColor: entry.result === 'failed' ? 'var(--status-warning)' : 'var(--status-success)',
         note: [entry.note, ...changes, status && status !== prevStatus ? `Status ${prevStatus} → ${status}` : null].filter(Boolean).join('\n'),
@@ -390,10 +466,15 @@ export function createPharmacyWorklistSlice(set, get) {
     pharmacyGapDrawer: null,
     // `medId` + view 'claims' opens straight to that drug's claim history,
     // with the Outreaches tab beside it (the "Claim not matched" rework).
-    openPharmacyGapDrawer: (memberId, code, { medId = null, view = null } = {}) => set({
-      pharmacyGapDrawer: { memberId, code, medId, view },
+    // `focus`: opened from one gap (its badge or rework flag), so the drawer
+    // starts scoped to that gap; otherwise to every gap that needs work.
+    openPharmacyGapDrawer: (memberId, code, { medId = null, view = null, focus = false } = {}) => set({
+      pharmacyGapDrawer: { memberId, code, medId, view, focus },
       pharmacyFocusGap: { memberId, code },
     }),
+    // The worklist's rows in screen order, for the drawer's previous / next.
+    pharmacyWorklistOrder: [],
+    setPharmacyWorklistOrder: (ids) => set({ pharmacyWorklistOrder: ids }),
     closePharmacyGapDrawer: () => set({ pharmacyGapDrawer: null }),
 
     pharmacyFilters: hydrateListFilters('Pharmacy'),
@@ -405,5 +486,9 @@ export function createPharmacyWorklistSlice(set, get) {
     }),
     // Clearing also deselects the applied saved filter, like the other lists.
     clearPharmacyFilters: () => set(s => ({ pharmacyFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'Pharmacy') })),
+    // Chips picked from More Filters (null: the primary set).
+    pharmacyVisibleFilterKeys: null,
+    setPharmacyVisibleFilterKeys: (keys) => set({ pharmacyVisibleFilterKeys: [...keys] }),
+    clearPharmacyVisibleFilters: () => set({ pharmacyVisibleFilterKeys: [] }),
   };
 }

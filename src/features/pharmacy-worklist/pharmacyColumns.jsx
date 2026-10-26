@@ -3,16 +3,19 @@ import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { GAP_STATUS_TONE, MEASURE_NAMES, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MANUAL_GAP_STATUSES, MEASURE_NAMES, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
 import { fillsToStayCompliant } from './fillEvents';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
-import { ClaimReconCell, Dash, DateWithDays, DrugsCount, FailDateValue, NextFillDueValue, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SubStatus } from './PharmacyCells';
+import { ClaimReconCell, Dash, DateWithDays, DrugsCount, FailDateValue, NextFillDueValue, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SavabilityBadge, SubStatus } from './PharmacyCells';
 import styles from './PharmacyWorklistRow.module.css';
 
 // Only top priority carries color; the rest stay neutral so red keeps meaning "act now".
 const PRIORITY_TONE = { P1: 'error' };
 
 const isOverdue = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
+const PRIOR_YEAR = new Date().getFullYear() - 1;
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const numberOrDash = (n, suffix = '') => (n == null ? <Dash /> : <span className={styles.cellText}>{n}{suffix}</span>);
 
 // Gap-level columns stack one item per visible pharmacy gap, HEDIS style
 // (the row collapses to 2 with "View More N"); the last one draws the divider
@@ -71,17 +74,25 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   },
   {
     key: 'gapStatus', label: 'Gap Status', getTdClassName: gapTd(false), stopRowClickPropagation: true,
+    // The team can only move a gap between Open and In Progress; every other
+    // status is Fold's, so its badge only explains itself.
     renderCell: perGap((g, m, ctx) => (
       <span className={styles.stack}>
-        <button
-          type="button"
-          className={styles.badgeBtn}
-          onClick={(e) => ctx.openGapStatusMenu(g.code, e.currentTarget.getBoundingClientRect())}
-          aria-haspopup="menu"
-          aria-label={`Change ${g.code} status`}
-        >
-          <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap] || 'grey'} label={g.status.gap} trailingIconElement={<DownChevronIcon size={12} color="currentColor" />} />
-        </button>
+        {MANUAL_GAP_STATUSES.includes(g.status.gap) ? (
+          <button
+            type="button"
+            className={styles.badgeBtn}
+            onClick={(e) => ctx.openGapStatusMenu(g.code, e.currentTarget.getBoundingClientRect())}
+            aria-haspopup="menu"
+            aria-label={`Change ${g.code} status`}
+          >
+            <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap] || 'grey'} label={g.status.gap} trailingIconElement={<DownChevronIcon size={12} color="currentColor" />} />
+          </button>
+        ) : (
+          <Tooltip label={g.status.label ? 'Set by Fold' : `Set by Fold: ${g.status.detail}`} placement="bottom">
+            <span><Badge size="S" tone={GAP_STATUS_TONE[g.status.gap] || 'grey'} label={g.status.gap} /></span>
+          </Tooltip>
+        )}
         <Tooltip label={g.status.detail} placement="bottom">
           {g.status.medId ? (
             <button type="button" className={styles.subStatusBtn} onClick={() => ctx.openClaimRework(g.code, g.status.medId)}>
@@ -113,7 +124,7 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   {
     key: 'claimRecon', label: 'Claim Reconciliation', sortKey: 'reconRank', sortType: 'number', getTdClassName: gapTd(false), stopRowClickPropagation: true,
     renderCell: perGap((g, m, ctx) => (g.recon
-      ? <ClaimReconCell recon={g.recon} followUpTask={g.claimFollowUpTask} onRework={() => ctx.openClaimRework(g.code, g.recon.medId)} />
+      ? <ClaimReconCell recon={g.recon} followUpTask={g.claimFollowUpTask} onOpenClaims={() => ctx.openClaimRework(g.code, g.recon.medId)} />
       : <Dash />)),
   },
   // Proposed (Richard), to confirm with Monique: hidden until then.
@@ -128,9 +139,38 @@ export const PHARMACY_MIDDLE_COLUMNS = [
       );
     }),
   },
+  // Proposed in the status model spec; hidden until confirmed.
+  {
+    key: 'savability', label: 'Savability', optional: true, getTdClassName: gapTd(false),
+    renderCell: perGap((g) => <SavabilityBadge value={g.savability} />),
+  },
+  {
+    key: 'allowableGapDays', label: 'Allowable Gap Days Remaining', optional: true, getTdClassName: gapTd(false),
+    renderCell: perGap((g) => (g.allowableGapDays == null ? <Dash /> : (
+      <Tooltip label="Days the member can still go without medication and reach 80% PDC" placement="bottom">
+        <span className={`${styles.cellText} ${g.allowableGapDays <= 0 ? styles.toneError : ''}`}>{plural(g.allowableGapDays, 'day')}</span>
+      </Tooltip>
+    ))),
+  },
+  {
+    key: 'daysMissed', label: 'Days Missed', optional: true, getTdClassName: gapTd(false),
+    renderCell: perGap((g) => numberOrDash(g.daysMissed)),
+  },
+  {
+    key: 'noRefillPdc', label: 'Projected PDC (No Refill)', optional: true, getTdClassName: gapTd(false),
+    renderCell: perGap((g) => numberOrDash(g.noRefillPdc, '%')),
+  },
+  {
+    key: 'mpr', label: 'MPR', optional: true, getTdClassName: gapTd(false),
+    renderCell: perGap((g) => numberOrDash(g.mpr, '%')),
+  },
+  {
+    key: 'attempts', label: 'Attempts', optional: true, getTdClassName: gapTd(false),
+    renderCell: perGap((g) => numberOrDash(g.attempts)),
+  },
   {
     key: 'priorYear', label: 'Prior Year PDC', getTdClassName: gapTd(true),
-    renderCell: perGap((g) => <PriorYearPdc years={g.priorYearPdc} nonCompliant={g.priorYearNonCompliant} />),
+    renderCell: perGap((g) => <PriorYearPdc years={g.priorYearPdc} nonCompliant={g.priorYearNonCompliant} year={PRIOR_YEAR} />),
   },
   {
     key: 'progress', label: 'Progress', sortKey: 'progressRank', sortType: 'number',
@@ -203,7 +243,18 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   { key: 'daysInQueue', label: 'Days in Queue', optional: true, sortKey: 'daysInQueue', sortType: 'number', renderCell: (m) => <span className={styles.cellText}>{m.daysInQueue ?? '—'}</span> },
   {
     key: 'excluded', label: 'Excluded / Safe for Year', optional: true,
-    renderCell: (m) => (m.urgent?.excluded ? <Badge size="S" tone="success" label="Excluded" /> : <Dash />),
+    renderCell: (m) => {
+      const codes = (status) => m.gaps.filter(g => g.status.gap === status).map(g => g.code).join(', ');
+      const excluded = codes('Excluded');
+      const safe = codes('Met for Year');
+      if (!excluded && !safe) return <Dash />;
+      return (
+        <span className={styles.stack}>
+          {excluded && <Badge size="S" tone="grey" label={`Excluded · ${excluded}`} />}
+          {safe && <Badge size="S" tone="info" label={`Safe for year · ${safe}`} />}
+        </span>
+      );
+    },
   },
   { key: 'projectedStatus', label: 'Projected Status', optional: true, renderCell: (m) => (m.urgent?.projectedStatus ? <span className={styles.cellText}>{m.urgent.projectedStatus}</span> : <Dash />) },
   {
@@ -211,6 +262,24 @@ export const PHARMACY_MIDDLE_COLUMNS = [
     renderCell: (m) => ((m.measures || []).some(x => x.drugInteraction)
       ? <Badge size="S" tone="error" icon="solar:danger-triangle-linear" label="Flagged" />
       : <Dash />),
+  },
+  {
+    key: 'lastOutreach', label: 'Last Outreach', optional: true, sortKey: 'outreachSort', sortType: 'date',
+    renderCell: (m) => (m.outreach ? (
+      <span className={styles.stack}>
+        <span className={styles.dateText}>{m.outreach.date}</span>
+        <span className={styles.subText}>{[m.outreach.contact, m.outreach.outcome].filter(Boolean).join(': ')}</span>
+      </span>
+    ) : <Dash />),
+  },
+  {
+    key: 'eligibility', label: 'Eligibility Status', optional: true,
+    renderCell: (m) => (
+      <span className={styles.stack}>
+        <span className={`${styles.cellText} ${m.eligibilityStatus === 'Termed' ? styles.toneError : ''}`}>{m.eligibilityStatus || 'Active'}</span>
+        {m.termDate && <span className={styles.subText}>{m.termDate}</span>}
+      </span>
+    ),
   },
 ];
 
