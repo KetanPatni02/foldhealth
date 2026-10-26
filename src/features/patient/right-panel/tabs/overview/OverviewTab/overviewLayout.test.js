@@ -111,7 +111,7 @@ describe('overviewColumns', () => {
     expect(overview.slice(0, 3)).toEqual(['synopsis', 'riskAcuity', 'healthChart']);
     expect(overview).toEqual(expect.arrayContaining(['careTeam', 'contact']));
     expect(care.slice(0, 5)).toEqual(['vitals', 'carePlan', 'gaps', 'carePrograms', 'medications']);
-    expect(actions.slice(0, 4)).toEqual(['suggestedActions', 'tasks', 'appointments', 'awaitingReply']);
+    expect(actions.slice(0, 4)).toEqual(['suggestedActions', 'tasks', 'reminders', 'appointments']);
     // Sample-only reference cards start hidden.
     expect(overview).not.toContain('insurance');
     // Two columns keep Care Management wide and stack Actionables under Overview.

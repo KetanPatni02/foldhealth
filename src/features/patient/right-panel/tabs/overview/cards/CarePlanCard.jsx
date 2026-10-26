@@ -1,33 +1,27 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
-import { PanelSectionItem, PanelSectionMore } from '../../../../../../components/PanelSection/PanelSection';
-import { SubTabs } from '../../../../../../components/SubTabs/SubTabs';
+import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { PriorityIcon } from '../../../../../../components/PriorityIcon/PriorityIcon';
 import { Button } from '../../../../../../components/Button/Button';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { GbiStatusButton, gbiStatusMenuItems } from '../../care-programs/care-plan/tables/carePlanTableShared';
+import { carePlanAttention } from '../attention/carePlanAttention';
 import styles from './overviewCards.module.css';
 
 const GoalPreviewDrawer = lazy(() => import('../../care-programs/care-plan/drawers/GoalPreviewDrawer/GoalPreviewDrawer').then(m => ({ default: m.GoalPreviewDrawer })));
 const InterventionPreviewDrawer = lazy(() => import('../../care-programs/care-plan/drawers/InterventionPreviewDrawer/InterventionPreviewDrawer').then(m => ({ default: m.InterventionPreviewDrawer })));
 const BarrierDetailDrawer = lazy(() => import('../../care-programs/care-plan/drawers/BarrierDetailDrawer/BarrierDetailDrawer').then(m => ({ default: m.BarrierDetailDrawer })));
 
-const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
-const VISIBLE = 3;
-const TYPE_BY_TAB = { goals: 'goal', interventions: 'intervention', barriers: 'barrier' };
-const isClosed = status => /^(resolved|closed|completed|met|achieved|discontinued|not applicable)$/i.test(status || '');
+// Up to five rows: what needs attention, then recently updated items.
+const LIMIT = 5;
+const KIND_LABEL = { goal: 'Goal', intervention: 'Intervention', barrier: 'Barrier' };
+const REASON_CLASS = { error: styles.textError, warning: styles.textWarning };
 
+// The owner's name, or nothing for the "Unassigned" placeholder (its row says "No owner").
 function personName(assignee) {
-  if (!assignee) return null;
-  return typeof assignee === 'string' ? assignee : assignee.name || null;
-}
-
-// Open work first, then priority, so the three visible rows are the ones to act on.
-function byAttention(a, b) {
-  const closed = Number(isClosed(a.status)) - Number(isClosed(b.status));
-  if (closed) return closed;
-  return (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3);
+  const name = typeof assignee === 'string' ? assignee : assignee?.name;
+  return name && name !== 'Unassigned' ? name : null;
 }
 
 export function CarePlanCard({ patientId, actions }) {
@@ -36,12 +30,13 @@ export function CarePlanCard({ patientId, actions }) {
   const loaded = useAppStore(s => s.patientCarePlanAllLoadedFor[patientId]);
   const fetchAll = useAppStore(s => s.fetchAllPatientCarePlans);
   const saveCarePlanLiveField = useAppStore(s => s.saveCarePlanLiveField);
-  const [tab, setTab] = useState('goals');
-  const [expanded, setExpanded] = useState(false);
   const [statusMenu, setStatusMenu] = useState(null);
   const [goal, setGoal] = useState(null);
   const [intervention, setIntervention] = useState(null);
   const [barrier, setBarrier] = useState(null);
+
+  // The clock the attention rules read (past due, new this month), taken once per mount.
+  const [openedAt] = useState(() => Date.now());
 
   useEffect(() => { if (patientId) fetchAll(patientId); }, [patientId, fetchAll]);
 
@@ -61,29 +56,23 @@ export function CarePlanCard({ patientId, actions }) {
       merged.interventions.push(...tag(plan.interventions));
       merged.barriers.push(...tag(plan.barriers));
     }
-    merged.goals.sort(byAttention);
-    merged.interventions.sort(byAttention);
-    merged.barriers.sort(byAttention);
     return merged;
   }, [plans, patientId]);
+  const focus = useMemo(
+    () => carePlanAttention({ goals, interventions, barriers, now: openedAt, limit: LIMIT }),
+    [goals, interventions, barriers, openedAt],
+  );
 
   if (!loaded && loading !== false) return <DashboardCardSkeleton icon="solar:clipboard-list-linear" title="Care Plan" />;
 
-  const lists = { goals, interventions, barriers };
-  const list = lists[tab];
-  const empty = goals.length === 0 && interventions.length === 0 && barriers.length === 0;
-  const shown = expanded ? list : list.slice(0, VISIBLE);
-  const type = TYPE_BY_TAB[tab];
+  const empty = focus.total === 0;
+  const shown = focus.items.slice(0, LIMIT);
+  const quiet = focus.open - focus.attention;
 
-  const selectTab = (key) => {
-    setTab(key);
-    setExpanded(false);
-  };
-
-  const openItem = (item) => {
+  const openItem = (kind, item) => {
     const next = { item, program: item.program };
-    if (type === 'goal') setGoal(next);
-    else if (type === 'intervention') setIntervention(next);
+    if (kind === 'goal') setGoal(next);
+    else if (kind === 'intervention') setIntervention(next);
     else setBarrier(next);
   };
 
@@ -98,53 +87,49 @@ export function CarePlanCard({ patientId, actions }) {
     <DashboardCard
       icon="solar:clipboard-list-linear"
       title="Care Plan"
-      tabs={!empty && (
-        <SubTabs
-          className={styles.tabRow}
-          tabs={[
-            { key: 'goals', label: `Goals (${goals.length})` },
-            { key: 'interventions', label: `Interventions (${interventions.length})` },
-            { key: 'barriers', label: `Barriers (${barriers.length})` },
-          ]}
-          activeKey={tab}
-          onChange={selectTab}
-        />
-      )}
+      count={focus.attention || null}
       actions={<Button variant="ghost" size="S" onClick={actions.openCarePlan}>Open care plan</Button>}
     >
       <DashboardCardBody className={styles.listBody}>
         {empty ? (
           <p className={styles.empty}>No care plan yet. Open the care plan to add goals, interventions and barriers.</p>
-        ) : list.length === 0 ? (
-          <p className={styles.empty}>No {tab} on this care plan yet.</p>
+        ) : shown.length === 0 ? (
+          <p className={styles.empty}>Nothing in the care plan needs attention. {focus.open} open {focus.open === 1 ? 'item is' : 'items are'} on track.</p>
         ) : (
           <>
-            {shown.map(item => (
-              <div key={`${item.program?.id || ''}-${item.id || item.title}`} className={styles.clickRow}>
+            {shown.map(({ kind, item, reason, tone }) => (
+              <div key={`${kind}-${item.program?.id || ''}-${item.id || item.title}`} className={styles.clickRow}>
                 <PanelSectionItem
                   inset
                   leading={<PriorityIcon priority={item.priority} title={item.priority ? `${item.priority} priority` : 'No priority'} />}
                   title={(
-                    <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => openItem(item)}>
+                    <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => openItem(kind, item)}>
                       {item.title}
                     </button>
                   )}
-                  meta={tab === 'goals'
-                    ? [item.targetDate && `Target ${item.targetDate}`, item.currentValue && `Current ${item.currentValue}${item.customUnit ? ` ${item.customUnit}` : ''}`]
-                    : [personName(item.assignee)]}
+                  meta={[
+                    KIND_LABEL[kind],
+                    <span key="why" className={REASON_CLASS[tone]}>{reason}</span>,
+                    kind === 'goal'
+                      ? item.currentValue && `Current ${item.currentValue}${item.customUnit ? ` ${item.customUnit}` : ''}`
+                      : personName(item.assignee),
+                  ]}
                   trailing={(
                     <span className={`${styles.statusSlotWide} ${styles.aboveStretch}`}>
                       <GbiStatusButton
                         value={item.status || 'Not Started'}
                         disabled={!item.id || !item.program?.id}
-                        onOpen={(rect) => setStatusMenu({ type, item, rect })}
+                        onOpen={(rect) => setStatusMenu({ type: kind, item, rect })}
                       />
                     </span>
                   )}
                 />
               </div>
             ))}
-            <PanelSectionMore expanded={expanded} hiddenCount={list.length - VISIBLE} onToggle={() => setExpanded(v => !v)} />
+            <p className={`${styles.muted} ${styles.listNote}`}>
+              {focus.attention > LIMIT ? `${focus.attention - LIMIT} more need attention. ` : ''}
+              {quiet > 0 ? `${quiet} other open ${quiet === 1 ? 'item is' : 'items are'} on track.` : ''}
+            </p>
           </>
         )}
       </DashboardCardBody>

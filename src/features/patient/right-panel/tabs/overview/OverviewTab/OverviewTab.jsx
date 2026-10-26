@@ -16,6 +16,7 @@ import { RecentNotesCard } from '../cards/RecentNotesCard';
 import { QuickActionsCard } from '../cards/QuickActionsCard';
 import { AppointmentsCard } from '../cards/AppointmentsCard';
 import { TasksCard } from '../cards/TasksCard';
+import { RemindersCard } from '../cards/RemindersCard';
 import { VitalsCard } from '../cards/VitalsCard';
 import {
   CaregiversCard, CareTeamCard, ConditionsCard, ConsentCard, ContactCard, MedicationsCard, RiskAcuityCard,
@@ -156,6 +157,7 @@ export function OverviewTab({ patient, leftPanelOpen = true, customizing = false
       case 'quickActions': return <QuickActionsCard key={key} overview={overview} actions={actions} />;
       case 'appointments': return <AppointmentsCard key={key} patientId={patient.id} patient={patient} />;
       case 'tasks': return <TasksCard key={key} patient={patient} actions={actions} />;
+      case 'reminders': return <RemindersCard key={key} patient={patient} />;
       case 'awaitingReply': return <AwaitingReplyCard key={key} patient={patient} />;
       case 'vitals': return <VitalsCard key={key} memberId={memberId} overview={overview} />;
       case 'riskAcuity': return <RiskAcuityCard key={key} patientId={patient.id} />;
