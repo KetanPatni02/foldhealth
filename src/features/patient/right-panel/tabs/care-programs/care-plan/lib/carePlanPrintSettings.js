@@ -17,6 +17,16 @@ export const FORMAT_OPTIONS = [
   { value: 'summary-detailed', label: 'Care Plan Summary, detailed', hint: 'As above, with each goal on its own page and intervention descriptions printed.' },
 ];
 
+// Personalize > Content: what the print carries besides the plan itself.
+// Demographics keeps its own field checkboxes under the switch.
+export const CONTENT_TOGGLES = [
+  { key: 'recentChangesOnly', label: 'Recent changes only', hint: 'Only goals, interventions and barriers added, changed or removed since the previous version, each marked New, Changed or Removed.' },
+  { key: 'showDemographics', label: 'Demographics', hint: 'The patient details picked below.' },
+  { key: 'showMedications', label: 'Medications', hint: 'Active medications with their directions.' },
+  { key: 'showLabs', label: 'Labs', hint: "The latest reading on each of the plan's lab goals, with its date and target." },
+  { key: 'showHistory', label: 'History', hint: 'Medical, surgical and family history.' },
+];
+
 export const GROUP_BY_OPTIONS = [
   { value: 'type', label: 'Goals, interventions and barriers', hint: 'One section for each, as on the care plan.' },
   { value: 'condition', label: 'Condition', hint: 'A heading for each condition with its goals, interventions and barriers. Anything unrelated goes under Other.' },
@@ -28,7 +38,12 @@ export const DEFAULT_PRINT_SETTINGS = {
   format: 'table',
   groupBy: 'type',
   showCarePlanNote: true,
+  recentChangesOnly: false,
+  showDemographics: true,
   demographics: ['dobAgeSex'],
+  showMedications: false,
+  showLabs: false,
+  showHistory: false,
   showHeader: false,
   headerId: null,
   showFooter: true,
@@ -44,6 +59,7 @@ export function normalizePrintSettings(saved) {
   if (!FORMAT_OPTIONS.some(o => o.value === s.format)) s.format = 'table';
   s.demographics = (Array.isArray(s.demographics) ? s.demographics : [])
     .filter(k => DEMOGRAPHIC_FIELDS.some(f => f.key === k));
+  for (const { key } of CONTENT_TOGGLES) s[key] = s[key] === true;
   return s;
 }
 

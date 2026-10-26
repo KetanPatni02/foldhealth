@@ -8618,6 +8618,43 @@ export const useAppStore = create((set, get) => ({
     if (missing) set({ patientConsentTableMissing: true });
   },
 
+  // ── Program health (program_health migration): the supervisor "Team
+  // programs" card on Home. One RPC per load, keyed by the codes asked for;
+  // `codes` null means every program (admins). No mock fallback: made-up
+  // health counts would mislead, so a missing function shows as such.
+  programHealth: null, // [{ code, activeMembers, attentionMembers, carePlanGaps, overdueOutreach, overdueTasks, reviewGaps }]
+  programHealthKey: null,
+  programHealthLoading: false,
+  programHealthMissing: false,
+  fetchProgramHealth: async (codes) => {
+    const key = codes ? [...codes].sort().join('|') : '*';
+    if (get().programHealthLoading || get().programHealthKey === key) return;
+    set({ programHealthLoading: true, programHealthKey: key });
+    const { data, error } = await supabase.rpc('program_health', { p_codes: codes || null });
+    if (error) {
+      console.warn('fetchProgramHealth:', error.message);
+      set({
+        programHealth: [],
+        programHealthLoading: false,
+        programHealthMissing: /program_health|does not exist|schema cache/i.test(error.message),
+      });
+      return;
+    }
+    set({
+      programHealth: (data || []).map(r => ({
+        code: r.program_code,
+        activeMembers: r.active_members || 0,
+        attentionMembers: r.attention_members || 0,
+        carePlanGaps: r.care_plan_gaps || 0,
+        overdueOutreach: r.overdue_outreach || 0,
+        overdueTasks: r.overdue_tasks || 0,
+        reviewGaps: r.review_gaps || 0,
+      })),
+      programHealthLoading: false,
+      programHealthMissing: false,
+    });
+  },
+
   // ── Program access (Supabase `program_memberships`, `vendor_organizations`,
   // `access_override_log`). All active memberships load once (the table is
   // small and co-sign needs other users' roles); the current user's scope is
