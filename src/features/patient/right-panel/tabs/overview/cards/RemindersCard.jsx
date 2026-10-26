@@ -57,9 +57,12 @@ export function RemindersCard({ patient }) {
   const save = async () => {
     if (!canSave) return;
     setSaving(true);
-    const row = await addReminder(memberId, { title, remindAt });
-    setSaving(false);
-    if (row) setAdding(false);
+    try {
+      const row = await addReminder(memberId, { title, remindAt });
+      if (row) setAdding(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const row = (r, done) => {
