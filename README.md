@@ -37,6 +37,22 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Program access data layer (Phase 2B.1).** Who works in which care
+  program: `program_memberships` links a user to a program with an access
+  level (viewer, member, supervisor), a care team role and a vendor
+  organization (`vendor_organizations`); `access_override_log` keeps an
+  append-only record of supervisor overrides with their reason. The rules in
+  `src/features/patient/data/programAccess.js` decide view and edit rights,
+  overrides, BHI co-sign, and which patients and notifications belong in a
+  user's scope. Enforcement is in the app for now: database reads stay
+  signed-in only per `supabase/RLS_POSTURE.md`, while membership writes are
+  admin-only in the database. Admins and users with no memberships stay
+  unscoped, so nothing changes until someone is assigned. The signed-in
+  profile now carries `adminRole` and `clinicalRoles` so the app recognizes
+  admins the way the database does. Store: `fetchProgramAccess`,
+  `saveProgramMembership`, `logAccessOverride`; hook: `useProgramAccess`.
+  No UI yet. Needs `supabase/program_access_migration.sql` then
+  `supabase/program_access_seed.sql`.
 - **Patient consent and preferences (Phase 2A).** Patient consent is now
   a record, not a "2/4" count: `patient_consents` keeps an append-only
   history per program (CCM, APCM, RPM, BHI) and channel (call, SMS, email,

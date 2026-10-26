@@ -192,7 +192,8 @@ import { fetchCaregapLabRows, persistLabOrder, persistLabResult } from './lib/ca
 import { fetchStepStatusRows, persistStepStatus } from './lib/careProgramStepStatusPersist';
 import { fetchConsentRows, fetchPreferencesRow, insertConsentRow, persistPreferences, preferencesFromRow, uploadConsentArtifact } from './lib/patientConsentPersist';
 import { CONSENT_METHODS, canBill, validateCapture } from '../features/patient/data/consentRules';
-
+import { fetchProgramAccessRows, insertOverride, persistMembership } from './lib/programAccessPersist';
+import { validateOverride } from '../features/patient/data/programAccess';
 import { fetchProgramTypeRows, persistProgramType, persistProgramTypeDelete } from './lib/careProgramTypesPersist';
 import { defaultProgramTypes } from '../features/settings/care-program-config/careProgramConfigModel';
 import { fetchPatientSnapshotRow } from './lib/patientSnapshotsPersist';
@@ -8617,6 +8618,41 @@ export const useAppStore = create((set, get) => ({
     if (missing) set({ patientConsentTableMissing: true });
   },
 
+  // ── Program access (Supabase `program_memberships`, `vendor_organizations`,
+  // `access_override_log`). All active memberships load once (the table is
+  // small and co-sign needs other users' roles); the current user's scope is
+  // derived in features/patient/data/programAccess.js (useProgramAccess).
+  // Until the migration runs everyone stays unscoped.
+  programMemberships: [],
+  vendorOrganizations: [],
+  programAccessLoaded: false,
+  programAccessTableMissing: false,
+  fetchProgramAccess: async ({ force = false } = {}) => {
+    if (!force && (get().programAccessLoaded || get()._programAccessFetching)) return;
+    set({ _programAccessFetching: true });
+    const { memberships, vendors, missing } = await fetchProgramAccessRows();
+    set({ programMemberships: memberships, vendorOrganizations: vendors, programAccessTableMissing: missing, programAccessLoaded: true, _programAccessFetching: false });
+  },
+  // Admin-only in the database; returns { ok, error }.
+  saveProgramMembership: async (membership) => {
+    const next = { ...membership, id: membership.id || `pm-${membership.userId}-${String(membership.programCode).toLowerCase()}`, updatedBy: get().currentActorName() };
+    const { ok, missing, error } = await persistMembership(next);
+    if (missing) { set({ programAccessTableMissing: true }); return { ok: false, error: 'Program access needs its migration first' }; }
+    if (!ok) return { ok: false, error };
+    set(s => ({ programMemberships: [...s.programMemberships.filter(m => !(m.userId === next.userId && m.programCode === next.programCode)), next].filter(m => m.active !== false) }));
+    return { ok: true, error: null };
+  },
+  // A supervisor stepping outside their scope: always with a reason, always
+  // logged. Returns { ok, error }.
+  logAccessOverride: async ({ patientId, programCode, action, reason }) => {
+    const invalid = validateOverride({ reason, programCode });
+    if (invalid) return { ok: false, error: invalid };
+    if (get().programAccessTableMissing) return { ok: true, error: null };
+    const { missing } = await insertOverride({ patientId, programCode, action, reason, userName: get().currentActorName() });
+    if (missing) set({ programAccessTableMissing: true });
+    return { ok: true, error: null };
+  },
+
   // ── Care Gap lab orders / results (Supabase `caregap_lab_*`) ────────────
   // Keyed by HEDIS member id. Local state updates first; until
   // caregap_lab_orders_migration.sql has run they stay session-only and the
@@ -10211,6 +10247,9 @@ export const useAppStore = create((set, get) => ({
             id: meRow.id,
             name: (meRow.full_name || meRow.email?.split('@')[0] || 'Unknown').trim(),
             email: meRow.email || '',
+            // For program access (isPracticeAdmin), matching the database's admin check.
+            adminRole: meRow.admin_role || null,
+            clinicalRoles: meRow.clinical_roles || [],
           };
           meRoles = meRow.clinical_roles || [];
           meIsAdmin = meRow.status === 'Active'
