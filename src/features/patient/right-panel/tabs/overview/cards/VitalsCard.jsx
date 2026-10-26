@@ -193,6 +193,7 @@ export function VitalsCard({ overview, memberId, patientId }) {
     return savedKeys ? shown : shown.sort((a, b) => (TONE_ORDER[a.tone] ?? 2) - (TONE_ORDER[b.tone] ?? 2));
   }, [catalog, overview, savedKeys]);
   const shownKeys = vitals.map(v => v.key);
+  const shownSet = new Set(shownKeys);
 
   useEffect(() => {
     const el = scroller.current;
@@ -222,14 +223,14 @@ export function VitalsCard({ overview, memberId, patientId }) {
   // The popover lists the shown tiles in order, then the rest of the catalog.
   const columns = [
     ...vitals,
-    ...catalog.filter(t => !shownKeys.includes(t.key)),
+    ...catalog.filter(t => !shownSet.has(t.key)),
   ].map(t => ({ k: t.key, lb: t.label }));
-  const hidden = new Set(columns.filter(c => !shownKeys.includes(c.k)).map(c => c.k));
-  const toggleVital = (key) => setOverviewVitalKeys(patientId, shownKeys.includes(key) ? shownKeys.filter(k => k !== key) : [...shownKeys, key]);
+  const hidden = new Set(columns.filter(c => !shownSet.has(c.k)).map(c => c.k));
+  const toggleVital = (key) => setOverviewVitalKeys(patientId, shownSet.has(key) ? shownKeys.filter(k => k !== key) : [...shownKeys, key]);
   const moveVital = (from, to) => {
     const keys = columns.map(c => c.k);
     keys.splice(keys.indexOf(to), 0, ...keys.splice(keys.indexOf(from), 1));
-    setOverviewVitalKeys(patientId, keys.filter(k => shownKeys.includes(k)));
+    setOverviewVitalKeys(patientId, keys.filter(k => shownSet.has(k)));
   };
 
   return (
