@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem } from '../../../../../../components/PanelSection/PanelSection';
 import { Badge } from '../../../../../../components/Badge/Badge';
@@ -7,8 +7,10 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { programUrlKey } from '../../care-programs/CareProgramsTab/CareProgramsTab.utils';
 import styles from './overviewCards.module.css';
 import { isProgramClosed } from '../../../../data/programStatus';
+import { programAttention } from './programAttention';
 
 const VISIBLE = 3;
+const REASON_CLASS = { error: styles.textError, warning: styles.textWarning };
 
 export function CareProgramsCard({ patientId }) {
   const careProgramsByPatient = useAppStore(s => s.careProgramsByPatient);
@@ -16,6 +18,7 @@ export function CareProgramsCard({ patientId }) {
   const fetchCareProgramsForPatient = useAppStore(s => s.fetchCareProgramsForPatient);
   const setPatientProfileTab = useAppStore(s => s.setPatientProfileTab);
   const openCareProgram = useAppStore(s => s.openCareProgram);
+  const [openedAt] = useState(() => Date.now());
 
   useEffect(() => {
     if (patientId) fetchCareProgramsForPatient(patientId);
@@ -26,6 +29,9 @@ export function CareProgramsCard({ patientId }) {
   // Active = every enrollment that isn't closed; the full list lives on the
   // Care Programs tab.
   const programs = (careProgramsByPatient[patientId] || []).filter(p => !isProgramClosed(p.status));
+  // Programs that need someone to act come first, each with why.
+  const rows = programAttention(programs, openedAt);
+  const flagged = rows.filter(r => r.reason).length;
   const goToCarePrograms = () => setPatientProfileTab('Care Programs');
   const openProgram = (prog) => {
     setPatientProfileTab('Care Programs');
@@ -36,18 +42,22 @@ export function CareProgramsCard({ patientId }) {
     <DashboardCard
       icon="solar:stethoscope-linear"
       title="Active Care Programs"
-      count={programs.length || null}
+      count={flagged || null}
       actions={<Button variant="ghost" size="S" onClick={goToCarePrograms}>View all</Button>}
     >
       <DashboardCardBody className={styles.listBody}>
         {programs.length === 0 ? (
           <p className={styles.empty}>Not enrolled in any care program.</p>
-        ) : programs.slice(0, VISIBLE).map(prog => (
+        ) : rows.slice(0, VISIBLE).map(({ program: prog, reason, tone }) => (
           <PanelSectionItem
             key={prog.id}
             inset
             title={<button type="button" className={styles.titleButton} onClick={() => openProgram(prog)}>{prog.name}</button>}
-            meta={[prog.assignee, prog.pcp !== '—' && `PCP ${prog.pcp}`, prog.startDate !== '—' && `Started ${prog.startDate}`]}
+            meta={[
+              reason && <span key="why" className={REASON_CLASS[tone]}>{reason}</span>,
+              prog.assignee !== 'Unassigned' && prog.assignee,
+              prog.startDate !== '—' && `Started ${prog.startDate}`,
+            ]}
             trailing={(
               <span className={styles.trail}>
                 <span className={styles.programTrailing}>
@@ -61,6 +71,12 @@ export function CareProgramsCard({ patientId }) {
             )}
           />
         ))}
+        {programs.length > VISIBLE && (
+          <p className={`${styles.muted} ${styles.listNote}`}>
+            {flagged > VISIBLE ? `${flagged - VISIBLE} more need attention. ` : ''}
+            {programs.length - flagged > 0 ? `${programs.length - flagged} on track.` : ''}
+          </p>
+        )}
       </DashboardCardBody>
     </DashboardCard>
   );

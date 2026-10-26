@@ -22,7 +22,10 @@ export function GapsCard({ overview, actions, patient }) {
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
   const openDiagPanel = useAppStore(s => s.openDiagPanel);
   const [careGap, setCareGap] = useState(null);
-  const gaps = (overview?.gaps || []).filter(g => g.status !== 'Closed');
+  // Open gaps, most urgent first (error, then warning tone).
+  const TONE_ORDER = { error: 0, warning: 1 };
+  const gaps = (overview?.gaps || []).filter(g => g.status !== 'Closed')
+    .sort((a, b) => (TONE_ORDER[a.tone] ?? 2) - (TONE_ORDER[b.tone] ?? 2));
   const quality = gaps.filter(g => g.category !== 'hcc');
   const hcc = gaps.filter(g => g.category === 'hcc');
   const [tab, setTab] = useState('quality');

@@ -37,6 +37,20 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Overview: attention first, Reminders, missed visits.** Each Overview
+  widget now leads with what needs action and sums up the rest in one line.
+  Care Plan lists only the goals, interventions and barriers that need
+  attention (not met, past target or due, trending down, no owner, on hold,
+  new high-priority barrier; `attention/carePlanAttention.js`), topped up
+  with recently updated items. Active Care Programs flags no owner, not
+  started, attempted, unable to reach and ending soon (`programAttention.js`);
+  Vitals, Gaps and Notes put off-goal, urgent and unfinished items first;
+  Medications leads with changes since the program started; Care Team leads
+  with programs nobody owns; Health Chart names the domains below the clinic
+  average. Appointments gains a Missed tab (no-shows, cancellations, never
+  checked in, last 12 months, rebooked or not, with Reschedule). A new
+  Reminders card holds private, per-user reminders on the patient
+  (`patient_reminders`, owner-only RLS) with snooze, done and delete.
 - **Program access data layer (Phase 2B.1).** Who works in which care
   program: `program_memberships` links a user to a program with an access
   level (viewer, member, supervisor), a care team role and a vendor

@@ -55,8 +55,9 @@ export const OVERVIEW_WIDGETS = [
   { key: 'careJourneys', label: 'Care Journeys', group: 'Care Management', sample: true },
   { key: 'quickActions', label: 'Quick Actions', group: 'Actionables' },
   { key: 'suggestedActions', label: 'Suggested Actions', group: 'Actionables' },
-  { key: 'appointments', label: 'Upcoming Appointments', group: 'Actionables' },
+  { key: 'appointments', label: 'Appointments', group: 'Actionables' },
   { key: 'tasks', label: 'Tasks', group: 'Actionables' },
+  { key: 'reminders', label: 'Reminders', group: 'Actionables' },
   { key: 'awaitingReply', label: 'Awaiting Reply', group: 'Actionables' },
   { key: 'sinceLastTouch', label: 'Since Last Touch', group: 'Actionables' },
   { key: 'automations', label: 'Active Automations', group: 'Actionables', sample: true },
@@ -81,7 +82,7 @@ export const DEFAULT_OVERVIEW_LAYOUT = {
   lanes: [
     ['synopsis', 'riskAcuity', 'healthChart', 'careTeam', 'caregivers', 'highlights', 'contact', 'consent', 'populationGroups', 'insurance', 'subscription'],
     ['vitals', 'carePlan', 'gaps', 'carePrograms', 'medications', 'conditions', 'notes', 'programProgress', 'careUtilization', 'priorAuth', 'careJourneys'],
-    ['suggestedActions', 'tasks', 'appointments', 'awaitingReply', 'quickActions', 'sinceLastTouch', 'automations'],
+    ['suggestedActions', 'tasks', 'reminders', 'appointments', 'awaitingReply', 'quickActions', 'sinceLastTouch', 'automations'],
   ],
   hidden: ['programProgress', 'populationGroups', 'insurance', 'subscription'],
 };

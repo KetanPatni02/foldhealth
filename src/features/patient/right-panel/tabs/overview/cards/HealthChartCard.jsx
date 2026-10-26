@@ -12,6 +12,11 @@ export function HealthChartCard({ overview }) {
     ? (scores.reduce((sum, s) => sum + Number(s.patient || 0), 0) / scores.length).toFixed(1)
     : null;
   const change = overview?.healthScoreChange;
+  // Domains under the clinic average, furthest behind first.
+  const behind = scores
+    .map(s => ({ axis: s.axis, gap: Number(s.patient) - Number(s.clinic) }))
+    .filter(s => Number.isFinite(s.gap) && s.gap < 0)
+    .sort((a, b) => a.gap - b.gap);
 
   return (
     <DashboardCard
@@ -53,6 +58,12 @@ export function HealthChartCard({ overview }) {
               <span className={styles.legendItem}><span className={styles.legendSwatch} aria-hidden="true" />Patient</span>
               <span className={styles.legendItem}><span className={`${styles.legendSwatch} ${styles.clinic}`} aria-hidden="true" />Clinic average</span>
             </div>
+            {behind.length > 0 && (
+              <p className={styles.behind}>
+                <span className={styles.textWarning}>Below clinic average:</span>{' '}
+                {behind.map(b => `${b.axis} (${b.gap.toFixed(1)})`).join(', ')}
+              </p>
+            )}
           </>
         )}
       </DashboardCardBody>

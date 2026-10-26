@@ -165,7 +165,10 @@ export function VitalTile({ vital: v }) {
 }
 
 export function VitalsCard({ overview, memberId }) {
-  const vitals = overviewVitals(overview, memberId);
+  // Readings off goal lead; in-range ones follow.
+  const TONE_ORDER = { error: 0, warning: 1 };
+  const vitals = overviewVitals(overview, memberId)
+    .sort((a, b) => (TONE_ORDER[a.tone] ?? 2) - (TONE_ORDER[b.tone] ?? 2));
   const scroller = useRef(null);
   const [edges, setEdges] = useState({ left: false, right: false });
 

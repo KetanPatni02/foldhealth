@@ -142,6 +142,10 @@ export function CareTeamCard({ patientId }) {
         if (members.length === 0) return <p className={styles.empty}>No care team assigned.</p>;
         return (
           <>
+            {/* What needs fixing leads: programs nobody owns. */}
+            {unassigned > 0 && (
+              <p className={`${styles.textWarning} ${styles.listNote}`}>{unassigned} active program{unassigned === 1 ? ' has' : 's have'} no owner.</p>
+            )}
             <CappedRows
               items={members}
               render={m => (
@@ -155,9 +159,6 @@ export function CareTeamCard({ patientId }) {
                 />
               )}
             />
-            {unassigned > 0 && (
-              <p className={`${styles.muted} ${styles.listNote}`}>{unassigned} active program{unassigned === 1 ? ' has' : 's have'} no owner.</p>
-            )}
           </>
         );
       }}
@@ -251,8 +252,11 @@ export function ConsentCard({ patientId }) {
   );
 }
 
+// Changes since the program began lead; the full active list is one click
+// away, so a long medication list doesn't bury what changed.
 export function MedicationsCard({ patientId }) {
   const [open, setOpen] = useState(false);
+  const [showActive, setShowActive] = useState(false);
   return (
     <>
       <ProfileCard patientId={patientId} icon="solar:pill-linear" title="Medications" count={p => list(p.medication_orders).length || null} bodyClassName={styles.listBody}>
@@ -268,9 +272,17 @@ export function MedicationsCard({ patientId }) {
           }
           return (
             <>
-            <CappedRows
-              items={meds}
-              render={m => (
+              <MedChangesSection patientId={patientId} />
+              <Button
+                variant="ghost"
+                size="S"
+                className={styles.listMore}
+                trailingIcon={showActive ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+                onClick={() => setShowActive(v => !v)}
+              >
+                {showActive ? 'Hide active medications' : `Active medications (${meds.length})`}
+              </Button>
+              {showActive && meds.map(m => (
                 <div key={m} className={styles.clickRow}>
                   <PanelSectionItem
                     inset
@@ -282,9 +294,7 @@ export function MedicationsCard({ patientId }) {
                     )}
                   />
                 </div>
-              )}
-            />
-            <MedChangesSection patientId={patientId} />
+              ))}
             </>
           );
         }}

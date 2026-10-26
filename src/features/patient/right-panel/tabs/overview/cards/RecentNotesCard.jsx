@@ -46,14 +46,17 @@ export function RecentNotesCard({ patientId, actions }) {
 
   if (!notes && !fetched) return <DashboardCardSkeleton icon="solar:notes-linear" title="Recent Notes" />;
 
-  const list = notes || [];
+  // Unfinished notes (draft, pending review) first; signed ones after, newest first.
+  const STATUS_ORDER = { draft: 0, submitted: 1 };
+  const list = [...(notes || [])].sort((a, b) => (STATUS_ORDER[a.status] ?? 2) - (STATUS_ORDER[b.status] ?? 2));
+  const unfinished = list.filter(n => n.status !== 'signed').length;
   const openNotes = () => setPatientProfileTab('Notes');
 
   return (
     <DashboardCard
       icon="solar:notes-linear"
       title="Recent Notes"
-      count={list.length || null}
+      count={unfinished || null}
       actions={(
         <>
           <Button variant="ghost" size="S" onClick={actions.addNote}>Create note</Button>

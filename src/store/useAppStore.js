@@ -347,6 +347,15 @@ function mountFetch(name, fn, opts) {
 }
 const tabHidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
 
+const mapReminderRow = r => ({
+  id: r.id,
+  title: r.title,
+  note: r.note || null,
+  remindAt: r.remind_at,
+  doneAt: r.done_at || null,
+  createdAt: r.created_at,
+});
+
 export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
   ...createAutomationsSlice(set, get),
@@ -380,6 +389,67 @@ export const useAppStore = create((set, get) => ({
       patientMonitoring: { ...st.patientMonitoring, [key]: obj },
       patientMonitoringLoading: { ...st.patientMonitoringLoading, [key]: false },
     }));
+  },
+
+  // A user's private reminders on a patient (patient_reminders), keyed by
+  // member id. RLS returns only the signed-in user's own rows. `undefined`
+  // until fetched; `[]` when there are none or the table is missing.
+  patientReminders: {},
+  fetchPatientReminders: async (memberId) => {
+    if (!memberId) return;
+    const key = String(memberId);
+    if (get().patientReminders[key] !== undefined) return;
+    const { data, error } = await supabase
+      .from('patient_reminders')
+      .select('id, title, note, remind_at, done_at, created_at')
+      .eq('member_id', key)
+      .order('remind_at', { ascending: true });
+    if (error) console.warn('[store] patient_reminders fetch failed (run supabase/patient_reminders_migration.sql):', error.message);
+    set(st => ({ patientReminders: { ...st.patientReminders, [key]: (data || []).map(mapReminderRow) } }));
+  },
+  addPatientReminder: async (memberId, { title, remindAt, note = null }) => {
+    const key = String(memberId);
+    const { data, error } = await supabase
+      .from('patient_reminders')
+      .insert({ member_id: key, title: title.trim(), remind_at: remindAt, note })
+      .select('id, title, note, remind_at, done_at, created_at')
+      .single();
+    if (error) {
+      console.warn('[store] add reminder failed:', error.message);
+      get().showToast?.('Could not save the reminder. Please try again.');
+      return null;
+    }
+    const row = mapReminderRow(data);
+    set(st => ({ patientReminders: { ...st.patientReminders, [key]: [...(st.patientReminders[key] || []), row] } }));
+    return row;
+  },
+  // Optimistic: the card updates at once and goes back if the save fails.
+  updatePatientReminder: async (memberId, id, patch) => {
+    const key = String(memberId);
+    const before = get().patientReminders[key] || [];
+    set(st => ({ patientReminders: { ...st.patientReminders, [key]: before.map(r => (r.id === id ? { ...r, ...patch } : r)) } }));
+    const cols = {};
+    if ('title' in patch) cols.title = patch.title;
+    if ('note' in patch) cols.note = patch.note;
+    if ('remindAt' in patch) cols.remind_at = patch.remindAt;
+    if ('doneAt' in patch) cols.done_at = patch.doneAt;
+    const { error } = await supabase.from('patient_reminders').update(cols).eq('id', id);
+    if (error) {
+      console.warn('[store] update reminder failed:', error.message);
+      set(st => ({ patientReminders: { ...st.patientReminders, [key]: before } }));
+      get().showToast?.('Could not update the reminder. Please try again.');
+    }
+  },
+  deletePatientReminder: async (memberId, id) => {
+    const key = String(memberId);
+    const before = get().patientReminders[key] || [];
+    set(st => ({ patientReminders: { ...st.patientReminders, [key]: before.filter(r => r.id !== id) } }));
+    const { error } = await supabase.from('patient_reminders').delete().eq('id', id);
+    if (error) {
+      console.warn('[store] delete reminder failed:', error.message);
+      set(st => ({ patientReminders: { ...st.patientReminders, [key]: before } }));
+      get().showToast?.('Could not delete the reminder. Please try again.');
+    }
   },
 
   // Needs Attention reviews on the Overview (patient_signal_reviews), keyed
