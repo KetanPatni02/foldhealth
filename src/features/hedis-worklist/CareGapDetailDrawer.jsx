@@ -434,7 +434,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   // after fetchAppointments refreshes.
   const memberAppointments = (appointments || []).filter(a => a.patient_id === member?.id);
 
-  const gaps = member?.gaps ?? [];
+  // A superseded gap (closed, then re-added) shares its code with the active
+  // one; the drawer works on the active gap only.
+  const gaps = useMemo(() => (member?.gaps ?? []).filter(g => !g.supersededAt), [member?.gaps]);
   const [currentCode, setCurrentCode] = useState(gapCode);
   const gapKey = `${member?.id ?? ''}|${gapCode ?? ''}`;
   const [prevGapKey, setPrevGapKey] = useState(gapKey);
@@ -1915,6 +1917,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
             onOpenClinicalNote={openClinicalNoteFlow}
             onScheduleAppointment={() => setLeftWorkspace('schedule')}
             onAddOutreach={openOutreachWorkspace}
+            onAddTask={() => setLeftWorkspace('task')}
+            onSendReferral={openReferral}
             cisCompletedBlocked={isCis && !cisMet}
             onScheduleVaccine={cisResult && !cisResult.antigens.every(a => a.rows.every(r => r.kind === 'given')) ? () => openCisAppointment() : undefined}
             onOpenMeasureInfo={() => setLeftWorkspace('measure-info')} moreBtnRef={moreBtnRef}

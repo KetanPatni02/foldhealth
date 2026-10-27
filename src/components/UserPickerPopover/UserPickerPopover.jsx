@@ -27,7 +27,9 @@ const initialsOf = (name) => String(name || '?').trim().split(/\s+/).map(w => w[
  * @param {boolean}  [props.multiple]     – Checkbox rows (Figma Eventus 16978:128250): `selected` is
  *   an array of ids/names, each click toggles one and calls `onSelect(nextArray)`, and the menu stays open
  */
-export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, onUnassign, onClose, title = 'Select User', emptyText = 'No users available.', align = 'left', multiple = false }) {
+const NO_USERS = [];
+
+export function UserPickerPopover({ anchorRect, users = NO_USERS, selected, onSelect, onUnassign, onClose, title = 'Select User', emptyText = 'No users available.', align = 'left', multiple = false }) {
   const ref = useRef(null);
   const searchRef = useRef(null);
   const [query, setQuery] = useState('');

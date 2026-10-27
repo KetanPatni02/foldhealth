@@ -4,6 +4,7 @@ import { ScheduleDrawer } from '../../../../../../components/ScheduleDrawer/Sche
 import { AddTaskDrawer } from '../../../../../tasks/AddTaskDrawer';
 import { useOutreachTab } from './useOutreachTab';
 import { OutreachComposer } from '../OutreachComposer/OutreachComposer';
+import { OutreachTabForm } from './OutreachTabForm';
 import { OutreachTabActivity } from './OutreachTabActivity';
 import styles from './OutreachTab.module.css';
 
@@ -58,6 +59,10 @@ export function OutreachTabView({
   onAppointmentScheduled,
   onLogNew,
 }) {
+  // A host with its own outcome list (the Pharmacy program's Intervention
+  // Schema) keeps the form with the Select Outcome menu: its outcomes drive
+  // fills and interventions, which the composer's outcome chips can't carry.
+  const Form = tab.outcomeItems ? OutreachTabForm : OutreachComposer;
   return (
     <div className={`${styles.wrapper} ${flush ? styles.wrapperFlush : ''}`}>
       {hideForm ? null : !tab.formOpen && !tab.scopedProgram ? (
@@ -78,7 +83,7 @@ export function OutreachTabView({
           </Button>
         </div>
       ) : (
-        <OutreachComposer
+        <Form
           hideLogForRow={hideLogForRow}
           scopedProgram={tab.scopedProgram}
           logFor={tab.logFor}
@@ -129,6 +134,8 @@ export function OutreachTabView({
           onAddTask={() => tab.setAddTaskOpen(true)}
           onSchedule={() => tab.setScheduleOpen(true)}
           hideFooter={hideFormFooter}
+          outcomeItems={tab.outcomeItems}
+          callTypeOptions={tab.callTypeOptions}
         />
       )}
 

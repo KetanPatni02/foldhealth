@@ -11,7 +11,8 @@ import styles from './OutreachTab.module.css';
 function LogRowMenu({ log, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
-  if (!onEdit && !onDelete) return null;
+  // A locked call (e.g. a pharmacy verification) is one fixed record.
+  if ((!onEdit && !onDelete) || log.locked) return null;
   const items = [
     ...(onEdit ? [{ key: 'edit', icon: 'solar:pen-2-linear', label: 'Edit' }] : []),
     ...(onDelete ? [{ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true }] : []),
@@ -74,8 +75,12 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
           <div className={styles.logMeta}>
             <span>{log.date}</span>
             <span className={styles.logMetaDot}>•</span>
-            <span>{log.time}</span>
-            <span className={styles.logMetaDot}>•</span>
+            {log.time && (
+              <>
+                <span>{log.time}</span>
+                <span className={styles.logMetaDot}>•</span>
+              </>
+            )}
             <span>{log.author}</span>
             {log.outreachSource && (
               <>

@@ -164,8 +164,10 @@ export function AuditLogContent({ entityType, entityId }) {
 
   const filteredEntries = useMemo(() => {
     const inRange = inDatePreset(datePreset, dateRange);
-    return entries.filter(e => (!types.length || types.includes(activityType(e)))
-      && (!actors.length || actors.includes(e.user))
+    const typeSet = new Set(types);
+    const actorSet = new Set(actors);
+    return entries.filter(e => (!types.length || typeSet.has(activityType(e)))
+      && (!actors.length || actorSet.has(e.user))
       && inRange(e.createdAt));
   }, [entries, types, actors, datePreset, dateRange]);
 

@@ -136,7 +136,7 @@ function TcocTab({ data, highCost, showToast, editing = false, resetTick = 0 }) 
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead>
-            <tr><th>Member ID</th><th>Diagnosis</th><th className={s.r}>Total Cost</th><th className={s.r}>IP Admits</th><th>Status</th></tr>
+            <tr><th>Fold ID</th><th>Diagnosis</th><th className={s.r}>Total Cost</th><th className={s.r}>IP Admits</th><th>Status</th></tr>
           </thead>
           <tbody>
             {highCost === null && (

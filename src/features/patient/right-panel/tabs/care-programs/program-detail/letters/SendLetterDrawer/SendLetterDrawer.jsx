@@ -69,8 +69,8 @@ export function SendLetterDrawer({ letterName = 'Letter', memberName, memberId, 
         <Field label="Member Name" required filled>
           <Input value={form.memberName} readOnly aria-label="Member Name" />
         </Field>
-        <Field label="Member ID" required>
-          <Input value={form.memberId} onChange={set('memberId')} aria-label="Member ID" />
+        <Field label="Fold ID" required>
+          <Input value={form.memberId} onChange={set('memberId')} aria-label="Fold ID" />
         </Field>
         <Field label="Company ID" required filled>
           <Input value={form.companyId} readOnly aria-label="Company ID" />

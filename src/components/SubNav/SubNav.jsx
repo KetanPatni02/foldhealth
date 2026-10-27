@@ -11,6 +11,7 @@ const WORKLISTS = [
   { label: 'Annual Visit', filter: null },
   { label: 'TOC IP', filter: null, view: 'toc' },
   { label: 'HCC', filter: null, view: 'hcc' },
+  { label: 'Pharmacy', filter: null, view: 'pharmacy' },
   { label: 'HEDIS', filter: null, view: 'hedis' },
   { label: 'CCM', filter: null, view: 'ccm' },
   { label: 'JSA', filter: null, view: 'jsa' },
@@ -32,6 +33,7 @@ export function SubNav({ collapsed, width = 200 }) {
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers || []);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers || []);
   const jsaMembers = useAppStore(s => s.jsaMembers || []);
+  const pharmacyMembers = useAppStore(s => s.pharmacyWorklistMembers);
   const cmpMembers = useAppStore(s => s.cmpMembers || []);
   const worklistCounts = useAppStore(s => s.worklistCounts);
   const fetchWorklistCounts = useAppStore(s => s.fetchWorklistCounts);
@@ -109,6 +111,7 @@ export function SubNav({ collapsed, width = 200 }) {
       else if (list.view === 'ccm') counts[list.label] = pick(ccmWorklistMembers, wc?.ccm);
       else if (list.view === 'snp') counts[list.label] = pick(snpWorklistMembers, wc?.snp);
       else if (list.view === 'jsa') counts[list.label] = pick(jsaMembers, wc?.jsa);
+      else if (list.view === 'pharmacy') counts[list.label] = pick(pharmacyMembers, wc?.pharmacy);
       // Members, not enrollments (one per CMP sub-program). Until cmp_members
       // is in the badge counts, the mock (also the seed) gives the number.
       else if (list.view === 'cmp') counts[list.label] = new Set((cmpMembers.length ? cmpMembers : CMP_MEMBERS).map(m => m.memberId || m.id)).size;
@@ -121,7 +124,7 @@ export function SubNav({ collapsed, width = 200 }) {
       } else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, cmpMembers, worklistCounts]);
+  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, cmpMembers, pharmacyMembers, worklistCounts]);
 
   // Unique patient count across every worklist. Different worklists use
   // different id spaces (p1, hcc-42, ccmw-001), so we key the union on a
@@ -147,8 +150,9 @@ export function SubNav({ collapsed, width = 200 }) {
     collect(ccmWorklistMembers);
     collect(snpWorklistMembers);
     collect(jsaMembers);
+    collect(pharmacyMembers);
     return Math.max(seen.size, worklistCounts?.allPatients ?? 0);
-  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, worklistCounts]);
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, pharmacyMembers, worklistCounts]);
 
   const sections = useMemo(() => [
     {

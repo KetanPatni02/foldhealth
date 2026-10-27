@@ -1,0 +1,307 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.toolbar { display: flex; align-items: center; gap: var(--space-3); }
+.count { font-size: var(--font-sm); color: var(--neutral-300); }
+
+.tableScroll {
+  overflow-x: auto;
+  /* Group headers size to the visible width (see .groupHead). */
+  container-type: inline-size;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+}
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left;
+  padding: 0.375rem 0.625rem;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: var(--neutral-25);
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--space-2) 0.625rem;
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  border-bottom: 0.5px solid var(--neutral-100);
+  white-space: nowrap;
+  vertical-align: top;
+}
+.table tbody tr:last-child td { border-bottom: none; }
+
+.medTable { min-width: 900px; }
+.medRow { cursor: pointer; transition: background .1s; }
+.medRow:hover td { background: var(--primary-25); }
+.medRowSelected td { background: var(--primary-50); }
+.medRowSelected:hover td { background: var(--primary-50); }
+.medRowDc td { color: var(--neutral-300); text-decoration: line-through; }
+
+.rxCell { display: flex; flex-direction: column; gap: 0.0625rem; }
+.rxName { font-weight: 500; color: var(--neutral-400); }
+.rxGeneric { font-size: var(--font-sm); color: var(--neutral-300); }
+.openCell { width: 28px; text-align: right; }
+
+/* Measure group header row (collapsible). */
+.groupRow { cursor: pointer; }
+.groupRow td { background: var(--neutral-25); border-bottom: 0.5px solid var(--neutral-150); }
+.groupRow:hover td { background: var(--neutral-50); }
+/* Pinned to the visible width so the measure summary stays readable while
+   the wider table scrolls sideways underneath. */
+.groupHead {
+  position: sticky;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  flex-wrap: wrap;
+  max-width: calc(100cqw - 20px);
+  white-space: normal;
+}
+.groupName { font-weight: 500; color: var(--neutral-400); }
+.groupMeta { color: var(--neutral-300); }
+.groupMeta b { font-weight: 400; color: var(--neutral-400); }
+
+
+/* Beats `.table td` / `.groupMeta b`, which set their own color. */
+.toneError, .table td.toneError, .groupMeta b.toneError { color: var(--status-error); }
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.detailHead { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); }
+.detailMeta { font-size: var(--font-md); color: var(--neutral-400); font-weight: 500; }
+.detailMeta span { color: var(--primary-300); margin-right: var(--space-1); }
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.field { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.fieldLabel { font-size: var(--font-sm); font-weight: 500; color: var(--primary-300); }
+.radios { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.checks { display: flex; flex-direction: column; gap: 0.375rem; }
+.checkRow { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-md); color: var(--neutral-400); cursor: pointer; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  min-width: 0;
+}
+.cardTitle { font-size: var(--font-sm); font-weight: 500; color: var(--primary-300); display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.cardName { color: var(--neutral-400); font-weight: 500; }
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+.cardGrid div { min-width: 0; }
+.cardGrid dt { font-size: var(--font-xs); color: var(--primary-300); }
+.cardGrid dd { margin: 0; font-size: var(--font-md); color: var(--neutral-400); overflow-wrap: anywhere; }
+.fullRow { grid-column: 1 / -1; }
+/* The click-to-dial number needs room: it doesn't wrap. */
+.wideCell { grid-column: span 2; }
+
+.subTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-6);
+  color: var(--neutral-300);
+  font-size: var(--font-base);
+  text-align: center;
+}
+.empty p { margin: 0; }
+
+/* Barrier & Intervention log entries for the medication's measure. */
+.barrierEntry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+.barrierLatest { background: var(--neutral-25); }
+.barrierMeta { font-size: var(--font-sm); color: var(--neutral-300); }
+.barrierChips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.muted { font-size: var(--font-md); color: var(--neutral-300); }
+
+/* Open gaps together at the top; the one opened from the worklist first. */
+.gapCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  overflow: hidden;
+}
+.gapCardFocus { border-color: var(--primary-200); }
+.gapCardFocus .gapCardToggle { background: var(--primary-50); }
+/* The whole card header toggles the gap's medication list. */
+.gapCardToggle {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.gapCardToggle:hover { background: var(--neutral-50); }
+.gapCard .tableScroll { border: none; border-top: 0.5px solid var(--neutral-150); border-radius: 0; }
+.dateCell { min-width: 9rem; }
+.dateCell > * + * { margin-top: var(--space-1); }
+.gapCardHead, .gapCardMeta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+/* Bulk Recent Fill: shows once drugs are picked, in any gap. */
+.bulkBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: var(--space-2);
+}
+.bulkCount { font-size: var(--font-md); font-weight: 500; color: var(--neutral-500); margin-right: auto; }
+.bulkField { display: inline-flex; align-items: center; gap: var(--space-2); }
+.pickCol { width: 2.25rem; }
+
+/* Manual fill dates are projected, not a closure. */
+.helper {
+  display: flex; align-items: center; gap: var(--space-1);
+  margin: 0; font-size: var(--font-md); color: var(--neutral-300);
+}
+.sourceCell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.reworkLink {
+  border: none; background: none; padding: 0; cursor: pointer;
+  font-size: var(--font-sm); color: var(--status-error); white-space: nowrap;
+}
+.reworkLink:hover { text-decoration: underline; }
+
+/* Chevrons are DownChevronIcon, turned for right (collapsed) and up. */
+.chevron { flex-shrink: 0; transition: transform 0.15s ease; }
+.chevronRight { transform: rotate(-90deg); }
+.chevronUp { transform: rotate(180deg); }
+
+/* ── Compact (Pharmacy Gap Details), after the CIS dose list ── */
+.cGroup { display: flex; flex-direction: column; }
+/* Gap title line: no card, only a stroke below. */
+.cGroupHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2) var(--space-1);
+  border: none;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--font-base);
+  line-height: var(--leading-tight);
+}
+.cGroupHead:focus-visible { outline: 2px solid var(--primary-200); outline-offset: -2px; }
+.cCode { font-weight: 500; color: var(--neutral-400); }
+.cName { font-weight: 400; color: var(--neutral-400); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cCount { margin-left: auto; font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
+
+/* Checkbox, Rx, Last Fill, Recent Fill, Next Fill, PDC, Barrier, actions. */
+/* Select all lines up with the row checkboxes and the Rx names below. */
+.cToolbar { padding-inline: var(--space-1); }
+.cToolbar .checkRow { gap: var(--space-3); }
+.cTable { display: flex; flex-direction: column; }
+.cRow {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 88px 100px 88px 44px 52px;
+  column-gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-1);
+  font-size: var(--font-base);
+  line-height: var(--leading-tight);
+  color: var(--neutral-500);
+}
+.cHead {
+  padding-block: var(--space-1);
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.cMedRow { border-bottom: 0.5px solid var(--neutral-150); cursor: pointer; }
+.cMedRow:hover { background: var(--neutral-25); }
+/* The gap title's stroke below already separates groups. */
+.cMedRow:last-child { border-bottom: none; }
+.cDiscontinued { color: var(--neutral-300); }
+.cPick { display: inline-flex; }
+/* Last Fill, Next Fill and PDC read grey unless flagged red for action. */
+.cValue:not(.toneError) { color: var(--neutral-300); }
+.cRx { min-width: 0; overflow-wrap: anywhere; }
+/* Recent Fill: a light chip that opens the calendar. */
+.cChip { border: none; background: none; padding: 0; cursor: pointer; display: inline-flex; }
+.cChip:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; border-radius: 4px; }
+.cChipEmpty { color: var(--neutral-300); }
+/* Note and details, fixed at the right of the row. */
+.cActions { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
+.cNote { display: inline-flex; }
+/* Info under the Rx details: prescriber and pharmacy on hover, one per line. */
+.cInfoLink {
+  border: none; background: none; padding: 0; cursor: default;
+  font-size: var(--font-md); color: var(--primary-300);
+}
+.cInfoLink:hover { text-decoration: underline; }
+.cSource { display: flex; flex-direction: column; gap: 0.125rem; }
+/* Rx or Recent Fill with its details stacked below, centered in the row. */
+.cStack { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
+/* Under the drug name: quantity and supply, Info, then a barrier if any.
+   One line each, cut short rather than wrapped. */
+.cMeta {
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  font-size: var(--font-md);
+  line-height: var(--leading-tight);
+  color: var(--neutral-300);
+  cursor: default;
+}
+.cMetaLine { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Under the Recent Fill chip: the fill's claim match. */
+.cMatch {
+  font-size: var(--font-md);
+  line-height: var(--leading-tight);
+  cursor: default;
+}
+.cMatchOk { color: var(--status-success); }
+.cMatchPending { color: var(--status-warning); }
+.cBarrierText { color: var(--status-error); }

@@ -22,7 +22,7 @@ import styles from './PatientBanner.module.css';
  * @param {string}   [dob]      Date of birth for the age hover tooltip.
  *                              When omitted, a "Mon YYYY" fallback is derived
  *                              from `age` so the tooltip still shows.
- * @param {string}   memberId   e.g. "#219384756102"
+ * @param {string}   memberId   Fold ID, e.g. "11065"
  * @param {string}   [raf]      RAF score e.g. "4.234"
  * @param {string}   [rafChange] RAF change e.g. "0.512"
  * @param {boolean}  [rafUp=true] RAF trend direction

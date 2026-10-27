@@ -232,9 +232,10 @@ export const EmailEditor = forwardRef(function EmailEditor({
       {actions.length > 0 && (
         <div className={styles.actions}>
           {actions.map((a, i) => (
-            <span key={a.key} className={styles.actionItem} onMouseDown={(e) => { e.preventDefault(); saveSelection(); }}>
+            <span key={a.key} className={styles.actionItem}>
               {i > 0 && divider}
-              <ActionButton icon={a.icon} size="S" tooltip={a.label} disabled={a.disabled} onClick={a.onClick} />
+              {/* mousedown keeps the editor's text selection for the action. */}
+              <ActionButton icon={a.icon} size="S" tooltip={a.label} disabled={a.disabled} onClick={a.onClick} onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} />
             </span>
           ))}
         </div>

@@ -6,6 +6,7 @@ const MEMBER_SLICES = [
   'cmpMembers',
   'ccmWorklistMembers',
   'snpWorklistMembers',
+  'pharmacyWorklistMembers',
   'hedisMembers',
   'allPatients',
 ];

@@ -56,6 +56,14 @@ const STORE_SELECTORS_BY_LIST = {
     setVisible:    'setHedisVisibleFilterKeys',
     clearVisible:  'clearHedisVisibleFilters',
   },
+  Pharmacy: {
+    filters:       'pharmacyFilters',
+    setFilter:     'setPharmacyFilter',
+    clearFilters:  'clearPharmacyFilters',
+    visibleKeys:   'pharmacyVisibleFilterKeys',
+    setVisible:    'setPharmacyVisibleFilterKeys',
+    clearVisible:  'clearPharmacyVisibleFilters',
+  },
 };
 
 export function FilterChipBar({
@@ -191,7 +199,7 @@ export function FilterChipBar({
     const def = filterDefMap[k];
     const vals = filters[k] || [];
     const active = vals.length > 0;
-    const summary = active ? summarize(k, vals) : undefined;
+    const summary = active ? summarize(k, vals, def) : undefined;
     const setVals = list === 'HCC'
       ? (next) => withViewTransition(() => setFilter(k, next))
       : (next) => setFilter(k, next);
@@ -319,11 +327,11 @@ export function FilterChipBar({
   );
 }
 
-function summarize(k, vals) {
-  if (k === 'dec' && vals.length >= 2) return `${vals[0]}–${vals[1]}`;
+function summarize(k, vals, def) {
+  if ((k === 'dec' || def?.type === 'range') && vals.length >= 2) return `${vals[0]}–${vals[1]}`;
   // DOB: a year pick reads "1950 – 1960" (or "1950"); a custom range keeps the year.
   if (k === 'dob' && vals.length >= 2) return dobRangeSummary(vals);
-  if (['cd', 'dos', 'dob', 'lvd', 'lastOutreachDate'].includes(k) && vals.length >= 2) {
+  if ((['cd', 'dos', 'dob', 'lvd', 'lastOutreachDate'].includes(k) || def?.type === 'date') && vals.length >= 2) {
     return `${formatShortDate(vals[0])} – ${formatShortDate(vals[1])}`;
   }
   if (vals.length > 2) return `${vals[0]} +${vals.length - 1}`;

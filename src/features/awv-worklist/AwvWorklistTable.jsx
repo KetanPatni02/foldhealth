@@ -143,7 +143,7 @@ export function AwvWorklistTable() {
       leadingElement={<SubnavToggle />}
       title="Annual Visit"
       actions={['search', 'filter', 'history', 'download']}
-      searchPlaceholder="Search by name or member ID…"
+      searchPlaceholder="Search by name or Fold ID…"
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
       filterActive={filterBarOpen}

@@ -29,6 +29,7 @@ export function CisAppointmentForm({ form, result, appointments = [] }) {
       .map(r => ({ a, r, key: doseKey(a.key, r.number) })))
     .sort((x, y) => (x.r.nextDue ?? x.r.start) - (y.r.nextDue ?? y.r.start));
 
+  const chosenDoses = new Set(values.doses);
   return (
     <div className={styles.form}>
       <p className={styles.hint}>
@@ -66,13 +67,14 @@ export function CisAppointmentForm({ form, result, appointments = [] }) {
         {doses.length === 0 ? <p className={styles.empty}>Every dose has been given.</p> : (
           <div className={styles.doseList}>
             {doses.map(({ a, r, key }) => {
+              const chosen = chosenDoses.has(key);
               // Already on another scheduled appointment: one booking per dose.
               const booked = appointmentForDose(others, a.key, r);
               return (
                 <label key={key} htmlFor={`${uid}-${key}`} className={`${styles.dose} ${booked ? styles.doseBooked : ''}`}>
                   <Checkbox
                     id={`${uid}-${key}`}
-                    checked={!booked && values.doses.includes(key)}
+                    checked={!booked && chosen}
                     disabled={!!booked}
                     onCheckedChange={(on) => toggleDose(key, on === true)}
                   />

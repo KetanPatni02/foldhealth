@@ -57,6 +57,7 @@ const HccWorklistTable     = lz(() => import('../features/hcc/HccWorklistTable')
 const HedisWorklistTable   = lz(() => import('../features/hedis-worklist/HedisWorklistTable'), 'HedisWorklistTable');
 const AwvWorklistTable     = lz(() => import('../features/awv-worklist/AwvWorklistTable'), 'AwvWorklistTable');
 const CmpWorklistTable     = lz(() => import('../features/cmp-worklist/CmpWorklistTable'), 'CmpWorklistTable');
+const PharmacyWorklistTable = lz(() => import('../features/pharmacy-worklist/PharmacyWorklistTable'), 'PharmacyWorklistTable');
 const JsaWorklistTable     = lz(() => import('../features/jsa-worklist/JsaWorklistTable'), 'JsaWorklistTable');
 const CcmWorklistTable     = lz(() => import('../features/ccm-worklist/CcmWorklistTable'), 'CcmWorklistTable');
 const SnpWorklistTable     = lz(() => import('../features/snp-worklist/SnpWorklistTable'), 'SnpWorklistTable');
@@ -81,6 +82,7 @@ const UploadDocumentDrawer = lz(() => import('../features/hcc/upload/UploadDocum
 const HccUploadProcessingHost = lz(() => import('../features/hcc/upload/HccUploadProcessingHost'),         'HccUploadProcessingHost');
 const HccSftpReviewDrawer  = lz(() => import('../features/hcc/upload/HccSftpReviewDrawer'),                'HccSftpReviewDrawer');
 const HccAddDosDrawer      = lz(() => import('../features/hcc/HccAddDosDrawer'),                           'HccAddDosDrawer');
+const AddCareGapsDrawer    = lz(() => import('../features/hedis-worklist/AddCareGapsDrawer'),              'AddCareGapsDrawer');
 const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 const EditPatientDrawer    = lz(() => import('../features/patient/left-panel/tabs/profile/EditPatientDrawer/EditPatientDrawer'), 'EditPatientDrawer');
@@ -129,6 +131,7 @@ function PopulationView() {
 
   const isAwv = activeSubnavList === 'Annual Visit';
   const isJsa = activeSubnavList === 'JSA';
+  const isPharmacy = activeSubnavList === 'Pharmacy';
   const isCmp = activeSubnavList === 'CMP';
 
   // Dynamic group rule builder — full-page takeover, no subnav
@@ -180,11 +183,11 @@ function PopulationView() {
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isToc = activeSubnavList === 'TOC IP';
-  const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHedis && !isCcm && !isAwv && !isJsa && !isCmp && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHedis && !isCcm && !isAwv && !isJsa && !isCmp && !isPharmacy && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'Pharmacy', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
-  const chromeless = isHcc || isHedis || isCcm || isSnp || isAwv || isJsa || isCmp || isComingSoon || isPopulationGroup;
+  const chromeless = isHcc || isHedis || isCcm || isSnp || isAwv || isJsa || isCmp || isPharmacy || isComingSoon || isPopulationGroup;
 
   return (
     <div className={styles.main}>
@@ -216,6 +219,8 @@ function PopulationView() {
                   ? <JsaWorklistTable />
                 : isCmp
                   ? <CmpWorklistTable />
+                : isPharmacy
+                  ? <PharmacyWorklistTable />
                   : isAllPatients
                     ? <AllPatientsTable />
                     : isPopulationGroup
@@ -650,6 +655,7 @@ export function AppLayout() {
         <HccUploadProcessingHost />{/* floats bottom-right while the upload is minimized */}
         <HccSftpReviewDrawer />{/* mounts itself only when hccSftpReviewOpen is true */}
         <HccAddDosDrawer />{/* mounts itself only when hccAddDosMember is set */}
+        <AddCareGapsDrawer />{/* mounts itself only when addCareGapsMember is set */}
         <IcdCreationScreen />{/* mounts itself only when icdCreationOpen is true */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {invitePatientOpen && (

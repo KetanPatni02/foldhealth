@@ -202,7 +202,8 @@ export function FilterBar({
   const inRow = useMemo(() => {
     if (!pinPrimary) return new Set();
     const primarySet = new Set(primaryKeys);
-    return new Set(visibleKeys.filter(k => primarySet.has(k) && !picks.includes(k)));
+    const pickSet = new Set(picks);
+    return new Set(visibleKeys.filter(k => primarySet.has(k) && !pickSet.has(k)));
   }, [pinPrimary, primaryKeys, visibleKeys, picks]);
 
   const clearValue = (k) => effectiveOnFilterChange(k, multiSelect ? [] : null);

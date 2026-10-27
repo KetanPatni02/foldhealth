@@ -176,7 +176,8 @@ export function otherMatchesFor(fax, patients = [], limit = 3) {
   const sorted = [...pool].sort((a, b) => a.name.localeCompare(b.name));
   const at = Math.max(0, sorted.findIndex(p => p.name.toLowerCase().localeCompare(target) >= 0));
   const around = sorted.slice(Math.max(0, at - 1), at - 1 + limit + 1);
-  return [...named, ...around.filter(p => !named.includes(p))].slice(0, limit).map(patientSnapshot);
+  const namedSet = new Set(named);
+  return [...named, ...around.filter(p => !namedSet.has(p))].slice(0, limit).map(patientSnapshot);
 }
 
 /**

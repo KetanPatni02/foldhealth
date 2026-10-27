@@ -10,14 +10,14 @@ export default {
   parameters: {
     docs: {
       description: {
-        component: 'The clickable "#10070" Member ID shown on every worklist row. Hover shows "Click to copy Member ID"; clicking copies it and swaps the tooltip to "Copied: #10070" for a beat instead of firing a toast. The label swap fades in — see FoldIdTag.module.css.',
+        component: 'The clickable "#10070" Fold ID shown on every worklist row. Hover shows "Click to copy Fold ID"; clicking copies it and swaps the tooltip to "Copied: #10070" for a beat instead of firing a toast. The label swap fades in — see FoldIdTag.module.css.',
       },
     },
   },
   argTypes: {
     id: {
       control: 'text',
-      description: 'Raw Member ID to copy — formatted for display via formatFoldId unless `display` is passed',
+      description: 'Raw Fold ID to copy — formatted for display via formatFoldId unless `display` is passed',
       table: { type: { summary: 'string | number' } },
     },
     display: {
@@ -28,7 +28,7 @@ export default {
     label: {
       control: 'text',
       description: 'Hover tooltip text before a copy',
-      table: { type: { summary: 'string' }, defaultValue: { summary: 'Click to copy Member ID' } },
+      table: { type: { summary: 'string' }, defaultValue: { summary: 'Click to copy Fold ID' } },
     },
   },
 };
@@ -52,7 +52,7 @@ export const Playground = {
         className="foldId-storybook-preview"
       />
       <p style={{ marginTop: 32, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>
-        Hover the ID above to see "Click to copy Member ID", then click to trigger the "Copied" transition.
+        Hover the ID above to see "Click to copy Fold ID", then click to trigger the "Copied" transition.
       </p>
       <style>{previewStyles}</style>
     </div>
@@ -105,7 +105,7 @@ export const TransitionDemo = {
             }}
           >
             <span key={copied ? 'copied' : 'idle'} className={styles.labelFade}>
-              {copied ? `Copied: ${shown}` : 'Click to copy Member ID'}
+              {copied ? `Copied: ${shown}` : 'Click to copy Fold ID'}
             </span>
           </div>
           <span className="foldId-storybook-preview">{shown}</span>

@@ -37,6 +37,109 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Pharmacy gap status model, filters, rules and reports.** Pharmacy gaps
+  follow the status model spec: Open, In Progress, Pending Claim, Closed,
+  Met for Year, Failed for Year and Excluded (First Fill and Not Eligible stay
+  off the worklist), with one sub-status per gap and five Claim
+  Reconciliation values. Only a matched Part D claim closes a gap; a fill
+  logged in Fold is Pending Claim, and a reversal reopens it. The team sets
+  only Open and In Progress, and a hand-set status lapses once a newer fill or
+  claim arrives. The worklist adds plan / Fold source markers, Savability and
+  seven more optional columns, and 70 filters on the shared filter chip bar.
+  Outreach rules add the outreach queue, pickup reminders, escalation to the
+  prescriber, and Auto-assign by IPA or health plan from a PHARM care team.
+  Analytics > Pharmacy Adherence reports outcomes, provider groups,
+  productivity and claim data quality. Pharmacy Gap Details is now one drawer
+  per member: the member's assignee and Progress head it, a "Pharmacy Gap:
+  All | MAD | MAH | MAC" toggle scopes the gap table, the tabs and the
+  actions, so one outreach or verification call covers one gap or all of
+  them, and each gap row opens to its details (claim, savability, attempts). Migrations:
+  `pharmacy_status_model_migration.sql`, `pharmacy_status_model_seed.sql`,
+  `pharmacy_care_team_seed.sql`.
+- **Pharmacy claim reversals and projected fills.** A confirmed pickup or a
+  fill date entered by hand recalculates PDC, next fill and the absolute fail
+  date, and the gap shows Completed with a Projected tag until a matching
+  Part D claim arrives (then Closed-Data). No claim inside the plan's window,
+  a reversed claim or a claim billed to other coverage flags the gap "Claim
+  not matched"; the flag opens that drug's claim history next to outreach
+  logging and creates a rework task. Reversed, cancelled, deleted and
+  negative-value claims drop out of PDC, and only the current sequence of a
+  resubmitted claim counts. Claim history tells each fill's story (billed,
+  reversed, rebilled, other coverage) with transaction fields marked pending
+  Astrana's confirmation, and lists pharmacy-confirmed pickups, now their own
+  records, apart from claims. The worklist adds Plan / Calculated / Projected
+  tags on PDC, Next Fill Due and Fail Date, Prior Year PDC per gap, and a
+  hidden Fills to Stay Compliant column.
+  Migration: `supabase/pharmacy_claim_history_migration.sql`.
+- **Pharmacy workflow updates.** Every sample patient has MAD, MAH and MAC
+  open with more medications. Gap status is Open or In Progress only (no
+  Completed or Closed-Data). Medication Review supports bulk Recent Fill
+  across gaps, with per-gap and global select-all checkboxes. Each medication
+  has a Claims tab laid out like the HCC Claims tab (claim ID, fill date,
+  status, amount, and an inline claim detail). Lead Note is now Internal Note,
+  next to Outreach. Other Care Gaps is now Open Care Gaps, and each gap in its
+  hover card opens Care Gap Details (the pharmacy patients were added to
+  HEDIS). The Pharmacy worklist gets Saved Filters like the other worklists.
+  Migrations: `supabase/pharmacy_worklist_sample_refresh_migration.sql`, then
+  `supabase/pharmacy_hedis_patients_migration.sql`.
+
+- **Pharmacy worklist, HEDIS layout.** Each patient row stacks one sub-row
+  per pharmacy gap (MAD / MAH / MAC) with its own status, start date, PDC,
+  drug count and claim reconciliation; assignment stays at the patient level.
+  New Progress and Other Care Gaps (count, hover list) columns. Priority is always P1–P3 (High/Medium/Low from the plan file maps to it).
+  Sub-statuses are a fixed short list; a pickup matched by a paid claim closes
+  the gap as Closed-Data; an overdue claim creates a pharmacy follow-up task.
+  Days Left, Overdue and both Other Care Gaps filters added. Clicking a gap
+  (or the row) opens a Pharmacy Gap Details drawer laid out like HEDIS Care
+  Gap Details: header, suggested actions, tabs (Snapshot, Medication Review,
+  Outreaches, Barriers & Interventions, Verification, Activity) and a left side
+  workspace for logging work and drug details. The same views back the PHARM
+  program steps: a Snapshot step (prescriber and pharmacies with click-to-dial),
+  Medication Review grouped by therapeutic class with the clicked gap first,
+  patient-only barriers with outreach flags, and the pharmacy verification
+  assessment as a questions-by-gap table. Outreach stays the app's standard
+  form and automations, shared by the drawer and the program step.
+  Migration: `supabase/pharmacy_worklist_source_fields_migration.sql`.
+
+- **Add Care Gaps (HEDIS worklist).** A new row action opens an Add Care Gaps
+  drawer. You pick IPA, HP code and measure year (prefilled from the patient),
+  then one or more care gaps from the Fold whitelist (`caregap_whitelist`), plus
+  the workflows they need (Outreach, Clinical Note, Referral, Task). Gaps that
+  are already open can't be selected. When a measure was previously closed, the
+  drawer shows that gap as the parent, and the new Open gap keeps it in
+  `parentGap`.
+
+- **Pharmacy worklist.** New Population › Worklists › Pharmacy list for the
+  Med Adherence gaps (MAD / MAH / MAC; SUPD out of scope): one row per member
+  with measure chips, the most urgent measure's PDC, fail date and next fill,
+  derived P1–P3 priority, the standard Outreach cell, inline status and
+  coordinator assignment. Claim reconciliation flags confirmed pickups with no
+  claim yet (Awaiting / Overdue), reversed claims and plan-vs-claims PDC
+  mismatches, with a matching filter. Clicking a row (or the eye icon) opens
+  the member's Pharmacy care program: Pharmacy Verification walks the
+  pharmacy call per drug (confirm last fill, refilled?, picked up?, refills
+  remaining?), suggests the next action, locks the call as one outreach and
+  creates reversal / refill follow-up tasks; Outreach is the standard program
+  form with MAD / MAH / MAC as the pills and the Medication Adherence
+  Intervention Schema outcomes; a pickup outcome (or verified pickup) moves
+  the medication's last/next fill, adds a call-confirmed refill row, sets the
+  measure to Completed · Pickup confirmed once every measure is picked up; an Activity Log (program step + worklist row menu) records every
+  action; Barrier & Intervention logs one call with barriers, interventions
+  and result recorded per measure (barrier / intervention / result outcomes
+  logged in Outreach are copied in automatically); Gap Closure / Outcome
+  shows each measure's gap status (Open / In Progress / Completed /
+  Closed-Data, with a sub-status such as Pickup confirmed, Safe or At risk on
+  the second line) with PDC, fill / fail dates and plan signals; measure
+  chips and the worklist Status column use the same two-line status (with a
+  Gap Sub-Status filter); Medication Review groups medications by measure and opens each one
+  in a side drawer with SIG, conditions, non-adherence reason,
+  prescriber/pharmacy, notes and refill history. Backed by
+  `supabase/pharmacy_worklist_members_migration.sql` (table),
+  `pharmacy_worklist_members_seed.sql` (the 10 members, Fold IDs 19401-19410),
+  `pharmacy_worklist_care_program_sync_migration.sql` (enrolls each member in
+  the Pharmacy Program) and `pharmacy_care_plan_template_seed.sql` (MAD / MAH /
+  MAC care plan template), run in that order.
+
 - **Overview widgets redesign (Figma 1312-174/483/589/686).** Vitals tiles
   can be added (recorded vitals, biomarkers, labs), removed and reordered per
   patient for the whole care team (`patient_overview_vitals`). Care Plan

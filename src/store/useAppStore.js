@@ -11,6 +11,12 @@ import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogD
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 import { resolveCampaignAudience, simulateStatus } from '../features/campaign/audienceResolver';
 
+// Set by App.jsx's localhost-only "Dev Login (Fold Demo)", which skips
+// Supabase auth entirely.
+const isDevBypass = () => {
+  try { return sessionStorage.getItem('__auth_bypass') === 'true'; } catch { return false; }
+};
+
 // Selectable audiences before audience_segments is fetched (or if the table
 // isn't migrated yet). Mirrors supabase/audience_segments_migration.sql.
 const FALLBACK_AUDIENCE_SEGMENTS = [
@@ -190,6 +196,7 @@ const CIS_APPOINTMENTS_MOCK = [
 ];
 import { fetchReferralDirectoryRows, fetchCaregapReferralRows, persistCaregapReferralInsert, persistCaregapReferralUpdate, persistCaregapReferralRead } from './lib/caregapReferralsPersist';
 import { REFERRAL_SENDER_LINES_MOCK } from '../features/hedis-worklist/data/referralDirectoryMock';
+import { CAREGAP_WHITELIST_MOCK } from '../features/hedis-worklist/data/caregapWhitelistMock';
 import { fetchEfaxNumberRows, persistEfaxNumberInsert, persistEfaxNumberUpdate, persistEfaxNumberDelete } from './lib/efaxNumbersPersist';
 import { fetchCaregapLabRows, persistLabOrder, persistLabResult } from './lib/caregapLabsPersist';
 import { fetchStepStatusRows, persistStepStatus } from './lib/careProgramStepStatusPersist';
@@ -230,6 +237,7 @@ import { createAutomationsSlice } from './slices/automationsSlice';
 import { rowToCrm, sampleCrmActivities } from '../features/patient/data/crmActivity';
 import { rowToReferral, sampleReferralsFor } from '../features/patient/data/patientReferrals';
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
+import { createPharmacyWorklistSlice } from './slices/pharmacyWorklistSlice';
 import { createPatientOrdersSlice } from './slices/patientOrdersSlice';
 
 // patientId → in-flight fetchPatientConsents request.
@@ -339,6 +347,8 @@ const CARE_PLAN_LOG_ACTIONS = [
   'note', 'note_deleted', 'note_cleared', 'review_requested', 'discarded', 'restored',
 ];
 
+// patientId → in-flight patient_care_programs request (see fetchCareProgramsForPatient).
+const careProgramsInFlight = new Map();
 // One gate per resync query; see lib/resyncGate.js for why these exist.
 const notificationsResync = createResyncGate();
 const unreadMessagesResync = createResyncGate();
@@ -365,6 +375,7 @@ export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
   ...createAutomationsSlice(set, get),
   ...createHccWorklistFiltersSlice(set, get),
+  ...createPharmacyWorklistSlice(set, get),
   ...createPatientOrdersSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
@@ -2418,11 +2429,17 @@ export const useAppStore = create((set, get) => ({
   fetchCareProgramsForPatient: async (patientId) => {
     if (!patientId) return;
     if (get().careProgramsLoadedFor[patientId]) return;
-    const { data, error } = await supabase
+    // Several mounts ask at once on a cold open. Without sharing one request,
+    // a late duplicate resolved after addCareProgram's optimistic enrollment
+    // and replaced it with the pre-insert rows (the program vanished).
+    if (careProgramsInFlight.has(patientId)) return careProgramsInFlight.get(patientId);
+    const request = Promise.resolve(supabase
       .from('patient_care_programs')
       .select('*')
       .eq('patient_id', patientId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true }));
+    careProgramsInFlight.set(patientId, request);
+    const { data, error } = await request.finally(() => careProgramsInFlight.delete(patientId));
     if (error) console.warn('fetchCareProgramsForPatient:', error.message);
     const rows = (data || []).map(r => ({
       id:           r.id,
@@ -5718,6 +5735,14 @@ export const useAppStore = create((set, get) => ({
     if (get().worklistCountsDidFetch) return;
     set({ worklistCountsDidFetch: true });
 
+    // Pharmacy is one row per member, so a plain count header is enough.
+    // Kept outside worklist_badge_counts so this works before that view
+    // is updated.
+    supabase.from('pharmacy_worklist_members').select('id', { count: 'exact', head: true })
+      .then(({ count, error }) => {
+        if (!error) set(s => ({ worklistCounts: { ...s.worklistCounts, pharmacy: count || 0 } }));
+      });
+
     const fail = (msg) => {
       // Release the guard so the next mount retries. Badges fall back to
       // whatever slices happen to be loaded, which is what they showed before
@@ -5747,8 +5772,9 @@ export const useAppStore = create((set, get) => ({
     const hedisKeys = keysOf(HEDIS_MEMBERS);
 
     const apply = (counts, sqlUnionSize) => {
-      set({
+      set(s => ({
         worklistCounts: {
+          ...s.worklistCounts,
           hccUnique: counts.hccUnique,
           awv: counts.awv,
           ccm: counts.ccm,
@@ -5763,7 +5789,7 @@ export const useAppStore = create((set, get) => ({
           // collect() over HEDIS_MEMBERS).
           allPatients: (sqlUnionSize || 0) + hedisKeys.size,
         },
-      });
+      }));
     };
 
     // Preferred path: one round-trip against worklist_badge_counts (the
@@ -7730,6 +7756,14 @@ export const useAppStore = create((set, get) => ({
   fetchHedisMembers: async () => {
     if (useAppStore.getState().hedisDidFetch) return;
     set({ hedisDidFetch: true, hedisLoading: true });
+    // Dev Login (Fold Demo) has no Supabase session, so RLS would return no
+    // rows; show the mock so the demo has patients to work with. A real
+    // session with an empty table still surfaces the empty state.
+    if (isDevBypass()) {
+      const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
+      set({ hedisMembers: HEDIS_MEMBERS, hedisLoading: false });
+      return;
+    }
     const { data, error } = await supabase
       .from('hedis_members')
       .select('*')
@@ -8356,7 +8390,7 @@ export const useAppStore = create((set, get) => ({
       hedisMembers: (s.hedisMembers || []).map(m =>
         m.id !== memberId ? m : {
           ...m,
-          gaps: (m.gaps || []).map(g => g.code === gapCode ? { ...g, status: nextStatus } : g),
+          gaps: (m.gaps || []).map(g => g.code === gapCode && !g.supersededAt ? { ...g, status: nextStatus } : g),
         }
       ),
       caregapActivity: {
@@ -8389,7 +8423,7 @@ export const useAppStore = create((set, get) => ({
       hedisMembers: (s.hedisMembers || []).map(m =>
         m.id !== memberId ? m : {
           ...m,
-          gaps: (m.gaps || []).map(g => g.code === gapCode ? { ...g, assignee: nextAssignee } : g),
+          gaps: (m.gaps || []).map(g => g.code === gapCode && !g.supersededAt ? { ...g, assignee: nextAssignee } : g),
         }
       ),
       caregapActivity: {
@@ -8410,6 +8444,7 @@ export const useAppStore = create((set, get) => ({
     const initialsOf = (n) => (String(n || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '');
     const entries = [];
     prevGaps.forEach(g => {
+      if (g.supersededAt) return;
       const nextStatus = updates?.[g.code];
       if (!nextStatus) return;
       if (g.status !== nextStatus) {
@@ -8429,7 +8464,7 @@ export const useAppStore = create((set, get) => ({
       hedisMembers: (s.hedisMembers || []).map(m =>
         m.id !== memberId ? m : {
           ...m,
-          gaps: (m.gaps || []).map(g => updates[g.code]
+          gaps: (m.gaps || []).map(g => updates[g.code] && !g.supersededAt
             ? { ...g, status: updates[g.code], ...(assignee !== undefined ? { assignee } : {}) }
             : g),
         }
@@ -8493,6 +8528,110 @@ export const useAppStore = create((set, get) => ({
     }
     return created;
   },
+
+  // ── Add Care Gaps (HEDIS worklist → patient-level action) ──────────────
+  // Whitelisted measures come from Supabase `caregap_whitelist`; the local
+  // mock fills in until the migration + seed have run.
+  caregapWhitelist: CAREGAP_WHITELIST_MOCK,
+  caregapWhitelistLoading: false,
+  caregapWhitelistDidFetch: false,
+  fetchCaregapWhitelist: async () => {
+    if (get().caregapWhitelistDidFetch) return;
+    // Dev Login has no session and RLS limits the table to signed-in staff.
+    if (isDevBypass()) { set({ caregapWhitelistDidFetch: true }); return; }
+    set({ caregapWhitelistDidFetch: true, caregapWhitelistLoading: true });
+    const { data, error } = await supabase
+      .from('caregap_whitelist')
+      .select('*')
+      .eq('active', true)
+      .order('measure_year', { ascending: false })
+      .order('code');
+    if (error || !data?.length) {
+      if (error) console.warn('fetchCaregapWhitelist failed:', error.message);
+      set({ caregapWhitelist: CAREGAP_WHITELIST_MOCK, caregapWhitelistLoading: false });
+      return;
+    }
+    set({
+      caregapWhitelist: data.map(r => ({
+        id: r.id,
+        code: r.code,
+        name: r.name,
+        measureYear: r.measure_year,
+        ipas: r.ipas || [],
+        hpCodes: r.hp_codes || [],
+        billable: r.billable,
+      })),
+      caregapWhitelistLoading: false,
+    });
+  },
+
+  addCareGapsMember: null,
+  openAddCareGaps: (member) => set({ addCareGapsMember: member }),
+  closeAddCareGaps: () => set({ addCareGapsMember: null }),
+
+  // Adds whitelisted gaps to a member. When the member already has a closed
+  // gap for the same measure, that gap becomes the new gap's parent: it stays
+  // in the row, stamped `supersededAt`, and the new Open gap (carrying a
+  // `parentGap` snapshot) is inserted just before it. Gaps are looked up by
+  // code across the app, so first-match lookups land on the active gap and
+  // the status / assignee mutations skip superseded ones.
+  addCareGaps: (memberId, { items, ipa, hpCode, measureYear, workflows }) => {
+    track('hedis.gaps_added', { memberId, count: items.length });
+    const startDate = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    const actor = get().currentActorName();
+    set(s => ({
+      hedisMembers: (s.hedisMembers || []).map(m => {
+        if (m.id !== memberId) return m;
+        let gaps = [...(m.gaps || [])];
+        items.forEach(({ whitelist, parent }) => {
+          const next = {
+            code: whitelist.code,
+            status: 'Open',
+            startDate,
+            assignee: m.assignee || null,
+            source: 'fold-native',
+            whitelistId: whitelist.id,
+            measureYear,
+            ipa,
+            hpCode,
+            workflows,
+            parentGap: parent ? { ...parent } : null,
+          };
+          const idx = gaps.findIndex(g => g.code === whitelist.code && !g.supersededAt);
+          if (idx >= 0) {
+            gaps[idx] = { ...gaps[idx], supersededAt: startDate };
+            gaps.splice(idx, 0, next);
+          } else {
+            gaps = [...gaps, next];
+          }
+        });
+        return { ...m, gaps };
+      }),
+    }));
+    // Dev Login has no session to write with; keep the demo change local.
+    const persist = !isDevBypass();
+    if (persist) persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
+    items.forEach(({ whitelist, parent }) => {
+      const entry = {
+        id: Date.now() + Math.random(),
+        at: new Date().toISOString(),
+        actor,
+        t: 'system',
+        title: `Gap added - ${whitelist.code}`,
+        subtitle: parent
+          ? `MY${measureYear} · Linked to previous ${whitelist.code} gap (${parent.status})`
+          : `MY${measureYear} · ${ipa} · ${hpCode}`,
+      };
+      set(s => ({
+        caregapActivity: {
+          ...s.caregapActivity,
+          [memberId]: [entry, ...(s.caregapActivity[memberId] || [])],
+        },
+      }));
+      if (persist) persistCaregapActivityInsert(memberId, entry);
+    });
+  },
+
   // ── Care Gap comments (Supabase `caregap_comments`) ────────────────────
   // Keyed by HEDIS member id. The DB stamps authorship, restricts edit and
   // delete to the author (RLS), and sends mention bells. Until
@@ -14919,8 +15058,10 @@ export const useAppStore = create((set, get) => ({
   patientContacts: {},
   fetchPatientContacts: async (patientId) => {
     if (!patientId || get().patientContacts[patientId]) return;
-    const { rowToContact, sampleContactsFor } = await import('../features/messages/comms/sendTo');
-    const { data, error } = await supabase.from('patient_contacts').select('*').eq('patient_id', String(patientId));
+    const [{ rowToContact, sampleContactsFor }, { data, error }] = await Promise.all([
+      import('../features/messages/comms/sendTo'),
+      supabase.from('patient_contacts').select('*').eq('patient_id', String(patientId)),
+    ]);
     if (error) console.warn('fetchPatientContacts — falling back to samples:', error.message);
     const list = !error && data?.length ? data.map(rowToContact) : sampleContactsFor(String(patientId));
     set(s => ({ patientContacts: { ...s.patientContacts, [patientId]: list } }));
@@ -14974,8 +15115,8 @@ export const useAppStore = create((set, get) => ({
   fetchCareProgramBilling: async () => {
     if (get().careProgramBillingLoading || get().careProgramBillingFetched) return;
     set({ careProgramBillingLoading: true });
-    const d = await import('../features/settings/billing/careProgramBillingData');
-    const [bill, reps, timers] = await Promise.all([
+    const [d, bill, reps, timers] = await Promise.all([
+      import('../features/settings/billing/careProgramBillingData'),
       supabase.from('care_program_billable').select('*').order('date_of_service', { ascending: false }),
       supabase.from('care_program_billing_reports').select('*').order('month', { ascending: false }),
       supabase.from('billing_timer_settings').select('*').order('program', { ascending: true }),

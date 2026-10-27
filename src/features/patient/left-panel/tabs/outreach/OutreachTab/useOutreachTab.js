@@ -39,10 +39,22 @@ export function useOutreachTab({
   // "HCC Gaps" mode (same data the Diagnosis Gaps panel shows).
   memberName,
   // Called after a save with the new log entries, so a host can mirror them
-  // into its own persisted activity feed (the Care Gap drawer does).
+  // into its own persisted activity feed (the Care Gap drawer does). On an
+  // edit, `editedId` is the id of the log that changed.
   onSaved,
+  // Called after a log is deleted from the feed, so a host can delete it
+  // from its own record too.
+  onDeleted,
+  // Program Activity Log code for saved entries when the pills are not
+  // themselves programs (e.g. MAD / MAH / MAC pills inside the PHARM program).
+  activityProgramCode = null,
+  // Optional host-supplied "Select Outcome" menu: (status, progs) →
+  // MenuPopover items, or null to keep the default list for those pills.
+  outcomeItems = null,
+  callTypeOptions,
 } = {}) {
-  const PROGRAM_OPTIONS = [...new Set([...(programs && programs.length ? programs : PROGRAMS), ...defaultPrograms])];
+  // The program or gaps the outreach is logged from lead the pills.
+  const PROGRAM_OPTIONS = [...new Set([...defaultPrograms, ...(programs && programs.length ? programs : PROGRAMS)])];
   // This patient's distinct open HCC gap codes (e.g. "HCC 37").
   const HCC_GAP_OPTIONS = useMemo(
     () => (memberName
@@ -243,6 +255,8 @@ export function useOutreachTab({
         title: label,
         programs: [prog],
         outcome: outcomeText,
+        // Every outcome picked on the panel (the log line shows the first).
+        outcomes: panelData.outcomes,
         outcomeColor: OUTCOME_COLOR[outcome] || 'var(--neutral-300)',
         note: panelData.note,
       };
@@ -271,10 +285,13 @@ export function useOutreachTab({
     // goes in that program's Program Activity Log.
     if (logFor === 'care-program' && editingIdRef.current == null) {
       for (const entry of newEntries) {
+        // Pills that are not programs themselves (e.g. MAD / MAH / MAC) log
+        // into the host program; real program pills keep their own log.
+        const asHost = activityProgramCode && !PROGRAMS.includes(entry.programs[0]);
         logProgramActivity({
           patientId,
-          programCode: entry.programs[0],
-          title: `Outreach - ${entry.title}`,
+          programCode: asHost ? activityProgramCode : entry.programs[0],
+          title: asHost ? `Outreach - ${entry.title} (${entry.programs[0]})` : `Outreach - ${entry.title}`,
           activityKind: OUTREACH_ACTIVITY_KIND[entry.type] || 'outreach',
           statusLabel: entry.outcome || '',
           statusType: OUTREACH_STATUS_TYPE[outcome] || 'neutral',
@@ -284,6 +301,7 @@ export function useOutreachTab({
 
     onSaved?.(newEntries, {
       isEdit: editingIdRef.current != null,
+      editedId: editingIdRef.current,
       callDetails: showCallDetails ? {
         via: callViaNumber,
         to: calledToNumber,
@@ -329,6 +347,7 @@ export function useOutreachTab({
       }
       return next;
     });
+    onDeleted?.(log);
   };
 
   const filteredLogGroups = useMemo(() => {
@@ -348,6 +367,8 @@ export function useOutreachTab({
   return {
     PROGRAM_OPTIONS,
     HCC_GAP_OPTIONS,
+    outcomeItems,
+    callTypeOptions,
     CALLED_TO_OPTIONS,
     patientId,
     scopedProgram,
@@ -365,6 +386,7 @@ export function useOutreachTab({
     contactWarning,
     datetime, setDatetime,
     selectedProgs,
+    setSelectedProgs,
     outcome, setOutcome: changeOutcome,
     separateNotes, setSeparateNotes,
     sharedPanel,

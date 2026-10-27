@@ -27,6 +27,13 @@ import { toast } from '../../../../../../../components/Toast/sonnerToast';
 import { Collapse } from '../../../../../../../components/Collapse/Collapse';
 import { CloseProgramDialog } from '../shared/CloseProgramDialog/CloseProgramDialog.jsx';
 import { PROGRAM_STATUS_OPTIONS } from '../../../../../data/programStatus';
+import { PharmacyOutreachStep } from '../../../../../../pharmacy-worklist/program/PharmacyOutreachStep';
+import { PharmacyMedicationReview } from '../../../../../../pharmacy-worklist/program/PharmacyMedicationReview';
+import { PharmacyVerificationStep } from '../../../../../../pharmacy-worklist/program/PharmacyVerificationStep';
+import { PharmacyBarrierStep } from '../../../../../../pharmacy-worklist/program/PharmacyBarrierStep';
+import { PharmacyGapClosureStep } from '../../../../../../pharmacy-worklist/program/PharmacyGapClosureStep';
+import { PharmacyActivityLogStep } from '../../../../../../pharmacy-worklist/program/PharmacyActivityLog';
+import { PharmacySnapshotStep } from '../../../../../../pharmacy-worklist/program/PharmacySnapshotStep';
 import { useProgramDetailView } from './useProgramDetailView';
 import { StepItem, SectionHeader, StepPlaceholder, CarePlanInPanelNotice } from './ProgramDetailViewParts';
 import { useCarePlanPanelOpen } from '../../../../../hooks/useProgramPanelSplitActive';
@@ -41,6 +48,7 @@ import styles from './ProgramDetailView.module.css';
 export function ProgramDetailView({ program, onClose, startAtFirstStep = false, onSwitchProgram }) {
   const v = useProgramDetailView({ program, onSwitchProgram });
   const { stepFlags } = v;
+  const isPharmacy = program.code === 'PHARM';
   const carePlanInPanel = useCarePlanPanelOpen();
   const platformUsers = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
@@ -90,6 +98,23 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
 
   const renderStepBody = () => {
     if (stepFlags.isBillingStep) return <CcmBillingReview program={program} />;
+    // Pharmacy program: outreach is logged per measure (MAD / MAH / MAC) and
+    // Medication Review lists the medications behind those measures.
+    if (isPharmacy && stepFlags.isOutreachStep) {
+      return <div className={styles.outreachWrap}><PharmacyOutreachStep program={program} /></div>;
+    }
+    // The pharmacy steps are also reused in the Pharmacy Gap Details drawer,
+    // which pads them itself, so the program view supplies the same padded,
+    // scrolling body every other step has.
+    const pharmacyStep = isPharmacy && (
+      (stepFlags.isMedReconStep && <PharmacyMedicationReview />)
+      || (v.stepName === 'Pharmacy Verification' && <PharmacyVerificationStep program={program} />)
+      || (v.stepName === 'Snapshot' && <PharmacySnapshotStep />)
+      || (v.stepName === 'Barriers & Interventions' && <PharmacyBarrierStep />)
+      || (v.stepName === 'Gap Closure / Outcome' && <PharmacyGapClosureStep />)
+      || (v.stepName === 'Activity Log' && <PharmacyActivityLogStep />)
+    );
+    if (pharmacyStep) return <div className={styles.pharmacyStep}>{pharmacyStep}</div>;
     if (stepFlags.isOutreachStep) {
       return (
         <div className={styles.outreachWrap}>

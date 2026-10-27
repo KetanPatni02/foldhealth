@@ -7,7 +7,7 @@ import { resolvePatientDisplay } from '../../../../../../../lib/patientDisplay';
 
 export const DEMOGRAPHIC_FIELDS = [
   { key: 'dobAgeSex', label: 'DOB, age and sex' },
-  { key: 'ids', label: 'Member / Fold ID' },
+  { key: 'ids', label: 'Fold ID' },
   { key: 'pcpInsurance', label: 'PCP and insurance' },
 ];
 
@@ -88,7 +88,7 @@ export function demographicRows(patient, picked) {
     rows.push({ label: 'Sex', value: patient.gender || '' });
   }
   if (picked.includes('ids')) {
-    rows.push({ label: 'Member / Fold ID', value: patient.memberId ? `#${patient.memberId}` : '' });
+    rows.push({ label: 'Fold ID', value: patient.memberId ? `#${patient.memberId}` : '' });
   }
   if (picked.includes('pcpInsurance')) {
     rows.push({ label: 'PCP', value: patient.pcp && patient.pcp !== '—' ? patient.pcp : '' });

@@ -436,6 +436,23 @@ const APE_STEPS = [
   { id: 'ape-task', name: 'Program Related Task' },
 ];
 
+// Pharmacy (Med Adherence, SUPD, Medication Safety). "Letters/eFax" and
+// "Tasks" reuse the Letters and Program Related Task views.
+// Prescriber and pharmacy details sit in Snapshot, not steps of their own.
+const PHARM_STEPS = [
+  { id: 'pharm-snapshot', name: 'Snapshot' },
+  { id: 'pharm-outreach', name: 'Outreach', mandatory: true },
+  { id: 'pharm-medreview', name: 'Medication Review', mandatory: true },
+  { id: 'pharm-verify', name: 'Pharmacy Verification', mandatory: true },
+  { id: 'pharm-barrier', name: 'Barriers & Interventions' },
+  { id: 'pharm-letters', name: 'Letters/eFax' },
+  { id: 'pharm-tasks', name: 'Tasks' },
+  { id: 'pharm-handoff', name: 'Handoff / Escalation' },
+  { id: 'pharm-outcome', name: 'Gap Closure / Outcome', mandatory: true },
+  { id: 'pharm-docs', name: 'Program Documents' },
+  { id: 'pharm-activity', name: 'Activity Log' },
+];
+
 // Program code → step list. SNP is the canonical PROGRAM_STEPS_MOCK.
 export const PROGRAM_STEPS = {
   SNP: PROGRAM_STEPS_MOCK,
@@ -448,6 +465,7 @@ export const PROGRAM_STEPS = {
   CMP: CMP_STEPS,
   APE: APE_STEPS,
   CCM: CCM_PROGRAM_STEPS,
+  PHARM: PHARM_STEPS,
 };
 
 // ─── Pre-visit step content, keyed by program type ─────────────────────────

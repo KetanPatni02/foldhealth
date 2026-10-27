@@ -187,6 +187,10 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
     const range = fRange;
     const people = fUsers;
     const spans = fSpans;
+    const locSet = new Set(locs);
+    const typeSet = new Set(types);
+    const peopleSet = new Set(people);
+    const spanSet = new Set(spans);
     const emails = Object.fromEntries((taskProfiles || []).map(p => [p.name, p.email]));
     const byName = new Map();
     (blocks || []).forEach(b => { const k = b.userName?.toLowerCase(); if (k) byName.set(k, [...(byName.get(k) || []), b]); });
@@ -204,16 +208,16 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
       }))
       .filter(u => !q || u.name.toLowerCase().includes(q) || String(u.email || '').toLowerCase().includes(q))
       // User narrows people, not slots: everyone picked stays listed.
-      .filter(u => !people.length || people.includes(u.name))
+      .filter(u => !people.length || peopleSet.has(u.name))
       // Filters narrow each user's blocks; with any on, users left with none drop out.
       .map(u => ({
         ...u,
-        blocks: u.blocks.filter(b => (!locs.length || locs.includes(b.location))
+        blocks: u.blocks.filter(b => (!locs.length || locSet.has(b.location))
           // No status picked shows every slot (This Week always does: a past
           // week shows what was available then).
           && (!stats.length || stats.some(k => STATUS_FILTER[k] === b.status))
-          && (!types.length || (b.slots || []).some(sl => types.includes(sl.appointmentType || ALL_TYPES)))
-          && (!spans.length || spans.includes(b.endDate ? 'Fixed Slot' : 'Rolling Slot'))
+          && (!types.length || (b.slots || []).some(sl => typeSet.has(sl.appointmentType || ALL_TYPES)))
+          && (!spans.length || spanSet.has(b.endDate ? 'Fixed Slot' : 'Rolling Slot'))
           && (range.length !== 2 || (b.startDate <= range[1] && (b.endDate || '9999-12-31') >= range[0]))),
       }))
       // The default Active + Upcoming doesn't count as narrowing: users on

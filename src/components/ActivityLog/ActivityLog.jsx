@@ -117,6 +117,7 @@ const STATUS_TONE = {
   Returned:                      'warning',
   Rebuttal:                      'secondary',
   Rejected:                      'error',
+  'Closed - Data':               'grey',
   'Closed - Do not call':        'grey',
   'Closed - UTR':                'grey',
   'Closed - Other':              'grey',
@@ -171,10 +172,12 @@ function markSupersededDrafts(list) {
  * actions); `toolbarAbove` renders above that row (e.g. filter chips). Both
  * stay visible when filtering leaves nothing to show.
  */
-export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote, toolbar, toolbarAbove, relaxed = false, continuous = false }) {
+export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote, toolbar, toolbarAbove, relaxed = false, continuous = false, flushTop = false }) {
   // `continuous` keeps the rail running past the first and last entries, for a
   // log rendered in slices (one per day) that should read as one line.
   // `relaxed` adds 8px between entries, for feeds whose entries carry more lines.
+  // `flushTop` drops the first month header's top padding, for hosts that
+  // already pad their content (a drawer tab, a program step).
   const wrapClass = [htStyles.wrap, relaxed ? htStyles.relaxed : ''].filter(Boolean).join(' ');
   const [collapsed, setCollapsed] = useState(() => new Set());
   const toggleGroup = (label) => setCollapsed(prev => {
@@ -217,7 +220,10 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
         return;
       }
       if (activeGroup && collapsed.has(activeGroup)) return;
-      out.push({ kind: 'item', entry, key: `i${i}`, isFirst: false, isLast: false });
+      // An entry right under a month header starts that month's strand, so it
+      // doesn't take the gap that separates it from a previous entry.
+      const afterGroup = out.at(-1)?.kind === 'group';
+      out.push({ kind: 'item', entry, key: `i${i}`, isFirst: false, isLast: false, afterGroup });
     });
     const allItems = out.filter(it => it.kind === 'item');
     if (allItems.length && !continuous) {
@@ -237,6 +243,7 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
               entry={it.entry}
               isFirst={it.isFirst}
               isLast={it.isLast}
+              afterGroup={it.afterGroup}
               hideCommentTitle={hideCommentTitle}
               onOpenTask={onOpenTask}
               onOpenNote={onOpenNote}
@@ -247,7 +254,7 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
           <button
             key={it.key}
             type="button"
-            className={`${styles.group} ${collapsed.has(it.entry.label) ? styles.groupCollapsed : ''}`}
+            className={[styles.group, collapsed.has(it.entry.label) ? styles.groupCollapsed : '', flushTop && idx === 0 ? styles.groupFlushTop : ''].filter(Boolean).join(' ')}
             onClick={() => toggleGroup(it.entry.label)}
             aria-expanded={!collapsed.has(it.entry.label)}
           >
@@ -302,11 +309,11 @@ function railVariantFor(entry) {
 }
 
 /* ── Rail (shared) ───────────────────────────────────────────────────── */
-function Rail({ entry, isFirst, isLast }) {
+function Rail({ entry, isFirst, isLast, afterGroup }) {
   const cfg = TYPE_ICON[entry.t] || DEFAULT_ICON;
   return (
     <div className={htStyles.rail}>
-      <span className={[htStyles.connectorTop, isFirst ? htStyles.connectorTopFirst : ''].filter(Boolean).join(' ')} />
+      <span className={[htStyles.connectorTop, isFirst ? htStyles.connectorTopFirst : '', afterGroup ? htStyles.afterGroup : ''].filter(Boolean).join(' ')} />
       {/* `avatar` swaps the tile wholesale; otherwise every entry uses the
           design system's own icon avatar at size S. */}
       {entry.avatar || (
@@ -380,7 +387,7 @@ function withTrailing(entry, node) {
 }
 
 /* ── Type-branched entry ─────────────────────────────────────────────── */
-function ActivityLogEntry({ entry, isFirst, isLast, hideCommentTitle = false, onOpenTask, onOpenNote }) {
+function ActivityLogEntry({ entry, isFirst, isLast, afterGroup = false, hideCommentTitle = false, onOpenTask, onOpenNote }) {
   const content = (() => {
       // Escape hatch for surfaces whose entry shape none of the built-in
       // variants covers (e.g. Care Plan History's version cards).
@@ -416,8 +423,8 @@ function ActivityLogEntry({ entry, isFirst, isLast, hideCommentTitle = false, on
     })();
   return (
     <div className={htStyles.row}>
-      <Rail entry={entry} isFirst={isFirst} isLast={isLast} />
-      <div className={[htStyles.body, isFirst ? htStyles.bodyFirst : '', isLast ? htStyles.bodyLast : ''].join(' ')}>
+      <Rail entry={entry} isFirst={isFirst} isLast={isLast} afterGroup={afterGroup} />
+      <div className={[htStyles.body, isFirst ? htStyles.bodyFirst : '', isLast ? htStyles.bodyLast : '', afterGroup ? htStyles.afterGroup : ''].join(' ')}>
         {entry.onOpen ? (
           // `onOpen`: an entry about a record the reader can open. Hovering
           // tints the entry and shows an open button centred at its right

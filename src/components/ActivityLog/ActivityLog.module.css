@@ -23,6 +23,7 @@
   user-select: none;
 }
 .group:hover { color: var(--neutral-500); }
+.groupFlushTop { padding-top: 0; }
 /* First month row with the Activity toolbar (search / filter) at its right. */
 .groupRowWrap {
   display: flex;

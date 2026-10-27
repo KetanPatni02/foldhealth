@@ -27,6 +27,7 @@ import { sampleAssessmentSeed, pickAssessmentForms } from '../src/features/patie
 import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comms/educationLibrary.js';
 import { sampleFaxes, faxToRow } from '../src/features/messages/efax/efaxData.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
+import { PHARMACY_WORKLIST_MEMBERS } from '../src/features/pharmacy-worklist/data/mock.js';
 import { CMP_MEMBERS } from '../src/features/cmp-worklist/data/mock.js';
 import { BUILT_IN_ROLES } from '../src/lib/accessControl.js';
 import { snpSnapshotFormRow } from '../src/features/forms/templates/snpSnapshotForm.js';
@@ -59,6 +60,7 @@ import { SAMPLE_BILLABLE, SAMPLE_BILLING_REPORTS, SAMPLE_TIMER_SETTINGS, SAMPLE_
 import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
+import { CAREGAP_WHITELIST_MOCK } from '../src/features/hedis-worklist/data/caregapWhitelistMock.js';
 import { priorLabResultsFor } from '../src/features/hedis-worklist/labs/labMock.js';
 import { buildPatientSnapshot, snapshotToRow } from '../src/lib/patientSnapshot.js';
 import { SAMPLE_PATIENT_DOCUMENTS, patientDocumentToRow } from '../src/features/patient/right-panel/tabs/documents/documentsData.js';
@@ -595,6 +597,19 @@ async function withoutExistingPeople(supabase, table, rows) {
   return rows.filter((r) => !have.has(normName(r.name)));
 }
 
+function caregapWhitelistToRow(w) {
+  return {
+    id: w.id,
+    code: w.code,
+    name: w.name,
+    measure_year: w.measureYear,
+    ipas: w.ipas,
+    hp_codes: w.hpCodes,
+    billable: w.billable,
+    active: true,
+  };
+}
+
 function hedisToRow(m, foldIdMap) {
   return {
     id:                m.id,
@@ -797,6 +812,45 @@ function snpWorklistToRow(m, foldIdMap) {
   };
 }
 
+// Mirrors rowToMember in src/store/slices/pharmacyWorklistSlice.js.
+function pharmacyWorklistToRow(m) {
+  return {
+    id:                m.id,
+    // Already the Fold ID (reserved block 19401-19410); never re-minted.
+    member_id:         m.memberId ?? null,
+    patient_id:        m.patientId ?? null,
+    name:              m.name,
+    initials:          m.initials ?? null,
+    gender:            m.gender ?? null,
+    age:               m.age ?? null,
+    dob:               m.dob ?? null,
+    language:          m.language || 'en',
+    health_plan:       m.healthPlan ?? null,
+    ipa:               m.ipa ?? null,
+    book_of_business:  m.bookOfBusiness ?? null,
+    status:            m.status || 'Open',
+    status_manual:     !!m.statusManual,
+    assignee_id:       m.assigneeId ?? null,
+    assignee_name:     m.assigneeName ?? null,
+    assignee_initials: m.assigneeInitials ?? null,
+    lead_note:         m.leadNote ?? null,
+    follow_up_due:     m.followUpDue ?? null,
+    barrier:           m.barrier ?? null,
+    days_in_queue:     m.daysInQueue ?? null,
+    prescriber:        m.prescriber ?? null,
+    pharmacy:          m.pharmacy ?? null,
+    eligibility_status: m.eligibilityStatus || 'Active',
+    term_date:         m.termDate ?? null,
+    phones:            m.phones ?? [],
+    call_history:      m.callHistory ?? [],
+    intervention_log:  m.interventionLog ?? [],
+    activity_log:      m.activityLog ?? [],
+    measures:          m.measures ?? [],
+    source_priority:   m.sourcePriority ?? null,
+    other_care_gaps:   m.otherCareGaps ?? [],
+  };
+}
+
 // Mirrors caregapActivityToRow in useAppStore.js — common columns lifted out,
 // variant-specific fields ride in payload jsonb.
 function caregapActivityToRow(memberId, e) {
@@ -926,6 +980,16 @@ async function main() {
   // Bridge raw payer ids → Fold IDs from patient_registry so worklist rows
   // land with the same identifier the app displays via <FoldIdTag>. Mints
   // fold_ids for any mock member missing from the registry.
+  // The pharmacy members' ids are already Fold IDs (19401-19410) and the
+  // ph- HEDIS rows reuse them, so register them as their own fold_id before
+  // resolveFoldIdMap would mint new ones.
+  await supabase
+    .from('patient_registry')
+    .upsert(
+      PHARMACY_WORKLIST_MEMBERS.map((m) => ({ member_id: m.memberId, fold_id: Number(m.memberId) })),
+      { onConflict: 'member_id', ignoreDuplicates: true },
+    );
+
   console.log('\nResolving Fold IDs for HEDIS / CCM / SNP members...');
   const foldIdMap = await resolveFoldIdMap(supabase, [
     ...HEDIS_MEMBERS.map((m) => m.memberId),
@@ -1256,6 +1320,17 @@ async function main() {
     .from('snp_worklist_members')
     .upsert(snpWorklistRows, { onConflict: 'id' });
   if (swe) { console.error('  ✗', swe.message); } else { console.log(`  ✓ ${snpWorklistRows.length} new SNP worklist members (${SNP_WORKLIST_MEMBERS.length - snpWorklistRows.length} already present)`); }
+
+  console.log('Seeding pharmacy_worklist_members...');
+  try {
+    const pharmacyRows = await withoutExistingPeople(supabase, 'pharmacy_worklist_members', PHARMACY_WORKLIST_MEMBERS.map(pharmacyWorklistToRow));
+    const { error: pwe } = await supabase
+      .from('pharmacy_worklist_members')
+      .upsert(pharmacyRows, { onConflict: 'id' });
+    if (pwe) { console.error('  ✗', pwe.message); } else { console.log(`  ✓ ${pharmacyRows.length} new pharmacy worklist members (${PHARMACY_WORKLIST_MEMBERS.length - pharmacyRows.length} already present)`); }
+  } catch (err) {
+    console.log(`  ⚠ ${err.message} (run supabase/pharmacy_worklist_members_migration.sql first)`);
+  }
 
   console.log('Seeding care_plan_barriers (library)...');
   const barrierLibraryRows = CARE_PLAN_BARRIER_LIBRARY.map(carePlanBarrierLibraryToRow);
@@ -1874,6 +1949,17 @@ async function main() {
           : `  ✓ notifications (${rows.length} seeded for demo@fold.health)`);
       }
     }
+  }
+
+  // ── Care gap whitelist (Add Care Gaps drawer) ──
+  console.log('\nSeeding caregap_whitelist...');
+  {
+    const { error } = await supabase
+      .from('caregap_whitelist')
+      .upsert(CAREGAP_WHITELIST_MOCK.map(caregapWhitelistToRow), { onConflict: 'id' });
+    console.log(error
+      ? `  ✗ caregap_whitelist: ${error.message} (run supabase/caregap_whitelist_migration.sql first)`
+      : `  ✓ caregap_whitelist (${CAREGAP_WHITELIST_MOCK.length})`);
   }
 
   // ── Patient Care Plan (demo) ──

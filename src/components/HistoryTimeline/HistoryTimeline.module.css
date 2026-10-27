@@ -94,6 +94,10 @@
 .relaxed .body:not(.bodyFirst) {
   padding-top: var(--space-6);
 }
+/* The first entry under a later month header: the header already separates
+   it, so it keeps the compact rhythm (connector and body stay matched). */
+.relaxed .connectorTop.afterGroup:not(.connectorTopFirst) { height: var(--space-4); }
+.relaxed .body.afterGroup:not(.bodyFirst) { padding-top: var(--space-4); }
 
 .meta {
   font-size: var(--font-sm);

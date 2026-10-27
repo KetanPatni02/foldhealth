@@ -11,14 +11,16 @@ import styles from './UnityFooter.module.css';
  */
 export function UnityFooter({ visibility, generatedOn, generatedBy, actions }) {
   const parts = [
-    visibility === 'internal' && (
-      <span className={styles.visibility}><Icon name="solar:lock-keyhole-linear" size={12} color="currentColor" />Internal use only</span>
-    ),
-    visibility === 'shared' && (
-      <span className={styles.visibility}><Icon name="solar:share-linear" size={12} color="currentColor" />Shared with patient</span>
-    ),
-    generatedOn,
-    generatedBy,
+    visibility === 'internal' && {
+      key: 'visibility',
+      node: <span className={styles.visibility}><Icon name="solar:lock-keyhole-linear" size={12} color="currentColor" />Internal use only</span>,
+    },
+    visibility === 'shared' && {
+      key: 'visibility',
+      node: <span className={styles.visibility}><Icon name="solar:share-linear" size={12} color="currentColor" />Shared with patient</span>,
+    },
+    generatedOn && { key: 'generatedOn', node: generatedOn },
+    generatedBy && { key: 'generatedBy', node: generatedBy },
   ].filter(Boolean);
 
   return (
@@ -29,11 +31,10 @@ export function UnityFooter({ visibility, generatedOn, generatedBy, actions }) {
           <span className={styles.unity}>Unity</span>
           <span className={styles.alpha}>Alpha</span>
         </span>
-        {parts.map((p, i) => (
-          // Parts are positional and never reorder.
-          <Fragment key={i}>
+        {parts.map((p) => (
+          <Fragment key={p.key}>
             <span className={styles.dot} aria-hidden="true">•</span>
-            <span className={styles.part}>{p}</span>
+            <span className={styles.part}>{p.node}</span>
           </Fragment>
         ))}
       </div>

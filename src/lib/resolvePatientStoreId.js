@@ -4,6 +4,7 @@ const PATIENT_SLICES = [
   'awvMembers',
   'ccmWorklistMembers',
   'snpWorklistMembers',
+  'pharmacyWorklistMembers',
   'hedisMembers',
   'allPatients',
 ];

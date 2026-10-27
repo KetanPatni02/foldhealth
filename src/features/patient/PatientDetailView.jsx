@@ -92,12 +92,14 @@ function worklistMemberToPatient(m) {
 
 export function PatientDetailView() {
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
+  const activeSubnavList = useAppStore(s => s.activeSubnavList);
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
   const awvMembers = useAppStore(s => s.awvMembers);
   const cmpMembers = useAppStore(s => s.cmpMembers);
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers);
+  const pharmacyWorklistMembers = useAppStore(s => s.pharmacyWorklistMembers);
   const hedisMembers = useAppStore(s => s.hedisMembers);
   const allPatients = useAppStore(s => s.allPatients);
   const fetchPatients = useAppStore(s => s.fetchPatients);
@@ -106,6 +108,7 @@ export function PatientDetailView() {
   const fetchCmpMembers = useAppStore(s => s.fetchCmpMembers);
   const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchPharmacyWorklistMembers = useAppStore(s => s.fetchPharmacyWorklistMembers);
   const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
   const fetchOrgFeatures = useAppStore(s => s.fetchOrgFeatures);
@@ -122,6 +125,8 @@ export function PatientDetailView() {
   const ccmWorklistDidFetch = useAppStore(s => s.ccmWorklistDidFetch);
   const snpWorklistLoading = useAppStore(s => s.snpWorklistLoading);
   const snpWorklistDidFetch = useAppStore(s => s.snpWorklistDidFetch);
+  const pharmacyWorklistLoading = useAppStore(s => s.pharmacyWorklistLoading);
+  const pharmacyWorklistDidFetch = useAppStore(s => s.pharmacyWorklistDidFetch);
   const hedisLoading = useAppStore(s => s.hedisLoading);
   const hedisDidFetch = useAppStore(s => s.hedisDidFetch);
   const allPatientsLoading = useAppStore(s => s.allPatientsLoading);
@@ -258,6 +263,7 @@ export function PatientDetailView() {
     || worklistMemberToPatient(cmpMembers?.find(matchesId))
     || worklistMemberToPatient(ccmWorklistMembers?.find(matchesId))
     || worklistMemberToPatient(snpWorklistMembers?.find(matchesId))
+    || worklistMemberToPatient(pharmacyWorklistMembers?.find(matchesId))
     || worklistMemberToPatient(hedisMembers?.find(matchesId))
     || worklistMemberToPatient(allPatients?.find(matchesId));
 
@@ -291,6 +297,7 @@ export function PatientDetailView() {
     || slicePending(cmpMembers, cmpMembersDidFetch, cmpMembersLoading)
     || slicePending(ccmWorklistMembers, ccmWorklistDidFetch, ccmWorklistLoading)
     || slicePending(snpWorklistMembers, snpWorklistDidFetch, snpWorklistLoading)
+    || slicePending(pharmacyWorklistMembers, pharmacyWorklistDidFetch, pharmacyWorklistLoading)
     || slicePending(hedisMembers, hedisDidFetch, hedisLoading)
     || slicePending(allPatients, allPatientsDidFetch, allPatientsLoading)
   );
@@ -312,6 +319,7 @@ export function PatientDetailView() {
     if ((cmpMembers?.length || 0) === 0) fetchCmpMembers?.();
     if ((ccmWorklistMembers?.length || 0) === 0) fetchCcmWorklistMembers?.();
     if ((snpWorklistMembers?.length || 0) === 0) fetchSnpWorklistMembers?.();
+    if ((pharmacyWorklistMembers?.length || 0) === 0) fetchPharmacyWorklistMembers?.();
     if ((hedisMembers?.length || 0) === 0) fetchHedisMembers?.();
     if ((allPatients?.length || 0) === 0) fetchAllPatients?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -522,7 +530,8 @@ export function PatientDetailView() {
     <CcmTimerDockProvider>
     <div className={styles.wrapper}>
       <PatientP360Banner patient={patientWithAppStatus} />
-      <CcmTimerWidget patient={patient} />
+      {/* The pharmacy adherence workflow isn't time-billed. */}
+      {activeSubnavList !== 'Pharmacy' && <CcmTimerWidget patient={patient} />}
       <div className={styles.body} ref={bodyRef}>
         {leftMounted && (
           <>

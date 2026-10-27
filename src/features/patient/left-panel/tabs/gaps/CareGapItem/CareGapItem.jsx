@@ -1,4 +1,5 @@
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { Badge } from '../../../../../../components/Badge/Badge';
 import { profileRowClass, profileCellClass } from '../../../../../../components/ProfileTable/profileTableClasses';
 import styles from './CareGapItem.module.css';
 
@@ -27,7 +28,9 @@ export function CareGapItem({ item, selected, onSelect, onOpen }) {
         </div>
       </td>
       <td className={profileCellClass}>
-        <span className={styles.status}>{item.status}</span>
+        <span className={styles.status}>
+          {item.statusVariant ? <Badge variant={item.statusVariant} label={item.status} /> : item.status}
+        </span>
       </td>
       <td className={profileCellClass} onClick={e => e.stopPropagation()}>
         <div className={styles.moreBtn}>

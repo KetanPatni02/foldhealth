@@ -86,7 +86,7 @@ export const FILTER_DEFS = [
     opts: MEMBER_STATUS_FILTER_OPTIONS },
   { k: 'gapStatus',           label: 'Gap Status', type: 'multi',
     opts: ['Open', 'Engaged', 'Engaged Requires Follow-Up', 'Submitted', 'Completed',
-           'Closed - Do not call', 'Closed - UTR', 'Closed - Other'] },
+           'Closed - Data', 'Closed - Do not call', 'Closed - UTR', 'Closed - Other'] },
   { k: 'assignee',            label: 'Assignee', type: 'multi',
     dynamic: 'assignee', opts: [], searchable: true },
   { k: 'gender',              label: 'Gender', type: 'multi',

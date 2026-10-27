@@ -39,6 +39,23 @@ export const SAMPLE_CARE_PROGRAM_TEAMS = [
       teamMember('bhi-carlos', 'Carlos Ramirez', 'CR', 'Care Manager', 30),
     ],
   },
+  // Pharmacy coordinators, routed by IPA ownership, then health plan (the
+  // pharmacy worklist's Auto-assign). Same rows as pharmacy_care_team_seed.sql.
+  {
+    id: 'seed-pharm', name: 'Pharmacy Adherence Team', kind: 'care-program', teamType: 'PHARM',
+    allocatedTins: [], createdAt: '10/26/2026', createdBy: 'Richard Willson',
+    lastModifiedAt: '10/26/2026', lastModifiedBy: 'Richard Willson',
+    members: [
+      {
+        ...teamMember('pharm-priya', 'Priya Natarajan', 'PN', 'Care Manager', 100),
+        assignTo: [{ dim: 'IPA', value: 'Astrana IPA', pct: 60 }, { dim: 'Health Plan', value: 'SCAN Classic', pct: 20 }, { dim: 'Health Plan', value: 'Humana Gold Plus', pct: 20 }],
+      },
+      {
+        ...teamMember('pharm-marcus', 'Marcus Reyes', 'MR', 'Care Manager', 100),
+        assignTo: [{ dim: 'IPA', value: 'Prospect Medical Group', pct: 60 }, { dim: 'Health Plan', value: 'Aetna Medicare Advantage', pct: 20 }, { dim: 'Health Plan', value: 'Blue Shield Medicare', pct: 20 }],
+      },
+    ],
+  },
 ];
 
 export const CARE_TEAM_ROLES = [
@@ -101,7 +118,7 @@ export const SAMPLE_TIMER_SETTINGS = [
 
 /** The history entry a save adds (null when nothing changed). */
 export function timerChange(before, after, actor, at = new Date().toISOString()) {
-  const diff = (a = [], b = []) => b.filter(x => !a.includes(x));
+  const diff = (a = [], b = []) => { const as = new Set(a); return b.filter(x => !as.has(x)); };
   const added = { users: diff(before.userNames, after.userNames), roles: diff(before.roles, after.roles) };
   const removed = { users: diff(after.userNames, before.userNames), roles: diff(after.roles, before.roles) };
   const any = (g) => g.users.length > 0 || g.roles.length > 0;

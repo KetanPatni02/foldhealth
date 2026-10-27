@@ -13,22 +13,25 @@
 .menu {
   position: fixed;
   z-index: 9400;
-  padding: 8px;
+  padding: var(--space-2);
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-100);
   border-radius: 8px;
-  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-popover);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0.125rem;
+  /* Long lists (taller than the viewport) scroll inside the menu. */
+  overflow-y: auto;
 }
+.menu > * { flex-shrink: 0; }
 
 .row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   height: 32px;
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   border: none;
   background: none;
   border-radius: 4px;
@@ -75,7 +78,7 @@
 }
 
 .section {
-  padding: 8px 8px 4px;
+  padding: var(--space-2) var(--space-2) var(--space-1);
   font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-200);
@@ -86,7 +89,7 @@
 .divider {
   height: 1px;
   background: var(--neutral-100);
-  margin: 2px 0;
+  margin: 0.125rem 0;
   flex-shrink: 0;
 }
 
@@ -95,4 +98,35 @@
 .submenuChevron {
   transform: rotate(-90deg);
   flex-shrink: 0;
+}
+
+/* Searchable variant — sticky filter input pinned to the top of the menu
+   (same look as Select's searchable menu). */
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem var(--space-2);
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) var(--space-1);
+  position: sticky;
+  top: -8px;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  z-index: 1;
+}
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+}
+.searchInput::placeholder { color: var(--neutral-200); }
+.empty {
+  padding: 0.625rem var(--space-3);
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+  text-align: center;
 }

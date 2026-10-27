@@ -4,6 +4,7 @@
 // tokens re-theme for free.
 
 import { deriveDob } from '../../../lib/patientDob';
+import { mockFoldId } from '../../../data/mockFoldIds';
 
 // Local color map — edit these to change the palette of every dos-label pill at once.
 const C = {
@@ -187,8 +188,6 @@ const VISIT_TYPE_POOL = ['AWV', 'IPPE', 'TCM', 'Telehealth Visit', 'Annual Physi
 export const HCC_MEMBERS = MEMBERS_RAW.map((m, i) => {
   const pos = POS_MAP[m.vt] || { code: '', desc: m.vt || '' };
   const h = hashStr(m.name);
-  const left  = String(1000 + (h * 17) % 9000).padStart(4, '0');
-  const right = String(2500 + (h * 31) % 7500).padStart(4, '0');
   // Entry 0 keeps the record's own provider/POS + a stable display visit
   // type (member.visitType when set, e.g. AWV-route rows, else a pooled
   // clinical type). Entries 1+ vary provider/POS/visit-type/ICD-count so
@@ -218,7 +217,7 @@ export const HCC_MEMBERS = MEMBERS_RAW.map((m, i) => {
   return {
     ...m,
     id: `hcc-${i + 1}`,
-    memberId: `M-${left}-${right}`,     // stable per NAME — see hashStr comment above
+    memberId: mockFoldId(m.name),
     language: 'en',
     dob: deriveDob(m.age, m.name),      // mm/dd/yyyy, stable per NAME
     dos_list,

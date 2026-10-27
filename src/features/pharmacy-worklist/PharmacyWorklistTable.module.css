@@ -1,0 +1,34 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+
+.tableScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  overscroll-behavior: none;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: max-content;
+}
+
+.emptySearch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16) var(--space-6);
+  gap: var(--space-3);
+  color: var(--neutral-300);
+}
+.emptyTitle { font-size: var(--font-lg); font-weight: 500; color: var(--neutral-400); margin: 0; }
+.emptyText { font-size: var(--font-base); margin: 0; text-align: center; max-width: 320px; }
+.titleDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }

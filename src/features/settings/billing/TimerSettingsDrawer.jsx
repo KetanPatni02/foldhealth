@@ -23,7 +23,7 @@ import styles from './CareProgramBilling.module.css';
 
 const REMOVE_MS = 220;
 const todayLabel = () => new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-const sameSet = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+const sameSet = (a, b) => { const bs = new Set(b); return a.length === b.length && a.every(x => bs.has(x)); };
 const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
@@ -34,7 +34,7 @@ const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 function lostAccess(before, after) {
   if (before.access === 'all' && after.access !== 'all') return 'Users outside the care program team';
   if (before.access !== 'team_plus') return null;
-  const gone = (a = [], b = []) => a.filter(x => !b.includes(x));
+  const gone = (a = [], b = []) => { const bs = new Set(b); return a.filter(x => !bs.has(x)); };
   const users = gone(before.userNames, after.userNames);
   const roles = gone(before.roles, after.roles);
   if (!users.length && !roles.length) return null;
@@ -92,6 +92,7 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
   const [pickerTab, setPickerTab] = useState('users');
   const [tab, setTab] = useState('all');
   const [removing, setRemoving] = useState([]);
+  const removingSet = new Set(removing);
   // Keys picked in this session, oldest first, so the list can show the latest on top.
   const [recent, setRecent] = useState([]);
   const [closing, setClosing] = useState(false);
@@ -184,7 +185,7 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
   };
   // "Save without Removing": keep everyone who had the timer, save the rest.
   const commitKeepingAccess = () => {
-    const union = (a = [], b = []) => [...a, ...b.filter(x => !a.includes(x))];
+    const union = (a = [], b = []) => { const as = new Set(a); return [...a, ...b.filter(x => !as.has(x))]; };
     if (setting.access === 'all') return commit({ access: 'all', userNames: [], roles: [] });
     return commit({
       access: setting.access === 'team_plus' ? 'team_plus' : next.access,
@@ -302,7 +303,7 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
             </div>
           )}
           {added.map(o => (
-            <div key={o.key} className={[styles.option, o.kind === 'team' ? styles.optionStatic : '', removing.includes(o.key) ? styles.optionLeaving : ''].filter(Boolean).join(' ')}>
+            <div key={o.key} className={[styles.option, o.kind === 'team' ? styles.optionStatic : '', removingSet.has(o.key) ? styles.optionLeaving : ''].filter(Boolean).join(' ')}>
               {who(o)}
               {/* Team members come from the care program team; they're managed there.
                   The tag only tells them apart in the mixed All tab. */}
