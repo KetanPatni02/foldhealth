@@ -44,6 +44,24 @@ describe('evaluateRule', () => {
     expect(evaluateRule(rule([{ type: 'assessment', question: 'phq2', op: '>=', value: 3 }]), inputs, today).matched).toBe(true);
   });
 
+  it('reads urine ACR and PHQ-9 scores from clinical events', () => {
+    const scored = buildRuleInputs({
+      clinicalEvents: [
+        { event_type: 'lab', display: 'Albumin/Creatinine ratio, urine', numeric_value: '42', unit: 'mg/g', effective_date: '2026-10-14' },
+        { event_type: 'prom', display: 'PHQ-9 depression screening', numeric_value: '14', effective_date: '2025-11-12' },
+        { event_type: 'prom', display: 'PHQ-9 depression screening', numeric_value: '7', effective_date: '2026-10-14' },
+      ],
+    });
+    const acr = evaluateRule(rule([{ type: 'lab', lab: 'uacr', op: '>', value: 30, withinDays: 180 }]), scored, today);
+    expect(acr.matched).toBe(true);
+    expect(acr.reasons[0].text).toBe('Urine albumin-to-creatinine ratio 42 mg/g on 10/14/2026 is above 30');
+    // The latest PHQ-9 counts, not the older 14.
+    const phq = evaluateRule(rule([{ type: 'score', score: 'phq9', op: '>=', value: 10, withinDays: 90 }]), scored, today);
+    expect(phq.matched).toBe(false);
+    expect(phq.reasons[0].text).toBe('PHQ-9 7 on 10/14/2026 is not at or above 10');
+    expect(evaluateRule(rule([{ type: 'score', score: 'phq9', op: '>=', value: 10 }]), inputs, today).reasons[0].text).toBe('No PHQ-9 score');
+  });
+
   it('any vs all, and never matches with no conditions', () => {
     const conds = [{ type: 'condition', value: 'Diabetes' }, { type: 'condition', value: 'COPD' }];
     expect(evaluateRule(rule(conds), inputs, today).matched).toBe(false);
@@ -64,10 +82,12 @@ describe('rule plumbing', () => {
     expect(ruleProblem({ name: 'x', conditions: [{ type: 'lab', lab: 'hba1c', value: '' }] })).toMatch(/threshold/);
     expect(ruleProblem({ name: 'x', conditions: [{ type: 'condition', value: 'Diabetes' }], templateIds: [] })).toMatch(/template/);
     expect(ruleProblem(rule([{ type: 'condition', value: 'Diabetes' }]))).toBeNull();
+    expect(ruleProblem({ name: 'x', conditions: [{ type: 'score', score: 'phq9', value: '' }] })).toMatch(/score/);
   });
 
   it('describes conditions and maps rows', () => {
     expect(describeCondition({ type: 'lab', lab: 'hba1c', op: '>', value: 9, withinDays: 365 })).toBe('HbA1c > 9 % (last 365 days)');
+    expect(describeCondition({ type: 'score', score: 'phq9', op: '>=', value: 10, withinDays: 90 })).toBe('PHQ-9 >= 10 (last 90 days)');
     expect(mapAutomationRuleRow({ id: 'x', name: 'N', program_codes: ['SNP'], conditions: [{ type: 'condition', value: 'D' }], template_ids: ['t'], enabled: false }))
       .toMatchObject({ id: 'x', programCodes: ['SNP'], enabled: false, match: 'all', reviewer: null });
   });

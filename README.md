@@ -37,6 +37,17 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Care program automations (Settings > Automations).** Enrollment
+  auto-apply: clinical criteria can now check urine ACR and assessment
+  scores (PHQ-9), and a review task with no reviewer or program owner goes
+  to the Care Management pool. New GBI auto-status: a "care program status
+  changes" trigger and an "Update care plan item statuses" action move every
+  open goal, intervention and barrier when a program goes Unable to Reach,
+  Paused, Completed or Closed (default: UTR → UTR, reason "Program UTR";
+  a program-type automation overrides the account default). New UTR GBI
+  status and `status_reason` (`gbi_status_reason_migration.sql`), shown on
+  hover. Seeds: `seed_enrollment_automations.sql`,
+  `seed_program_status_automations.sql`.
 - **Design Signoff.** A "Signoff" item above Help in the nav bar opens the
   Design Signoff drawer: an aligned table of what we're shipping (Feature,
   Reviewers, Status, Actions), grouped by day and sorted

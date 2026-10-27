@@ -131,7 +131,7 @@ export function GoalLinkedInterventionsList({
               )}
               <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />
               <GbiStatusButton
-                value={i.status || 'Not Started'}
+                value={i.status || 'Not Started'} reason={i.statusReason}
                 disabled={!canEdit}
                 onOpen={(rect) => onStatusMenu?.({ kind: 'intv', item: i, rect })}
               />

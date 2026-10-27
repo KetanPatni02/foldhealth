@@ -261,6 +261,12 @@ const aiToRow = (x) => {
   };
 };
 
+// Why an item holds its status (e.g. 'Program UTR' when a program status
+// automation set it). Only written back when the row was read with the
+// column, so saves keep working before gbi_status_reason_migration.sql runs.
+const reasonFromRow = (row) => ('status_reason' in row ? { statusReason: row.status_reason || '' } : {});
+const reasonToRow = (x) => (x.statusReason !== undefined ? { status_reason: x.statusReason || null } : {});
+
 function mapPatientCarePlanGoalRow(row) {
   return {
     id: row.id,
@@ -284,6 +290,7 @@ function mapPatientCarePlanGoalRow(row) {
     trend: row.trend || '-',
     status: row.status || 'Not Started',
     progress: row.progress ?? 0,
+    ...reasonFromRow(row),
     updatedBy: row.updated_by || '',
     links: 0,
     sortOrder: row.sort_order ?? 0,
@@ -316,6 +323,7 @@ function patientCarePlanGoalToRow(g, planId) {
     trend: g.trend || '-',
     status: g.status || 'Not Started',
     progress: Number.isFinite(g.progress) ? g.progress : 0,
+    ...reasonToRow(g),
     updated_by: g.updatedBy || null,
     sort_order: g.sortOrder ?? 0,
     ...aiToRow(g),
@@ -367,6 +375,7 @@ function mapPatientCarePlanInterventionRow(row) {
     assignee: { name: row.assignee_name || 'Unassigned', initials: row.assignee_initials || '' },
     status: row.status || 'Not Started',
     adherence: row.adherence || '-',
+    ...reasonFromRow(row),
     links: 0,
     sortOrder: row.sort_order ?? 0,
     updatedBy: row.updated_by || '',
@@ -391,6 +400,7 @@ function patientCarePlanInterventionToRow(i, planId) {
     assignee_initials: i.assignee?.initials || '',
     status: i.status || 'Not Started',
     adherence: i.adherence || '-',
+    ...reasonToRow(i),
     updated_by: i.updatedBy || null,
     sort_order: i.sortOrder ?? 0,
     ...aiToRow(i),
@@ -413,6 +423,7 @@ function mapPatientCarePlanBarrierRow(row, goalIdsFromJoin = null) {
     title: row.title || '',
     description: row.description || '',
     status: row.status || 'Not Started',
+    ...reasonFromRow(row),
     priority: row.priority || 'medium',
     sortOrder: row.sort_order ?? 0,
     ...aiFromRow(row),
@@ -429,6 +440,7 @@ function patientCarePlanBarrierToRow(b, planId) {
     title: (b.title || '').trim(),
     description: b.description || '',
     status: b.status || 'Not Started',
+    ...reasonToRow(b),
     priority: b.priority || 'medium',
     sort_order: b.sortOrder ?? 0,
     ...aiToRow(b),

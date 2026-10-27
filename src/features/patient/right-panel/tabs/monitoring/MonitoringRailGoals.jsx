@@ -116,7 +116,7 @@ export function MonitoringRailGoals({ patient }) {
               </button>
               <div className={styles.statusCell} onClick={(e) => e.stopPropagation()}>
                 <GbiStatusButton
-                  value={g.status}
+                  value={g.status} reason={g.statusReason}
                   badgeSize="S"
                   onOpen={(rect) => setStatusMenu({ item: g, rect })}
                 />

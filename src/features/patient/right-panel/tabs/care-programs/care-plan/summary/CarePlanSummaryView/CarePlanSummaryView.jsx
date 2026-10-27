@@ -489,7 +489,7 @@ function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, programOverlap
             )}
             <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
               <GbiStatusButton
-                value={g.status}
+                value={g.status} reason={g.statusReason}
                 disabled={!onStatusMenu}
                 onOpen={rect => onStatusMenu?.({ kind: 'goal', item: g, rect })}
               />
@@ -627,7 +627,7 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
               {!isHidden('status') && (
               <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
                 <GbiStatusButton
-                  value={i.status}
+                  value={i.status} reason={i.statusReason}
                   disabled={!onStatusMenu}
                   onOpen={rect => onStatusMenu?.({ kind: 'intv', item: i, rect })}
                 />
@@ -664,7 +664,7 @@ function BarrierRow({ b, onOpen, onStatusMenu, overlap }) {
       </td>
       <td className={sharedRow.barrierStatusTd} onClick={e => e.stopPropagation()}>
         <GbiStatusButton
-          value={b.status}
+          value={b.status} reason={b.statusReason}
           disabled={!onStatusMenu}
           onOpen={rect => onStatusMenu?.({ kind: 'barrier', item: b, rect })}
         />

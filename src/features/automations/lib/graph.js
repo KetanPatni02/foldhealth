@@ -16,6 +16,7 @@
 import { nodeDef, OUTCOME_SETS, CHANNELS, formatDuration, triggerDef } from './catalog';
 import { summarizeRules } from './conditionFields';
 import { describeCondition } from './clinicalCriteria';
+import { GBI_KINDS, programStatusLabel } from './programStatusRules';
 
 let seq = 0;
 export const newNodeId = () => `n${Date.now().toString(36)}${(seq++).toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -232,6 +233,13 @@ export function nodeSummary(node, ctx = {}) {
     case 'attachCarePlan': return (c.templateNames || []).length
       ? `Attach ${c.templateNames.map(q).join(', ')} in draft; ${c.reviewer?.name || 'the program assignee'} reviews`
       : null;
+    case 'setGbiStatus': {
+      if (!c.toStatus) return null;
+      const kinds = c.kinds?.length && c.kinds.length < GBI_KINDS.length
+        ? GBI_KINDS.filter(k => c.kinds.includes(k.key)).map(k => k.label.toLowerCase()).join(' and ')
+        : 'goals, interventions and barriers';
+      return `Set open ${kinds} to ${c.toStatus}${c.reason ? `, reason "${c.reason}"` : ''}`;
+    }
     case 'delay': return `After ${formatDuration(c.amount, c.unit)}`;
     case 'repeat': return `Every ${formatDuration(c.every, c.unit)}, up to ${c.times} times`;
     case 'microAutomation': return c.title || 'Micro automation';
@@ -245,6 +253,10 @@ export function nodeSummary(node, ctx = {}) {
       : null;
     default:
       if (nodeDef(node?.type)?.kind === 'condition') return summarizeRules(c.rules);
+      if (node?.id === 'trigger' && node.type === 'careProgramStatusChanged') {
+        const to = (c.programStatuses || []).map(programStatusLabel).join(' or ');
+        return `${to ? `Moves to ${to}` : 'Pick a status'} · ${c.programCodes?.length ? c.programCodes.join(', ') : 'All programs (account default)'}`;
+      }
       if (node?.id === 'trigger' && c.programCodes?.length) return `Programs: ${c.programCodes.join(', ')}`;
       return c.summary || null;
   }
@@ -282,7 +294,7 @@ export function findDuplicates(graph) {
 const FIELD_LABEL = {
   templateId: 'Email template', message: 'Message', script: 'Call script', formIds: 'Form',
   contentTitle: 'Education content', labTest: 'Lab test', title: 'Title', description: 'Description',
-  assignee: 'Assigned To', priority: 'Priority', templateIds: 'Care plan templates',
+  assignee: 'Assigned To', priority: 'Priority', templateIds: 'Care plan templates', toStatus: 'Status',
   amount: 'Wait time', unit: 'Unit', every: 'Interval', times: 'Times',
 };
 const empty = (v) => v == null || v === '' || (Array.isArray(v) && v.length === 0) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);

@@ -7,6 +7,8 @@ import { useAppStore } from '../../../store/useAppStore';
 import { MERGE_TOKENS } from '../../email-builder/mergeTags';
 import { LAB_CATALOG } from '../lib/clinicalCriteria';
 import { DELAY_UNITS } from '../lib/catalog';
+import { GBI_KINDS } from '../lib/programStatusRules';
+import { BARRIER_STATUSES, gbiStatusMeta } from '../../patient/right-panel/tabs/care-programs/care-plan/lib/gbiStatus';
 import { EmailTemplateField } from './EmailTemplateField';
 import { PanelRow, PanelSection } from './EditPanel';
 import styles from './AutomationBuilder.module.css';
@@ -20,7 +22,7 @@ const DUE = [
   { value: '7', label: '1 week after' },
 ];
 const APPOINTMENT_TYPES = ['a first virtual visit', 'a virtual visit', 'an in-person visit', 'a preventive screening', 'a preventive visit'].map(v => ({ value: v, label: v.replace(/^an? /, '').replace(/^./, c => c.toUpperCase()) }));
-const LAB_TESTS = [...LAB_CATALOG.map(l => l.label), 'Lipid panel', 'Comprehensive metabolic panel', 'Urine albumin-to-creatinine ratio'].map(v => ({ value: v, label: v }));
+const LAB_TESTS = [...new Set([...LAB_CATALOG.map(l => l.label), 'Lipid panel', 'Comprehensive metabolic panel', 'Urine albumin-to-creatinine ratio'])].map(v => ({ value: v, label: v }));
 const TOKEN_OPTIONS = MERGE_TOKENS.filter(t => t.group === 'Patient' || t.group === 'Care team').map(t => ({ value: t.key, label: t.label }));
 
 /** A message body with an "insert merge tag" picker (SMS, push, IVR, preferred channel). */
@@ -101,6 +103,8 @@ export function ActionEditor({ type, config, onChange, errors = {}, onEditTempla
       return <TaskFields config={config} onChange={set} errors={errors} />;
     case 'attachCarePlan':
       return <CarePlanFields config={config} onChange={set} errors={errors} />;
+    case 'setGbiStatus':
+      return <GbiStatusFields config={config} onChange={set} errors={errors} />;
     case 'microAutomation':
       return (
         <PanelSection title="Micro automation">
@@ -239,7 +243,7 @@ function CarePlanFields({ config, onChange, errors }) {
       </PanelRow>
       <PanelRow label="Review task goes to">
         <Select
-          options={[{ value: '', label: 'Program assignee (unassigned if none)' }, ...(users || []).map(u => ({ value: u.name, label: u.name }))]}
+          options={[{ value: '', label: 'Program assignee, else the Care Management pool' }, ...(users || []).map(u => ({ value: u.name, label: u.name }))]}
           value={config.reviewer?.name || ''}
           onChange={v => {
             const u = (users || []).find(x => x.name === v);
@@ -248,6 +252,41 @@ function CarePlanFields({ config, onChange, errors }) {
           searchable
         />
       </PanelRow>
+    </PanelSection>
+  );
+}
+
+// Every open goal / intervention / barrier in the program moves to one status.
+// Items already closed (Met, Not Met, Resolved, Discontinued, Not Applicable) keep theirs.
+const GBI_STATUS_OPTIONS = BARRIER_STATUSES.map(v => ({ value: v, label: v, icon: gbiStatusMeta(v).icon }));
+const KIND_OPTIONS = GBI_KINDS.map(k => ({ value: k.key, label: k.label }));
+
+function GbiStatusFields({ config, onChange, errors }) {
+  return (
+    <PanelSection title="Care plan items">
+      <PanelRow label="Apply to">
+        <Select
+          options={KIND_OPTIONS}
+          value={config.kinds?.length ? config.kinds : GBI_KINDS.map(k => k.key)}
+          onChange={v => onChange({ kinds: v?.length ? v : GBI_KINDS.map(k => k.key) })}
+          multiple
+          checkboxes
+          badges
+        />
+      </PanelRow>
+      <PanelRow label="Set open items to" required error={errors.toStatus}>
+        <Select
+          options={GBI_STATUS_OPTIONS}
+          value={config.toStatus || ''}
+          onChange={v => onChange({ toStatus: v })}
+          placeholder="Pick a status"
+          variant={errors.toStatus ? 'error' : 'default'}
+        />
+      </PanelRow>
+      <PanelRow label="Reason">
+        <Input value={config.reason || ''} onChange={e => onChange({ reason: e.target.value })} placeholder="e.g. Program UTR" aria-label="Reason" />
+      </PanelRow>
+      <p className={styles.panelHint}>Items already Met, Not Met, Resolved, Discontinued or Not Applicable keep their status.</p>
     </PanelSection>
   );
 }

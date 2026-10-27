@@ -60,7 +60,7 @@ export function GoalLinkedBarriersList({
               </>
             )}
             <GbiStatusButton
-              value={b.status || 'Not Started'}
+              value={b.status || 'Not Started'} reason={b.statusReason}
               disabled={!canEdit}
               onOpen={(rect) => onStatusMenu?.({ kind: 'barrier', item: b, rect })}
             />

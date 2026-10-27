@@ -122,7 +122,7 @@ export function CarePlanCard({ patientId, actions }) {
                     trailing={(
                       <span className={`${styles.statusSlotWide} ${styles.aboveStretch}`}>
                         <GbiStatusButton
-                          value={item.status || 'Not Started'}
+                          value={item.status || 'Not Started'} reason={item.statusReason}
                           disabled={!item.id || !item.program?.id}
                           onOpen={(rect) => setStatusMenu({ type: k, item, rect })}
                         />

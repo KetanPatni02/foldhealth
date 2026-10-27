@@ -268,7 +268,7 @@ export function CarePlanGoalsTable({
         )}
         <td className={styles.statusTd} onClick={e => e.stopPropagation()}>
           <GbiStatusButton
-            value={g.status}
+            value={g.status} reason={g.statusReason}
             disabled={!canEdit}
             onOpen={rect => onStatusMenu({ kind: 'goal', item: g, rect })}
           />
