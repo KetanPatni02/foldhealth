@@ -235,8 +235,9 @@ export function nodeSummary(node, ctx = {}) {
       : null;
     case 'setGbiStatus': {
       if (!c.toStatus) return null;
-      const kinds = c.kinds?.length && c.kinds.length < GBI_KINDS.length
-        ? GBI_KINDS.filter(k => c.kinds.includes(k.key)).map(k => k.label.toLowerCase()).join(' and ')
+      const picked = new Set(c.kinds || []);
+      const kinds = picked.size && picked.size < GBI_KINDS.length
+        ? GBI_KINDS.filter(k => picked.has(k.key)).map(k => k.label.toLowerCase()).join(' and ')
         : 'goals, interventions and barriers';
       return `Set open ${kinds} to ${c.toStatus}${c.reason ? `, reason "${c.reason}"` : ''}`;
     }

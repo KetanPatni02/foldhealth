@@ -630,15 +630,17 @@ export function createAutomationsSlice(set, get) {
         if (!groups.has(k)) groups.set(k, []);
         groups.get(k).push(t);
       }
-      for (const list of groups.values()) {
+      // Groups touch disjoint rows, so they write concurrently.
+      const written = await Promise.all([...groups.values()].map(async (list) => {
         const { kind, to, reason } = list[0];
         const base = { status: to, updated_at: nowIso(), ...(kind === 'barrier' ? {} : { updated_by: 'Automations' }) };
         const ids = list.map(t => t.id);
         let { error } = await supabase.from(TABLES[kind]).update({ ...base, status_reason: reason || null }).in('id', ids);
         if (error && /status_reason/.test(error.message || '')) ({ error } = await supabase.from(TABLES[kind]).update(base).in('id', ids));
-        if (error) { console.warn('runProgramStatusRules:', error.message); continue; }
-        changed.push(...list);
-      }
+        if (error) { console.warn('runProgramStatusRules:', error.message); return []; }
+        return list;
+      }));
+      for (const list of written) changed.push(...list);
 
       if (changed.length) {
         get().logCarePlanAudit(patientId, program, changed.map(t => ({
@@ -666,11 +668,11 @@ export function createAutomationsSlice(set, get) {
         get().showToast?.(`${changed.length} open care plan item${changed.length === 1 ? '' : 's'} set to ${to}`);
       }
 
-      // A run per automation that applied, with what it changed.
+      // A run per automation that applied, with what it changed (one record each, written concurrently).
       const memberName = get().patients.find(p => String(p.id) === String(patientId))?.name || String(patientId);
-      for (const rule of rules) {
+      await Promise.all(rules.map(async (rule) => {
         const automation = get().automations.find(a => a.id === rule.id);
-        if (!automation) continue;
+        if (!automation) return;
         const mine = changed.filter(t => t.ruleId === rule.id);
         const at = nowIso();
         const path = {
@@ -691,7 +693,7 @@ export function createAutomationsSlice(set, get) {
           members: [{ patientId: String(patientId), patientName: memberName, status: 'completed', failingReason: null, minutesSaved: run.minutesSaved, startedAt: at, finishedAt: at, path }],
           messages: [],
         });
-      }
+      }));
       return { changed };
     },
   };
