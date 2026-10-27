@@ -286,12 +286,17 @@ function PharmacyGapDrawerBody({ target, row }) {
 
         <div className={styles.suggestSection}>
           {picked.length > 0 && (
-            <div className={local.actionRow}>
-              <Button variant="primary" size="L" onClick={openOutreach}>Add Outreach</Button>
-              <Button variant="tertiary" size="L" onClick={() => setWorkspace('verify')}>Verify with Pharmacy</Button>
-              <Button variant="tertiary" size="L" onClick={() => setWorkspace('barriers')}>Update Barriers</Button>
-              {escalating.length > 0 && <Button variant="tertiary" size="L" leadingIcon="solar:stethoscope-linear" onClick={openOutreach}>Call Prescriber</Button>}
-            </div>
+            <>
+              <div className={styles.suggestRow}>
+                <Icon name="custom:ai" size={14} color="var(--primary-300)" /> Suggested Actions
+              </div>
+              <div className={local.actionRow}>
+                <Button variant="primary" size="L" onClick={openOutreach}>Add Outreach</Button>
+                <Button variant="tertiary" size="L" onClick={() => setWorkspace('verify')}>Verify with Pharmacy</Button>
+                <Button variant="tertiary" size="L" onClick={() => setWorkspace('barriers')}>Update Barriers</Button>
+                {escalating.length > 0 && <Button variant="tertiary" size="L" leadingIcon="solar:stethoscope-linear" onClick={openOutreach}>Call Prescriber</Button>}
+              </div>
+            </>
           )}
           {prompts.map(({ g, escalate, reminder }) => (
             <div key={g.code}>

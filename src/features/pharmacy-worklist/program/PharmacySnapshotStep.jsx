@@ -68,8 +68,8 @@ function Projected({ on, children }) {
 }
 
 // A value that needs action (PDC below 80%, a fail date within 14 days, an
-// overdue fill on an open gap) uses the shared alert style: red, dashed
-// underline, and why on hover. Otherwise the value is plain, with the short
+// overdue fill on an open gap) uses the shared alert style: red, with a
+// dashed underline and why on hover. Otherwise the value is plain, with the short
 // projected hint when it rests on a fill not yet claimed.
 const alertSources = (g) => ({ ...g, pdcSource: null, failDateSource: null, nextFillDueSource: null });
 

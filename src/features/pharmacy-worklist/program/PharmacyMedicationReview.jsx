@@ -101,7 +101,7 @@ function RecentFillChip({ date, label, onChange }) {
   return (
     <>
       <button type="button" className={styles.cChip} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())} aria-haspopup="dialog" aria-label={`${label}: ${date || 'not set'}`}>
-        <Badge tone="white" size="S" label={date || 'Set date'} className={date ? undefined : styles.cChipEmpty} />
+        <Badge tone="white" size="M" label={date || 'Set date'} className={date ? undefined : styles.cChipEmpty} />
       </button>
       {rect && (
         <DatePickerPopover
@@ -404,9 +404,27 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                   <span className={styles.cPick} onClick={e => e.stopPropagation()}>
                     {!dc && <Checkbox checked={picked.has(pickKey(x.code, d.id))} onCheckedChange={() => togglePick(pickKey(x.code, d.id))} aria-label={`Select ${d.name}`} />}
                   </span>
-                  <span className={styles.cRx}>{d.name} {d.strength} {d.unit}</span>
-                  <span>{d.lastFill || '—'}</span>
-                  <span onClick={e => e.stopPropagation()}>
+                  {/* Rx and Recent Fill stack their details under them, so each
+                      is one block centered in the row like the other cells. */}
+                  <span className={styles.cStack}>
+                    <span className={styles.cRx}>{d.name} {d.strength} {d.unit}</span>
+                    <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
+                      {supply.length > 0 && <span className={styles.cMetaLine}>{supply.join(' · ')}</span>}
+                      {source.length > 0 && (
+                        <Tooltip
+                          placement="bottom"
+                          align="left"
+                          maxWidth={260}
+                          label={<span className={styles.cSource}>{source.map(([k, v]) => <span key={k}>{k}: {v}</span>)}</span>}
+                        >
+                          <button type="button" className={styles.cInfoLink} aria-label={source.map(([k, v]) => `${k}: ${v}`).join(', ')}>Info</button>
+                        </Tooltip>
+                      )}
+                      {d.nonAdherenceReason && <span className={`${styles.cMetaLine} ${styles.cBarrierText}`}>Barrier: {d.nonAdherenceReason}</span>}
+                    </span>
+                  </span>
+                  <span className={styles.cValue}>{d.lastFill || '—'}</span>
+                  <span className={styles.cStack} onClick={e => e.stopPropagation()}>
                     {dc ? (d.recentFill || '—') : (
                       <RecentFillChip
                         date={d.recentFill}
@@ -414,22 +432,15 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                         onChange={(mdy) => setRecentFill(member.id, x.code, d.id, mdy || null)}
                       />
                     )}
-                  </span>
-                  <span className={riskClass(d.measure, fillDueTone(d.nextFill))}>{d.nextFill || '—'}</span>
-                  <span className={riskClass(d.measure, pdcTone(d.pdc))}>{d.pdc == null ? '—' : `${d.pdc}%`}</span>
-                  <span className={styles.cActions} onClick={e => e.stopPropagation()}>
-                    {source.length > 0 && (
-                      <Tooltip
-                        placement="bottom"
-                        align="right"
-                        maxWidth={260}
-                        label={<span className={styles.cSource}>{source.map(([k, v]) => <span key={k}>{k}: {v}</span>)}</span>}
-                      >
-                        <span className={styles.cNote} aria-label={source.map(([k, v]) => `${k}: ${v}`).join(', ')}>
-                          <Icon name="solar:info-circle-linear" size={16} color="var(--neutral-300)" />
-                        </span>
-                      </Tooltip>
+                    {match && (
+                      <span className={styles.cMatch}>
+                        <FillMatchText match={match} onRework={() => openDrug(d.id, 'claims')} />
+                      </span>
                     )}
+                  </span>
+                  <span className={`${styles.cValue} ${riskClass(d.measure, fillDueTone(d.nextFill))}`}>{d.nextFill || '—'}</span>
+                  <span className={`${styles.cValue} ${riskClass(d.measure, pdcTone(d.pdc))}`}>{d.pdc == null ? '—' : `${d.pdc}%`}</span>
+                  <span className={styles.cActions} onClick={e => e.stopPropagation()}>
                     {note && (
                       <Tooltip label={note} placement="bottom" maxWidth={260}>
                         <span className={styles.cNote} aria-label="Has a note"><Icon name="solar:notes-linear" size={16} color="var(--neutral-300)" /></span>
@@ -437,17 +448,6 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                     )}
                     <ActionButton icon="solar:eye-linear" size="S" tooltip="View details" onClick={() => openDrug(d.id)} />
                   </span>
-                  {/* Second line: the drug's details under Rx, the fill's
-                      claim match under Recent Fill. */}
-                  <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
-                    {supply.length > 0 && <span className={styles.cMetaLine}>{supply.join(' · ')}</span>}
-                    {d.nonAdherenceReason && <span className={`${styles.cMetaLine} ${styles.cBarrierText}`}>Barrier: {d.nonAdherenceReason}</span>}
-                  </span>
-                  {match && (
-                    <span className={styles.cMatch} onClick={e => e.stopPropagation()}>
-                      <FillMatchText match={match} onRework={() => openDrug(d.id, 'claims')} />
-                    </span>
-                  )}
                 </div>
               );
             })}
@@ -468,7 +468,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.toolbar}>
+      <div className={`${styles.toolbar} ${compact ? styles.cToolbar : ''}`}>
         {activeKeys(all).length > 0 && (
           <label className={styles.checkRow}>
             <Checkbox
@@ -479,7 +479,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
             <span>Select all medications</span>
           </label>
         )}
-        <span className={styles.count}>{all.length} gap{all.length === 1 ? '' : 's'} · {medCount} medication{medCount === 1 ? '' : 's'}</span>
+        {!compact && <span className={styles.count}>{all.length} gap{all.length === 1 ? '' : 's'} · {medCount} medication{medCount === 1 ? '' : 's'}</span>}
       </div>
       {!compact && (
         <p className={styles.helper}>

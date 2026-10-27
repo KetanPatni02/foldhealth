@@ -234,10 +234,13 @@
 .cCount { margin-left: auto; font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
 
 /* Checkbox, Rx, Last Fill, Recent Fill, Next Fill, PDC, Barrier, actions. */
+/* Select all lines up with the row checkboxes and the Rx names below. */
+.cToolbar { padding-inline: var(--space-1); }
+.cToolbar .checkRow { gap: var(--space-3); }
 .cTable { display: flex; flex-direction: column; }
 .cRow {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) 88px 100px 88px 44px 76px;
+  grid-template-columns: 20px minmax(0, 1fr) 88px 100px 88px 44px 52px;
   column-gap: var(--space-2);
   align-items: center;
   padding: var(--space-2) var(--space-1);
@@ -247,47 +250,54 @@
 }
 .cHead {
   padding-block: var(--space-1);
+  background: var(--neutral-50);
   border-bottom: 0.5px solid var(--neutral-150);
   font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-300);
   white-space: nowrap;
 }
-.cMedRow { border-bottom: 0.5px solid var(--neutral-150); cursor: pointer; row-gap: 0.125rem; }
+.cMedRow { border-bottom: 0.5px solid var(--neutral-150); cursor: pointer; }
 .cMedRow:hover { background: var(--neutral-25); }
+/* The gap title's stroke below already separates groups. */
+.cMedRow:last-child { border-bottom: none; }
 .cDiscontinued { color: var(--neutral-300); }
 .cPick { display: inline-flex; }
+/* Last Fill, Next Fill and PDC read grey unless flagged red for action. */
+.cValue:not(.toneError) { color: var(--neutral-300); }
 .cRx { min-width: 0; overflow-wrap: anywhere; }
 /* Recent Fill: a light chip that opens the calendar. */
 .cChip { border: none; background: none; padding: 0; cursor: pointer; display: inline-flex; }
 .cChip:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; border-radius: 4px; }
 .cChipEmpty { color: var(--neutral-300); }
-/* Note and details, fixed at the right of the first line. */
+/* Note and details, fixed at the right of the row. */
 .cActions { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
 .cNote { display: inline-flex; }
-/* Prescriber and pharmacy in the info tooltip, one per line. */
+/* Info under the Rx details: prescriber and pharmacy on hover, one per line. */
+.cInfoLink {
+  border: none; background: none; padding: 0; cursor: default;
+  font-size: var(--font-md); color: var(--primary-300);
+}
+.cInfoLink:hover { text-decoration: underline; }
 .cSource { display: flex; flex-direction: column; gap: 0.125rem; }
-/* Under Rx and Last Fill: quantity and supply, then a barrier if any. One
-   line each, cut short rather than wrapped. */
+/* Rx or Recent Fill with its details stacked below, centered in the row. */
+.cStack { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
+/* Under the drug name: quantity and supply, Info, then a barrier if any.
+   One line each, cut short rather than wrapped. */
 .cMeta {
-  grid-column: 2 / 4;
-  grid-row: 2;
-  align-self: start;
-  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 0.125rem;
   font-size: var(--font-md);
   line-height: var(--leading-tight);
   color: var(--neutral-300);
   cursor: default;
 }
-.cMetaLine { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Second line under Recent Fill: the fill's claim match. */
+.cMetaLine { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Under the Recent Fill chip: the fill's claim match. */
 .cMatch {
-  grid-column: 4;
-  grid-row: 2;
-  align-self: start;
   font-size: var(--font-md);
   line-height: var(--leading-tight);
   cursor: default;

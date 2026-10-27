@@ -40,8 +40,8 @@ export function DateWithDays({ date, alert = false }) {
 function FlagValue({ className, tone, hint, children }) {
   if (!tone) return <span className={className}>{children}</span>;
   return (
-    <Tooltip label={hint} placement="bottom">
-      <span className={`${className} ${tone === 'projected' ? styles.projected : styles.alert}`}>{children}</span>
+    <Tooltip label={hint} placement="bottom" maxWidth={220}>
+      <span className={`${className} ${tone === 'projected' ? styles.projected : styles.alert}`} data-mark={tone}>{children}</span>
     </Tooltip>
   );
 }
