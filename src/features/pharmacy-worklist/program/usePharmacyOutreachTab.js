@@ -35,7 +35,9 @@ function toLogGroups(callHistory) {
       author: c.by,
       title: verification ? `Pharmacy verification · ${c.contact} (locked)` : (c.title ? `${c.title} · ${c.contact}` : `Outgoing Call · ${c.contact}`),
       programs: c.measures || [],
-      outcome: c.outcome,
+      // Stored as "Side effects — Experienced" (outcome matching relies on
+      // it); shown as "Side effects: Experienced".
+      outcome: c.outcome?.replaceAll(' — ', ': '),
       outcomeColor: c.result === 'failed' ? 'var(--status-error)' : 'var(--status-success)',
       note: c.note,
     });

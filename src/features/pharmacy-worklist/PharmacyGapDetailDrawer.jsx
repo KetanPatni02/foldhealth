@@ -298,7 +298,7 @@ function PharmacyGapDrawerBody({ target, row }) {
               </div>
             </>
           )}
-          {prompts.map(({ g, escalate, reminder }) => (
+          {prompts.filter(p => p.escalate || p.reminder).map(({ g, escalate, reminder }) => (
             <div key={g.code}>
               {escalate && (
                 <div className={local.ruleHint}>
@@ -327,7 +327,8 @@ function PharmacyGapDrawerBody({ target, row }) {
           size="S"
         />
 
-        <div className={styles.tabContentWrap}>
+        {/* The outreach view pads itself, as in the HEDIS drawer. */}
+        <div className={`${styles.tabContentWrap} ${tab === 'outreach' ? styles.tabContentWrapFlush : ''}`}>
           {picked.length > 0 && (
             <>
               {tab === 'medication' && <PharmacyMedicationReview compact member={scoped} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab })} />}

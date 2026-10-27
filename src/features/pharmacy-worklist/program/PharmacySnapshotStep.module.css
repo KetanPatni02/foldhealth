@@ -48,9 +48,6 @@
    Figma (5693:49892): title with the toggle beside it, header row, rows,
    and a grey detail panel. */
 .gapList { display: flex; flex-direction: column; gap: var(--space-2); }
-/* Alert values stay red but show their dashed underline only on hover. */
-.gapList [data-mark='alert'] { border-bottom-color: transparent; }
-.gapList [data-mark='alert']:hover { border-bottom-color: var(--status-error); }
 .listTitleRow { display: flex; align-items: center; gap: 0.625rem; padding: 0.125rem 0; }
 .listTitle { font-size: var(--font-base); font-weight: 400; line-height: var(--leading-tight); color: var(--neutral-300); }
 .list {

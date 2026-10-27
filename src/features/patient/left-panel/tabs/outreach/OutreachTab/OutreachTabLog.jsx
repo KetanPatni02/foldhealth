@@ -75,8 +75,12 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
           <div className={styles.logMeta}>
             <span>{log.date}</span>
             <span className={styles.logMetaDot}>•</span>
-            <span>{log.time}</span>
-            <span className={styles.logMetaDot}>•</span>
+            {log.time && (
+              <>
+                <span>{log.time}</span>
+                <span className={styles.logMetaDot}>•</span>
+              </>
+            )}
             <span>{log.author}</span>
             {log.outreachSource && (
               <>

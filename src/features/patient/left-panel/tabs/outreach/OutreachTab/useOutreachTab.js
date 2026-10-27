@@ -53,7 +53,8 @@ export function useOutreachTab({
   outcomeItems = null,
   callTypeOptions,
 } = {}) {
-  const PROGRAM_OPTIONS = [...new Set([...(programs && programs.length ? programs : PROGRAMS), ...defaultPrograms])];
+  // The program or gaps the outreach is logged from lead the pills.
+  const PROGRAM_OPTIONS = [...new Set([...defaultPrograms, ...(programs && programs.length ? programs : PROGRAMS)])];
   // This patient's distinct open HCC gap codes (e.g. "HCC 37").
   const HCC_GAP_OPTIONS = useMemo(
     () => (memberName

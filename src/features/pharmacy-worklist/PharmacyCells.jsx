@@ -34,14 +34,14 @@ export function DateWithDays({ date, alert = false }) {
   );
 }
 
-// A value that needs explaining is underlined and explained on hover:
+// A value that needs explaining is explained (and underlined) on hover:
 // `projected` (an estimate until a claim confirms it, never red) or `alert`
 // (red: act on it). Anything else is the plain value.
 function FlagValue({ className, tone, hint, children }) {
   if (!tone) return <span className={className}>{children}</span>;
   return (
     <Tooltip label={hint} placement="bottom" maxWidth={220}>
-      <span className={`${className} ${tone === 'projected' ? styles.projected : styles.alert}`} data-mark={tone}>{children}</span>
+      <span className={`${className} ${tone === 'projected' ? styles.projected : styles.alert}`}>{children}</span>
     </Tooltip>
   );
 }
