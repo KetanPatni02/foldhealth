@@ -20,7 +20,7 @@ const changes = {
   vitals: { headline: 'x', rows: [{ key: 'bp', label: 'Blood Pressure', from: '138/87 mmHg', to: '142/88 mmHg', delta: '+4', tone: 'worse' }] },
   medications: { headline: '1 started, 1 stopped; active medications stay at 2.', rows: [{ label: 'Stopped', to: 'Losartan', note: 'Adverse Reaction • 10/20/2026' }] },
   programs: { headline: '', rows: [{ key: 'SNP', label: 'SNP', from: 'Engaged', to: 'Attempted', note: 'Status changed' }, { key: 'AWV', label: 'AWV', from: 'New', to: 'New', note: 'No change' }] },
-  attention: { headline: '2 open items, 0 new since the last touch, 0 reviewed in this period.', rows: [] },
+  attention: { headline: '2 open items, 0 new since the last visit, 0 reviewed in this period.', rows: [] },
 };
 const open = [{ id: 'ed', kind: 'adt', title: '2 ED visits in 6 months', detail: '07/01/2026 • 05/20/2026', action: { label: 'Create Task' } }, { id: 'v', kind: 'vital', title: 'BP' }];
 
@@ -29,14 +29,14 @@ describe('sampleSummaries', () => {
 
   it('writes one paragraph per section from the recorded facts', () => {
     expect(Object.keys(s)).toEqual(['glance', 'touchpoints', 'clinical', 'vitals', 'medications', 'programs', 'attention']);
-    expect(s.glance).toBe('The last touch was Patient Chat with Dr. Aldo Richman on 10/21/2026. 2 touchpoints, up from 1 in the previous 30 days. Blood Pressure moved further from goal. 2 items need attention, most urgent: 2 ED visits in 6 months.');
+    expect(s.glance).toBe('The last visit was Patient Chat with Dr. Aldo Richman on 10/21/2026. 2 touchpoints, up from 1 in the previous 30 days. Blood Pressure moved further from goal. 2 items need attention, most urgent: 2 ED visits in 6 months.');
     expect(s.touchpoints).toContain('The last completed contact was Outgoing Call on 10/18/2026.');
     expect(s.touchpoints).toContain('No visit this period.');
     expect(s.clinical).toBe('No new clinical results or visits in this period. 2 ED visits in 6 months (07/01/2026 • 05/20/2026). The most recent record is Consolidated visit note on 09/01/2026.');
     expect(s.vitals).toBe('Blood Pressure went from 138/87 mmHg to 142/88 mmHg (+4), further from goal.');
     expect(s.medications).toBe('1 started, 1 stopped; active medications stay at 2. Stopped: Losartan (Adverse Reaction).');
     expect(s.programs).toBe('SNP moved from Engaged to Attempted. AWV stays New. Latest update: Care Plan Shared to EHR on 10/01/2026.');
-    expect(s.attention).toBe('2 open items, 0 new since the last touch, 0 reviewed in this period. Start with 2 ED visits in 6 months (Create Task).');
+    expect(s.attention).toBe('2 open items, 0 new since the last visit, 0 reviewed in this period. Start with 2 ED visits in 6 months (Create Task).');
   });
 });
 

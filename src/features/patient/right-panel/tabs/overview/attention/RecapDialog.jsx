@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Button } from '../../../../../../components/Button/Button';
@@ -16,7 +16,7 @@ import {
   attentionChanges, clinicalChanges, medicationChanges, programChanges, touchpointChanges, vitalChanges,
 } from './recapChanges';
 import { INSIGHT_WIDGETS, signalsByWidget, widgetInsightSummary } from './widgetInsights';
-import { fetchRecapSummaries, recapAiPayload, sampleSummaries } from './recapAi';
+import { recapAiPayload, sampleSummaries, writeRecapSummaries } from './recapAi';
 import styles from './RecapDialog.module.css';
 
 // Each slide carries a lot to read, so it stays up longer than the default.
@@ -188,23 +188,33 @@ function Moment({ label, event: e, empty }) {
   );
 }
 
+const generatedLabel = iso => `Generated ${fmtDate(iso)}, ${new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+
 /**
- * The section's plain-language summary, under the headline: Unity's, headed
- * "Unity summary", or (when Unity can't answer) one written from the
- * recorded facts, shown as the paragraph alone.
+ * The section's plain-language summary, under the headline: Unity's saved
+ * one, headed "Unity summary" with when it was written and a Refresh, or
+ * (when Unity can't answer) one written from the recorded facts, shown as
+ * the paragraph alone.
  */
-function AiSummary({ state, sectionKey, sample }) {
-  const text = state.summaries?.[sectionKey];
-  const fromUnity = state.status === 'done' && !!text;
+function AiSummary({ state, sectionKey, sample, onRefresh }) {
+  const loading = !!state?.loading;
+  const text = state?.saved?.summaries?.[sectionKey];
+  const fromUnity = !loading && !!text;
   return (
-    <div className={styles.ai} aria-busy={state.status === 'loading' || undefined}>
-      {(state.status === 'loading' || fromUnity) && (
+    <div className={styles.ai} aria-busy={loading || undefined}>
+      {(loading || fromUnity) && (
         <span className={styles.aiHead}>
           <AiInsightIcon size={16} />
           Unity summary
+          {fromUnity && (
+            <span className={styles.aiMeta}>
+              {generatedLabel(state.saved.generatedAt)}
+              <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh summary" onClick={onRefresh} />
+            </span>
+          )}
         </span>
       )}
-      {state.status === 'loading' ? (
+      {loading ? (
         <span className={styles.aiSkeleton} aria-label="Writing the summary">
           <span />
           <span />
@@ -276,8 +286,6 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
     return { label, recap, ch };
   }, [openedAt, period, events, signals, openSignals.length, reviews, vitals]);
 
-  // Unity's summaries: one request per patient, period and data, cached.
-  const aiKey = model ? `${memberId}|${period}|${events.length}|${signals.length}` : null;
   const aiPayload = useMemo(() => {
     if (!model) return null;
     const { recap, ch } = model;
@@ -293,27 +301,29 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
     ];
     return recapAiPayload({ patientName: patient?.name, period: periodText, sections });
   }, [model, period, signals, openSignals, vitals, patient?.name]);
-  const [ai, setAi] = useState({ key: null });
+  // Unity's summaries, saved per user, patient and period: reopening shows
+  // the saved ones; Unity writes new ones the first time or on Refresh.
+  const summaryKey = memberId ? `${memberId}|${period}` : null;
+  const aiState = useAppStore(s => (summaryKey ? s.recapSummaries[summaryKey] : undefined));
+  // Not looked up yet reads as loading, so the fallback text never flashes first.
+  const aiView = useMemo(() => (summaryKey ? (aiState || { loading: true }) : {}), [summaryKey, aiState]);
+  const loadRecapSummaries = useAppStore(s => s.loadRecapSummaries);
+  const refreshRecapSummaries = useAppStore(s => s.refreshRecapSummaries);
   useEffect(() => {
-    if (!open || !aiKey || !aiPayload) return undefined;
-    let alive = true;
-    fetchRecapSummaries(aiKey, aiPayload).then(
-      (summaries) => { if (alive) setAi({ key: aiKey, summaries }); },
-      (err) => { if (alive) setAi({ key: aiKey, error: err.message }); },
-    );
-    return () => { alive = false; };
-  }, [open, aiKey, aiPayload]);
-  const aiState = useMemo(() => {
-    if (ai.key !== aiKey) return { status: 'loading' };
-    return ai.error ? { status: 'error', error: ai.error } : { status: 'done', summaries: ai.summaries };
-  }, [ai, aiKey]);
+    if (!open || !memberId || !aiPayload) return;
+    loadRecapSummaries(memberId, period, () => writeRecapSummaries(aiPayload));
+  }, [open, memberId, period, aiPayload, loadRecapSummaries]);
+  const refreshSummaries = useCallback(() => {
+    if (!memberId || !aiPayload || aiState?.loading) return;
+    refreshRecapSummaries(memberId, period, () => writeRecapSummaries(aiPayload));
+  }, [memberId, period, aiPayload, aiState?.loading, refreshRecapSummaries]);
 
   const steps = useMemo(() => {
     if (!model) return [];
     const { label, recap, ch } = model;
     const samples = sampleSummaries({ recap, changes: ch, signals, openSignals });
-    const summary = key => <AiSummary state={aiState} sectionKey={key} sample={samples[key]} />;
-    const periodName = period === 'touch' ? 'Since last touch' : `Last ${period} days`;
+    const summary = key => <AiSummary state={aiView} sectionKey={key} sample={samples[key]} onRefresh={refreshSummaries} />;
+    const periodName = period === 'touch' ? 'Since last visit' : `Last ${period} days`;
     const eyebrow = title => `${title} • ${periodName}`;
     const runAndClose = (s) => { setOpen(false); run(s); };
     const signalRows = list => <SignalRows signals={list} reviews={reviews} onRun={runAndClose} onReview={review} />;
@@ -360,7 +370,7 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
             ]}
           />
           <div className={styles.moments}>
-            <Moment label="Last touch" event={recap.lastTouch} empty="No completed touch on record" />
+            <Moment label="Last visit" event={recap.lastTouch} empty="No completed visit on record" />
             <Moment label="Coming up" event={recap.upcoming[0]} empty="Nothing scheduled" />
           </div>
         </>
@@ -408,7 +418,7 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
               kpiFromRow('Touchpoints', total, `was ${total.from}`),
               kpiFromRow('Completed', rowByKey(ch.touchpoints, 'completed')),
               { label: 'Channels', value: recap.channels.length, sub: recap.channels.map(c => kindMeta(c.kind).label).join(', ') },
-              { label: 'Last touch', value: shortDate(recap.touchpoints[0].at), sub: recap.touchpoints[0].actor },
+              { label: 'Last visit', value: shortDate(recap.touchpoints[0].at), sub: recap.touchpoints[0].actor },
             ]}
           />
         ),
@@ -576,7 +586,7 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
           <Kpis
             items={[
               { label: 'Open', value: openSignals.length, tone: openSignals.length ? 'worse' : 'neutral' },
-              { label: 'New since last touch', value: rowByKey(ch.attention, 'new').to },
+              { label: 'New since last visit', value: rowByKey(ch.attention, 'new').to },
               { label: 'Reviewed this period', value: rowByKey(ch.attention, 'reviewed').to },
             ]}
           />
@@ -588,10 +598,10 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
       });
     }
     return out;
-  }, [model, aiState, period, signals, openSignals, reviews, since, vitals, run, review]);
+  }, [model, aiView, refreshSummaries, period, signals, openSignals, reviews, since, vitals, run, review]);
 
   const subtitle = [
-    attention.sinceIsLastTouch ? `Last touch ${fmtDate(since)}` : 'No completed touch on record',
+    attention.sinceIsLastTouch ? `Last visit ${fmtDate(since)}` : 'No completed visit on record',
     plural(openSignals.length, 'open item'),
   ].join(' • ');
 
@@ -626,7 +636,6 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
         headerExtra={(
           <Toggle
             size="S"
-            fullWidth
             items={RECAP_PERIODS.map(p => ({ key: p.key, label: p.label }))}
             active={period}
             onChange={setPeriod}

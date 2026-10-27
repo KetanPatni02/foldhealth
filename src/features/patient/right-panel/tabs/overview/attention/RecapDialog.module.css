@@ -82,13 +82,22 @@
 }
 
 .aiHead {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-1);
   font-size: var(--font-sm);
   font-weight: 500;
   line-height: var(--leading-normal);
   color: var(--primary-300);
+}
+
+.aiMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  font-weight: 400;
+  color: var(--neutral-300);
 }
 
 .aiText {
@@ -183,7 +192,7 @@
   text-overflow: ellipsis;
 }
 
-/* ── Last touch / coming up ── */
+/* ── Last visit / coming up ── */
 .moments {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

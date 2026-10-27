@@ -206,9 +206,9 @@ export function attentionChanges(signals, reviews, window) {
     return r && new Date(r.reviewedAt).getTime() >= window.from;
   }).length;
   const rows = [
-    { key: 'new', label: 'New since last touch', to: String(fresh), tone: fresh ? 'worse' : 'neutral' },
+    { key: 'new', label: 'New since last visit', to: String(fresh), tone: fresh ? 'worse' : 'neutral' },
     { key: 'reviewed', label: 'Reviewed in this period', to: String(reviewedInPeriod), tone: reviewedInPeriod ? 'better' : 'neutral' },
     { key: 'open', label: 'Still open', to: String(open), tone: 'neutral' },
   ];
-  return { rows, headline: `${plural(open, 'open item')}, ${fresh} new since the last touch, ${reviewedInPeriod} reviewed in this period.` };
+  return { rows, headline: `${plural(open, 'open item')}, ${fresh} new since the last visit, ${reviewedInPeriod} reviewed in this period.` };
 }
