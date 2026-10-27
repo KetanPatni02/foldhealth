@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { Dialog, DialogContent } from '../ShadcnDialog/ShadcnDialog';
 import { Select } from '../Select/Select';
+import { RadioOptionGroup } from '../RadioOptionGroup/RadioOptionGroup';
 import { Textarea } from '../Textarea/Textarea';
 import { Button } from '../Button/Button';
 import styles from './ReasonDialog.module.css';
@@ -29,7 +30,11 @@ import styles from './ReasonDialog.module.css';
  *   is the whole record and free text has nothing to add; the standard reason
  *   then becomes mandatory, since it is the only input left
  * @param {string}   [props.notesPlaceholder] – Placeholder for the notes box
+ * @param {'select'|'radio'} [props.reasonInput='select'] – How the standard
+ *   reasons are picked: a dropdown, or a radio list ("Other" stays picked)
  * @param {node}     props.children         – Extra fields, above the reason
+ *   (or below the notes with `childrenBelow`)
+ * @param {boolean}  [props.childrenBelow=false]
  * @param {function} props.onCancel
  * @param {function} props.onSubmit        – Called with ({ code, freeText })
  */
@@ -43,12 +48,15 @@ export function ReasonDialog({
   confirmDisabled = false,
   notes = true,
   notesPlaceholder,
+  reasonInput = 'select',
   children,
+  childrenBelow = false,
   onCancel,
   onSubmit,
 }) {
   const uid = useId();
-  const [code, setCode] = useState('');
+  const [choice, setChoice] = useState('');
+  const code = choice === '__other__' ? '' : choice;
   const [freeText, setFreeText] = useState('');
 
   const valid = (!!code || (notes && freeText.trim().length > 0)) && !confirmDisabled;
@@ -72,17 +80,27 @@ export function ReasonDialog({
           <h3 className={styles.title}>{title}</h3>
           {description && <p className={styles.description}>{description}</p>}
 
-          {children}
+          {!childrenBelow && children}
 
-          <Select
-            id={`${uid}-reason-code`}
-            label="Standard reason"
-            required={!notes}
-            options={options}
-            value={code === null ? '' : code}
-            onChange={(v) => setCode(v === '__other__' ? '' : v)}
-            placeholder="Select a reason…"
-          />
+          {reasonInput === 'radio' ? (
+            <RadioOptionGroup
+              name={`${uid}-reason-code`}
+              label="Reason"
+              options={options.filter(o => o.value)}
+              value={choice}
+              onChange={setChoice}
+            />
+          ) : (
+            <Select
+              id={`${uid}-reason-code`}
+              label="Standard reason"
+              required={!notes}
+              options={options}
+              value={code}
+              onChange={(v) => setChoice(v === '__other__' ? '' : v)}
+              placeholder="Select a reason…"
+            />
+          )}
 
           {notes && (
             <div className={styles.field}>
@@ -101,6 +119,8 @@ export function ReasonDialog({
               />
             </div>
           )}
+
+          {childrenBelow && children}
 
           <div className={styles.footer}>
             <Button variant="secondary" size="L" fullWidth onClick={onCancel}>Cancel</Button>
