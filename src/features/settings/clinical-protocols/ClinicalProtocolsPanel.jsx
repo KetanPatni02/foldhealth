@@ -86,11 +86,14 @@ export function ClinicalProtocolsPanel() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const conditions = new Set(conditionFilter);
+    const programs = new Set(programFilter);
+    const orgs = new Set(orgFilter);
     const rows = protocols.filter(p => IN_TAB[tab](p)
       && (!q || `${p.title} ${p.organization} ${p.author} ${p.conditions.join(' ')} ${p.sourceName}`.toLowerCase().includes(q))
-      && (!conditionFilter.length || p.conditions.some(c => conditionFilter.includes(c)))
-      && (!programFilter.length || p.programCodes.some(c => programFilter.includes(c)))
-      && (!orgFilter.length || orgFilter.includes(p.organization)));
+      && (!conditions.size || p.conditions.some(c => conditions.has(c)))
+      && (!programs.size || p.programCodes.some(c => programs.has(c)))
+      && (!orgs.size || orgs.has(p.organization)));
     const dir = sort.dir === 'asc' ? 1 : -1;
     return [...rows].sort((a, b) => String(a[sort.key] || '').localeCompare(String(b[sort.key] || '')) * dir);
   }, [protocols, tab, search, conditionFilter, programFilter, orgFilter, sort]);
@@ -108,10 +111,10 @@ export function ClinicalProtocolsPanel() {
     const total = protocolCounts(p.protocol).total;
     const reviewDue = p.status === 'active' && p.reviewDate && p.reviewDate <= today;
     return (
-      <tr key={p.id} className={styles.row} onClick={() => setReviewId(p.id)}>
+      <tr key={p.id} className={styles.row}>
         <td className={`${styles.td} ${styles.tdName}`}>
           <span className={styles.nameCell}>
-            <span className={styles.nameText}>{p.title}</span>
+            <button type="button" className={styles.nameLink} onClick={() => setReviewId(p.id)}>{p.title}</button>
             <span className={styles.nameSub}>{[p.organization, p.version && `v${p.version}`, p.sourceName].filter(Boolean).join(' · ')}</span>
           </span>
         </td>
@@ -122,7 +125,7 @@ export function ClinicalProtocolsPanel() {
         <td className={styles.td}><Badge tone={status.tone} size="S" label={status.label} /></td>
         <td className={styles.td}>{p.status === 'processing' ? '…' : total}</td>
         <td className={`${styles.td} ${styles.nowrap}`}>{fmtDay(p.updatedAt)}</td>
-        <td className={`${styles.td} ${styles.tdActions}`} onClick={e => e.stopPropagation()}>
+        <td className={`${styles.td} ${styles.tdActions}`}>
           <span className={styles.actionCell}>
             <ActionButton icon={p.status === 'draft' ? 'solar:shield-check-linear' : 'solar:eye-linear'} size="S" tooltip={p.status === 'draft' ? 'Review' : 'Open'} tooltipLeft onClick={() => setReviewId(p.id)} />
           </span>

@@ -60,7 +60,9 @@ function ItemEditor({ section, item, onSave, onCancel }) {
 }
 
 function ProtocolItem({ section, item, editable, onChange, onRemove }) {
-  const [editing, setEditing] = useState(!!item.isNew);
+  // An item added by hand opens in its editor until the user saves or cancels it.
+  const [editChoice, setEditing] = useState(null);
+  const editing = editChoice ?? !!item.isNew;
   const [showSource, setShowSource] = useState(false);
   if (editing) {
     return (
@@ -184,18 +186,22 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
   const close = () => (dirty ? setConfirm('discard') : onClose());
   const save = async () => {
     setBusy(true);
-    const ok = await saveClinicalProtocol(protocol.id, draft);
-    setBusy(false);
-    if (ok) showToast?.('Protocol saved');
+    try {
+      if (await saveClinicalProtocol(protocol.id, draft)) showToast?.('Protocol saved');
+    } finally {
+      setBusy(false);
+    }
   };
   const approve = async () => {
     setConfirm(null);
     setBusy(true);
-    const ok = await approveClinicalProtocol(protocol.id, draft, { supersede });
-    setBusy(false);
-    if (ok) {
-      showToast?.(supersede ? `Approved; replaces version ${supersede.version || 'on file'}` : 'Protocol approved and active');
-      onClose();
+    try {
+      if (await approveClinicalProtocol(protocol.id, draft, { supersede })) {
+        showToast?.(supersede ? `Approved; replaces version ${supersede.version || 'on file'}` : 'Protocol approved and active');
+        onClose();
+      }
+    } finally {
+      setBusy(false);
     }
   };
   const openOriginal = async () => {

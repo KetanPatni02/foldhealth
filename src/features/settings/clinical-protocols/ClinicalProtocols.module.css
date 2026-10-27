@@ -10,7 +10,7 @@
 .headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
 
 /* ── Library rows ── */
-.row { border-bottom: 0.5px solid var(--neutral-100); cursor: pointer; }
+.row { border-bottom: 0.5px solid var(--neutral-100); }
 .row:hover td { background: var(--neutral-50); }
 .td {
   padding: var(--space-3); font-size: var(--font-base); color: var(--neutral-300);
@@ -20,10 +20,12 @@
 .tdName { left: 0; min-width: 240px; max-width: 360px; }
 .tdActions { right: 0; padding-right: var(--space-2); }
 .nameCell { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.nameText {
+.nameLink {
+  max-width: 100%; padding: 0; border: 0; background: none; cursor: pointer; text-align: left;
   font-size: var(--font-base); font-weight: 500; color: var(--neutral-400);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.nameLink:hover { color: var(--primary-300); }
 .nameSub { font-size: var(--font-sm); color: var(--neutral-300); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nowrap { white-space: nowrap; }
 .overdue { color: var(--status-warning); }
