@@ -20,6 +20,9 @@ import {
 } from './sendTo';
 import { VerifyIdCard, VerifyIdStack, VerifyIdReveal } from './VerifyIdCard';
 import { PersonOption, PersonTip } from './PersonOption';
+import {
+  membersForConversation, memberMeta, memberLabel, logForHelper,
+} from './smsMembers';
 import styles from './CommsDrawers.module.css';
 
 const PHI_NOTICE = 'Do not send PHI via email or text without verifying and obtaining consent.';
@@ -30,6 +33,13 @@ const patientOption = (p, contact) => ({
   triggerLabel: contact ? `${p.name} (${contact})` : p.name,
   searchText: `${p.name} ${contact || ''}`,
   label: <PersonOption name={p.name} initials={p.initials} meta={contact || personMeta(p)} />,
+});
+
+const memberOption = (m) => ({
+  value: m.id,
+  triggerLabel: memberLabel(m),
+  searchText: m.name,
+  label: <PersonOption name={m.name} initials={m.initials} meta={memberMeta(m)} />,
 });
 
 // ── New Chat (Figma 1:30607) ─────────────────────────────────────────────
@@ -191,8 +201,9 @@ export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
   ] : [];
   // Starts empty: who gets the text is picked, not assumed.
   const [picked, setPicked] = useState([]);
+  const [logForId, setLogForId] = useState(null);
   const [pickedFor, setPickedFor] = useState(to);
-  if (pickedFor !== to) { setPickedFor(to); setPicked([]); }
+  if (pickedFor !== to) { setPickedFor(to); setPicked([]); setLogForId(null); }
   // Send To only shows when the member has other people on record (care
   // giver, decision maker…); otherwise the text goes to the member.
   const hasRoles = !!patient && (contacts || []).length > 0;
@@ -210,6 +221,13 @@ export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
     : [];
   const limit = protect ? SMS_LIMIT - SECURE_SMS_PREFIX : SMS_LIMIT;
 
+  // A number several members share (FCS-5677): the SMS is logged for one.
+  const members = recipient?.phone ? membersForConversation({
+    patient_id: recipient.id, patient_name: recipient.name, patient_phone: recipient.phone,
+  }, patients) : [];
+  const sharedNumber = members.length > 1;
+  const logFor = sharedNumber ? (members.find(m => m.id === logForId) || members[0]) : null;
+
   const send = async () => {
     setTouched(true);
     if (!recipient || !targets.length || !body.trim() || blockers.length) return;
@@ -223,7 +241,10 @@ export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
       const conv = await findOrCreateConversation('sms', { ...recipient, phone }, { patient_phone: phone });
       const sent = [];
       for (const t of targets) {
-        sent.push(await sendSms({ conversation: conv, sender: { id: me?.id, name: me?.name }, to: toE164(t.phone), body: text, meta }));
+        sent.push(await sendSms({
+          conversation: conv, sender: { id: me?.id, name: me?.name }, to: toE164(t.phone), body: text, meta,
+          loggedFor: logFor ? { id: logFor.id, name: logFor.name } : undefined,
+        }));
       }
       const failed = sent.filter(m => m?.status === 'failed');
       if (failed.length) toast.error(`SMS not sent: ${failed[0].failure_reason}`);
@@ -307,6 +328,18 @@ export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
             placeholder={SEND_TO_PLACEHOLDER}
             errorText={touched && !targets.length ? 'Choose who to text.' : undefined}
           />
+        )}
+        {sharedNumber && (
+          <div className={styles.field}>
+            <span className={styles.logForTitle}>Log this SMS For:</span>
+            <Select
+              label={logForHelper(members)}
+              required
+              options={members.map(memberOption)}
+              value={logFor.id}
+              onChange={setLogForId}
+            />
+          </div>
         )}
         <VerifyIdStack>
         <div className={styles.field}>

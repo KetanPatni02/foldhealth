@@ -1,9 +1,10 @@
+import { useState } from 'react';
+import { ConversationDrawer } from '../../../../../messages/comms/ConversationDrawer';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { SmsIcon } from '../../../../../../components/Icon/SmsIcon';
 import { MissedCallIcon } from '../../../../../../components/Icon/MissedCallIcon';
 import { Avatar } from '../../../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../../../components/Badge/Badge';
-import { useAppStore } from '../../../../../../store/useAppStore';
 import { useCommsConversations } from '../../../../../messages/comms/useComms';
 import { CommsListEmpty } from '../../../../../messages/comms/CommsEmptyState';
 import { isMissedCall } from '../../../../../messages/comms/commsUtils';
@@ -36,11 +37,11 @@ function ConvAvatar({ conversation }) {
 
 /**
  * The patient's conversations on every channel (Comms), newest first.
- * Opening one goes to it in Comms.
+ * Opening one shows it in a drawer, over the profile.
  */
 export function CommsTab({ patient }) {
   const { conversations, loading, failed, retry } = useCommsConversations();
-  const goToComms = useAppStore(s => s.goToComms);
+  const [openId, setOpenId] = useState(null);
 
   const id = patient?.id != null ? String(patient.id) : null;
   const mine = conversations.filter(c => (id && c.patient_id === id) || (!c.patient_id && patient?.name && c.patient_name === patient.name));
@@ -57,6 +58,7 @@ export function CommsTab({ patient }) {
     );
   }
   if (mine.length === 0) return <CommsListEmpty viewKey="all" />;
+  const open = mine.find(c => c.id === openId) || null;
 
   return (
     <div className={msgStyles.convList}>
@@ -65,7 +67,7 @@ export function CommsTab({ patient }) {
           type="button"
           key={c.id}
           className={msgStyles.convItem}
-          onClick={() => goToComms({ channel: c.channel, conversationId: c.id })}
+          onClick={() => setOpenId(c.id)}
         >
           <ConvAvatar conversation={c} />
           <div className={msgStyles.convInfo}>
@@ -82,6 +84,7 @@ export function CommsTab({ patient }) {
           </div>
         </button>
       ))}
+      {open && <ConversationDrawer conversation={open} onClose={() => setOpenId(null)} />}
     </div>
   );
 }

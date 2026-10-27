@@ -1,0 +1,91 @@
+/* Log For chip beside the composer's Internal toggle (3540:64859). */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 16rem;
+  height: 1.25rem;
+  padding: 0 var(--space-1);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.chip:hover { background: var(--neutral-50); }
+.chip[aria-expanded='true'] { border-color: var(--primary-300); }
+
+.chipText {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Select Member to log SMS for (3540:64613). */
+.modal {
+  max-width: 350px !important;
+  padding: 0 !important;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 8px !important;
+}
+
+.modalTitle {
+  padding: var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-lg);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.modalHelper {
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--placeholder-text);
+}
+
+.memberList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 16.5rem;
+  overflow-y: auto;
+}
+
+.memberRow {
+  display: flex;
+  width: 100%;
+  flex-shrink: 0;
+  padding: var(--space-2);
+  border: 0.5px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.memberRow:hover { background: var(--neutral-50); }
+.memberRowPicked,
+.memberRowPicked:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-200);
+}
+
+.modalFooter {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+.modalFooter > * {
+  flex: 1;
+  min-width: 0;
+}

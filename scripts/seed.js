@@ -937,6 +937,7 @@ async function main() {
     await db.query(readFileSync(new URL('../supabase/patient_vitals_migration.sql', import.meta.url), 'utf8'));
     await db.query(readFileSync(new URL('../supabase/patient_contacts_gender_migration.sql', import.meta.url), 'utf8'));
     await db.query(readFileSync(new URL('../supabase/patient_contacts_one_per_role_migration.sql', import.meta.url), 'utf8'));
+    await db.query(readFileSync(new URL('../supabase/sms_member_attribution_migration.sql', import.meta.url), 'utf8'));
     console.log('  ✓ patient_crm_activities: created / already exists');
     // Run the migration itself rather than a copy of it, so the two can't drift.
     await db.query(readFileSync(new URL('../supabase/employer_impact_migration.sql', import.meta.url), 'utf8'));
@@ -1276,6 +1277,27 @@ async function main() {
   const contactRows = sampleContactsFor(PAMI_DEMO_PATIENT).map(contactToRow);
   const { error: contactErr } = await supabase.from('patient_contacts').upsert(contactRows, { onConflict: 'id' });
   if (contactErr) { console.error('  ✗', contactErr.message); } else { console.log(`  ✓ ${contactRows.length} patient contacts`); }
+
+  // Shared phone number (FCS-5677): Annette Brave's son and daughter use her
+  // number, so her SMS thread shows "3 members" and each SMS is logged for
+  // one of them. Ids are prefixed so they can never overwrite a real patient.
+  console.log('Seeding shared-number family (SMS attribution)...');
+  const { data: annette } = await supabase.from('all_patients').select('phone').eq('id', PAMI_DEMO_PATIENT).maybeSingle();
+  const familyPhone = annette?.phone || '+919175367487';
+  const familyRows = [
+    { id: 'sms-family-11089-liam', name: 'Liam Johnson', initials: 'LJ', gender: 'M', dob: '1992-03-29' },
+    { id: 'sms-family-11089-ava', name: 'Ava Carter', initials: 'AC', gender: 'F', dob: '1995-08-14' },
+  ].map(r => ({
+    ...r,
+    member_id: r.id,
+    source: 'manual',
+    age: Math.floor((Date.now() - new Date(`${r.dob}T00:00:00`).getTime()) / (365.25 * 86400000)),
+    phone: familyPhone,
+    family_id: PAMI_DEMO_PATIENT,
+    language: 'en',
+  }));
+  const { error: familyErr } = await supabase.from('all_patients').upsert(familyRows, { onConflict: 'id' });
+  if (familyErr) { console.error('  ✗', familyErr.message); } else { console.log(`  ✓ ${familyRows.length} members sharing ${PAMI_DEMO_PATIENT}'s number`); }
 
   console.log('Seeding efax_inbound (Comms → E-fax)...');
   const { data: faxPatients } = await supabase.from('all_patients').select('id, name, dob, member_id, gender, age, phone').order('name').limit(2);

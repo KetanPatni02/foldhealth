@@ -57,7 +57,7 @@ export const OVERVIEW_WIDGETS = [
   { key: 'tasks', label: 'Tasks', group: 'Actionables' },
   { key: 'reminders', label: 'Reminders', group: 'Actionables' },
   { key: 'awaitingReply', label: 'Awaiting Reply', group: 'Actionables' },
-  { key: 'sinceLastTouch', label: 'Since Last Touch', group: 'Actionables' },
+  { key: 'sinceLastTouch', label: 'Since Last Visit', group: 'Actionables' },
   { key: 'automations', label: 'Active Automations', group: 'Actionables', sample: true },
 ];
 

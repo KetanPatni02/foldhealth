@@ -18,8 +18,9 @@ export const SUPABASE_PROJECTS = {
 const DEV_REF = 'uwswpbiyhlmpnubxtipc';
 const PRODUCTION_REF = 'osnihfqqrcchsaqhagcx';
 
-// Anon keys are JWTs. The `ref` claim is the project they belong to.
-function jwtProjectRef(token) {
+// Anon and service-role keys are JWTs. The `ref` claim is the project they
+// belong to.
+export function jwtProjectRef(token) {
   if (!token || typeof token !== 'string') return null;
   const part = token.split('.')[1];
   if (!part) return null;

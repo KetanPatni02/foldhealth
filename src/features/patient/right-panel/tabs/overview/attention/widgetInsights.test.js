@@ -21,7 +21,7 @@ describe('widgetInsightSummary', () => {
   it('joins vitals off goal by name, with abnormal labs first', () => {
     const vitals = [s('vital', { label: 'Blood Pressure' }), s('vital', { label: 'HbA1c' })];
     expect(widgetInsightSummary('vitals', vitals)).toBe('Blood Pressure and HbA1c are above goal.');
-    expect(widgetInsightSummary('vitals', [s('lab'), vitals[0]])).toBe('1 abnormal lab since the last touch; Blood Pressure is above goal.');
+    expect(widgetInsightSummary('vitals', [s('lab'), vitals[0]])).toBe('1 abnormal lab since the last visit; Blood Pressure is above goal.');
   });
 
   it('phrases overdue tasks, gaps and risk', () => {

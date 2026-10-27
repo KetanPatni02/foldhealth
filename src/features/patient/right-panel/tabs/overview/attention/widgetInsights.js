@@ -62,7 +62,7 @@ export function widgetInsightSummary(widgetKey, signals) {
       const labs = signals.filter(s => s.kind === 'lab');
       const vitals = signals.filter(s => s.kind === 'vital');
       const parts = [];
-      if (labs.length) parts.push(`${plural(labs.length, 'abnormal lab')} since the last touch`);
+      if (labs.length) parts.push(`${plural(labs.length, 'abnormal lab')} since the last visit`);
       if (vitals.length) {
         const names = vitals.map(v => v.label || v.title);
         parts.push(`${list(names)} ${vitals.length === 1 ? 'is' : 'are'} above goal`);
@@ -76,11 +76,11 @@ export function widgetInsightSummary(widgetKey, signals) {
     case 'gaps':
       return `${plural(signals.length, 'care gap')} ${signals.length === 1 ? 'is' : 'are'} past the due date.`;
     case 'medications':
-      return signals.length === 1 ? `${first.title} since the last touch.` : `${plural(signals.length, 'medication change')} since the last touch.`;
+      return signals.length === 1 ? `${first.title} since the last visit.` : `${plural(signals.length, 'medication change')} since the last visit.`;
     case 'riskAcuity':
       return `${first.title.replace(/^RAF up/, 'RAF rose')} since the last score.`;
     case 'highlights':
-      return signals.length === 1 ? `${first.title} since the last touch.` : `${plural(signals.length, 'hospital event')} since the last touch.`;
+      return signals.length === 1 ? `${first.title} since the last visit.` : `${plural(signals.length, 'hospital event')} since the last visit.`;
     default:
       return first.title;
   }
