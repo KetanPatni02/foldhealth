@@ -62,6 +62,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
     setPharmacyAssignee,
     openGap: (code) => openPharmacyGapDrawer(m.id, code, { focus: true }),
     openClaimRework: (code, medId) => openPharmacyGapDrawer(m.id, code, { medId, view: 'claims', focus: true }),
+    openOutreach: () => openPharmacyGapDrawer(m.id, null, { view: 'outreach' }),
     openCareGap: onOpenCareGap,
     eligibleUsers,
     openGapStatusMenu: (code, rect) => setGapStatusMenu(cur => (cur?.code === code ? null : { code, rect })),

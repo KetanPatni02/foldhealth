@@ -192,10 +192,13 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   },
   {
     key: 'outreach', label: 'Outreach', sortKey: 'outreachSort', sortType: 'date',
-    renderCell: (m) => (
+    // The hover card's View All opens the drawer; the row must not open too.
+    stopRowClickPropagation: true,
+    renderCell: (m, ctx) => (
       <OutreachStatusCell
         outreach={m.outreach}
-        title={m.outreach ? `${m.outreach.contact}: ${m.outreach.outcome} · ${m.outreach.attempts} attempt${m.outreach.attempts === 1 ? '' : 's'}` : undefined}
+        recent={m.outreach?.recent}
+        onViewAll={ctx.openOutreach}
       />
     ),
   },

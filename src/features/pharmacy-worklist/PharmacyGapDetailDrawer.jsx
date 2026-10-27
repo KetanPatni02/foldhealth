@@ -85,7 +85,8 @@ function PharmacyGapDrawerBody({ target, row }) {
   // Opened from a "Claim not matched" flag: the drug's claim history in the
   // side workspace, outreach logging in the main pane.
   const rework = target.view === 'claims' && target.medId;
-  const [tab, setTab] = useState(rework ? 'outreach' : 'medication');
+  // Opened from the Outreach cell's View All: straight to Outreaches.
+  const [tab, setTab] = useState(rework || target.view === 'outreach' ? 'outreach' : 'medication');
   const [workspace, setWorkspace] = useState(rework ? { medId: target.medId, tab: 'claims' } : null); // 'outreach' | 'verify' | 'barriers' | { medId, tab? }
   const [moreRect, setMoreRect] = useState(null);
   const moreBtnRef = useRef(null);

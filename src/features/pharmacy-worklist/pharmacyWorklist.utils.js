@@ -583,6 +583,19 @@ export const callMatchesLog = (c, logId) => callKey(c) === logId || (c.logIds ||
 
 // ── Outreach ── same shape the other worklists render: last attempt's
 // result + date, and one dot per attempt (latest three, oldest first).
+// "13:05" (some entries) reads as "01:05 PM", like the rest.
+const clockTime = (t) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
+  if (!m) return t || null;
+  const h = Number(m[1]);
+  return `${String(h % 12 || 12).padStart(2, '0')}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+};
+
+const ordinal = (n) => {
+  const t = n % 100;
+  return `${n}${t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th')}`;
+};
+
 export function outreachSummary(callHistory) {
   const list = callHistory || [];
   if (!list.length) return null;
@@ -597,6 +610,18 @@ export function outreachSummary(callHistory) {
     outcome: last.outcome,
     dots: recent,
     attempts: list.length,
+    // The last three attempts for the cell's hover card, numbered from the
+    // first ever (newest is the Nth outreach). Outcomes stored with a dash
+    // separator show as "Side effects: Experienced".
+    recent: list.slice(0, 3).map((c, i) => ({
+      key: `${c.id || c.date}-${i}`,
+      date: String(c.date || '').slice(0, 5),
+      time: clockTime(c.time),
+      by: c.by || null,
+      title: `${c.title || 'Outgoing Call'} (${ordinal(list.length - i)} Outreach)`,
+      outcome: c.outcome?.replaceAll(' — ', ': ') || null,
+      failed: c.result !== 'success',
+    })),
   };
 }
 

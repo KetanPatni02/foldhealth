@@ -1,4 +1,6 @@
 import { Icon } from '../Icon/Icon';
+import { HoverCard } from '../HoverCard/HoverCard';
+import { OutreachActivityCard } from '../OutreachActivityCard/OutreachActivityCard';
 import styles from './OutreachStatusCell.module.css';
 
 const DOT_CLASS = { red: styles.dotFailed, blue: styles.dotSuccess, grey: styles.dotPending };
@@ -11,8 +13,11 @@ const DOT_CLASS = { red: styles.dotFailed, blue: styles.dotSuccess, grey: styles
  *   { status: 'Attended' | 'Failed' | …, failed: boolean, date,
  *     dots: Array<'red' | 'blue' | 'grey'>, kind?: 'call' | 'letter' }
  * `title` sets a hover tooltip (e.g. who was contacted and the outcome).
+ * `recent` (OutreachActivityCard items, newest first) replaces it with the
+ * latest attempts in a card that opens after a short hover; `onViewAll`
+ * adds its View All link.
  */
-export function OutreachStatusCell({ outreach, title }) {
+export function OutreachStatusCell({ outreach, title, recent, onViewAll }) {
   if (!outreach) {
     return (
       <span className={styles.none}>
@@ -23,8 +28,9 @@ export function OutreachStatusCell({ outreach, title }) {
   }
   const tone = outreach.failed ? 'var(--status-error)' : 'var(--status-success)';
   const icon = outreach.kind === 'letter' ? 'solar:document-text-linear' : 'solar:phone-calling-linear';
-  return (
-    <span className={styles.cell} title={title}>
+  const withCard = recent?.length > 0;
+  const cell = (
+    <span className={styles.cell} title={withCard ? undefined : title}>
       <Icon name={icon} size={16} color={tone} />
       <span className={styles.body}>
         <span className={outreach.failed ? styles.statusFailed : styles.statusOk}>{outreach.status}</span>
@@ -36,5 +42,11 @@ export function OutreachStatusCell({ outreach, title }) {
         ) : null}
       </span>
     </span>
+  );
+  if (!withCard) return cell;
+  return (
+    <HoverCard trigger={cell} width={329} openDelay={400} flush ariaLabel="Outreach activity">
+      {(close) => <OutreachActivityCard items={recent} onViewAll={onViewAll ? () => { close(); onViewAll(); } : undefined} />}
+    </HoverCard>
   );
 }

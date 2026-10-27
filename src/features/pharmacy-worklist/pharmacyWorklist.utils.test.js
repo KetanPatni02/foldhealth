@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDaysMdy, annotateClaims, claimRecordStatus, enrichPharmacyMember, matchFill, measureStatus, medicationStatus,
-  nextFillDueSource, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
+  nextFillDueSource, outreachSummary, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
 } from './pharmacyWorklist.utils.js';
 
 const daysAgo = (n) => addDaysMdy(todayMdy(), -n);
@@ -389,5 +389,21 @@ describe('enrichPharmacyMember: priority', () => {
 
   it('lets a priority picked on the worklist win over the plan file', () => {
     expect(enrichPharmacyMember({ ...base, sourcePriority: 'P1', priorityOverride: 'P3' }).priority).toBe('P3');
+  });
+});
+
+describe('outreachSummary: the hover card\'s recent attempts', () => {
+  it('lists the last three, newest first, numbered from the first ever', () => {
+    const calls = [
+      { date: '10/26/2026', time: '13:05', by: 'Pooja', title: 'General', outcome: 'Side effects \u2014 Experienced', result: 'success' },
+      { date: '10/20/2026', time: '01:05 PM', by: 'Pooja', outcome: 'Busy', result: 'failed' },
+      { date: '10/10/2026', by: 'Marcus', outcome: 'Busy', result: 'failed' },
+      { date: '10/01/2026', by: 'Marcus', outcome: 'Busy', result: 'failed' },
+    ];
+    const { recent } = outreachSummary(calls);
+    expect(recent.map(r => r.title)).toEqual(['General (4th Outreach)', 'Outgoing Call (3rd Outreach)', 'Outgoing Call (2nd Outreach)']);
+    expect(recent[0]).toMatchObject({ date: '10/26', time: '01:05 PM', outcome: 'Side effects: Experienced', failed: false });
+    expect(recent[1]).toMatchObject({ time: '01:05 PM', failed: true });
+    expect(recent[2].time).toBeNull();
   });
 });
