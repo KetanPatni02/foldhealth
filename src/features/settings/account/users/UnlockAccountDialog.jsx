@@ -23,7 +23,8 @@ export function UnlockAccountDialog({ user, onCancel, onConfirm }) {
       confirmVariant="primary"
       confirmDisabled={!identityChecked}
       notesPlaceholder="How you checked their identity, or why you're unlocking (required for Other)"
-
+      reasonInput="radio"
+      childrenBelow
       onCancel={onCancel}
       onSubmit={({ code, freeText }) => onConfirm({
         reason: code ? BY_LABEL[code] : 'other',

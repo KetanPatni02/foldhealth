@@ -6,12 +6,13 @@ import { OOO_ICON } from '../../../ooo/oooUtils';
 import styles from '../AccountPanel.module.css';
 
 /**
- * Row-level actions for the Users table: Reset Password, Disable/Enable,
+ * Row-level actions for the Users table: Reset Password (Unlock Account
+ * when the account is locked), Disable/Enable,
  * More menu (Edit / View OOO Records / Delete). Pending sign-ups get
  * Approve / Reject in place of Reset Password and Disable/Enable.
  * Non-admins see a plain "—" — every action on this component is admin-only.
  */
-export function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, onApprove, onReject, onEdit, onViewOoo, onDelete }) {
+export function UserActions({ user, isAdmin, locked = false, onResetPassword, onUnlock, onToggleStatus, onApprove, onReject, onEdit, onViewOoo, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -36,7 +37,11 @@ export function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, on
         </>
       ) : (
         <>
-          <ActionButton icon="solar:password-linear" size="L" tooltip="Reset Password" onClick={onResetPassword} />
+          {locked ? (
+            <ActionButton icon="solar:lock-keyhole-unlocked-linear" size="L" tooltip="Unlock Account" onClick={onUnlock} />
+          ) : (
+            <ActionButton icon="solar:password-linear" size="L" tooltip="Reset Password" onClick={onResetPassword} />
+          )}
           <span className={styles.actionDivider} />
           <ActionButton
             icon={user.status === 'Active' ? 'solar:user-cross-linear' : 'solar:user-check-linear'}
