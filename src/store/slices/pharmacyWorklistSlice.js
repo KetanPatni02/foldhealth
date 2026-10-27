@@ -479,7 +479,11 @@ export function createPharmacyWorklistSlice(set, get) {
       }, ['status', 'call_history', 'measures', 'follow_up_due'], (changes) => ({
         t: 'call', title: `Pharmacy verification · ${entry.contact} (locked)`,
         outcome: entry.outcome, outcomeColor: entry.result === 'failed' ? 'var(--status-warning)' : 'var(--status-success)',
-        note: [entry.note, ...changes, status && status !== prevStatus ? `Status ${prevStatus} → ${status}` : null].filter(Boolean).join('\n'),
+        // What was answered for each drug, then the call note and what changed.
+        note: [
+          ...(entry.items || []).map(it => `${it.measure} · ${it.drug}: ${(it.steps || []).join(', ')}`),
+          entry.note, ...changes, status && status !== prevStatus ? `Status ${prevStatus} → ${status}` : null,
+        ].filter(Boolean).join('\n'),
       }));
     },
 

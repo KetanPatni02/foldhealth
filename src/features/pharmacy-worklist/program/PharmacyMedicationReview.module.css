@@ -338,10 +338,12 @@
   font-size: var(--font-sm); color: var(--primary-300);
 }
 .cInfoLink:hover { text-decoration: underline; }
+/* Info and the barrier count share one line under the supply. */
+.cLinks { display: inline-flex; align-items: center; white-space: nowrap; }
 .cSource { display: flex; flex-direction: column; gap: 0.125rem; }
 /* Rx or Recent Fill with its details stacked below, centered in the row. */
 .cStack { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
-/* Under the drug name: quantity and supply, Info, then a barrier if any.
+/* Under the drug name: quantity and supply, then Info and the barrier count.
    One line each, cut short rather than wrapped. */
 .cMeta {
   max-width: 100%;

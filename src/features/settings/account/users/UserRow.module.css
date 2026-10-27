@@ -88,11 +88,16 @@
   white-space: nowrap;
 }
 
-/* "Account locked since 10:42 AM, 5 failed attempts" under the email. */
-.userLockLine {
+/* Status badge with "Since 10:42 AM" under it for a locked account. */
+.statusStack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-1) / 2);
+}
+/* Badge centers itself with align-self; keep it on the left edge. */
+.statusStack > * { align-self: flex-start; }
+.lockSince {
   font-size: var(--font-sm);
   color: var(--status-error);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }

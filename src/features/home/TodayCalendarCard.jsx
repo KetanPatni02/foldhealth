@@ -7,6 +7,8 @@ import styles from './HomeView.module.css';
 
 const HOUR_HEIGHT = 48;
 const MIN_HEIGHT = 400;
+// Below this a title plus a meta line no longer fit, so the card goes single-line.
+const COMPACT_EVENT_HEIGHT = 40;
 
 function addDays(date, delta) {
   const d = new Date(date);
@@ -169,7 +171,7 @@ export function TodayCalendarCard({ dragHandleClassName }) {
           {eventBlocks.map(evt => (
             <div
               key={evt.id}
-              className={styles.calEvent}
+              className={[styles.calEvent, evt.height < COMPACT_EVENT_HEIGHT && styles.calEventCompact].filter(Boolean).join(' ')}
               style={{ top: `${evt.top}px`, height: `${evt.height}px` }}
               title={evt.title}
             >

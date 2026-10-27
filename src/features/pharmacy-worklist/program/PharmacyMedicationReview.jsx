@@ -427,17 +427,26 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                     <span className={styles.cRx}>{d.name} {d.strength} {d.unit}</span>
                     <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
                       {supply.length > 0 && <span className={styles.cMetaLine}>{supply.map((t, i) => <Fragment key={t}>{i > 0 && <Sep />}{t}</Fragment>)}</span>}
-                      {source.length > 0 && (
-                        <Tooltip
-                          placement="bottom"
-                          align="left"
-                          maxWidth={260}
-                          label={<span className={styles.cSource}>{source.map(([k, v]) => <span key={k}>{k}: {v}</span>)}</span>}
-                        >
-                          <button type="button" className={styles.cInfoLink} aria-label={source.map(([k, v]) => `${k}: ${v}`).join(', ')}>Info</button>
-                        </Tooltip>
+                      {(source.length > 0 || d.nonAdherenceReason) && (
+                        <span className={styles.cLinks}>
+                          {source.length > 0 && (
+                            <Tooltip
+                              placement="bottom"
+                              align="left"
+                              maxWidth={260}
+                              label={<span className={styles.cSource}>{source.map(([k, v]) => <span key={k}>{k}: {v}</span>)}</span>}
+                            >
+                              <button type="button" className={styles.cInfoLink} aria-label={source.map(([k, v]) => `${k}: ${v}`).join(', ')}>Info</button>
+                            </Tooltip>
+                          )}
+                          {source.length > 0 && d.nonAdherenceReason && <Sep />}
+                          {d.nonAdherenceReason && (
+                            <Tooltip placement="bottom" align="left" maxWidth={260} label={`Barrier: ${d.nonAdherenceReason}`}>
+                              <button type="button" className={`${styles.cInfoLink} ${styles.cBarrierText}`} aria-label={`Barrier: ${d.nonAdherenceReason}`}>1 Barrier</button>
+                            </Tooltip>
+                          )}
+                        </span>
                       )}
-                      {d.nonAdherenceReason && <span className={`${styles.cMetaLine} ${styles.cBarrierText}`}>Barrier: {d.nonAdherenceReason}</span>}
                     </span>
                   </span>
                   <span className={styles.cValue}>{d.lastFill || '—'}</span>

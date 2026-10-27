@@ -5,7 +5,7 @@ import { ROLE_COLORS } from '../AccountPanel.constants';
 import { statusBadge, formatDate, formatRelative } from './UsersTab.utils';
 import { UserActions } from './UserActions';
 import { OverflowBadge } from './OverflowBadge';
-import { accountStatus, lockLine } from './accountLock';
+import { accountStatus, isLocked, formatLockTime } from './accountLock';
 import styles from './UserRow.module.css';
 
 export function UsersTabRow({
@@ -15,6 +15,7 @@ export function UsersTabRow({
   onEdit,
   onViewOoo,
   onResetPassword,
+  onUnlock,
   onToggleStatus,
   onReviewSignup,
   onDelete,
@@ -40,16 +41,20 @@ export function UsersTabRow({
           className={styles.userCell}
           onClick={() => (bulkMode ? onToggleSelect?.(user.id) : onView(user))}
         >
-          <Avatar variant="staff" size="M" initials={user.initials} userName={user.name} />
+          <Avatar variant="staff" size="M" initials={user.initials} userName={user.name} locked={status === 'Locked'} />
           <div className={styles.userInfo}>
             <span className={styles.userName}>{user.name}</span>
             <span className={styles.userEmail}>{user.email}</span>
-            {lockLine(user.lock) && <span className={styles.userLockLine}>{lockLine(user.lock)}</span>}
           </div>
         </button>
       </td>
       <td className={styles.td}>
-        <Badge variant={sb.variant} icon={sb.icon} label={status} />
+        <div className={styles.statusStack}>
+          <Badge variant={sb.variant} icon={sb.icon} label={status} />
+          {isLocked(user.lock) && (
+            <span className={styles.lockSince}>Since {formatLockTime(user.lock.locked_at)}</span>
+          )}
+        </div>
       </td>
       <td className={styles.td}>
         <div className={styles.rolesCell}>
@@ -86,7 +91,9 @@ export function UsersTabRow({
         <UserActions
           user={user}
           isAdmin={isCurrentUserAdmin}
+          locked={status === 'Locked'}
           onResetPassword={() => onResetPassword(user)}
+          onUnlock={() => onUnlock(user)}
           onToggleStatus={() => onToggleStatus(user)}
           onApprove={() => onReviewSignup(user, true)}
           onReject={() => onReviewSignup(user, false)}

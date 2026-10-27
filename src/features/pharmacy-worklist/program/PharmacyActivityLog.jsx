@@ -4,12 +4,17 @@ import { Drawer } from '../../../components/Drawer/Drawer';
 import { toActivityLogEntries } from '../../hedis-worklist/CareGapDetailDrawer.utils';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 
+// Saved titles join their parts with a middle dot (·); show the same bullet
+// (•) the meta line above them uses.
+const withBullets = (text) => (typeof text === 'string' ? text.replaceAll(' · ', ' • ') : text);
+
 // Everything done on a pharmacy member — outreach, verification calls,
 // pickups and the fill dates they moved, barrier logs, medication edits,
 // status and assignee changes — newest first, grouped by month.
 export function PharmacyActivityLog({ member }) {
   const entries = useMemo(
-    () => toActivityLogEntries((member?.activityLog || []).map(e => ({ ...e, when: e.at }))),
+    () => toActivityLogEntries((member?.activityLog || []).map(e => ({ ...e, when: e.at })))
+      .map(e => ({ ...e, title: withBullets(e.title), note: withBullets(e.note), outcome: withBullets(e.outcome) })),
     [member],
   );
   return <ActivityLog entries={entries} relaxed flushTop emptyLabel="No activity recorded yet." />;

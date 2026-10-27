@@ -107,3 +107,18 @@ describe('reason for non-adherence on a medication', () => {
     expect(s.member().interventionLog).toHaveLength(1);
   });
 });
+
+describe('pharmacy verification lock', () => {
+  it('logs what was answered for each drug in the activity entry', () => {
+    const s = storeWith([]);
+    s.get().pharmacyWorklistMembers[0] = { id: '1', callHistory: [], activityLog: [], measures: [] };
+    s.get().lockPharmacyVerification('1', {
+      kind: 'pharmacy-verification', locked: true, date: '10/27/2026', contact: 'CVS', outcome: 'Med pickup confirmed', result: 'success',
+      by: 'Priya', note: 'Spoke with tech', measures: ['MAD'],
+      items: [{ measure: 'MAD', drug: 'Metformin 500 MG', steps: ['Last fill 10/06/2026 confirmed', 'Refilled', 'Picked up'] }],
+    }, { pickedUpCodes: [], pendingCodes: [], refillsByMed: {}, status: null });
+    const [a] = s.member().activityLog;
+    expect(a.title).toBe('Pharmacy verification · CVS (locked)');
+    expect(a.note.split('\n')).toEqual(['MAD · Metformin 500 MG: Last fill 10/06/2026 confirmed, Refilled, Picked up', 'Spoke with tech']);
+  });
+});
