@@ -10,7 +10,7 @@ import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import {
   GAP_STATUS_TONE, MANUAL_GAP_STATUSES, MEASURE_NAMES, daysFromToday, isActiveGap, enrichPharmacyMember, medicationStatus, pdcTone, pharmaciesUsed, prescribersOf,
 } from '../pharmacyWorklist.utils';
-import { Dash, DueDate, FailDateValue, MeasureCode, NextFillDueValue, PdcValue, PriorYearPdc, SavabilityBadge, SubStatus } from '../PharmacyCells';
+import { Dash, DrugsCount, DueDate, FailDateValue, MeasureCode, NextFillDueValue, PdcValue, PriorYearPdc, SavabilityBadge, SubStatus } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacySnapshotStep.module.css';
 
@@ -28,11 +28,31 @@ const supplyLabel = (d) => [d.daysSupply != null && `${d.daysSupply} days`, d.qt
 
 const addressOf = (o) => [o.address1, o.city, o.state, o.zip].filter(Boolean).join(', ') || '—';
 
+// The gap's prescribers or pharmacies, one each (a gap's drugs may come
+// from different ones), from its active medications.
+function contactsOf(meds, key) {
+  const seen = new Map();
+  for (const d of meds || []) {
+    const c = d.status !== 'Discontinued' && d[key];
+    if (c?.name && !seen.has(c.name)) seen.set(c.name, c);
+  }
+  return [...seen.values()];
+}
+
+// One line per contact, or a dash.
+function ContactLines({ contacts, render }) {
+  if (!contacts.length) return '—';
+  return <span className={styles.detailLines}>{contacts.map(c => <span key={c.name}>{render(c)}</span>)}</span>;
+}
+
 // What a compact gap row opens to: the gap's details the table leaves out,
 // label above value, three to a row (Figma 5693:49946). Its drugs are in
 // Medication Review.
 function GapDetails({ gap: g }) {
   const open = isActiveGap(g.status);
+  const prescribers = contactsOf(g.medications, 'prescriber');
+  const pharmacies = contactsOf(g.medications, 'pharmacy');
+  const phone = (c) => (c.phone ? <PhoneLink number={c.phone} label={c.name} /> : '—');
   const items = [
     ['Claim', g.recon ? (
       <Tooltip label={g.recon.detail} placement="bottom">
@@ -45,6 +65,10 @@ function GapDetails({ gap: g }) {
     ['Allowable Gap Days', g.allowableGapDays == null ? '—' : <span className={g.allowableGapDays <= 0 ? styles.toneError : ''}>{g.allowableGapDays} days</span>],
     ['Attempts This Cycle', g.attempts],
     ['Last Pickup Confirmed', g.pickupConfirmed || '—'],
+    ['Prescriber', <ContactLines key="rx" contacts={prescribers} render={c => c.name} />],
+    ['Prescriber Phone', <ContactLines key="rxp" contacts={prescribers} render={phone} />],
+    ['Pharmacy', <ContactLines key="ph" contacts={pharmacies} render={c => c.name} />],
+    ['Pharmacy Phone', <ContactLines key="php" contacts={pharmacies} render={phone} />],
   ];
   return (
     <div className={styles.detailPanel}>
@@ -114,6 +138,7 @@ function GapList({ gaps, title, titleExtra, onSetStatus }) {
       <div className={styles.list} role="table" aria-label={title}>
         <div className={`${styles.listGrid} ${styles.listHead}`} role="row">
           <span role="columnheader">Gap</span>
+          <span role="columnheader">Drugs</span>
           <span role="columnheader">Status</span>
           <span role="columnheader">PDC</span>
           <span role="columnheader">Fail Date</span>
@@ -133,6 +158,7 @@ function GapList({ gaps, title, titleExtra, onSetStatus }) {
                   <span className={styles.chevronBox}><DownChevronIcon size={16} className={`${styles.chevron} ${isOpen ? '' : styles.chevronRight}`} /></span>
                   <span className={styles.listNameText}>{g.code}</span>
                 </button>
+                <span className={styles.listCell} role="cell"><DrugsCount meds={g.medications || []} /></span>
                 <span className={styles.listStatus} role="cell">
                   {workable ? (
                     <button

@@ -200,7 +200,7 @@ function PharmacyGapDrawerBody({ target, row }) {
             )}
             {workspace === 'verify' && <PharmacyVerificationStep member={scoped} program={PHARM_PROGRAM} />}
             {workspace === 'barriers' && <PharmacyBarrierStep member={scoped} />}
-            {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} interventionLog={m.interventionLog} plan={m.healthPlan} initialTab={workspace.tab} />}
+            {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} interventionLog={m.interventionLog} plan={m.healthPlan} initialTab={workspace.tab} flushTabs />}
           </div>
         </div>
       )}
@@ -212,7 +212,7 @@ function PharmacyGapDrawerBody({ target, row }) {
           <div className={styles.gapToolbar}>
             <div className={styles.yearWrap}>
               <FilterChip
-                label="Measurement Year"
+                label="Measurement"
                 options={[year]}
                 selected={[year]}
                 onChange={() => {}}
@@ -331,7 +331,7 @@ function PharmacyGapDrawerBody({ target, row }) {
         <div className={`${styles.tabContentWrap} ${tab === 'outreach' ? styles.tabContentWrapFlush : ''}`}>
           {picked.length > 0 && (
             <>
-              {tab === 'medication' && <PharmacyMedicationReview compact member={scoped} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab })} />}
+              {tab === 'medication' && <PharmacyMedicationReview compact member={scoped} activeMedId={workspace?.medId ?? null} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab })} />}
               {tab === 'outreach' && (
                 <OutreachTabView tab={scopedOutreach} hideLogForRow hideForm={workspace === 'outreach'} taskMember={m.name} onLogNew={openOutreach} />
               )}

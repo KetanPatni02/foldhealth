@@ -5,19 +5,18 @@ import { Icon } from '../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { PhoneLink } from '../../../components/PhoneLink/PhoneLink';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
-import { RadioButton } from '../../../components/RadioButton/RadioButton';
+import { RadioOptionGroup } from '../../../components/RadioOptionGroup/RadioOptionGroup';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Select } from '../../../components/Select/Select';
 import { Drawer } from '../../../components/Drawer/Drawer';
-import { Button } from '../../../components/Button/Button';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
-import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { MedicationClaims } from './MedicationClaims';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
+import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { DatePickerPopover } from '../../../components/DatePicker/DatePickerPopover';
 import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, medicationStatus, pdcTone, todayMdy } from '../pharmacyWorklist.utils';
-import { MeasureCode, SubStatus } from '../PharmacyCells';
+import { MeasureCode, Sep, SubStatus } from '../PharmacyCells';
 import { BARRIERS } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacyMedicationReview.module.css';
@@ -38,7 +37,8 @@ function DraftTextarea({ value, onCommit, ...rest }) {
     <Textarea
       {...rest}
       value={draft}
-      onChange={e => setDraft(e.target.value)}
+      // A labelled Textarea passes the text; a plain one, the event.
+      onChange={v => setDraft(typeof v === 'string' ? v : v.target.value)}
       onBlur={() => { if (draft !== (value || '')) onCommit(draft); }}
     />
   );
@@ -49,8 +49,8 @@ function ContactCard({ title, person }) {
     <section className={styles.card}>
       <header className={styles.cardTitle}>{title}{person?.name ? <span className={styles.cardName}>{person.name}</span> : null}</header>
       <dl className={styles.cardGrid}>
-        <div className={styles.wideCell}><dt>Primary Phone</dt><dd><PhoneLink number={person?.phone} label={person?.name} /></dd></div>
-        {person?.fax !== undefined && <div><dt>Fax</dt><dd>{person.fax || '—'}</dd></div>}
+        <div className={styles.halfCell}><dt>Primary Phone</dt><dd><PhoneLink number={person?.phone} label={person?.name} /></dd></div>
+        {person?.fax !== undefined && <div className={styles.halfCell}><dt>Fax</dt><dd className={styles.noWrap}>{person.fax || '—'}</dd></div>}
         <div className={styles.fullRow}><dt>Address</dt><dd>{person?.address1 || '—'}</dd></div>
         <div><dt>City</dt><dd>{person?.city || '—'}</dd></div>
         <div><dt>State</dt><dd>{person?.state || '—'}</dd></div>
@@ -101,7 +101,7 @@ function RecentFillChip({ date, label, onChange }) {
   return (
     <>
       <button type="button" className={styles.cChip} onClick={(e) => setRect(e.currentTarget.getBoundingClientRect())} aria-haspopup="dialog" aria-label={`${label}: ${date || 'not set'}`}>
-        <Badge tone="white" size="M" label={date || 'Set date'} className={date ? undefined : styles.cChipEmpty} />
+        <Badge tone="white" size="M" label={date || 'Select Date'} className={date ? undefined : styles.cChipEmpty} />
       </button>
       {rect && (
         <DatePickerPopover
@@ -120,11 +120,13 @@ function RecentFillChip({ date, label, onChange }) {
 // Medication statuses that call for action read red.
 const URGENT_MED_STATUSES = new Set(['Refill overdue', 'Fill reversed', 'Not matched – rework']);
 
-export function MedicationDetail({ med, memberRowId, interventionLog, plan, initialTab }) {
+// `flushTabs`: the host pads its pane, and the tab strip should still run
+// edge to edge (the gap drawer's left pane).
+export function MedicationDetail({ med, memberRowId, interventionLog, plan, initialTab, flushTabs = false }) {
   // Barrier & Intervention log entries for this medication's measure.
   const barrierLog = (interventionLog || [])
     .filter(e => e.measures?.[med.measure])
-    .map(e => ({ date: e.date, by: e.by, source: e.source, rec: e.measures[med.measure] }));
+    .map(e => ({ date: e.date, by: e.by, source: e.source, medication: e.medication, rec: e.measures[med.measure] }));
   const update = useAppStore(s => s.updatePharmacyMedication);
   const save = (patch) => update(memberRowId, med.id, patch);
   // Claims tab (as in HCC), or the medication's details.
@@ -145,26 +147,36 @@ export function MedicationDetail({ med, memberRowId, interventionLog, plan, init
         onChange={setTab}
         fullWidth={false}
         size="S"
+        className={flushTabs ? styles.tabsFlush : undefined}
       />
       {tab === 'claims' ? <MedicationClaims med={med} plan={plan} memberRowId={memberRowId} /> : <>
       <div className={styles.detailHead}>
         <MeasureCode code={med.measure} />
-        <span className={styles.detailMeta}><span>Dose Form:</span> {med.doseForm}</span>
-        <span className={styles.detailMeta}><span>Route:</span> {med.route}</span>
+        <span className={styles.detailMeta}><span>Dose Form</span>{med.doseForm || '—'}</span>
+        <span className={styles.detailMeta}><span>Route</span>{med.route || '—'}</span>
       </div>
 
-      <div className={styles.detailGrid}>
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>Med Status</span>
-          <div className={styles.radios}>
-            {['Active', 'Discontinued'].map(s => (
-              <RadioButton key={s} checked={med.status === s} onChange={() => save({ status: s })} label={s} />
-            ))}
-          </div>
-          <span className={styles.fieldLabel}>SIG</span>
-          <DraftTextarea key={`sig-${med.id}`} value={med.sig} onCommit={sig => save({ sig })} placeholder="Directions for use" aria-label="SIG" />
+      {/* Sections read top to bottom: the drug, who prescribes and fills it,
+          notes, then its barrier log. */}
+      <section className={styles.detailSection}>
+        <div className={styles.subTitle}>Medication</div>
+        <div className={styles.detailRow}>
+          <RadioOptionGroup
+            className={styles.medStatus}
+            label="Med Status"
+            name={`med-status-${med.id}`}
+            options={['Active', 'Discontinued'].map(v => ({ value: v, label: v }))}
+            value={med.status}
+            onChange={status => save({ status })}
+          />
+          <Select
+            label="Reason for Non-Adherence"
+            options={NON_ADHERENCE_REASONS}
+            value={med.nonAdherenceReason || ''}
+            onChange={v => save({ nonAdherenceReason: v })}
+            placeholder="Select reason"
+          />
         </div>
-
         <div className={styles.field}>
           <span className={styles.fieldLabel}>Condition</span>
           <div className={styles.checks}>
@@ -175,43 +187,44 @@ export function MedicationDetail({ med, memberRowId, interventionLog, plan, init
               </label>
             ))}
           </div>
-          <span className={styles.fieldLabel}>Reason for Non-Adherence</span>
-          <Select
-            options={NON_ADHERENCE_REASONS}
-            value={med.nonAdherenceReason || ''}
-            onChange={v => save({ nonAdherenceReason: v })}
-            placeholder="Select reason"
-          />
         </div>
+        <DraftTextarea key={`sig-${med.id}`} title="SIG" value={med.sig} onCommit={sig => save({ sig })} placeholder="Directions for use" rows={2} />
+      </section>
 
-        <ContactCard title="Prescriber" person={med.prescriber} />
-        <ContactCard title="Pharmacy" person={med.pharmacy} />
-
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>Notes to MD</span>
-          <DraftTextarea key={`md-${med.id}`} value={med.notesToMd} onCommit={notesToMd => save({ notesToMd })} placeholder="Note for the prescriber" aria-label="Notes to MD" />
-          <span className={styles.fieldLabel}>Internal Notes</span>
-          <DraftTextarea key={`int-${med.id}`} value={med.internalNotes} onCommit={internalNotes => save({ internalNotes })} placeholder="Visible to the care team only" aria-label="Internal notes" />
+      <section className={styles.detailSection}>
+        <div className={styles.subTitle}>Prescriber &amp; Pharmacy</div>
+        <div className={styles.detailRow}>
+          <ContactCard title="Prescriber" person={med.prescriber} />
+          <ContactCard title="Pharmacy" person={med.pharmacy} />
         </div>
+      </section>
 
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>Barriers &amp; Interventions ({med.measure})</span>
-          {barrierLog.length === 0 && <span className={styles.muted}>None logged for {med.measure} yet.</span>}
-          {barrierLog.map((e, i) => (
-            <div key={`${e.date}-${i}`} className={`${styles.barrierEntry} ${i === 0 ? styles.barrierLatest : ''}`}>
-              <span className={styles.barrierMeta}>
-                {i === 0 ? 'Latest · ' : ''}{e.date} · {e.by}{e.source ? ` · from ${e.source.toLowerCase()}` : ''}
-              </span>
-              <span className={styles.barrierChips}>
-                {e.rec.barriers.map(b => <Badge key={b} size="S" tone="grey" label={b} />)}
-                {e.rec.interventions.map(v => <Badge key={v} size="S" tone="grey" label={v} />)}
-                {e.rec.result && <Badge size="S" tone="grey" icon="solar:check-circle-linear" label={e.rec.result} />}
-              </span>
-            </div>
-          ))}
+      <section className={styles.detailSection}>
+        <div className={styles.subTitle}>Notes</div>
+        <div className={styles.detailRow}>
+          <DraftTextarea key={`md-${med.id}`} title="Notes to MD" value={med.notesToMd} onCommit={notesToMd => save({ notesToMd })} placeholder="Note for the prescriber" />
+          <DraftTextarea key={`int-${med.id}`} title="Internal Notes" value={med.internalNotes} onCommit={internalNotes => save({ internalNotes })} placeholder="Visible to the care team only" />
         </div>
-      </div>
+      </section>
 
+      <section className={styles.detailSection}>
+        <div className={styles.subTitle}>Barriers &amp; Interventions ({med.measure})</div>
+        {barrierLog.length === 0 && <span className={styles.muted}>None logged for {med.measure} yet.</span>}
+        {barrierLog.map((e, i) => (
+          <div key={`${e.date}-${i}`} className={`${styles.barrierEntry} ${i === 0 ? styles.barrierLatest : ''}`}>
+            <span className={styles.barrierMeta}>
+              {[i === 0 && 'Latest', e.date, e.by, e.source && `from ${e.source.toLowerCase()}${e.medication ? ` (${e.medication})` : ''}`].filter(Boolean).map((t, j) => <Fragment key={t}>{j > 0 && <Sep />}{t}</Fragment>)}
+            </span>
+            <span className={styles.barrierChips}>
+              {e.rec.barriers.map(b => <Badge key={b} size="S" tone="grey" label={b} />)}
+              {e.rec.interventions.map(v => <Badge key={v} size="S" tone="grey" label={v} />)}
+              {e.rec.result && <Badge size="S" tone="grey" icon="solar:check-circle-linear" label={e.rec.result} />}
+            </span>
+          </div>
+        ))}
+      </section>
+
+      <section className={styles.detailSection}>
       <div className={styles.subTitle}>Refill History</div>
       <div className={styles.tableScroll}>
         <table className={styles.table}>
@@ -237,6 +250,7 @@ export function MedicationDetail({ med, memberRowId, interventionLog, plan, init
           </tbody>
         </table>
       </div>
+      </section>
       </>}
     </div>
   );
@@ -289,7 +303,9 @@ function classGroups(x) {
 // `compact` (Pharmacy Gap Details): the gap table above already shows each
 // gap's status, PDC and dates, so each gap card is just its drugs, and each
 // drug row keeps the fill columns; the rest is a click away in its details.
-export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compact = false }) {
+// `activeMedId`: the medication whose details the host has open; its row
+// reads as selected.
+export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compact = false, activeMedId = null }) {
   const fromProfile = usePharmacyProgramMember();
   const member = memberProp || fromProfile;
   const focus = useAppStore(s => s.pharmacyFocusGap);
@@ -308,14 +324,14 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
   // Bulk Recent Fill: drugs picked across any gaps, as "code|medId".
   const setRecentFillBulk = useAppStore(s => s.setPharmacyRecentFillBulk);
   const [picked, setPicked] = useState(() => new Set());
-  const [bulkDate, setBulkDate] = useState('');
+  const [bulkRect, setBulkRect] = useState(null);
   // Picks belong to one patient: drop them when another patient opens on
   // this step (the step is not remounted).
   const [pickedFor, setPickedFor] = useState(member?.id);
   if (pickedFor !== member?.id) {
     setPickedFor(member?.id);
     setPicked(new Set());
-    setBulkDate('');
+    setBulkRect(null);
   }
   const pickKey = (code, medId) => `${code}|${medId}`;
   const togglePick = (key) => setPicked(prev => {
@@ -331,10 +347,11 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
     for (const k of keys) { if (on) next.add(k); else next.delete(k); }
     return next;
   });
-  const applyBulk = () => {
-    setRecentFillBulk(member.id, [...picked].map(k => { const [code, medId] = k.split('|'); return { code, medId }; }), fromIso(bulkDate));
+  const applyBulk = (iso) => {
+    setBulkRect(null);
+    if (!iso) return;
+    setRecentFillBulk(member.id, [...picked].map(k => { const [code, medId] = k.split('|'); return { code, medId }; }), fromIso(iso));
     setPicked(new Set());
-    setBulkDate('');
   };
 
   const all = useMemo(() => (member?.measures || [])
@@ -369,7 +386,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
           <DownChevronIcon size={16} className={`${styles.chevron} ${expanded ? '' : styles.chevronRight}`} />
           <span className={styles.cCode}>{x.code}</span>
           <span className={styles.cName}>({MEASURE_NAMES[x.code]})</span>
-          <span className={styles.cCount}>{x.medications.length} medication{x.medications.length === 1 ? '' : 's'}</span>
+          <span className={styles.cCount}><Badge size="S" tone="grey" label={`${x.medications.length} Med${x.medications.length === 1 ? '' : 's'}`} /></span>
         </button>
         {expanded && (
           <div className={styles.cTable} role="table" aria-label={`${x.code} medications`}>
@@ -400,7 +417,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                 d.pharmacy?.name && ['Pharmacy', d.pharmacy.name],
               ].filter(Boolean);
               return (
-                <div key={d.id} className={`${styles.cRow} ${styles.cMedRow} ${dc ? styles.cDiscontinued : ''}`} role="row" onClick={() => openDrug(d.id)}>
+                <div key={d.id} className={`${styles.cRow} ${styles.cMedRow} ${dc ? styles.cDiscontinued : ''} ${d.id === activeMedId ? styles.cMedRowActive : ''}`} role="row" aria-selected={d.id === activeMedId} onClick={() => openDrug(d.id)}>
                   <span className={styles.cPick} onClick={e => e.stopPropagation()}>
                     {!dc && <Checkbox checked={picked.has(pickKey(x.code, d.id))} onCheckedChange={() => togglePick(pickKey(x.code, d.id))} aria-label={`Select ${d.name}`} />}
                   </span>
@@ -409,7 +426,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                   <span className={styles.cStack}>
                     <span className={styles.cRx}>{d.name} {d.strength} {d.unit}</span>
                     <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
-                      {supply.length > 0 && <span className={styles.cMetaLine}>{supply.join(' · ')}</span>}
+                      {supply.length > 0 && <span className={styles.cMetaLine}>{supply.map((t, i) => <Fragment key={t}>{i > 0 && <Sep />}{t}</Fragment>)}</span>}
                       {source.length > 0 && (
                         <Tooltip
                           placement="bottom"
@@ -446,7 +463,6 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                         <span className={styles.cNote} aria-label="Has a note"><Icon name="solar:notes-linear" size={16} color="var(--neutral-300)" /></span>
                       </Tooltip>
                     )}
-                    <ActionButton icon="solar:eye-linear" size="S" tooltip="View details" onClick={() => openDrug(d.id)} />
                   </span>
                 </div>
               );
@@ -467,7 +483,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={`${styles.wrap} ${picked.size > 0 ? styles.wrapWithBulk : ''}`}>
       <div className={`${styles.toolbar} ${compact ? styles.cToolbar : ''}`}>
         {activeKeys(all).length > 0 && (
           <label className={styles.checkRow}>
@@ -488,16 +504,29 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
         </p>
       )}
 
-      {picked.size > 0 && (
-        <div className={styles.bulkBar} role="region" aria-label="Set recent fill for selected medications">
-          <span className={styles.bulkCount}>{picked.size} medication{picked.size === 1 ? '' : 's'} selected</span>
-          <span className={styles.bulkField}>
-            <span className={styles.groupMeta}>Recent Fill</span>
-            <DatePicker value={bulkDate} onSelect={setBulkDate} aria-label="Recent fill date for selected medications" />
-          </span>
-          <Button variant="primary" size="M" disabled={!bulkDate} onClick={applyBulk}>Apply to {picked.size}</Button>
-          <Button variant="ghost" size="M" onClick={() => setPicked(new Set())}>Clear selection</Button>
-        </div>
+      {/* Selected medications get the shared floating bulk bar; Set Recent
+          Fill opens the calendar and applies the date to all of them. */}
+      <BulkBar
+        className={compact ? styles.bulkBarInDrawer : undefined}
+        selectedIds={[...picked]}
+        onClear={() => setPicked(new Set())}
+        actions={[{
+          label: 'Set Recent Fill',
+          icon: 'solar:calendar-linear',
+          variant: 'primary',
+          size: 'L',
+          onClick: (_ids, e) => setBulkRect(e.currentTarget.getBoundingClientRect()),
+        }]}
+      />
+      {bulkRect && (
+        <DatePickerPopover
+          open
+          value=""
+          anchorRect={bulkRect}
+          max={toIso(todayMdy())}
+          onChange={applyBulk}
+          onClose={() => setBulkRect(null)}
+        />
       )}
 
       {compact && shown.map(x => renderCompactGroup(x))}

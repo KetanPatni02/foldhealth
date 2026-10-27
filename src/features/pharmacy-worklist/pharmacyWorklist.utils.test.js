@@ -379,3 +379,15 @@ describe('enrichPharmacyMember: other care gaps', () => {
     expect(m.status).toBe('Closed');
   });
 });
+
+describe('enrichPharmacyMember: priority', () => {
+  const base = { id: 'm', memberId: 'm', measures: [fillMeasure({ filledDaysAgo: 10, supply: 30 })] };
+
+  it('takes the plan file priority, in P1–P3 form', () => {
+    expect(enrichPharmacyMember({ ...base, sourcePriority: 'Medium' }).priority).toBe('P2');
+  });
+
+  it('lets a priority picked on the worklist win over the plan file', () => {
+    expect(enrichPharmacyMember({ ...base, sourcePriority: 'P1', priorityOverride: 'P3' }).priority).toBe('P3');
+  });
+});

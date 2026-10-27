@@ -193,7 +193,7 @@ export function ProgressCell({ progress }) {
 }
 
 // Separator between parts of one line (year • PDC, source • Below 80%).
-function Sep() {
+export function Sep() {
   return <span className={styles.sep} aria-hidden="true">•</span>;
 }
 

@@ -545,8 +545,14 @@ export function gapProgress(statuses) {
 }
 
 // Sources send priority as P1–P3 or High/Medium/Low; the worklist always
-// shows P1–P3 so rows compare at a glance. Derived when the source has none.
+// keeps P1–P3 so rows compare at a glance. A priority picked on the worklist
+// wins, then the source's, then one derived from the focus measure.
 const SOURCE_PRIORITY = { P1: 'P1', High: 'P1', P2: 'P2', Medium: 'P2', P3: 'P3', Low: 'P3' };
+export const PRIORITY_LEVELS = [
+  { value: 'P1', icon: 'high', label: 'High' },
+  { value: 'P2', icon: 'medium', label: 'Medium' },
+  { value: 'P3', icon: 'low', label: 'Low' },
+];
 const PRIORITY_RANKS = { P1: 0, P2: 1, P3: 2 };
 export const priorityRank = (p) => PRIORITY_RANKS[p] ?? 3;
 
@@ -612,7 +618,7 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
   const urgentOpen = isActiveGap(statuses[urgent?.code]);
   const recon = worstRecon(shown, m.healthPlan);
   const outreach = outreachSummary(m.callHistory);
-  const priority = SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3');
+  const priority = SOURCE_PRIORITY[m.priorityOverride] || SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3');
   const progress = gapProgress(statuses);
   // Open Care Gaps: the member's non-pharmacy gaps still being worked.
   const otherCareGaps = (hedisGapsByMember?.get(normMemberId(m.memberId || m.id)) ?? m.otherCareGaps ?? [])

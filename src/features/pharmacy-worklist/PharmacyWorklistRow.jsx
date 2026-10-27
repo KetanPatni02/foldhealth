@@ -11,7 +11,8 @@ import { useAppStore } from '../../store/useAppStore';
 import { worklistMemberCallId } from '../../lib/patientCall';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
 import { PharmacyActivityDrawer } from './program/PharmacyActivityLog';
-import { MANUAL_GAP_STATUSES, isActiveGap } from './pharmacyWorklist.utils';
+import { MANUAL_GAP_STATUSES, PRIORITY_LEVELS, isActiveGap } from './pharmacyWorklist.utils';
+import { PriorityIcon } from '../../components/PriorityIcon/PriorityIcon';
 import styles from './PharmacyWorklistRow.module.css';
 
 const MAX_INLINE_GAPS = 2;
@@ -25,6 +26,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   const requestAddTask = useAppStore(s => s.requestAddTask);
   const runPatientRowAction = useAppStore(s => s.runPatientRowAction);
   const setPharmacyGapStatus = useAppStore(s => s.setPharmacyGapStatus);
+  const setPharmacyPriority = useAppStore(s => s.setPharmacyPriority);
   const openPharmacyGapDrawer = useAppStore(s => s.openPharmacyGapDrawer);
   const setPharmacyAssignee = useAppStore(s => s.setPharmacyAssignee);
   const platformUsers = useAppStore(s => s.platformUsers);
@@ -34,6 +36,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [gapStatusMenu, setGapStatusMenu] = useState(null); // { code, rect }
+  const [priorityRect, setPriorityRect] = useState(null);
   const [expanded, setExpanded] = useState(false);
 
   // HEDIS pattern: show 2 gaps, the rest behind "View More N". Gaps still
@@ -62,6 +65,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
     openCareGap: onOpenCareGap,
     eligibleUsers,
     openGapStatusMenu: (code, rect) => setGapStatusMenu(cur => (cur?.code === code ? null : { code, rect })),
+    openPriorityMenu: (rect) => setPriorityRect(cur => (cur ? null : rect)),
     visibleGaps,
     extraCount,
     expanded,
@@ -175,6 +179,21 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
           </div>
         </div>
         {showActivity && <PharmacyActivityDrawer member={m} onClose={() => setShowActivity(false)} />}
+        {priorityRect && (
+          <MenuPopover
+            anchorRect={priorityRect}
+            items={PRIORITY_LEVELS.map(l => ({
+              key: l.value,
+              label: `${l.label} (${l.value})`,
+              iconElement: <PriorityIcon priority={l.icon} size={16} />,
+              selected: l.value === m.priority,
+            }))}
+            onSelect={(key) => { setPharmacyPriority(m.id, key); setPriorityRect(null); }}
+            onClose={() => setPriorityRect(null)}
+            width={180}
+            ariaLabel={`Change ${m.name}'s priority`}
+          />
+        )}
         {menuGap && (
           <MenuPopover
             anchorRect={gapStatusMenu.rect}

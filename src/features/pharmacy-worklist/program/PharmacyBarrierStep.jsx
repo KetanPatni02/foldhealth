@@ -166,7 +166,7 @@ export function PharmacyBarrierStep({ member: memberProp }) {
             <div className={styles.logHead}>
               <span className={styles.logDate}>{e.date}</span>
               <span className={styles.muted}>by {e.by}</span>
-              {e.source && <Badge size="S" tone="grey" icon="solar:phone-linear" label={`From ${e.source.toLowerCase()}`} />}
+              {e.source && <Badge size="S" tone="grey" icon={e.medication ? 'solar:pill-linear' : 'solar:phone-linear'} label={`From ${e.source.toLowerCase()}${e.medication ? ` · ${e.medication}` : ''}`} />}
             </div>
             {Object.entries(e.measures).map(([code, rr]) => (
               <div key={code} className={styles.logRow}>

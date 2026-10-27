@@ -67,6 +67,13 @@
 .alert { color: var(--status-error); border-bottom: 1px dashed transparent; }
 .alert:hover { border-bottom-color: var(--status-error); }
 .sep { margin: 0 var(--space-1); color: var(--neutral-300); }
+/* The P column: the priority icon opens the change menu. */
+.priorityButton {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: var(--space-1); border: none; border-radius: 4px; background: none; cursor: pointer;
+}
+.priorityButton:hover { background: var(--neutral-50); }
+.priorityButton:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 1px; }
 
 .toneError { color: var(--status-error); }
 

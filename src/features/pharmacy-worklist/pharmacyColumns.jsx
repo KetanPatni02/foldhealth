@@ -3,14 +3,13 @@ import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { GAP_STATUS_TONE, MANUAL_GAP_STATUSES, MEASURE_NAMES, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
+import { PriorityIcon } from '../../components/PriorityIcon/PriorityIcon';
+import { GAP_STATUS_TONE, MANUAL_GAP_STATUSES, MEASURE_NAMES, PRIORITY_LEVELS, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
 import { fillsToStayCompliant } from './fillEvents';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
 import { ClaimReconCell, Dash, DateWithDays, DrugsCount, FailDateValue, NextFillDueValue, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SavabilityBadge, SubStatus } from './PharmacyCells';
 import styles from './PharmacyWorklistRow.module.css';
 
-// Only top priority carries color; the rest stay neutral so red keeps meaning "act now".
-const PRIORITY_TONE = { P1: 'error' };
 
 const isOverdue = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
 const PRIOR_YEAR = new Date().getFullYear() - 1;
@@ -49,14 +48,25 @@ const viewMoreButton = (ctx) => (
  */
 export const PHARMACY_MIDDLE_COLUMNS = [
   {
-    key: 'priority', label: 'Priority', sortKey: 'priorityRank', sortType: 'number',
+    key: 'priority', label: 'P', sortKey: 'priorityRank', sortType: 'number', stopRowClickPropagation: true,
     // Divider before the per-gap block, like the one after it.
     getTdClassName: () => `${styles.td} ${styles.tdGapDivide}`,
-    renderCell: (m) => (
-      <Tooltip label={m.sourcePriority && m.sourcePriority !== m.priority ? `Plan file: ${m.sourcePriority}` : ''} placement="bottom">
-        <span><Badge size="S" tone={PRIORITY_TONE[m.priority] || 'grey'} label={m.priority} /></span>
-      </Tooltip>
-    ),
+    renderCell: (m, ctx) => {
+      const level = PRIORITY_LEVELS.find(l => l.value === m.priority);
+      const fromPlan = m.sourcePriority && !m.priorityOverride && m.sourcePriority !== m.priority ? ` (plan file: ${m.sourcePriority})` : '';
+      return (
+        <Tooltip label={`${level?.label || m.priority} priority${fromPlan}`} placement="bottom">
+          <button
+            type="button"
+            className={styles.priorityButton}
+            aria-label={`Priority ${level?.label || m.priority}, change`}
+            onClick={(e) => ctx.openPriorityMenu(e.currentTarget.getBoundingClientRect())}
+          >
+            <PriorityIcon priority={level?.icon || 'none'} size={16} />
+          </button>
+        </Tooltip>
+      );
+    },
   },
   {
     key: 'gaps', label: 'Pharmacy Gaps', getTdClassName: gapTd(false), stopRowClickPropagation: true,
