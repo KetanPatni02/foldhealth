@@ -2,13 +2,13 @@
  * POST /api/pop-group-rule-from-nl
  *
  * Turns natural-language population rule descriptions into a validated
- * rule tree via Gemini. GOOGLE_AI_API_KEY stays server-side.
+ * rule tree (OpenAI; see _lib/aiJson.js). The AI keys stay server-side.
  *
  * Body: { prompt?: string, messages?: {role, content}[], currentRule?: object }
  * Returns: { rule, summary } or { error: { message } }
  */
 
-import { geminiGenerateContent } from '../_lib/googleGemini.js';
+import { aiBusy, aiConfigured, generateJson } from '../_lib/aiJson.js';
 import { buildAiFieldCatalog, buildAiRuleInstructions } from '../../src/features/population-groups/rule-builder/aiRuleCatalog.js';
 import { AI_RULE_RESPONSE_SCHEMA } from '../../src/features/population-groups/rule-builder/aiRuleResponseSchema.js';
 import { normalizeAiRuleQuery } from '../../src/features/population-groups/rule-builder/normalizeAiRuleQuery.js';
@@ -52,9 +52,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: { message: 'Method not allowed' } });
   }
 
-  const key = process.env.GOOGLE_AI_API_KEY;
-  if (!key) {
-    console.error('[pop-group-rule-from-nl] GOOGLE_AI_API_KEY is not set');
+  if (!aiConfigured()) {
+    console.error('[pop-group-rule-from-nl] no AI key is set');
     return res.status(500).json({ error: { message: 'AI rule building is not set up on this deployment.' } });
   }
   if (!bodyWithinLimit(req, res)) return;
@@ -68,49 +67,27 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: { message: 'Enter a description of the rule you want.' } });
   }
 
-  const requestBody = JSON.stringify({
-    contents: [{
-      role: 'user',
-      parts: [{
-        text: buildPrompt({
-          prompt: effectivePrompt,
-          messages,
-          currentRule: body.currentRule,
-        }),
-      }],
-    }],
-    generationConfig: {
-      temperature: 0.2,
-      responseMimeType: 'application/json',
-      responseSchema: AI_RULE_RESPONSE_SCHEMA,
-    },
-  });
-
   try {
-    const { response: upstream, model } = await geminiGenerateContent({
-      apiKey: key,
-      requestBody,
+    const ai = await generateJson({
+      prompt: buildPrompt({
+        prompt: effectivePrompt,
+        messages,
+        currentRule: body.currentRule,
+      }),
+      schema: AI_RULE_RESPONSE_SCHEMA,
+      name: 'population_rule',
+      temperature: 0.2,
       logTag: 'pop-group-rule-from-nl',
+      timeoutMs: 30000,
+      deadlineMs: 60000,
     });
-
-    if (!upstream.ok) {
-      const detail = await upstream.text();
-      console.error('[pop-group-rule-from-nl] gemini error', upstream.status, model, detail.slice(0, 400));
-      const msg = upstream.status === 503 || upstream.status === 429
+    if (!ai.ok) {
+      const msg = aiBusy(ai.status)
         ? 'The AI service is busy right now. Please try again in a moment.'
-        : `AI service returned ${upstream.status}. Please try again.`;
+        : `AI service returned ${ai.status}. Please try again.`;
       return res.status(502).json({ error: { message: msg } });
     }
-
-    const json = await upstream.json();
-    const text = json?.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '';
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      console.error('[pop-group-rule-from-nl] non-JSON:', text.slice(0, 500));
-      return res.status(502).json({ error: { message: 'AI returned an unreadable rule. Please try again.' } });
-    }
+    const parsed = ai.data;
 
     const { query, errors } = normalizeAiRuleQuery(parsed.rule);
     if (!query) {

@@ -1,9 +1,9 @@
 /**
  * POST /api/care-plan-summary
  *
- * Server-side proxy for Google's Gemini (Generative Language) API. Keeps
- * GOOGLE_AI_API_KEY off the client — the browser posts the plan data, this
- * function builds the prompt, calls Gemini, and returns a structured summary
+ * Server-side AI summary (OpenAI; see _lib/aiJson.js). Keeps the AI keys
+ * off the client — the browser posts the plan data, this function builds the
+ * prompt, calls the model, and returns a structured summary
  * the UI renders as { intro, points:[{title, body}], actions:[string] }.
  *
  * Body: { patientName, programs, conditions, goals, interventions, barriers }
@@ -15,11 +15,9 @@
 
 import { requireUser } from '../_lib/requireUser.js';
 import { bodyWithinLimit } from '../_lib/limits.js';
+import { aiBusy, aiConfigured, generateJson } from '../_lib/aiJson.js';
 
-const MODEL = process.env.GOOGLE_AI_MODEL || 'gemini-3.8-flash';
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-
-// Force Gemini to answer in exactly the shape the SummaryCard renders.
+// Force the model to answer in exactly the shape the SummaryCard renders.
 const RESPONSE_SCHEMA = {
   type: 'object',
   properties: {
@@ -121,9 +119,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: { message: 'Method not allowed' } });
   }
 
-  const key = process.env.GOOGLE_AI_API_KEY;
-  if (!key) {
-    console.error('[care-plan-summary] GOOGLE_AI_API_KEY is not set');
+  if (!aiConfigured()) {
+    console.error('[care-plan-summary] no AI key is set');
     return res.status(500).json({ error: { message: 'AI summaries are not set up on this deployment.' } });
   }
 
@@ -134,47 +131,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: { message: 'Missing or invalid plan body' } });
   }
 
-  const requestBody = JSON.stringify({
-    contents: [{ role: 'user', parts: [{ text: buildPrompt(plan) }] }],
-    generationConfig: {
-      temperature: 0.4,
-      responseMimeType: 'application/json',
-      responseSchema: RESPONSE_SCHEMA,
-    },
-  });
-
   try {
-    // Gemini intermittently returns 503 (overloaded) / 429 (rate limit); a
-    // couple of short backoff retries turn most of those into a clean result.
-    let upstream;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      upstream = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: requestBody,
-      });
-      if (upstream.ok || (upstream.status !== 503 && upstream.status !== 429)) break;
-      await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
-    }
-
-    if (!upstream.ok) {
-      const detail = await upstream.text();
-      console.error('[care-plan-summary] gemini error', upstream.status, detail);
-      const msg = upstream.status === 503 || upstream.status === 429
+    const ai = await generateJson({
+      prompt: buildPrompt(plan),
+      schema: RESPONSE_SCHEMA,
+      name: 'care_plan_summary',
+      temperature: 0.4,
+      logTag: 'care-plan-summary',
+      timeoutMs: 30000,
+      deadlineMs: 60000,
+    });
+    if (!ai.ok) {
+      const msg = aiBusy(ai.status)
         ? 'The AI service is busy right now. Please try again in a moment.'
-        : `AI service returned ${upstream.status}. Please try again.`;
+        : `AI service returned ${ai.status}. Please try again.`;
       return res.status(502).json({ error: { message: msg } });
     }
-
-    const json = await upstream.json();
-    const text = json?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-    let summary;
-    try {
-      summary = JSON.parse(text);
-    } catch {
-      console.error('[care-plan-summary] non-JSON model output:', text.slice(0, 500));
-      return res.status(502).json({ error: { message: 'AI returned an unreadable summary. Please try again.' } });
-    }
+    const summary = ai.data;
 
     // Guard the shape so the client never renders undefined.
     const safe = {
