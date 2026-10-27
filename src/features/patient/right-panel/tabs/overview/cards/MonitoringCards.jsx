@@ -19,19 +19,19 @@ function useMonitoring(memberId) {
 
 export function SinceLastTouchCard({ memberId }) {
   const data = useMonitoring(memberId);
-  if (memberId && data === undefined) return <DashboardCardSkeleton icon="custom:history" title="Since Last Touch" />;
+  if (memberId && data === undefined) return <DashboardCardSkeleton icon="custom:history" title="Since Last Visit" />;
   const items = data?.timeline || [];
   return (
     <DashboardCard
       icon="custom:history"
-      title="Since Last Touch"
+      title="Since Last Visit"
       count={items.length || null}
       footer={data?.continuityNext ? `Next touchpoint: ${data.continuityNext}` : null}
     >
       <DashboardCardBody className={styles.listBody}>
-        {data?.continuityLast && <PanelSectionItem inset title="Last touch" meta={data.continuityLast} />}
+        {data?.continuityLast && <PanelSectionItem inset title="Last visit" meta={data.continuityLast} />}
         {items.length === 0 ? (
-          <p className={styles.empty}>Nothing new recorded since the last touch.</p>
+          <p className={styles.empty}>Nothing new recorded since the last visit.</p>
         ) : (
           <CappedRows
             items={items}
