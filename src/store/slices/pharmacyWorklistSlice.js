@@ -36,6 +36,7 @@ function rowToMember(r) {
     patientId: r.patient_id,
     sourcePriority: r.source_priority ?? null,
     priorityOverride: r.priority_override ?? null,
+    comments: r.comments || [],
     otherCareGaps: r.other_care_gaps || [],
     eligibilityStatus: r.eligibility_status || 'Active',
     termDate: r.term_date ?? null,
@@ -63,7 +64,7 @@ const pickupToRow = (p) => ({
 const COLUMN_TO_FIELD = {
   status: 'status', status_manual: 'statusManual', assignee_id: 'assigneeId', assignee_name: 'assigneeName', assignee_initials: 'assigneeInitials',
   measures: 'measures', call_history: 'callHistory', intervention_log: 'interventionLog', barrier: 'barrier',
-  follow_up_due: 'followUpDue', priority_override: 'priorityOverride',
+  follow_up_due: 'followUpDue', priority_override: 'priorityOverride', comments: 'comments',
 };
 
 // A fill left on the shelf brings the follow-up forward to the next pickup
@@ -317,6 +318,25 @@ export function createPharmacyWorklistSlice(set, get) {
       if (!prev || from === priority) return;
       update(id, m => ({ ...m, priorityOverride: priority }), ['priority_override'], {
         t: 'status_change', title: 'Priority changed', note: `${from} → ${priority}`,
+      });
+    },
+
+    // Comments on the member (Pharmacy Gap Details > Comments), newest first.
+    // `comment`: { id, author, authorId, role, date, time, body, mentionIds }.
+    addPharmacyComment: (id, comment) => {
+      update(id, m => ({ ...m, comments: [comment, ...(m.comments || [])] }), ['comments'], {
+        t: 'comment', title: 'Comment added', note: comment.body,
+      });
+    },
+    editPharmacyComment: (id, commentId, body, mentionIds) => {
+      update(id, m => ({
+        ...m,
+        comments: (m.comments || []).map(c => (c.id === commentId ? { ...c, body, mentionIds, edited: true } : c)),
+      }), ['comments'], { t: 'comment', title: 'Comment edited', note: body });
+    },
+    deletePharmacyComment: (id, commentId) => {
+      update(id, m => ({ ...m, comments: (m.comments || []).filter(c => c.id !== commentId) }), ['comments'], {
+        t: 'comment', title: 'Comment deleted',
       });
     },
 

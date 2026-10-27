@@ -750,17 +750,11 @@ export function CommentsTab({ filters, member: memberProp = null, memberOverride
   );
   const [items, setItems] = useState(seed);
   useEffect(() => { setItems(seed); }, [seed]);
-  // "@mentions" switch: narrow to comments that tag the logged-in user.
-  const [mentionsOnly, setMentionsOnly] = useState(false);
-  const myName = useAppStore(s => s.currentUserProfile?.name);
-  const mentionsMe = useCallback((c) => mentionsUser(c.body, myName), [myName]);
   const visibleItems = useMemo(
     // DOS set on another tab mustn't silently narrow comments (no DOS chip here).
-    () => items.filter(c => recordMatchesFilters(c, { ...filters, dos: [] }) && (!mentionsOnly || mentionsMe(c))),
-    [items, filters, mentionsOnly, mentionsMe],
+    () => items.filter(c => recordMatchesFilters(c, { ...filters, dos: [] })),
+    [items, filters],
   );
-  const [collapsed, setCollapsed] = useState(() => new Set());
-  const [confirmDeleteComment, setConfirmDeleteComment] = useState(null);
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
   const addHccDiagComment = useAppStore(s => s.addHccDiagComment);
@@ -844,6 +838,41 @@ export function CommentsTab({ filters, member: memberProp = null, memberOverride
     });
   };
 
+  return (
+    <CommentsTimeline
+      items={visibleItems}
+      mentionUsers={mentionUsers}
+      onAdd={addComment}
+      onEdit={editComment}
+      onDelete={removeComment}
+    />
+  );
+}
+
+/**
+ * The Comments timeline: the composer, comments grouped by month (newest
+ * first) with an @mentions switch, and edit / delete on your own comments.
+ * Data stays with the caller: `items` are the comments to show (`{ id,
+ * author, authorId, role, date, time, body, mentionIds?, edited?, icd? }`),
+ * and `onAdd(body, mentions)`, `onEdit(id, body, mentions)` and
+ * `onDelete(id)` save the changes. Used by the HCC Comments tab and by
+ * other drawers that keep comments of their own (Pharmacy Gap Details).
+ */
+export function CommentsTimeline({ items, mentionUsers, onAdd, onEdit, onDelete }) {
+  // "@mentions" switch: narrow to comments that tag the logged-in user.
+  const [mentionsOnly, setMentionsOnly] = useState(false);
+  const myName = useAppStore(s => s.currentUserProfile?.name);
+  const mentionsMe = useCallback((c) => mentionsUser(c.body, myName), [myName]);
+  const visibleItems = useMemo(
+    () => (mentionsOnly ? items.filter(mentionsMe) : items),
+    [items, mentionsOnly, mentionsMe],
+  );
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const [confirmDeleteComment, setConfirmDeleteComment] = useState(null);
+  const editComment = onEdit;
+  const removeComment = onDelete;
+  const addComment = onAdd;
+
   // Bucket comments by "Mon YYYY" header so the timeline can render a
   // collapsible group divider above each month chunk.
   const groups = useMemo(() => groupByMonth(visibleItems), [visibleItems]);
@@ -864,8 +893,9 @@ export function CommentsTab({ filters, member: memberProp = null, memberOverride
       </div>
       <div className={styles.timeline}>
         {/* With no matching comments there's no month header to sit beside,
-            so the switch gets its own row (and stays reachable to turn off). */}
-        {groups.length === 0 && (
+            so the switch gets its own row (and stays reachable to turn off).
+            With no comments at all there's nothing to filter: no row. */}
+        {groups.length === 0 && items.length > 0 && (
           <div className={styles.commentsGroupRow}>
             <span className={styles.commentsEmpty}>
               {mentionsOnly ? 'No comments mention you.' : 'No comments yet.'}
