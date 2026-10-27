@@ -237,7 +237,7 @@
 .cTable { display: flex; flex-direction: column; }
 .cRow {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) 88px 100px 88px 44px 52px;
+  grid-template-columns: 20px minmax(0, 1fr) 88px 100px 88px 44px 76px;
   column-gap: var(--space-2);
   align-items: center;
   padding: var(--space-2) var(--space-1);
@@ -265,9 +265,10 @@
 /* Note and details, fixed at the right of the first line. */
 .cActions { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
 .cNote { display: inline-flex; }
-/* Under Rx and Last Fill: class, quantity and supply; then prescriber and
-   pharmacy; then a barrier if any. One line each, cut short rather than
-   wrapped. */
+/* Prescriber and pharmacy in the info tooltip, one per line. */
+.cSource { display: flex; flex-direction: column; gap: 0.125rem; }
+/* Under Rx and Last Fill: quantity and supply, then a barrier if any. One
+   line each, cut short rather than wrapped. */
 .cMeta {
   grid-column: 2 / 4;
   grid-row: 2;

@@ -391,12 +391,14 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
               const note = [d.internalNotes, d.notesToMd && `To MD: ${d.notesToMd}`].filter(Boolean).join(' · ');
               const match = dc ? null : fillMatchOf(d, member.healthPlan);
               const supply = [
-                d.cls,
                 dc && 'Discontinued',
                 d.qty != null && `Qty ${d.qty}`,
                 d.daysSupply != null && `${d.daysSupply} days supply`,
               ].filter(Boolean);
-              const source = [d.prescriber?.name, d.pharmacy?.name].filter(Boolean);
+              const source = [
+                d.prescriber?.name && ['Prescriber', d.prescriber.name],
+                d.pharmacy?.name && ['Pharmacy', d.pharmacy.name],
+              ].filter(Boolean);
               return (
                 <div key={d.id} className={`${styles.cRow} ${styles.cMedRow} ${dc ? styles.cDiscontinued : ''}`} role="row" onClick={() => openDrug(d.id)}>
                   <span className={styles.cPick} onClick={e => e.stopPropagation()}>
@@ -416,6 +418,18 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                   <span className={riskClass(d.measure, fillDueTone(d.nextFill))}>{d.nextFill || '—'}</span>
                   <span className={riskClass(d.measure, pdcTone(d.pdc))}>{d.pdc == null ? '—' : `${d.pdc}%`}</span>
                   <span className={styles.cActions} onClick={e => e.stopPropagation()}>
+                    {source.length > 0 && (
+                      <Tooltip
+                        placement="bottom"
+                        align="right"
+                        maxWidth={260}
+                        label={<span className={styles.cSource}>{source.map(([k, v]) => <span key={k}>{k}: {v}</span>)}</span>}
+                      >
+                        <span className={styles.cNote} aria-label={source.map(([k, v]) => `${k}: ${v}`).join(', ')}>
+                          <Icon name="solar:info-circle-linear" size={16} color="var(--neutral-300)" />
+                        </span>
+                      </Tooltip>
+                    )}
                     {note && (
                       <Tooltip label={note} placement="bottom" maxWidth={260}>
                         <span className={styles.cNote} aria-label="Has a note"><Icon name="solar:notes-linear" size={16} color="var(--neutral-300)" /></span>
@@ -426,9 +440,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                   {/* Second line: the drug's details under Rx, the fill's
                       claim match under Recent Fill. */}
                   <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
-                    {[supply, source].filter(l => l.length).map(l => (
-                      <span key={l[0]} className={styles.cMetaLine} title={l.join(' · ')}>{l.join(' · ')}</span>
-                    ))}
+                    {supply.length > 0 && <span className={styles.cMetaLine}>{supply.join(' · ')}</span>}
                     {d.nonAdherenceReason && <span className={`${styles.cMetaLine} ${styles.cBarrierText}`}>Barrier: {d.nonAdherenceReason}</span>}
                   </span>
                   {match && (
