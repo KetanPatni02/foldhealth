@@ -149,7 +149,7 @@ export function ReviewItemRow({
         {/* Hidden, not removed, on rows without notes so statuses still line up. */}
         <span className={`${styles.slotDivider} ${note ? '' : styles.slotDividerHidden}`} aria-hidden="true" />
         <span className={styles.statusSlot}>
-          <GbiStatusButton value={item.status || 'Not Started'} onOpen={onStatusMenu} />
+          <GbiStatusButton value={item.status || 'Not Started'} reason={item.statusReason} onOpen={onStatusMenu} />
         </span>
         <button type="button" className={styles.chevronBtn} onClick={onToggleExpanded} aria-label={expanded ? 'Collapse' : 'Expand'}>
           <DownChevronIcon size={14} color="var(--neutral-300)" className={expanded ? styles.chevronOpen : ''} />

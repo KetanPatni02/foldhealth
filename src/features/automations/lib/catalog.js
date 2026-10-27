@@ -32,6 +32,10 @@ export const TRIGGERS = [
   // Not in the Figma: the enrollment trigger the former Settings > Automation
   // Rules ran on (store: runAutoApplyRules). Config: { programCodes: [] }.
   { type: 'careProgramEnrolled', group: 'Care program', icon: 'solar:clipboard-heart-linear', label: 'A patient is enrolled in a care program' },
+  // Program moves to Unable to Reach / Paused / Completed / Closed (store:
+  // runProgramStatusRules). Config: { programStatuses: [], programCodes: [] };
+  // no program codes = the account default, a program code = its override.
+  { type: 'careProgramStatusChanged', group: 'Care program', icon: 'solar:refresh-circle-linear', label: 'A patient’s care program status changes' },
 ];
 export const TRIGGER_GROUPS = [...new Set(TRIGGERS.map(t => t.group))];
 export const triggerDef = (type) => TRIGGERS.find(t => t.type === type) || null;
@@ -138,6 +142,8 @@ export const ACTIONS = [
   // Not in the Figma: the former Automation Rules' action (attach care plan
   // templates in draft and queue a review task).
   { type: 'attachCarePlan', group: 'Care plan', family: 'add', icon: 'solar:clipboard-list-linear', label: 'Attach care plan templates', nodeLabel: 'Attach Care Plan', channel: 'task', requires: ['templateIds'], minutes: 15, triggers: ['careProgramEnrolled'] },
+  // Every open goal / intervention / barrier in the program → one status, with a reason.
+  { type: 'setGbiStatus', group: 'Care plan', family: 'add', icon: 'solar:clipboard-check-linear', label: 'Update care plan item statuses', nodeLabel: 'Update GBI Status', channel: null, requires: ['toStatus'], minutes: 5, triggers: ['careProgramStatusChanged'] },
 ];
 export const ACTION_GROUPS = [...new Set(ACTIONS.map(a => a.group))];
 

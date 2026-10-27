@@ -239,6 +239,7 @@ import { rowToReferral, sampleReferralsFor } from '../features/patient/data/pati
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
 import { createPharmacyWorklistSlice } from './slices/pharmacyWorklistSlice';
 import { createPatientOrdersSlice } from './slices/patientOrdersSlice';
+import { createFeatureReviewsSlice } from './slices/featureReviewsSlice';
 
 // patientId → in-flight fetchPatientConsents request.
 const consentFetches = new Map();
@@ -377,6 +378,7 @@ export const useAppStore = create((set, get) => ({
   ...createHccWorklistFiltersSlice(set, get),
   ...createPharmacyWorklistSlice(set, get),
   ...createPatientOrdersSlice(set, get),
+  ...createFeatureReviewsSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
   // keyed by member id. Falls back to the bundled MONITORING_SEED until
@@ -3911,11 +3913,18 @@ export const useAppStore = create((set, get) => ({
   // over the live row, so detail edits waiting in the draft are kept.
   saveCarePlanLiveField: async (patientId, program, type, id, patch) => {
     const key = carePlanKey(patientId, program.id);
+    // A status picked by hand replaces whatever reason an automation gave the
+    // old one (only where the item carries a reason, i.e. the column exists).
+    const withPatch = (base) => {
+      const next = { ...base, ...patch, config: patch.config ? { ...(base.config || {}), ...patch.config } : base.config };
+      if (patch.status !== undefined && patch.status !== base.status && base.statusReason !== undefined && !('statusReason' in patch)) next.statusReason = '';
+      return next;
+    };
     const lists = { goal: 'goals', intervention: 'interventions', barrier: 'barriers' };
     const loaded = (get().patientCarePlans[key]?.[lists[type]] || []).find(x => x.id === id);
     let saved;
     if (loaded) {
-      const next = { ...loaded, ...patch, config: patch.config ? { ...(loaded.config || {}), ...patch.config } : loaded.config };
+      const next = withPatch(loaded);
       const save = { goal: get().savePatientCarePlanGoal, intervention: get().savePatientCarePlanIntervention, barrier: get().savePatientCarePlanBarrier }[type];
       saved = await save(patientId, program, next, id);
     } else {
@@ -3927,7 +3936,7 @@ export const useAppStore = create((set, get) => ({
       const { data: row, error: readErr } = await supabase.from(table).select('*').eq('id', id).maybeSingle();
       if (readErr || !row) { get().showToast('Could not update the care plan'); return null; }
       const current = mapRow(row);
-      const next = { ...current, ...patch, config: patch.config ? { ...(current.config || {}), ...patch.config } : current.config };
+      const next = withPatch(current);
       const { plan_id: _p, ...update } = toRow(next, row.plan_id);
       const { data, error } = await supabase.from(table)
         // Barriers have no updated_by column.
@@ -5539,6 +5548,9 @@ export const useAppStore = create((set, get) => ({
         statusLabel: reason ? `${patch.status} · ${reason}` : patch.status,
         statusType: 'warning',
       });
+      // UTR / Paused / Completed / Closed carry the program's open care plan
+      // items with them (Settings > Automations, program status changes).
+      get().runProgramStatusRules(patientId, updated, patch.status).catch(err => console.warn('runProgramStatusRules:', err?.message || err));
     }
     if (updated) {
       supabase.from('patient_care_programs').upsert({

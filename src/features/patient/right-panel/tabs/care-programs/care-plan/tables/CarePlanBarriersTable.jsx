@@ -89,7 +89,7 @@ function BarrierRow({
       {!template && (
         <td className={styles.barrierStatusTd} onClick={e => e.stopPropagation()}>
           <GbiStatusButton
-            value={b.status}
+            value={b.status} reason={b.statusReason}
             disabled={!canEdit}
             onOpen={rect => onStatusMenu({ kind: 'barrier', item: b, rect })}
           />

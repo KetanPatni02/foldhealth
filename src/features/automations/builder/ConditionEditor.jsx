@@ -9,7 +9,7 @@ import { useAppStore } from '../../../store/useAppStore';
 import { CARE_PROGRAM_CATALOG } from '../../patient/data/careProgramCatalog';
 import { CHANNELS } from '../lib/catalog';
 import { dynamicOptions, fieldsFor } from '../lib/conditionFields';
-import { ANSWER_OPS, CONDITION_TYPES, EVENT_CATALOG, LAB_CATALOG, NUMERIC_OPS } from '../lib/clinicalCriteria';
+import { ANSWER_OPS, CONDITION_TYPES, EVENT_CATALOG, LAB_CATALOG, NUMERIC_OPS, SCORE_CATALOG } from '../lib/clinicalCriteria';
 import { PanelRow, PanelSection } from './EditPanel';
 import styles from './AutomationBuilder.module.css';
 
@@ -110,12 +110,13 @@ const CRITERIA_DEFAULTS = {
   condition: () => ({ type: 'condition', value: '' }),
   lab: () => ({ type: 'lab', lab: 'hba1c', op: '>', value: '', withinDays: 365 }),
   assessment: () => ({ type: 'assessment', formId: '', question: '', op: 'equals', value: '' }),
+  score: () => ({ type: 'score', score: 'phq9', op: '>=', value: 10, withinDays: 90 }),
   event: () => ({ type: 'event', event: 'inpatient', withinDays: 30 }),
 };
 const opt = (list) => list.map(x => ({ value: x.key, label: x.label }));
 const OPS = (list) => list.map(o => ({ value: o, label: o }));
 
-// Chronic condition, lab, assessment answer or recent event (the clinical
+// Chronic condition, lab, assessment answer or score, or recent event (the clinical
 // criteria the former Automation Rules used; engine: lib/clinicalCriteria.js).
 function ClinicalCriteriaEditor({ config, onChange }) {
   const criteria = config.criteria?.length ? config.criteria : [CRITERIA_DEFAULTS.condition()];
@@ -132,10 +133,15 @@ function ClinicalCriteriaEditor({ config, onChange }) {
   const setAt = (i, p) => onChange({ criteria: criteria.map((c, j) => (j === i ? { ...c, ...p } : c)) });
   const fields = (c, i) => {
     if (c.type === 'condition') return <Input value={c.value} onChange={e => setAt(i, { value: e.target.value })} placeholder="e.g. Diabetes" aria-label="Condition" />;
-    if (c.type === 'lab') {
+    if (c.type === 'lab' || c.type === 'score') {
+      const isLab = c.type === 'lab';
       return (
         <div className={styles.ruleControls}>
-          <Select options={opt(LAB_CATALOG)} value={c.lab} onChange={v => setAt(i, { lab: v })} />
+          <Select
+            options={opt(isLab ? LAB_CATALOG : SCORE_CATALOG)}
+            value={isLab ? c.lab : c.score}
+            onChange={v => setAt(i, isLab ? { lab: v } : { score: v })}
+          />
           <Select options={OPS(NUMERIC_OPS)} value={c.op} onChange={v => setAt(i, { op: v })} className={styles.opSelect} />
           <Input type="number" value={c.value ?? ''} onChange={e => setAt(i, { value: e.target.value === '' ? '' : Number(e.target.value) })} placeholder="Value" wrapperClassName={styles.numberInput} aria-label="Value" />
           <Input type="number" value={c.withinDays ?? ''} onChange={e => setAt(i, { withinDays: e.target.value === '' ? null : Number(e.target.value) })} placeholder="Days" trailingText="days" wrapperClassName={styles.numberInput} aria-label="Within days" />

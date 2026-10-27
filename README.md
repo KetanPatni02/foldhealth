@@ -49,6 +49,30 @@ build requires esbuild ≥ 0.28 on Node 26.
   labelled Select, Textarea and RadioOptionGroup. A Reason for Non-Adherence
   picked on a drug is now also logged as that gap's barrier in Barriers &
   Interventions.
+- **Care program automations (Settings > Automations).** Enrollment
+  auto-apply: clinical criteria can now check urine ACR and assessment
+  scores (PHQ-9), and a review task with no reviewer or program owner goes
+  to the Care Management pool. New GBI auto-status: a "care program status
+  changes" trigger and an "Update care plan item statuses" action move every
+  open goal, intervention and barrier when a program goes Unable to Reach,
+  Paused, Completed or Closed (default: UTR → UTR, reason "Program UTR";
+  a program-type automation overrides the account default). New UTR GBI
+  status and `status_reason` (`gbi_status_reason_migration.sql`), shown on
+  hover. Seeds: `seed_enrollment_automations.sql`,
+  `seed_program_status_automations.sql`.
+- **Design Signoff.** A "Signoff" item above Help in the nav bar opens the
+  Design Signoff drawer: an aligned table of what we're shipping (Feature,
+  Reviewers, Status, Actions), grouped by day and sorted
+  newest first (switchable to oldest first), with sub-items nested under
+  their feature. Every `feat` or `fix` commit on main arrives automatically
+  as a suggestion (a trigger on `changelog_entries`); the design team (Alok,
+  Ketan and Devanshi, in `feature_review_managers`) keeps it for review or
+  removes it, sets the section link and assigns, switches or removes
+  reviewers (straight from the row's avatars). Everyone else sees only kept
+  items assigned to them. Reviewers get Comment, Sign off (one click; the
+  database stamps the date and time and locks it, and the date shows under
+  the status) and Open (goes to the section) on each row. Needs `supabase/feature_reviews_migration.sql`,
+  `feature_reviews_seed.sql` and `feature_reviews_suggestions_migration.sql`.
 - **Pharmacy gap status model, filters, rules and reports.** Pharmacy gaps
   follow the status model spec: Open, In Progress, Pending Claim, Closed,
   Met for Year, Failed for Year and Excluded (First Fill and Not Eligible stay
