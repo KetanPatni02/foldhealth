@@ -75,6 +75,10 @@
       "destination": "/api/ai?route=patient-recap-summary"
     },
     {
+      "source": "/api/clinical-protocol-parse",
+      "destination": "/api/ai?route=clinical-protocol-parse"
+    },
+    {
       "source": "/s/:section",
       "destination": "/api/share?s=:section"
     },
