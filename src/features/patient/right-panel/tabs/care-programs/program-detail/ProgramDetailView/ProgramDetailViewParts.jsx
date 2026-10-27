@@ -7,6 +7,7 @@ import { useAppStore } from '../../../../../../../store/useAppStore';
 import { resolvePatientStoreId } from '../../../../../../../lib/resolvePatientStoreId';
 import { closureReasonLabel, isProgramClosed } from '../../../../../data/programStatus';
 import { instanceLabel, previousInstances } from '../../../../../data/programLifecycle';
+import { pauseSummary } from '../../care-plan/lib/carePlanPause';
 import styles from './ProgramDetailView.module.css';
 
 const EMPTY = [];
@@ -117,6 +118,9 @@ function EnrollmentColumns({ program }) {
           <DetailRow icon="solar:calendar-mark-linear" label="Planned End:" value={live.plannedEndDate || 'Not set'} />
           <DetailRow icon="solar:user-check-linear" label="Enrolled By:" value={live.enrolledBy || 'Not recorded'} />
           {trigger && <DetailRow icon="solar:bolt-linear" label="Trigger:" value={trigger} />}
+          {live.status === 'Paused' && live.pause && (
+            <DetailRow icon="solar:pause-circle-linear" label="Paused:" value={pauseSummary(live.pause)} />
+          )}
           {closed && (
             <DetailRow
               icon="solar:close-circle-linear"

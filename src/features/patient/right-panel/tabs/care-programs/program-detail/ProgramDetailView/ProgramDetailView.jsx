@@ -26,6 +26,7 @@ import { useProgramHistory } from '../ProgramHistoryDrawer/useProgramHistory';
 import { toast } from '../../../../../../../components/Toast/sonnerToast';
 import { Collapse } from '../../../../../../../components/Collapse/Collapse';
 import { CloseProgramDialog } from '../shared/CloseProgramDialog/CloseProgramDialog.jsx';
+import { PauseCarePlanDialog } from '../../care-plan/drawers/PauseCarePlanDialog/PauseCarePlanDialog';
 import { PROGRAM_STATUS_OPTIONS } from '../../../../../data/programStatus';
 import { PharmacyOutreachStep } from '../../../../../../pharmacy-worklist/program/PharmacyOutreachStep';
 import { PharmacyMedicationReview } from '../../../../../../pharmacy-worklist/program/PharmacyMedicationReview';
@@ -57,6 +58,8 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
   const [programHistoryOpen, setProgramHistoryOpen] = useState(false);
   const [closing, setClosing] = useState(null); // { status } while the Close Program dialog is open
   const closeCareProgramInstance = useAppStore(s => s.closeCareProgramInstance);
+  const pauseCareProgramInstance = useAppStore(s => s.pauseCareProgramInstance);
+  const [pausing, setPausing] = useState(false); // while the Pause dialog is open
   const [reportOpen, setReportOpen] = useState(false);
   const reportProgram = useMemo(
     () => ({ ...program, ...(v.liveProgram || {}), status: v.status, assignee: v.assignee }),
@@ -343,9 +346,11 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
             key: s,
             label: <span style={{ color: 'var(--neutral-400)' }}>{s}</span>,
           }))}
-          onSelect={(newStatus) => (newStatus === 'Completed' || newStatus === 'Discontinued'
-            ? setClosing({ status: newStatus })
-            : v.changeStatus(newStatus))}
+          onSelect={(newStatus) => {
+            if (newStatus === 'Completed' || newStatus === 'Discontinued') setClosing({ status: newStatus });
+            else if (newStatus === 'Paused') { if (v.status !== 'Paused') setPausing(true); }
+            else v.changeStatus(newStatus);
+          }}
           onClose={() => v.setStatusMenu(null)}
         />
       )}
@@ -362,6 +367,16 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           letters={v.letters}
           onExport={kind => v.logActivity(kind === 'print' ? 'Program Report Printed' : 'Program Report Downloaded', { activityKind: 'document' })}
           onClose={() => setReportOpen(false)}
+        />
+      )}
+      {pausing && (
+        <PauseCarePlanDialog
+          subject="program"
+          onCancel={() => setPausing(false)}
+          onSubmit={async (form) => {
+            setPausing(false);
+            if (await pauseCareProgramInstance(v.patientId, v.liveProgram || program, form)) toast.success(`${program.name} paused`);
+          }}
         />
       )}
       {closing && (

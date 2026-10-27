@@ -127,6 +127,7 @@
 }
 .carePlanSigned { color: var(--status-success); }
 .carePlanDraft { color: var(--status-warning); }
+.carePlanOnHold { color: var(--status-info); }
 .carePlanNone { color: var(--neutral-300); }
 .carePlanStatusLink {
   display: inline-flex;
