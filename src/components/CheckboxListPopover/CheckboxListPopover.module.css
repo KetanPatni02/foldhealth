@@ -88,6 +88,16 @@
   min-height: 0;
 }
 
+/* Group header above a run of options (e.g. a stakeholder). */
+.section {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--neutral-200);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
 .row {
   display: flex;
   align-items: center;

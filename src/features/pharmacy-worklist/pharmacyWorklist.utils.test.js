@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDaysMdy, annotateClaims, claimRecordStatus, enrichPharmacyMember, matchFill, measureStatus, medicationStatus,
-  nextFillDueSource, outreachSummary, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
+  needsVerification, nextFillDueSource, outreachSummary, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
 } from './pharmacyWorklist.utils.js';
 
 const daysAgo = (n) => addDaysMdy(todayMdy(), -n);
@@ -405,5 +405,19 @@ describe('outreachSummary: the hover card\'s recent attempts', () => {
     expect(recent[0]).toMatchObject({ date: '10/26', time: '01:05 PM', outcome: 'Side effects: Experienced', failed: false });
     expect(recent[1]).toMatchObject({ time: '01:05 PM', failed: true });
     expect(recent[2].time).toBeNull();
+  });
+});
+
+describe('needsVerification', () => {
+  const open = fillMeasure({ filledDaysAgo: 40, supply: 30 });
+  const verified = (daysAgoN) => ({ kind: 'pharmacy-verification', locked: true, date: daysAgo(daysAgoN), measures: ['MAD'] });
+
+  it('asks for an open gap with no verification call since its last fill', () => {
+    expect(needsVerification(open, { callHistory: [] })).toBe(true);
+    expect(needsVerification(open, { callHistory: [verified(50)] })).toBe(true);
+  });
+
+  it('is done once a verification call covers the gap this fill cycle', () => {
+    expect(needsVerification(open, { callHistory: [verified(5)] })).toBe(false);
   });
 });

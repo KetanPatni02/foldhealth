@@ -182,6 +182,18 @@ export function useOutreachTab({
     }
   };
 
+  // Replaces the whole list, for the multi-select outcome picker.
+  const setOutcomes = (prog, next) => {
+    if (useSeparate && prog) {
+      patchPanel(prog, { outcomes: next });
+      if (getPanel(prog).syncText) {
+        selectedProgs.forEach(p => { if (p !== prog) patchPanel(p, { outcomes: next }); });
+      }
+    } else {
+      patchShared({ outcomes: next });
+    }
+  };
+
   const removeOutcome = (prog, val) => {
     if (useSeparate && prog) {
       patchPanel(prog, { outcomes: getPanel(prog).outcomes.filter(o => o !== val) });
@@ -400,6 +412,7 @@ export function useOutreachTab({
     sharedPanelTitle,
     addOutcome,
     removeOutcome,
+    setOutcomes,
     handleNoteChange,
     canSave,
     handleLogForChange,
