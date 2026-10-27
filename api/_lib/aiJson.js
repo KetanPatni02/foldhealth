@@ -105,35 +105,36 @@ async function openAiJson({ apiKey, prompt, schema, name, effort, logTag, timeou
       }
       last = { status: response.status, model };
 
-      if (response.ok) {
-        const json = await response.json();
-        const message = json?.choices?.[0]?.message;
-        if (message?.refusal) {
-          console.error(`[${logTag}] ${model} refused:`, String(message.refusal).slice(0, 300));
-          return { ok: false, status: 422, model };
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        // An unknown or unavailable model: try the next one.
+        if (response.status === 404 || (response.status === 400 && /model/i.test(detail))) {
+          console.warn(`[${logTag}] model not available: ${model}`, detail.slice(0, 200));
+          break;
         }
-        try {
-          return { ok: true, data: stripAddedNulls(JSON.parse(message?.content || ''), schema), model, provider: 'openai' };
-        } catch {
-          console.error(`[${logTag}] ${model} non-JSON:`, String(message?.content || '').slice(0, 300));
-          return { ok: false, status: 502, model };
+        if (!RETRYABLE.has(response.status)) {
+          console.error(`[${logTag}] openai error`, response.status, model, detail.slice(0, 400));
+          return { ok: false, ...last };
         }
+        if (attempt >= maxAttempts - 1) break;
+        const delay = Math.min(4000, 600 * Math.pow(2, attempt));
+        console.warn(`[${logTag}] ${model} ${response.status}, retry ${attempt + 1} in ${delay}ms`);
+        await sleep(delay);
+        continue;
       }
 
-      const detail = await response.text().catch(() => '');
-      // An unknown or unavailable model: try the next one.
-      if (response.status === 404 || (response.status === 400 && /model/i.test(detail))) {
-        console.warn(`[${logTag}] model not available: ${model}`, detail.slice(0, 200));
-        break;
+      const json = await response.json();
+      const message = json?.choices?.[0]?.message;
+      if (message?.refusal) {
+        console.error(`[${logTag}] ${model} refused:`, String(message.refusal).slice(0, 300));
+        return { ok: false, status: 422, model };
       }
-      if (!RETRYABLE.has(response.status)) {
-        console.error(`[${logTag}] openai error`, response.status, model, detail.slice(0, 400));
-        return { ok: false, ...last };
+      try {
+        return { ok: true, data: stripAddedNulls(JSON.parse(message?.content || ''), schema), model, provider: 'openai' };
+      } catch {
+        console.error(`[${logTag}] ${model} non-JSON:`, String(message?.content || '').slice(0, 300));
+        return { ok: false, status: 502, model };
       }
-      if (attempt >= maxAttempts - 1) break;
-      const delay = Math.min(4000, 600 * Math.pow(2, attempt));
-      console.warn(`[${logTag}] ${model} ${response.status}, retry ${attempt + 1} in ${delay}ms`);
-      await sleep(delay);
     }
   }
   return { ok: false, ...last };
