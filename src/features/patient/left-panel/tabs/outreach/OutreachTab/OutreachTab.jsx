@@ -84,6 +84,7 @@ export function OutreachTabView({
         </div>
       ) : (
         <Form
+          defaultExpanded={tab.formOpen}
           hideLogForRow={hideLogForRow}
           scopedProgram={tab.scopedProgram}
           logFor={tab.logFor}

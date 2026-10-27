@@ -46,6 +46,7 @@ const RELATIVE_TIME_LABEL = (iso) => {
  * drawer) keep working without changes.
  */
 export function OutreachComposer({
+  defaultExpanded = false,
   hideLogForRow,
   scopedProgram,
   logFor,
@@ -92,7 +93,8 @@ export function OutreachComposer({
   // work the user just did.
   const hasContent = (sharedPanel.note || '').trim().length > 0
     || selectedProgs.some(p => (getPanel(p)?.outcomes || []).length > 0);
-  const [expanded, setExpanded] = useState(false);
+  // Opened on purpose (Log New Outreach), it starts in the full form.
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [moreOpen, setMoreOpen] = useState(false);
   const [savedBeat, setSavedBeat] = useState(false);
   const [showDatetime, setShowDatetime] = useState(false);

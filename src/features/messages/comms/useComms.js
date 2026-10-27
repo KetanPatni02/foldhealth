@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { listConversations, listMessages, listMessagesFor, subscribeComms, commsMode } from './commsRepo';
+import {
+  listConversations, listMessages, listMessagesFor, listSmsLoggedFor, subscribeComms, commsMode,
+} from './commsRepo';
 
 const upsert = (list, row) => {
   const i = list.findIndex(x => x.id === row.id);
@@ -103,4 +105,31 @@ export function useCommsMessagesFor(conversationIds) {
   }, [key]);
 
   return state.key === key ? state.messages : [];
+}
+
+/**
+ * Every SMS logged for a patient ({ message, conversation }, newest first),
+ * reloaded when messages change.
+ */
+export function usePatientSmsLog(patientId) {
+  const [state, setState] = useState({ id: null, items: [] });
+
+  useEffect(() => {
+    if (!patientId) return undefined;
+    let alive = true;
+    const load = () => listSmsLoggedFor({ patientId })
+      .then(items => { if (alive) setState({ id: patientId, items }); })
+      .catch(() => { if (alive) setState({ id: patientId, items: [] }); });
+    load();
+    // A send writes its message twice (queued, then sent): reload once.
+    let timer = null;
+    const off = subscribeComms((change) => {
+      if (change.type !== 'reload' && change.table !== 'patient_messages') return;
+      clearTimeout(timer);
+      timer = setTimeout(load, 500);
+    });
+    return () => { alive = false; clearTimeout(timer); off(); };
+  }, [patientId]);
+
+  return state.id === patientId ? state.items : [];
 }

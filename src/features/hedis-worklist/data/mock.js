@@ -75,7 +75,7 @@ const BASE_HEDIS_MEMBERS = [
     startDate: '05/14/2026',
     advIllness: 0, frailty: 0, riskLevel: '2_Mod-High', tasks: null,
     outreachDots: ['success', 'success', 'pending'], outreachDate: '05/15/2026',
-    memberStatus: 'Active', phone: '+917838997914', dob: '09/08/1977',
+    memberStatus: 'Active', phone: '+919175367487', dob: '09/08/1977',
     ipa: 'CFC', hpCode: 'HP-001', zip: '10016', city: 'Manhattan', state: 'NY',
   },
   {
