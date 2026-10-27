@@ -249,58 +249,64 @@
 
 /* ── Compact (Pharmacy Gap Details), after the CIS dose list ── */
 .cGroup { display: flex; flex-direction: column; }
-/* Gap title line: no card, only a stroke below. */
+/* Gap title line, styled like the HEDIS CIS vaccine row: 44px, white,
+   grey on hover, a stroke below. */
 .cGroupHead {
   display: flex;
   align-items: center;
   gap: var(--space-1);
   width: 100%;
-  padding: var(--space-2) var(--space-1);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3) var(--space-2) calc(1.5 * var(--space-1));
   border: none;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: none;
+  background: var(--neutral-0);
   text-align: left;
   cursor: pointer;
   font-size: var(--font-base);
   line-height: var(--leading-tight);
 }
+.cGroupHead:hover { background: var(--neutral-50); }
 .cGroupHead:focus-visible { outline: 2px solid var(--primary-200); outline-offset: -2px; }
 .cCode { font-weight: 500; color: var(--neutral-400); }
 .cName { font-weight: 400; color: var(--neutral-400); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cCount { margin-left: auto; display: inline-flex; }
 
 /* Checkbox, Rx, Last Fill, Recent Fill, Next Fill, PDC, Barrier, actions. */
-/* Select all lines up with the row checkboxes and the Rx names below. */
-.cToolbar { padding-inline: var(--space-2) var(--space-1); }
-.cToolbar .checkRow { gap: var(--space-3); }
-.cTable { display: flex; flex-direction: column; }
+/* Select all lines up with the row checkboxes (12px inset). */
+.cToolbar { padding-inline: var(--space-3) var(--space-1); }
+.cToolbar .checkRow { gap: var(--space-1); }
+/* An open gap's drugs on a primary-25 ground, like the CIS dose table. */
+.cTable { display: flex; flex-direction: column; background: var(--primary-25); }
 .cRow {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr) 88px 100px 88px 44px 24px;
   column-gap: var(--space-2);
   align-items: center;
-  /* 8px each side: room for the selected row's bar on the left and for the
-     note icon on the right. */
-  padding: var(--space-2);
+  /* 12px in on the left as in the CIS dose table; 8px on the right for the
+     note icon. */
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
   font-size: var(--font-base);
   line-height: var(--leading-tight);
   color: var(--neutral-500);
 }
 .cHead {
-  padding-block: var(--space-1);
+  box-sizing: border-box;
+  height: 28px;
+  padding-block: 0;
   background: var(--neutral-50);
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: var(--font-md);
-  font-weight: 500;
-  color: var(--neutral-300);
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--placeholder-text);
   white-space: nowrap;
 }
-.cMedRow { border-bottom: 0.5px solid var(--neutral-150); cursor: pointer; }
+.cMedRow { min-height: 51px; border-bottom: 0.5px solid var(--neutral-100); cursor: pointer; }
 .cMedRow:hover { background: var(--neutral-25); }
 /* The medication whose details are open, as worklists mark a selected row. */
 .cMedRowActive,
 .cMedRowActive:hover { background: var(--primary-50); }
-/* A primary bar on the row's left edge; the row's 8px left padding keeps
+/* A primary bar on the row's left edge; the row's 12px left padding keeps
    air between it and the checkbox. */
 .cMedRowActive { position: relative; }
 .cMedRowActive::before {
@@ -318,7 +324,7 @@
 .cPick { display: inline-flex; }
 /* Last Fill, Next Fill and PDC read grey unless flagged red for action. */
 .cValue:not(.toneError) { color: var(--neutral-300); }
-.cRx { min-width: 0; overflow-wrap: anywhere; }
+.cRx { min-width: 0; overflow-wrap: anywhere; color: var(--neutral-400); }
 /* Recent Fill: a light chip that opens the calendar. */
 .cChip { border: none; background: none; padding: 0; cursor: pointer; display: inline-flex; }
 .cChip:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; border-radius: 4px; }
@@ -329,7 +335,7 @@
 /* Info under the Rx details: prescriber and pharmacy on hover, one per line. */
 .cInfoLink {
   border: none; background: none; padding: 0; cursor: default;
-  font-size: var(--font-md); color: var(--primary-300);
+  font-size: var(--font-sm); color: var(--primary-300);
 }
 .cInfoLink:hover { text-decoration: underline; }
 .cSource { display: flex; flex-direction: column; gap: 0.125rem; }
@@ -343,7 +349,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.125rem;
-  font-size: var(--font-md);
+  font-size: var(--font-sm);
   line-height: var(--leading-tight);
   color: var(--neutral-300);
   cursor: default;
