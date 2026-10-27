@@ -832,7 +832,12 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   });
   // One outreach state backs both the left-pane form (Add Outreach) and
   // the Outreaches tab list, so a save in the pane shows up in the tab.
-  const outreach = useOutreachTab({ defaultPrograms: [currentCode], defaultLogFor: 'care-program', onSaved: logOutreachSaved });
+  // CIS members with no outreach on record start with an empty list instead
+  // of the shared sample log, so the demo can walk the workflow from scratch.
+  const outreach = useOutreachTab({
+    defaultPrograms: [currentCode], defaultLogFor: 'care-program', onSaved: logOutreachSaved,
+    initialLogGroups: isCis && !member?.outreachDate ? [] : undefined,
+  });
   const openOutreachWorkspace = () => {
     outreach.setDatetime(outreach.formatNow());
     // Pre-select the gap the drawer is focused on; the hook's reset after a
