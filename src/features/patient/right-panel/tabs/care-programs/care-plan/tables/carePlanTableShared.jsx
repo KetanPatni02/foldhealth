@@ -377,8 +377,8 @@ export function TrendCell({ trend }) {
   return <Badge tone={tone} size="S" icon={icon} />;
 }
 
-export function GbiStatusButton({ value, disabled, onOpen, badgeSize = 'S' }) {
-  return (
+export function GbiStatusButton({ value, reason, disabled, onOpen, badgeSize = 'S' }) {
+  const button = (
     <button
       type="button"
       className={styles.statusBtn}
@@ -394,4 +394,6 @@ export function GbiStatusButton({ value, disabled, onOpen, badgeSize = 'S' }) {
       />
     </button>
   );
+  // Why it holds this status, when an automation set it (e.g. Program UTR).
+  return reason ? <Tooltip label={`Reason: ${reason}`}>{button}</Tooltip> : button;
 }

@@ -123,7 +123,7 @@ export function SdohSection({
                         )}
                         {mode === 'plan' && (
                           <GbiStatusButton
-                            value={b.status || 'Not Started'}
+                            value={b.status || 'Not Started'} reason={b.statusReason}
                             disabled={!onStatusMenu}
                             onOpen={rect => onStatusMenu?.({ kind: 'barrier', item: b, rect })}
                           />

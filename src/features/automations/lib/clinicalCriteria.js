@@ -10,6 +10,7 @@
      { type: 'condition', value }                         chronic condition
      { type: 'lab', lab, op, value, withinDays }          latest lab result
      { type: 'assessment', formId, question, op, value }  latest answer
+     { type: 'score', score, op, value, withinDays }      latest scored screening (PHQ-9)
      { type: 'event', event, withinDays }                 recent encounter */
 
 export const LAB_CATALOG = [
@@ -18,6 +19,13 @@ export const LAB_CATALOG = [
   { key: 'sbp', label: 'Systolic blood pressure', unit: 'mmHg', loinc: ['8480-6'], match: /systolic/i },
   { key: 'egfr', label: 'eGFR', unit: 'mL/min/1.73m²', loinc: ['33914-3', '48642-3', '62238-1'], match: /\be?gfr\b/i },
   { key: 'bmi', label: 'BMI', unit: 'kg/m²', loinc: ['39156-5'], match: /\bbmi\b|body mass/i },
+  { key: 'uacr', label: 'Urine albumin-to-creatinine ratio', unit: 'mg/g', loinc: ['9318-7', '14959-1', '32294-1'], match: /albumin\s*(\/|-to-)\s*creatinine|\bu?acr\b/i },
+];
+// Scored screenings recorded as patient_clinical_events (event_type 'prom'
+// or 'assessment') with the total in numeric_value. Answers to a Fold form
+// are the 'assessment' criterion instead.
+export const SCORE_CATALOG = [
+  { key: 'phq9', label: 'PHQ-9', unit: '', loinc: ['44261-6'], match: /phq-?9/i },
 ];
 export const EVENT_CATALOG = [
   { key: 'ed', label: 'ED visit', match: /emergency|\bed\b|\ber\b/i },
@@ -30,11 +38,15 @@ export const CONDITION_TYPES = [
   { key: 'condition', label: 'Chronic condition' },
   { key: 'lab', label: 'Lab result' },
   { key: 'assessment', label: 'Assessment answer' },
+  { key: 'score', label: 'Assessment score' },
   { key: 'event', label: 'Recent event' },
 ];
 
-const LAB_BY_KEY = new Map(LAB_CATALOG.map(l => [l.key, { ...l, loincSet: new Set(l.loinc) }]));
+const withLoinc = (list) => new Map(list.map(l => [l.key, { ...l, loincSet: new Set(l.loinc) }]));
+const LAB_BY_KEY = withLoinc(LAB_CATALOG);
+const SCORE_BY_KEY = withLoinc(SCORE_CATALOG);
 const labDef = (key) => LAB_BY_KEY.get(key) || null;
+const scoreDef = (key) => SCORE_BY_KEY.get(key) || null;
 const eventDef = (key) => EVENT_CATALOG.find(e => e.key === key) || null;
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 const pad = (n) => String(n).padStart(2, '0');
@@ -65,6 +77,9 @@ export function describeCondition(c) {
     return `${lab?.label || 'Lab'} ${c.op || '>'} ${c.value ?? '…'}${lab?.unit ? ` ${lab.unit}` : ''}${c.withinDays ? ` (last ${c.withinDays} days)` : ''}`;
   }
   if (c?.type === 'assessment') return `Assessment answer "${c.question || '…'}" ${c.op || 'equals'} ${c.value ?? '…'}`;
+  if (c?.type === 'score') {
+    return `${scoreDef(c.score)?.label || 'Score'} ${c.op || '>='} ${c.value ?? '…'}${c.withinDays ? ` (last ${c.withinDays} days)` : ''}`;
+  }
   if (c?.type === 'event') return `${eventDef(c.event)?.label || 'Event'} in the last ${c.withinDays || 30} days`;
   return 'Unknown condition';
 }
@@ -85,6 +100,9 @@ export function buildRuleInputs({ problems = [], conditions = [], clinicalEvents
   const labs = clinicalEvents
     .filter(e => e.event_type === 'lab' && e.numeric_value != null)
     .map(e => ({ code: e.code || '', display: e.display || '', value: Number(e.numeric_value), unit: e.unit || '', date: toDate(e.effective_date) }));
+  const scores = clinicalEvents
+    .filter(e => (e.event_type === 'prom' || e.event_type === 'assessment') && e.numeric_value != null)
+    .map(e => ({ code: e.code || '', display: e.display || '', value: Number(e.numeric_value), unit: '', date: toDate(e.effective_date) }));
   const events = clinicalEvents
     .filter(e => e.event_type === 'encounter')
     .map(e => ({ display: [e.display, e.code].filter(Boolean).join(' '), date: toDate(e.effective_date) }));
@@ -92,7 +110,23 @@ export function buildRuleInputs({ problems = [], conditions = [], clinicalEvents
     .filter(r => r && r.answers && (r.status || 'completed') === 'completed')
     .map(r => ({ formId: r.form_id != null ? String(r.form_id) : '', answers: r.answers, date: toDate(r.completed_at || r.created_at) }))
     .sort((a, b) => (b.date || 0) - (a.date || 0));
-  return { conditions: conds, labs, events, assessments };
+  return { conditions: conds, labs, scores, events, assessments };
+}
+
+// The latest reading of a lab or score against the threshold, within the window.
+function latestReading(def, readings, c, today, defaultOp, noun) {
+  const latest = readings
+    .filter(l => def.loincSet.has(l.code) || def.match.test(l.display))
+    .sort((a, b) => (b.date || 0) - (a.date || 0))[0];
+  if (!latest) return { ok: false, text: `No ${def.label} ${noun}` };
+  if (c.withinDays && latest.date && daysBetween(latest.date, today) > Number(c.withinDays)) {
+    return { ok: false, text: `Latest ${def.label} (${fmtDate(latest.date)}) is older than ${c.withinDays} days` };
+  }
+  const op = c.op || defaultOp;
+  const ok = compare(latest.value, op, Number(c.value));
+  const unit = latest.unit || def.unit;
+  const reading = `${def.label} ${latest.value}${unit ? ` ${unit}` : ''} on ${fmtDate(latest.date)}`;
+  return { ok, text: `${reading} is ${ok ? '' : 'not '}${OP_WORD[op]} ${c.value}` };
 }
 
 function evaluateCondition(c, inputs, today) {
@@ -106,16 +140,12 @@ function evaluateCondition(c, inputs, today) {
   if (c?.type === 'lab') {
     const lab = labDef(c.lab);
     if (!lab) return { ok: false, text: 'Unknown lab' };
-    const latest = inputs.labs
-      .filter(l => lab.loincSet.has(l.code) || lab.match.test(l.display))
-      .sort((a, b) => (b.date || 0) - (a.date || 0))[0];
-    if (!latest) return { ok: false, text: `No ${lab.label} result` };
-    if (c.withinDays && latest.date && daysBetween(latest.date, today) > Number(c.withinDays)) {
-      return { ok: false, text: `Latest ${lab.label} (${fmtDate(latest.date)}) is older than ${c.withinDays} days` };
-    }
-    const ok = compare(latest.value, c.op || '>', Number(c.value));
-    const reading = `${lab.label} ${latest.value}${latest.unit ? ` ${latest.unit}` : ''} on ${fmtDate(latest.date)}`;
-    return { ok, text: `${reading} is ${ok ? '' : 'not '}${OP_WORD[c.op || '>']} ${c.value}` };
+    return latestReading(lab, inputs.labs, c, today, '>', 'result');
+  }
+  if (c?.type === 'score') {
+    const score = scoreDef(c.score);
+    if (!score) return { ok: false, text: 'Unknown score' };
+    return latestReading(score, inputs.scores || [], c, today, '>=', 'score');
   }
   if (c?.type === 'assessment') {
     const resp = inputs.assessments.find(a => !c.formId || a.formId === String(c.formId));
@@ -161,6 +191,7 @@ export function ruleProblem(rule) {
     if (c.type === 'condition' && !norm(c.value)) return 'Name the chronic condition.';
     if (c.type === 'lab' && (!labDef(c.lab) || c.value === '' || c.value == null || Number.isNaN(Number(c.value)))) return 'Give the lab a numeric threshold.';
     if (c.type === 'assessment' && (!c.question?.trim() || c.value === '' || c.value == null)) return 'Give the assessment question and answer.';
+    if (c.type === 'score' && (!scoreDef(c.score) || c.value === '' || c.value == null || Number.isNaN(Number(c.value)))) return 'Give the score a numeric threshold.';
     if (c.type === 'event' && !eventDef(c.event)) return 'Pick the kind of event.';
   }
   if (!(rule.templateIds || []).length) return 'Pick at least one template to attach.';

@@ -8,6 +8,7 @@ import {
 import { simulateRun } from '../../features/automations/lib/simulate';
 import { buildRuleInputs, evaluateRule, rulesForProgram } from '../../features/automations/lib/clinicalCriteria';
 import { enrollmentRulesOf } from '../../features/automations/lib/enrollmentRules';
+import { gbiTransitions, programStatusRulesOf, rulesForProgramStatus } from '../../features/automations/lib/programStatusRules';
 import { getNode } from '../../features/automations/lib/graph';
 import { statusDef } from '../../features/automations/lib/catalog';
 import {
@@ -28,6 +29,11 @@ import { SAMPLE_MEMBERS } from '../../features/automations/data/sampleMembers';
  * Also owns runAutoApplyRules: care program enrollment runs every active
  * automation whose trigger is "A patient is enrolled in a care program"
  * (these replaced Settings > Automation Rules).
+ *
+ * And runProgramStatusRules: a program moving to Unable to Reach, Paused,
+ * Completed or Closed runs the "program status changes" automations, which
+ * set every open goal, intervention and barrier in its plan to the mapped
+ * status with a reason (lib/programStatusRules.js).
  */
 
 const MISSING = new Set(['42P01', 'PGRST205']);
@@ -544,7 +550,8 @@ export function createAutomationsSlice(set, get) {
             `On enrollment in ${program.name || program.code}, automations matched and ${templateNames.length ? `attached ${templateNames.join(', ')} in draft` : 'found the templates already on the plan'}. Review, edit and sign the plan.`,
             ...lines,
           ].join('\n'),
-          pool: null,
+          // No named reviewer or program owner: queue it for any care manager to claim.
+          pool: reviewer ? null : 'Care Management',
           mentions: reviewer ? [reviewer.name] : [],
           attachments: 0,
           comments: 0,
@@ -594,6 +601,100 @@ export function createAutomationsSlice(set, get) {
         });
       }
       return { matched: matched.map(r => r.rule), taskId };
+    },
+
+    runProgramStatusRules: async (patientId, program, status) => {
+      if (!patientId || !program?.id || !status) return { changed: [] };
+      if (get().automationsStatus !== 'ready') await get().fetchAutomations();
+      const rules = rulesForProgramStatus(programStatusRulesOf(get().automations), program.code, status);
+      if (!rules.length) return { changed: [] };
+
+      const { data: planRow } = await supabase.from('patient_care_plans').select('id')
+        .eq('patient_id', String(patientId)).eq('program_id', program.id).maybeSingle();
+      const TABLES = { goal: 'patient_care_plan_goals', intervention: 'patient_care_plan_interventions', barrier: 'patient_care_plan_barriers' };
+      const items = { goal: [], intervention: [], barrier: [] };
+      if (planRow) {
+        const reads = await Promise.all(Object.entries(TABLES).map(([kind, table]) => supabase.from(table)
+          .select('id, title, status').eq('plan_id', planRow.id).is('retired_instance_id', null)
+          .then(res => [kind, res.data || []])));
+        for (const [kind, rows] of reads) items[kind] = rows;
+      }
+      const transitions = gbiTransitions(items, rules);
+
+      // One write per kind and target; the reason column comes with
+      // gbi_status_reason_migration.sql, so retry without it until then.
+      const changed = [];
+      const groups = new Map();
+      for (const t of transitions) {
+        const k = `${t.kind}|${t.to}|${t.reason}`;
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(t);
+      }
+      // Groups touch disjoint rows, so they write concurrently.
+      const written = await Promise.all([...groups.values()].map(async (list) => {
+        const { kind, to, reason } = list[0];
+        const base = { status: to, updated_at: nowIso(), ...(kind === 'barrier' ? {} : { updated_by: 'Automations' }) };
+        const ids = list.map(t => t.id);
+        let { error } = await supabase.from(TABLES[kind]).update({ ...base, status_reason: reason || null }).in('id', ids);
+        if (error && /status_reason/.test(error.message || '')) ({ error } = await supabase.from(TABLES[kind]).update(base).in('id', ids));
+        if (error) { console.warn('runProgramStatusRules:', error.message); return []; }
+        return list;
+      }));
+      for (const list of written) changed.push(...list);
+
+      if (changed.length) {
+        get().logCarePlanAudit(patientId, program, changed.map(t => ({
+          entityType: t.kind, entityId: t.id, action: 'status_changed', summary: t.title,
+          detail: `${t.reason || `Program ${status}`}: ${t.from} → ${t.to}`,
+        })));
+        // Show the new statuses wherever this plan is open.
+        const key = carePlanKey(patientId, program.id);
+        const lists = { goal: 'goals', intervention: 'interventions', barrier: 'barriers' };
+        const patchList = (slice) => {
+          if (!slice) return slice;
+          const next = { ...slice };
+          for (const [kind, listKey] of Object.entries(lists)) {
+            const byId = new Map(changed.filter(t => t.kind === kind).map(t => [t.id, t]));
+            if (!byId.size || !next[listKey]) continue;
+            next[listKey] = next[listKey].map(x => (byId.has(x.id) ? { ...x, status: byId.get(x.id).to, statusReason: byId.get(x.id).reason } : x));
+          }
+          return next;
+        };
+        set(st => ({
+          patientCarePlans: st.patientCarePlans[key] ? { ...st.patientCarePlans, [key]: patchList(st.patientCarePlans[key]) } : st.patientCarePlans,
+          patientSignedCarePlans: st.patientSignedCarePlans?.[key] ? { ...st.patientSignedCarePlans, [key]: patchList(st.patientSignedCarePlans[key]) } : st.patientSignedCarePlans,
+        }));
+        const to = [...new Set(changed.map(t => t.to))].join(', ');
+        get().showToast?.(`${changed.length} open care plan item${changed.length === 1 ? '' : 's'} set to ${to}`);
+      }
+
+      // A run per automation that applied, with what it changed (one record each, written concurrently).
+      const memberName = get().patients.find(p => String(p.id) === String(patientId))?.name || String(patientId);
+      await Promise.all(rules.map(async (rule) => {
+        const automation = get().automations.find(a => a.id === rule.id);
+        if (!automation) return;
+        const mine = changed.filter(t => t.ruleId === rule.id);
+        const at = nowIso();
+        const path = {
+          trigger: { status: 'success', at },
+          [rule.actionNodeId]: {
+            status: 'success', at,
+            reasons: mine.length
+              ? mine.map(t => `${t.title}: ${t.from} → ${t.to}`)
+              : [planRow ? 'No open care plan items to update' : 'This program has no care plan'],
+          },
+        };
+        const run = {
+          id: uuid(), automationId: automation.id, kind: 'event', targetType: 'trigger', targetLabel: `${program.name || program.code} → ${status}`,
+          memberCount: 1, completedCount: 1, inProgressCount: 0, failedCount: 0, minutesSaved: mine.length ? 5 : 0,
+          graph: automation.graph, triggeredBy: null, startedAt: at, finishedAt: at,
+        };
+        await persistRun(automation, run, {
+          members: [{ patientId: String(patientId), patientName: memberName, status: 'completed', failingReason: null, minutesSaved: run.minutesSaved, startedAt: at, finishedAt: at, path }],
+          messages: [],
+        });
+      }));
+      return { changed };
     },
   };
 }
