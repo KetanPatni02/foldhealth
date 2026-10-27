@@ -469,6 +469,49 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  // Unity's Recap summaries this user last generated (patient_recap_summaries),
+  // keyed "memberId|period" → { saved: { summaries, generatedAt } | null,
+  // loading, error }. Reopening the Recap shows the saved ones; Unity writes
+  // new ones only the first time or on Refresh. `write()` resolves to
+  // { [sectionKey]: text }.
+  recapSummaries: {},
+  loadRecapSummaries: async (memberId, period, write) => {
+    const key = `${memberId}|${period}`;
+    const entry = get().recapSummaries[key];
+    if (entry?.saved || entry?.loading) return;
+    if (entry?.error) { await get().refreshRecapSummaries(memberId, period, write); return; }
+    set(st => ({ recapSummaries: { ...st.recapSummaries, [key]: { saved: null, loading: true, error: null } } }));
+    const { data, error } = await supabase
+      .from('patient_recap_summaries')
+      .select('summaries, generated_at')
+      .eq('member_id', String(memberId))
+      .eq('period', period)
+      .maybeSingle();
+    if (error) console.warn('[store] patient_recap_summaries fetch failed (run supabase/patient_recap_summaries_migration.sql):', error.message);
+    if (data) {
+      set(st => ({ recapSummaries: { ...st.recapSummaries, [key]: { saved: { summaries: data.summaries, generatedAt: data.generated_at }, loading: false, error: null } } }));
+      return;
+    }
+    await get().refreshRecapSummaries(memberId, period, write);
+  },
+  refreshRecapSummaries: async (memberId, period, write) => {
+    const key = `${memberId}|${period}`;
+    const patch = p => set(st => ({ recapSummaries: { ...st.recapSummaries, [key]: { saved: null, ...st.recapSummaries[key], ...p } } }));
+    patch({ loading: true, error: null });
+    try {
+      const summaries = await write();
+      const generatedAt = new Date().toISOString();
+      patch({ saved: { summaries, generatedAt }, loading: false });
+      const { error } = await supabase
+        .from('patient_recap_summaries')
+        .upsert({ member_id: String(memberId), period, summaries, generated_at: generatedAt }, { onConflict: 'user_id,member_id,period' });
+      if (error) console.warn('[store] save recap summaries failed:', error.message);
+    } catch (err) {
+      patch({ loading: false, error: err.message });
+      if (get().recapSummaries[key]?.saved) get().showToast?.('Could not refresh the summary. Showing the last one.');
+    }
+  },
+
   // Needs Attention reviews on the Overview (patient_signal_reviews), keyed
   // by member id → { [signalId]: { reviewedBy, reviewedByName, reviewedAt } }.
   // Shared by the team. Read once per patient; `{}` when the table is missing

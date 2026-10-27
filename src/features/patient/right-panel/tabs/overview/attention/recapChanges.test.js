@@ -117,6 +117,6 @@ describe('attentionChanges', () => {
     const reviews = { c: { reviewedAt: new Date(at(1)).toISOString() } };
     const { rows, headline } = attentionChanges(signals, reviews, WINDOW);
     expect(rows.map(r => r.to)).toEqual(['1', '1', '2']);
-    expect(headline).toBe('2 open items, 1 new since the last touch, 1 reviewed in this period.');
+    expect(headline).toBe('2 open items, 1 new since the last visit, 1 reviewed in this period.');
   });
 });

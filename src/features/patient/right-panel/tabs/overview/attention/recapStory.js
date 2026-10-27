@@ -11,18 +11,18 @@ import { lastTouchAt } from './attentionSignals';
 const DAY = 24 * 3600 * 1000;
 
 export const RECAP_PERIODS = [
-  { key: 'touch', label: 'Since last touch' },
+  { key: 'touch', label: 'Since last visit' },
   { key: '30', label: '30 days' },
   { key: '90', label: '90 days' },
 ];
 
 export const fmtDate = ms => new Date(ms).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
-/** { from, label } for a period key; "since last touch" falls back to 30 days. */
+/** { from, label } for a period key; "since last visit" falls back to 30 days. */
 export function recapWindow(period, { events, now = Date.now() }) {
   if (period === 'touch') {
     const touch = lastTouchAt(events, now);
-    if (touch != null) return { from: touch, label: `since the last touch on ${fmtDate(touch)}` };
+    if (touch != null) return { from: touch, label: `since the last visit on ${fmtDate(touch)}` };
   }
   const days = period === '90' ? 90 : 30;
   return { from: now - days * DAY, label: `in the last ${days} days` };
@@ -103,7 +103,7 @@ export function buildRecap({ events = [], from, now = Date.now(), openCount = 0 
 
   const summary = [];
   if (lastTouch) {
-    summary.push(`Last touch: ${lastTouch.title}${lastTouch.actor ? ` with ${lastTouch.actor}` : ''} on ${fmtDate(lastTouch.at)}.`);
+    summary.push(`Last visit: ${lastTouch.title}${lastTouch.actor ? ` with ${lastTouch.actor}` : ''} on ${fmtDate(lastTouch.at)}.`);
   }
   if (touchpoints.length) {
     summary.push(`${plural(touchpoints.length, 'touchpoint')}: ${joinList(channels.map(c => noun(c.kind, c.count)))}.`);

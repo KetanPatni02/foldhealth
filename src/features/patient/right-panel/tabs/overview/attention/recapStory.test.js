@@ -18,7 +18,7 @@ const EVENTS = [
 
 describe('recapWindow', () => {
   it('uses the last touch, else 30 days', () => {
-    expect(recapWindow('touch', { events: EVENTS, now: NOW })).toEqual({ from: at(2), label: 'since the last touch on 10/21/2026' });
+    expect(recapWindow('touch', { events: EVENTS, now: NOW })).toEqual({ from: at(2), label: 'since the last visit on 10/21/2026' });
     expect(recapWindow('touch', { events: [], now: NOW }).label).toBe('in the last 30 days');
     expect(recapWindow('90', { events: [], now: NOW }).from).toBe(at(90));
   });
@@ -38,7 +38,7 @@ describe('buildRecap', () => {
   it('writes a plain summary of what was recorded', () => {
     const r = buildRecap({ events: EVENTS, from: at(30), now: NOW, openCount: 3 });
     expect(r.summary).toEqual([
-      'Last touch: Patient Chat with Dr. Aldo Richman on 10/21/2026.',
+      'Last visit: Patient Chat with Dr. Aldo Richman on 10/21/2026.',
       '2 touchpoints: 1 chat and 1 call.',
       '1 lab result recorded, 1 out of range.',
       '1 medication change: 1 started.',

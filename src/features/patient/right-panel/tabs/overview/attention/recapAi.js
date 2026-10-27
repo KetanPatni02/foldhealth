@@ -38,23 +38,17 @@ export function recapAiPayload({ patientName, period, sections }) {
   };
 }
 
-// One request per patient and period per session, unless it failed.
-const cache = new Map(); // cacheKey → Promise<{ [key]: string }>
-
-export function fetchRecapSummaries(cacheKey, payload) {
-  if (cache.has(cacheKey)) return cache.get(cacheKey);
-  const request = apiFetch('/api/patient-recap-summary', {
+// Asks Unity to write the summaries. The store saves them
+// (patient_recap_summaries), so this runs only on a first open or Refresh.
+export async function writeRecapSummaries(payload) {
+  const res = await apiFetch('/api/patient-recap-summary', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-  }).then(async (res) => {
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json.summaries) throw new Error(json?.error?.message || 'Could not write the summary. Please try again.');
-    return json.summaries;
   });
-  cache.set(cacheKey, request);
-  request.catch(() => cache.delete(cacheKey));
-  return request;
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.summaries) throw new Error(json?.error?.message || 'Could not write the summary. Please try again.');
+  return json.summaries;
 }
 
 const sentence = s => (s ? `${s.replace(/\.$/, '')}.` : '');
@@ -74,8 +68,8 @@ const joinList = (parts, word = 'and') => (parts.length <= 1 ? parts.join('')
  */
 export function sampleSummaries({ recap, changes: ch, signals = [], openSignals = [] }) {
   const lastTouch = recap.lastTouch
-    ? `The last touch was ${recap.lastTouch.title}${recap.lastTouch.actor ? ` with ${recap.lastTouch.actor}` : ''} on ${fmtDate(recap.lastTouch.at)}.`
-    : 'There is no completed touch on record.';
+    ? `The last visit was ${recap.lastTouch.title}${recap.lastTouch.actor ? ` with ${recap.lastTouch.actor}` : ''} on ${fmtDate(recap.lastTouch.at)}.`
+    : 'There is no completed visit on record.';
   const top = openSignals[0];
 
   const completed = recap.touchpoints.find(e => /completed|attended/i.test(e.outcome || ''));
