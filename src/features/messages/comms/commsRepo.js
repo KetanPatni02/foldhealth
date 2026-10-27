@@ -131,7 +131,7 @@ export async function listMessages(conversationId) {
   const { data, error } = await supabase.from('patient_messages').select('*')
     .eq('conversation_id', conversationId).order('created_at', { ascending: true });
   if (error) throw error;
-  return data || [];
+  return withSessionAttribution(data || []);
 }
 
 /** Messages across several conversations (e.g. every email thread). */
@@ -143,7 +143,7 @@ export async function listMessagesFor(conversationIds) {
   }
   const { data, error } = await supabase.from('patient_messages').select('*').in('conversation_id', conversationIds);
   if (error) throw error;
-  return data || [];
+  return withSessionAttribution(data || []);
 }
 
 export async function createConversation(fields) {
@@ -221,7 +221,11 @@ export async function addMessage(fields) {
     writeLocal(db, { table: 'patient_messages', type: 'INSERT', row });
     saved = row;
   } else {
-    const { data, error } = await supabase.from('patient_messages').insert(row).select().single();
+    let { data, error } = await supabase.from('patient_messages').insert(row).select().single();
+    if (error && isMissingColumn(error) && ATTRIBUTION_FIELDS.some(f => f in row)) {
+      ({ data, error } = await supabase.from('patient_messages').insert(withoutAttribution(row)).select().single());
+      if (data) data = rememberAttribution(data, row);
+    }
     if (error) {
       if (error.code === '23505') return null; // this provider message is already in
       throw error;
@@ -239,6 +243,86 @@ export async function addMessage(fields) {
     });
   }
   return saved;
+}
+
+// Who an SMS is logged for (supabase/sms_member_attribution_migration.sql).
+// Until those columns exist a message is saved without them and belongs to
+// its conversation's patient.
+const ATTRIBUTION_FIELDS = ['logged_for_patient_id', 'logged_for_name'];
+const MISSING_SCHEMA = new Set(['42P01', 'PGRST205', '42703', 'PGRST204']);
+const isMissingColumn = (error) => MISSING_SCHEMA.has(error?.code);
+function withoutAttribution(row) {
+  const rest = { ...row };
+  ATTRIBUTION_FIELDS.forEach(f => delete rest[f]);
+  return rest;
+}
+
+// Until the migration runs, who a message is logged for is kept for this
+// session only, so the flow can still be tried end to end.
+const sessionAttribution = new Map();
+function rememberAttribution(saved, source) {
+  const attr = Object.fromEntries(ATTRIBUTION_FIELDS.map(f => [f, source[f] ?? null]));
+  sessionAttribution.set(saved.id, attr);
+  return { ...saved, ...attr };
+}
+function withSessionAttribution(rows) {
+  return sessionAttribution.size
+    ? rows.map(r => (sessionAttribution.has(r.id) ? { ...r, ...sessionAttribution.get(r.id) } : r))
+    : rows;
+}
+
+/** Log these messages for one member of a shared number. */
+export async function logMessagesFor(ids, member) {
+  if (!ids.length) return;
+  const patch = { logged_for_patient_id: member.id, logged_for_name: member.name };
+  if (await commsMode() === 'local') {
+    await Promise.all(ids.map(id => updateMessage(id, patch)));
+    return;
+  }
+  const { data, error } = await supabase.from('patient_messages').update(patch).in('id', ids).select();
+  if (error && isMissingColumn(error)) {
+    const { data: rows, error: readError } = await supabase.from('patient_messages').select('*').in('id', ids);
+    if (readError) throw new Error(readError.message);
+    for (const row of rows || []) emit({ table: 'patient_messages', type: 'UPDATE', row: rememberAttribution(row, patch) });
+    return;
+  }
+  if (error) throw new Error(error.message);
+  for (const row of data || []) emit({ table: 'patient_messages', type: 'UPDATE', row });
+}
+
+/**
+ * Every SMS logged for a patient, newest first, each with its conversation:
+ * the ones logged for them on any number, and the unassigned ones in their
+ * own SMS threads.
+ */
+export async function listSmsLoggedFor({ patientId, patientName }) {
+  const id = patientId != null ? String(patientId) : null;
+  const own = (await listPatientConversations({ patientId, patientName })).filter(c => c.channel === 'sms');
+  const ownIds = new Set(own.map(c => c.id));
+  let messages;
+  if (await commsMode() === 'local') {
+    messages = readLocal().messages.filter(m => (id && m.logged_for_patient_id === id)
+      || (ownIds.has(m.conversation_id) && !m.logged_for_patient_id));
+  } else {
+    const inOwn = await listMessagesFor([...ownIds]);
+    let elsewhere = [];
+    if (id) {
+      const { data, error } = await supabase.from('patient_messages').select('*').eq('logged_for_patient_id', id);
+      if (error && !isMissingColumn(error)) throw error;
+      elsewhere = data || [];
+    }
+    const seen = new Set();
+    messages = [...elsewhere, ...inOwn.filter(m => !m.logged_for_patient_id || m.logged_for_patient_id === id)]
+      .filter(m => !seen.has(m.id) && seen.add(m.id));
+  }
+  messages = messages.filter(m => m.kind === 'message' && !m.internal && m.status !== 'draft');
+  const convs = new Map(own.map(c => [c.id, c]));
+  const missing = [...new Set(messages.map(m => m.conversation_id))].filter(cid => !convs.has(cid));
+  (await Promise.all(missing.map(getConversation))).forEach(c => { if (c) convs.set(c.id, c); });
+  return messages
+    .map(message => ({ message, conversation: convs.get(message.conversation_id) }))
+    .filter(x => x.conversation?.channel === 'sms')
+    .sort((a, b) => new Date(b.message.created_at) - new Date(a.message.created_at));
 }
 
 export async function updateMessage(id, patch) {

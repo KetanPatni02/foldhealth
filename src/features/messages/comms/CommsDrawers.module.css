@@ -18,6 +18,12 @@
   color: var(--neutral-300);
 }
 
+.logForTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
 .req {
   width: 0.25rem;
   height: 0.25rem;

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
@@ -7,11 +7,13 @@ import { MessageComposer } from '../../../components/MessageComposer/MessageComp
 import { MessageStatus } from '../../../components/MessageStatus/MessageStatus';
 import { ChatBubble, MissedCallMarker } from '../../../components/ChatBubble/ChatBubble';
 import { Link } from '../../../components/Link/Link';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
+import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { toast } from '../../../components/Toast/sonnerToast';
 import { supabase } from '../../../lib/supabase';
 import listStyles from '../MessagesView.module.css';
 import { useCommsMessages } from './useComms';
-import { addMessage, updateConversation, markConversationRead, findOrCreateConversation } from './commsRepo';
+import { addMessage, updateConversation, markConversationRead, findOrCreateConversation, logMessagesFor } from './commsRepo';
 import { sendSms, retrySend } from './commsSend';
 import { useBrowserCall } from './call/useBrowserCall';
 import { useAppStore } from '../../../store/useAppStore';
@@ -19,7 +21,11 @@ import { formatDuration } from './call/rtc';
 import {
   initialsOf, patientMeta, callLook, fullStamp, dayLabel, patientLink, openInNewTab, formatPhone,
 } from './commsUtils';
+import { membersForConversation, loggedFor } from './smsMembers';
+import { LogForChip, LogForCoachmark, SelectMemberModal } from './SmsAttribution';
 import styles from './Comms.module.css';
+
+const isSmsText = (m) => m.kind === 'message' && !m.internal;
 
 const timeOnly = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
@@ -47,6 +53,41 @@ export function CommsThread({ conversation, patient, me }) {
   const openCommsDrawer = useAppStore(s => s.openCommsDrawer);
   const sender = { id: me?.id || null, name: me?.name || 'Care team' };
 
+  // A number shared by several members (FCS-5677): each SMS is logged for one.
+  const patients = useAppStore(s => s.allPatients);
+  const members = useMemo(() => membersForConversation(conversation, patients || []), [conversation, patients]);
+  const shared = channel === 'sms' && members.length > 1;
+  const [logForId, setLogForId] = useState(null);
+  const logFor = members.find(m => m.id === logForId) || members[0];
+  const chipRef = useRef(null);
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState(() => new Set());
+  const [memberModal, setMemberModal] = useState(false);
+  const [logging, setLogging] = useState(false);
+
+  const startSelecting = (id) => { setPicked(new Set(id ? [id] : [])); setSelecting(true); };
+  const stopSelecting = () => { setSelecting(false); setPicked(new Set()); };
+  const togglePicked = (id) => setPicked((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const logPicked = async (member) => {
+    setLogging(true);
+    try {
+      await logMessagesFor([...picked], { id: member.id, name: member.name });
+      setMemberModal(false);
+      stopSelecting();
+      toast.success('SMS Logged For Member Successfully');
+      return true;
+    } catch (err) {
+      toast.error(err.message || 'Could not log the SMS for this member.');
+      return false;
+    } finally {
+      setLogging(false);
+    }
+  };
+
   useEffect(() => { markConversationRead(conversation); }, [conversation, messages.length]);
 
   useEffect(() => {
@@ -67,7 +108,8 @@ export function CommsThread({ conversation, patient, me }) {
       if (channel === 'sms' && !internal) {
         const to = share?.targets?.length ? share.targets : [conversation.patient_phone].filter(Boolean);
         if (!to.length) throw new Error('This patient has no phone number on file.');
-        for (const phone of to) await sendSms({ conversation, sender, to: phone, body, meta: share?.meta });
+        const attribution = shared && logFor ? { id: logFor.id, name: logFor.name } : undefined;
+        for (const phone of to) await sendSms({ conversation, sender, to: phone, body, meta: share?.meta, loggedFor: attribution });
       } else {
         // One message per file; the text rides with the last one.
         const items = files.length ? files : [null];
@@ -174,10 +216,27 @@ export function CommsThread({ conversation, patient, me }) {
           <div className={listStyles.chatHeaderMeta}>
             {patientMeta(conversation, patient)}
             {channel === 'sms' && conversation.patient_phone && ` • ${formatPhone(conversation.patient_phone)}`}
+            {shared && <span className={styles.metaAccent}> • {members.length} members</span>}
             {channel === 'chat' && conversation.group_name && <span className={styles.metaAccent}> • {conversation.group_name}</span>}
           </div>
         </div>
         <div className={listStyles.chatHeaderActions}>
+          {shared && (
+            <>
+              {selecting ? (
+                <ActionButton
+                  icon="solar:user-circle-linear"
+                  size="S"
+                  tooltip="Log SMS for member"
+                  state={picked.size ? 'active' : 'disabled'}
+                  onClick={() => setMemberModal(true)}
+                />
+              ) : (
+                <ActionButton icon="solar:chat-square-check-linear" size="S" tooltip="Select messages" onClick={() => startSelecting()} />
+              )}
+              <div className={listStyles.divider} />
+            </>
+          )}
           {channel === 'chat' && conversation.patient_token && (
             <>
               <ActionButton
@@ -222,6 +281,14 @@ export function CommsThread({ conversation, patient, me }) {
         />
       </div>
 
+      {selecting && (
+        <div className={styles.selectBar}>
+          <span className={styles.selectCount}>{picked.size} {picked.size === 1 ? 'Message' : 'Messages'} Selected</span>
+          <span className={styles.selectDivider} aria-hidden="true" />
+          <CloseButton size={16} label="Stop selecting" onClick={stopSelecting} />
+        </div>
+      )}
+
       <div ref={scrollRef} className={styles.thread}>
         {loading ? (
           <div className={styles.threadEmpty}>Loading…</div>
@@ -241,7 +308,20 @@ export function CommsThread({ conversation, patient, me }) {
           return (
             <Fragment key={m.id}>
               {newDay && <div className={styles.daySep}><span>{dayLabel(m.created_at)}</span></div>}
-              <ThreadItem message={m} prev={newDay ? null : prev} conversation={conversation} />
+              <SelectableRow
+                show={selecting}
+                selectable={isSmsText(m)}
+                checked={picked.has(m.id)}
+                onToggle={() => togglePicked(m.id)}
+              >
+                <ThreadItem
+                  message={m}
+                  prev={newDay ? null : prev}
+                  conversation={conversation}
+                  attributed={shared}
+                  onSelect={shared && !selecting ? () => startSelecting(m.id) : undefined}
+                />
+              </SelectableRow>
             </Fragment>
           );
         })}
@@ -262,7 +342,22 @@ export function CommsThread({ conversation, patient, me }) {
         attachments={pending}
         onRemoveAttachment={removePending}
         maxLength={channel === 'sms' && !internal ? 500 : undefined}
+        toolbarStart={shared && !internal ? (
+          <>
+            <LogForChip ref={chipRef} members={members} value={logFor?.id} onChange={setLogForId} />
+            <LogForCoachmark anchorRef={chipRef} userId={me?.id} />
+          </>
+        ) : undefined}
       />
+      {shared && (
+        <SelectMemberModal
+          open={memberModal}
+          members={members}
+          saving={logging}
+          onClose={() => setMemberModal(false)}
+          onSave={logPicked}
+        />
+      )}
       <input
         id={fileInputId}
         type="file"
@@ -275,14 +370,44 @@ export function CommsThread({ conversation, patient, me }) {
   );
 }
 
-function ThreadItem({ message: m, prev, conversation }) {
+/** In selection mode, a message with its checkbox at the right. */
+function SelectableRow({ show, selectable, checked, onToggle, children }) {
+  if (!show) return children;
+  return (
+    <div className={styles.selectRow}>
+      <div className={styles.selectMain}>{children}</div>
+      {selectable
+        ? <Checkbox checked={checked} onCheckedChange={onToggle} aria-label="Select message" />
+        : <span className={styles.selectSpacer} aria-hidden="true" />}
+    </div>
+  );
+}
+
+const sameMember = (a, b) => (a.logged_for_patient_id || null) === (b.logged_for_patient_id || null);
+
+/**
+ * `attributed`: the number is shared, so an SMS reads "Sender → Member"
+ * (ours) or the member's name (theirs).
+ */
+function ThreadItem({ message: m, prev, conversation, attributed = false, onSelect }) {
   const own = m.direction === 'out';
   const sameSender = prev && prev.direction === m.direction && prev.sender_name === m.sender_name
-    && prev.kind === m.kind && !!prev.internal === !!m.internal
+    && prev.kind === m.kind && !!prev.internal === !!m.internal && sameMember(prev, m)
     && new Date(m.created_at) - new Date(prev.created_at) < 5 * 60000;
   const name = m.sender_name || (own ? 'Care team' : conversation.patient_name);
-  const copyText = m.body ? [{ key: 'copy', icon: 'solar:copy-linear', label: 'Copy text' }] : [];
-  const onMenu = (key) => { if (key === 'copy') navigator.clipboard?.writeText(m.body); };
+  const member = attributed && isSmsText(m) ? loggedFor(m, conversation) : null;
+  const shownName = member && !own ? member.name : name;
+  const label = member && own
+    ? <span className={styles.byline}>{name}<Icon name="solar:arrow-right-linear" size={12} />{member.name}</span>
+    : shownName;
+  const menuItems = [
+    ...(m.body ? [{ key: 'copy', icon: 'solar:copy-linear', label: 'Copy text' }] : []),
+    ...(onSelect && isSmsText(m) ? [{ key: 'select', icon: 'solar:check-square-linear', label: 'Select' }] : []),
+  ];
+  const onMenu = (key) => {
+    if (key === 'copy') navigator.clipboard?.writeText(m.body);
+    if (key === 'select') onSelect?.();
+  };
 
   if (m.kind === 'call') {
     // An unanswered call from the patient reads as a marker across the thread.
@@ -310,14 +435,14 @@ function ThreadItem({ message: m, prev, conversation }) {
   return (
     <ChatBubble
       side={m.internal ? 'internal' : own ? 'right' : 'left'}
-      name={name}
-      initials={initialsOf(name)}
+      name={label}
+      initials={initialsOf(shownName)}
       text={m.body}
       attachment={attachment}
       compact={sameSender && !m.internal}
       time={timeOnly(m.created_at)}
       status={own && !m.internal ? <MessageStatus status={statusOf(m)} onResend={() => retrySend(m)} /> : null}
-      menuItems={copyText}
+      menuItems={menuItems}
       onMenuSelect={onMenu}
       footer={m.status === 'failed' && m.failure_reason ? <div className={styles.failedRow}>{m.failure_reason}</div> : null}
     />

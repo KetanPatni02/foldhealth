@@ -20,7 +20,9 @@ import styles from './MenuPopover.module.css';
  * @param {object}   props
  * @param {DOMRect}  [props.anchorRect]
  * @param {object}   [props.anchorRef]
- * @param {Array}    props.items          – [{ key, icon, iconElement, label, trailing, danger, disabled, hint }]
+ * @param {Array}    props.items          – [{ key, icon, iconElement, label, trailing, danger, disabled, hint, tall }]
+ *                                          `tall` lets a row grow past 32px for a two-line label
+ *                                          (e.g. a person row with a meta line).
  *                                          `iconElement` renders a custom node in the icon slot,
  *                                          overriding the Solar `icon` name.
  *                                          Also accepts { section: 'Label' } for an uppercase
@@ -174,6 +176,7 @@ export function MenuPopover({
               item.danger ? styles.danger : '',
               item.disabled ? styles.disabled : '',
               item.selected ? styles.rowSelected : '',
+              item.tall ? styles.rowTall : '',
             ].filter(Boolean).join(' ')}
             onClick={() => {
               if (item.disabled) return;

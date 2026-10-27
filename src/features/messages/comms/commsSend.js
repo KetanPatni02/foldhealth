@@ -73,7 +73,8 @@ export async function sendEmail({ conversation, sender, from, to, cc, bcc, subje
   return settle(message, deliverEmail);
 }
 
-export async function sendSms({ conversation, sender, to, body, meta }) {
+/** `loggedFor`: the member of a shared number this SMS is logged for. */
+export async function sendSms({ conversation, sender, to, body, meta, loggedFor }) {
   const message = await addMessage({
     conversation_id: conversation.id,
     kind: 'message',
@@ -84,6 +85,7 @@ export async function sendSms({ conversation, sender, to, body, meta }) {
     body,
     status: 'queued',
     ...(meta ? { meta } : {}),
+    ...(loggedFor ? { logged_for_patient_id: loggedFor.id, logged_for_name: loggedFor.name } : {}),
   });
   return settle(message, deliverSms);
 }

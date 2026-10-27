@@ -32,6 +32,7 @@ import styles from './MessageComposer.module.css';
  * @param {boolean}  [props.sending]
  * @param {number}   [props.maxLength]
  * @param {React.ReactNode} [props.above] – shown above the box (e.g. an attachment chip)
+ * @param {React.ReactNode} [props.toolbarStart] – after the Internal toggle, past a divider (e.g. Log For)
  * @param {Array<{ id: string, name: string, size?: number, type?: string, previewUrl?: string, uploading?: boolean }>} [props.attachments]
  *   – files attached but not sent yet, shown as cards inside the box
  *   (Figma Communications 1:36070); Send goes out with them
@@ -54,6 +55,7 @@ export function MessageComposer({
   sending = false,
   maxLength,
   above,
+  toolbarStart,
   attachments = [],
   onRemoveAttachment,
 }) {
@@ -80,9 +82,17 @@ export function MessageComposer({
   return (
     <div className={[styles.root, isInternal ? styles.internal : ''].filter(Boolean).join(' ')}>
       <div className={styles.toolbar}>
-        {onInternalChange && !internalOnly ? (
-          <Switch checked={internal} onChange={onInternalChange} label="Internal" labelGap={6} />
-        ) : <span />}
+        <div className={styles.toolbarStart}>
+          {onInternalChange && !internalOnly && (
+            <Switch checked={internal} onChange={onInternalChange} label="Internal" labelGap={6} />
+          )}
+          {toolbarStart && (
+            <>
+              {onInternalChange && !internalOnly && <span className={styles.toolbarDivider} aria-hidden="true" />}
+              {toolbarStart}
+            </>
+          )}
+        </div>
         <div className={styles.tools}>
           {tools.map(t => (
             <ActionButton key={t.key} icon={t.icon} size="S" tooltip={t.tooltip} onClick={t.onClick} />
