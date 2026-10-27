@@ -530,16 +530,16 @@ export function gapStartDate(x) {
   return fills.toSorted((a, b) => parseMdy(a) - parseMdy(b))[0] || null;
 }
 
-// At-a-glance progress across the member's pharmacy gaps.
-export const PROGRESS_LEVELS = ['Not started', 'In progress', 'Partially complete', 'Complete'];
-export const PROGRESS_TONE = { Complete: 'success', 'Partially complete': 'primary', 'In progress': 'primary', 'Not started': 'white' };
+// At-a-glance progress across the member's pharmacy gaps. Work under way,
+// with or without some gaps closed, is In progress (amber).
+export const PROGRESS_LEVELS = ['Not started', 'In progress', 'Complete'];
+export const PROGRESS_TONE = { Complete: 'success', 'In progress': 'warning', 'Not started': 'white' };
 export function gapProgress(statuses) {
   const gaps = Object.values(statuses).map(s => s.gap).filter(g => !UNCOUNTED_GAPS.has(g));
   // Pending Claim is still waiting for its claim, so it is not closed.
   const closed = gaps.filter(g => CLOSED_GAPS.has(g)).length;
   const label = !gaps.length || closed === gaps.length ? 'Complete'
-    : closed > 0 ? 'Partially complete'
-    : gaps.some(g => g !== 'Open') ? 'In progress'
+    : closed > 0 || gaps.some(g => g !== 'Open') ? 'In progress'
     : 'Not started';
   return { label, closed, total: gaps.length };
 }

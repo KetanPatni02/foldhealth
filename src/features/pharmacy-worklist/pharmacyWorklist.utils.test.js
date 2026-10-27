@@ -316,7 +316,7 @@ describe('enrichPharmacyMember: progress and roll-up', () => {
       fillMeasure({ filledDaysAgo: 3, supply: 30 }),
       { ...fillMeasure({ filledDaysAgo: 10, supply: 30, claims: [paid(10)] }), code: 'MAH' },
     ] });
-    expect(m.progress).toMatchObject({ label: 'Partially complete', closed: 1, total: 2 });
+    expect(m.progress).toMatchObject({ label: 'In progress', closed: 1, total: 2 });
   });
 
   it('puts the savability on each gap', () => {

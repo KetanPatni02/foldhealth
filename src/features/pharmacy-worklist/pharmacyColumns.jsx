@@ -84,35 +84,22 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   },
   {
     key: 'gapStatus', label: 'Gap Status', getTdClassName: gapTd(false), stopRowClickPropagation: true,
-    // The team can only move a gap between Open and In Progress; every other
-    // status is Fold's, so its badge only explains itself.
+    // The status badge alone. The team can only move a gap between Open and
+    // In Progress (a menu); every other status is Fold's.
     renderCell: perGap((g, m, ctx) => (
-      <span className={styles.stack}>
-        {MANUAL_GAP_STATUSES.includes(g.status.gap) ? (
-          <button
-            type="button"
-            className={styles.badgeBtn}
-            onClick={(e) => ctx.openGapStatusMenu(g.code, e.currentTarget.getBoundingClientRect())}
-            aria-haspopup="menu"
-            aria-label={`Change ${g.code} status`}
-          >
-            <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap] || 'grey'} label={g.status.gap} trailingIconElement={<DownChevronIcon size={12} color="currentColor" />} />
-          </button>
-        ) : (
-          <Tooltip label={g.status.label ? 'Set by Fold' : `Set by Fold: ${g.status.detail}`} placement="bottom">
-            <span><Badge size="S" tone={GAP_STATUS_TONE[g.status.gap] || 'grey'} label={g.status.gap} /></span>
-          </Tooltip>
-        )}
-        <Tooltip label={g.status.detail} placement="bottom">
-          {g.status.medId ? (
-            <button type="button" className={styles.subStatusBtn} onClick={() => ctx.openClaimRework(g.code, g.status.medId)}>
-              <SubStatus label={g.status.label} suffix={g.status.manual ? 'Set manually' : null} />
-            </button>
-          ) : (
-            <span><SubStatus label={g.status.label} suffix={g.status.manual ? 'Set manually' : null} /></span>
-          )}
-        </Tooltip>
-      </span>
+      MANUAL_GAP_STATUSES.includes(g.status.gap) ? (
+        <button
+          type="button"
+          className={styles.badgeBtn}
+          onClick={(e) => ctx.openGapStatusMenu(g.code, e.currentTarget.getBoundingClientRect())}
+          aria-haspopup="menu"
+          aria-label={`Change ${g.code} status`}
+        >
+          <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap] || 'grey'} label={g.status.gap} trailingIconElement={<DownChevronIcon size={12} color="currentColor" />} />
+        </button>
+      ) : (
+        <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap] || 'grey'} label={g.status.gap} />
+      )
     )),
   },
   {

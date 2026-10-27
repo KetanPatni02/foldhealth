@@ -95,7 +95,10 @@ function Projected({ on, children }) {
 // overdue fill on an open gap) uses the shared alert style: red, with a
 // dashed underline and why on hover. Otherwise the value is plain, with the short
 // projected hint when it rests on a fill not yet claimed.
-const alertSources = (g) => ({ ...g, pdcSource: null, failDateSource: null, nextFillDueSource: null });
+
+// Shows a gap's value as needing action even when it is projected (the
+// alert style, not the projected one).
+const alertSources = (g) => ({ ...g, pdcSource: null, failDateSource: null });
 
 function Pdc({ gap: g }) {
   if (g.pdc == null) return <span className={styles.muted}>Not sent</span>;
@@ -110,10 +113,9 @@ function FailDate({ gap: g }) {
   return <Projected on={g.failDateSource === 'Projected'}><span>{g.failDate || '—'}</span></Projected>;
 }
 
+// The same as the worklist: the date, with a due line under it when due.
 function NextFill({ gap: g }) {
-  const d = daysFromToday(g.nextFillDue);
-  if (isActiveGap(g.status) && d != null && d < 0) return <NextFillDueValue gap={alertSources(g)} />;
-  return <Projected on={g.nextFillDueSource === 'Projected'}><span>{g.nextFillDue || '—'}</span></Projected>;
+  return <NextFillDueValue gap={g} />;
 }
 
 // The compact gap table (Pharmacy Gap Details), laid out like the Pharmacy
@@ -169,11 +171,10 @@ function GapList({ gaps, title, titleExtra, onSetStatus }) {
                       aria-label={`Change ${g.code} status`}
                     >{badge}</button>
                   ) : (
-                    <Tooltip label={`Set by Fold${g.status.label ? '' : `: ${g.status.detail}`}`} placement="bottom">
-                      <span>{badge}</span>
-                    </Tooltip>
+                    // A span, so the Badge's own centering doesn't apply in
+                    // this column (it lines up with the buttons above).
+                    <span>{badge}</span>
                   )}
-                  <SubStatus label={g.status.label} />
                 </span>
                 <span className={styles.listCell} role="cell"><Pdc gap={g} /></span>
                 <span className={styles.listCell} role="cell"><FailDate gap={g} /></span>

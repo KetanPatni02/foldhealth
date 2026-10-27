@@ -56,33 +56,12 @@ function projectedHint(medications) {
   return `Projected from the fill confirmed on ${fill.date}${fill.how ? ` (${fill.how})` : ''}, pending a matching claim`;
 }
 
-// Where a number comes from: the plan file or Fold's own calculation from
-// claims. Projected values carry their own underline instead.
-const SOURCE_MARK = {
-  Plan: { icon: 'solar:document-text-linear', label: 'Plan-provided' },
-  Calculated: { icon: 'solar:calculator-minimalistic-linear', label: 'Fold-calculated from claims' },
-};
-function SourceMark({ source }) {
-  const mark = SOURCE_MARK[source];
-  if (!mark) return null;
-  return (
-    <Tooltip label={mark.label} placement="bottom">
-      <span className={styles.sourceMark} aria-label={mark.label}><Icon name={mark.icon} size={12} color="var(--neutral-300)" /></span>
-    </Tooltip>
-  );
-}
-
 // A date alone. Projected dates show their evidence; `alertHint` makes it red
 // and says why.
-export function DateOnly({ date, projected, medications, alertHint, source }) {
+export function DateOnly({ date, projected, medications, alertHint }) {
   if (!date) return <Dash />;
   if (projected) return <FlagValue className={styles.dateText} tone="projected" hint={projectedHint(medications)}>{date}</FlagValue>;
-  return (
-    <span className={styles.valueWithMark}>
-      <FlagValue className={styles.dateText} tone={alertHint ? 'alert' : null} hint={alertHint}>{date}</FlagValue>
-      <SourceMark source={source} />
-    </span>
-  );
+  return <FlagValue className={styles.dateText} tone={alertHint ? 'alert' : null} hint={alertHint}>{date}</FlagValue>;
 }
 
 const days = (n) => `${n} day${n === 1 ? '' : 's'}`;
@@ -111,15 +90,21 @@ export function FailDateValue({ gap }) {
 }
 
 // A gap's next fill due: red when overdue on an open gap.
+// Next Fill Due, as HEDIS shows a due date: the date plain, and on an open
+// gap a short line under it once the fill is due within a week (amber) or
+// overdue (red). The line is the status, so the date itself stays neutral.
+const DUE_SOON_DAYS = 7;
 export function NextFillDueValue({ gap }) {
+  if (!gap.nextFillDue) return <Dash />;
+  const d = daysFromToday(gap.nextFillDue);
+  const due = isActiveGap(gap.status) && d != null && d <= DUE_SOON_DAYS
+    ? (d < 0 ? { label: `Overdue by ${-d}d`, overdue: true } : { label: d === 0 ? 'Due today' : `Due in ${d}d` })
+    : null;
   return (
-    <DateOnly
-      date={gap.nextFillDue}
-      projected={gap.nextFillDueSource === 'Projected'}
-      source={gap.nextFillDueSource}
-      medications={gap.medications}
-      alertHint={isActiveGap(gap.status) ? overdueHint(gap.nextFillDue) : null}
-    />
+    <span className={styles.stack}>
+      <span className={styles.dateText}>{gap.nextFillDue}</span>
+      {due && <span className={`${styles.dueLine} ${due.overdue ? styles.dueOverdue : ''}`}>{due.label}</span>}
+    </span>
   );
 }
 
@@ -207,12 +192,7 @@ export function PdcValue({ pdc, open, source, medications }) {
     return <FlagValue className={styles.pdc} tone="projected" hint={projectedHint(medications)}>{pdc}%</FlagValue>;
   }
   const below = open && pdcTone(pdc) === 'error';
-  return (
-    <span className={styles.valueWithMark}>
-      <FlagValue className={styles.pdc} tone={below ? 'alert' : null} hint="Below the 80% PDC target">{pdc}%</FlagValue>
-      <SourceMark source={source} />
-    </span>
-  );
+  return <FlagValue className={styles.pdc} tone={below ? 'alert' : null} hint="Below the 80% PDC target">{pdc}%</FlagValue>;
 }
 
 // Where the gap's latest fill stands against the claim feed. The badge opens

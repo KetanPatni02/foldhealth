@@ -33,6 +33,7 @@ import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { openStoredLink } from '../../../lib/openSafeUrl';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
+import { EmptyState } from '../../../components/EmptyState/EmptyState';
 import { commentAuthorLabel, currentAuthor, isCommentMine, mentionProfileIds } from './commentAuthor';
 import { FailReasonInline, EditDocInline } from '../ChartDetailDrawerParts';
 import {
@@ -892,6 +893,9 @@ export function CommentsTimeline({ items, mentionUsers, onAdd, onEdit, onDelete 
         />
       </div>
       <div className={styles.timeline}>
+        {items.length === 0 && (
+          <EmptyState icon="solar:chat-round-line-linear" title="No comments added" description="Add a comment above to start the thread." />
+        )}
         {/* With no matching comments there's no month header to sit beside,
             so the switch gets its own row (and stays reachable to turn off).
             With no comments at all there's nothing to filter: no row. */}
