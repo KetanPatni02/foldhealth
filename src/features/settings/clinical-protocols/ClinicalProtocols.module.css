@@ -1,0 +1,91 @@
+/* Settings > Clinical Protocols: library table, upload drawer, review drawer. */
+
+.wrapper { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.filterBar {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4); border-bottom: 0.5px solid var(--neutral-150);
+}
+.notice { padding: var(--space-3) var(--space-4) 0; }
+.headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+
+/* ── Library rows ── */
+.row { border-bottom: 0.5px solid var(--neutral-100); cursor: pointer; }
+.row:hover td { background: var(--neutral-50); }
+.td {
+  padding: var(--space-3); font-size: var(--font-base); color: var(--neutral-300);
+  vertical-align: middle; background: var(--neutral-0);
+}
+.tdName, .tdActions { position: sticky; z-index: 2; border-bottom: 0.5px solid var(--neutral-100); }
+.tdName { left: 0; min-width: 240px; max-width: 360px; }
+.tdActions { right: 0; padding-right: var(--space-2); }
+.nameCell { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.nameText {
+  font-size: var(--font-base); font-weight: 500; color: var(--neutral-400);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nameSub { font-size: var(--font-sm); color: var(--neutral-300); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nowrap { white-space: nowrap; }
+.overdue { color: var(--status-warning); }
+.actionCell { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+.emptyState {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+  padding: var(--space-12) 0; color: var(--neutral-300); font-size: var(--font-base);
+}
+
+/* ── Upload drawer ── */
+.drawerBody { display: flex; flex-direction: column; gap: var(--space-4); }
+.hint { margin: 0; font-size: var(--font-base); line-height: var(--leading-tight); color: var(--neutral-300); }
+.queue { display: flex; flex-direction: column; border: 0.5px solid var(--neutral-150); border-radius: 8px; overflow: hidden; }
+.queueRow {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); border-bottom: 0.5px solid var(--neutral-100);
+}
+.queueRow:last-child { border-bottom: 0; }
+.queueText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); }
+.queueName { font-size: var(--font-base); color: var(--neutral-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queueError { font-size: var(--font-sm); color: var(--status-error); }
+
+/* ── Review drawer ── */
+.card {
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-4); background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.cardTitle { margin: 0; font-size: var(--font-md); font-weight: 500; color: var(--neutral-500); }
+.fieldGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.fieldFull { grid-column: 1 / -1; }
+.summary { margin: 0; font-size: var(--font-base); line-height: var(--leading-normal); color: var(--neutral-400); }
+.scopeList { margin: 0; padding-left: var(--space-4); font-size: var(--font-base); line-height: var(--leading-normal); color: var(--neutral-400); }
+.label { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.warnings { margin: 0; padding-left: var(--space-4); }
+
+.section { display: flex; flex-direction: column; border: 0.5px solid var(--neutral-150); border-radius: 8px; overflow: hidden; background: var(--neutral-0); }
+.sectionHead {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4); background: var(--neutral-50); border-bottom: 0.5px solid var(--neutral-150);
+}
+.sectionTitle { flex: 1; min-width: 0; font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.sectionCount { font-weight: 400; color: var(--neutral-300); margin-left: var(--space-1); }
+.sectionEmpty { padding: var(--space-3) var(--space-4); font-size: var(--font-base); color: var(--neutral-300); }
+.item { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 0.5px solid var(--neutral-100); }
+.item:last-child { border-bottom: 0; }
+.itemTop { display: flex; align-items: flex-start; gap: var(--space-3); }
+.itemText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); }
+.itemTitle { font-size: var(--font-base); font-weight: 500; line-height: var(--leading-tight); color: var(--neutral-400); }
+.itemDetail { font-size: var(--font-sm); line-height: var(--leading-tight); color: var(--neutral-300); }
+.itemActions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+.sourceToggle {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: var(--font-sm); color: var(--primary-300);
+}
+.source {
+  margin: 0; padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--primary-200); background: var(--neutral-50);
+  font-size: var(--font-sm); line-height: var(--leading-normal); color: var(--neutral-400); white-space: pre-wrap;
+}
+.editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.editorFull { grid-column: 1 / -1; }
+.editorActions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: var(--space-2); }

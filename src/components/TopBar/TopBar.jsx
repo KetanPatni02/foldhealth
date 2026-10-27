@@ -270,6 +270,7 @@ const SETTINGS_BREADCRUMB = {
   calendar: 'Calendar',
   billing: 'Billing',
   automations: 'Automations',
+  'clinical-protocols': 'Clinical Protocols',
 };
 
 export function TopBar() {
