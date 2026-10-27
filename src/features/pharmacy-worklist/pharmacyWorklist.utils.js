@@ -401,6 +401,15 @@ function subStatus(x, worst, timers) {
 // reopens the cycle).
 export const cycleStart = (x, since) => Math.max(...(x.medications || []).map(d => parseMdy(d.lastFill) || 0), parseMdy(since) || 0, 0);
 
+// An open gap still to confirm with the pharmacy: no locked verification
+// call covers it since its latest fill (a new fill cycle asks again).
+export function needsVerification(x, member) {
+  if (!isActiveGap(measureStatus(x, member))) return false;
+  const from = cycleStart(x);
+  return !(member.callHistory || []).some(e => e.kind === 'pharmacy-verification'
+    && (e.measures || []).includes(x.code) && (parseMdy(e.date) || 0) >= from);
+}
+
 // Outreach attempts logged on the gap this fill cycle.
 export function attemptsThisCycle(x, member) {
   const from = cycleStart(x);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
 import styles from './CheckboxListPopover.module.css';
@@ -25,6 +25,10 @@ const EMPTY_SELECTED = [];
  *  - searchable (boolean)        Show a search box above the list (default false).
  *  - renderOptionLeading (fn(option) => node)  Optional node before each
  *                                 option's label (e.g. a person's avatar).
+ *  - labelOf    (fn(option) => string)  Text shown for an option (default: itself).
+ *  - sectionOf  (fn(option) => string)  Groups options under an uppercase header;
+ *                                 options of one section must be adjacent.
+ *  - searchPlaceholder (string)  Search box placeholder (default "Search").
  */
 export function CheckboxListPopover({
   anchorRect,
@@ -37,6 +41,9 @@ export function CheckboxListPopover({
   showClear = true,
   searchable = false,
   renderOptionLeading,
+  labelOf = (o) => o,
+  sectionOf,
+  searchPlaceholder = 'Search',
 }) {
   // Close on Escape
   useEffect(() => {
@@ -59,8 +66,9 @@ export function CheckboxListPopover({
   // With an active search query, the Select All / Clear All controls and the
   // header checkbox state operate on the *visible* (filtered) rows — not the
   // whole list — so they never touch options the user can't see.
-  const visible = searchable && query.trim()
-    ? options.filter(o => o.toLowerCase().includes(query.trim().toLowerCase()))
+  const q = query.trim().toLowerCase();
+  const visible = searchable && q
+    ? options.filter(o => `${labelOf(o)} ${sectionOf?.(o) || ''}`.toLowerCase().includes(q))
     : options;
 
   const allSelected = visible.length > 0 && visible.every(o => sel.has(o));
@@ -84,7 +92,7 @@ export function CheckboxListPopover({
       <div className={styles.overlay} onClick={onClose} aria-hidden="true" />
       <div
         className={styles.popover}
-        style={{ top: pos.top, left: pos.left, width }}
+        style={{ ...pos, width }}
         onClick={(e) => e.stopPropagation()}
         role="group"
         aria-label={label}
@@ -123,7 +131,7 @@ export function CheckboxListPopover({
           <input
             className={styles.search}
             type="text"
-            placeholder="Search"
+            placeholder={searchPlaceholder}
             aria-label={label ? `Search ${label}` : 'Search options'}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -131,11 +139,13 @@ export function CheckboxListPopover({
         )}
 
         <div className={styles.list}>
-          {visible.map((opt) => {
+          {visible.map((opt, i) => {
             const checked = sel.has(opt);
+            const section = sectionOf?.(opt);
             return (
+              <Fragment key={opt}>
+              {section && section !== sectionOf(visible[i - 1] ?? null) && <div className={styles.section}>{section}</div>}
               <div
-                key={opt}
                 role="checkbox"
                 aria-checked={checked}
                 tabIndex={0}
@@ -145,8 +155,9 @@ export function CheckboxListPopover({
               >
                 <Checkbox checked={checked} tabIndex={-1} aria-hidden className="pointer-events-none" />
                 {renderOptionLeading?.(opt)}
-                <span className={styles.label}>{opt}</span>
+                <span className={styles.label} title={labelOf(opt)}>{labelOf(opt)}</span>
               </div>
+              </Fragment>
             );
           })}
           {visible.length === 0 && <div className={styles.empty}>No matches</div>}
@@ -157,11 +168,14 @@ export function CheckboxListPopover({
   );
 }
 
-// Compute a fixed-position location below the anchor, clamped to the viewport.
+// Below the anchor, or above it when the 320px max height would not fit
+// below; clamped to the viewport horizontally.
 function positionPopover(rect, width) {
   if (!rect) return { top: 0, left: 0 };
   const margin = 8;
-  const top = Math.min(rect.bottom + 6, window.innerHeight - 320);
-  const left = Math.min(rect.left, window.innerWidth - width - margin);
-  return { top, left: Math.max(margin, left) };
+  const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
+  if (rect.bottom + 6 + 320 > window.innerHeight && rect.top - 6 - 320 >= margin) {
+    return { bottom: window.innerHeight - rect.top + 6, left };
+  }
+  return { top: Math.min(rect.bottom + 6, window.innerHeight - 320), left };
 }

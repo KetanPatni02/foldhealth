@@ -44,6 +44,7 @@ export function OutreachTabForm({
   sharedPanelTitle,
   addOutcome,
   removeOutcome,
+  setOutcomes,
   handleNoteChange,
   canSave,
   handleLogForChange,
@@ -224,6 +225,7 @@ export function OutreachTabForm({
                     }}
                     onAddOutcome={val => addOutcome(prog, val)}
                     onRemoveOutcome={val => removeOutcome(prog, val)}
+                    onSetOutcomes={list => setOutcomes(prog, list)}
                     onNoteChange={text => handleNoteChange(prog, text)}
                     onToggleSyncText={() => toggleSyncText(prog)}
                   />
@@ -244,6 +246,7 @@ export function OutreachTabForm({
                 onToggleOutcomeOpen={() => patchShared({ outcomeOpen: !sharedPanel.outcomeOpen })}
                 onAddOutcome={val => addOutcome(null, val)}
                 onRemoveOutcome={val => removeOutcome(null, val)}
+                onSetOutcomes={list => setOutcomes(null, list)}
                 onNoteChange={text => handleNoteChange(null, text)}
                 onToggleSyncText={() => {}}
               />
