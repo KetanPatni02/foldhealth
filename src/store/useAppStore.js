@@ -85,7 +85,7 @@ import { buildPatientFacts, buildTemplateChoices, draftCounts } from '../feature
 import { buildTemplateCatalog } from '../features/settings/care-plan-library/lib/aiTemplateDraft';
 import { apiFetch } from '../lib/apiFetch';
 import { sdohSocialRisk } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/sdohReport';
-import { isDueToAutoResume, nextTouchpoint as computeNextTouchpoint, pauseAuditEntry, pauseFields, resumeAuditEntry } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanPause';
+import { isDueToAutoResume, nextTouchpoint as computeNextTouchpoint, pauseAuditEntry, pauseFields, pauseReasonLabel, resumeAuditEntry } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanPause';
 import { INSTANCE_STATUS, formatInstanceDate, instanceOutcome, templateEndsOn } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanGoalCascade';
 import { templateContentFromApplied, templateContentFromWholePlan } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateSave';
@@ -152,6 +152,7 @@ import {
   persistSnpMemberUpdate,
   projectSnpProgramState,
   writeSnpProgramField,
+  snpCarePlanStatusLabel,
   persistHccGapDosAction,
   persistHccGapDosActionDelete,
   persistHccGapDosActionDeleteAll,
@@ -2514,6 +2515,15 @@ export const useAppStore = create((set, get) => ({
       closureNote:    r.closure_note || null,
       closedAt:       r.closed_at || null,
       closedBy:       r.closed_by || null,
+      // Pause (care_program_pause_migration.sql), only while Paused.
+      pause: r.status === 'Paused' && r.paused_on ? {
+        reason: r.pause_reason || 'other',
+        note: r.pause_note || '',
+        pausedOn: r.paused_on,
+        resumeOn: r.resume_on || null,
+        autoResume: !!r.auto_resume,
+        pausedBy: r.paused_by || '',
+      } : null,
     }));
     // `trigger` is derived (not stored): the 1-based position among same-code
     // enrollments in created_at order. SNP can be enrolled repeatedly, so its
@@ -2524,6 +2534,9 @@ export const useAppStore = create((set, get) => ({
       careProgramsByPatient: { ...s.careProgramsByPatient, [patientId]: rows },
       careProgramsLoadedFor: { ...s.careProgramsLoadedFor, [patientId]: true },
     }));
+    // Auto-resume runs when the programs are next loaded on or after the resume date.
+    rows.filter(r => r.status === 'Paused' && isDueToAutoResume({ status: 'paused', pause: r.pause }))
+      .forEach(r => get().resumeCareProgramInstance(patientId, r, { auto: true }));
   },
 
   addCareProgram: (patientId, entry) => {
@@ -2888,6 +2901,7 @@ export const useAppStore = create((set, get) => ({
         ...c, plan: { ...c.plan, status: 'paused', pause: { ...pause, pausedBy: pausedBy || '' }, nextTouchpoint: null },
       } } };
     });
+    get().syncSnpCarePlanStatus(patientId, program, { status: 'paused', signed_at: cur.plan.signedAt }, pause);
     await get().logCarePlanAudit(patientId, program, pauseAuditEntry(cur.plan.id, pause));
     return true;
   },
@@ -2905,7 +2919,9 @@ export const useAppStore = create((set, get) => ({
         return i.config?.dueDateOverride || task?.dueDate || task?.due_date || i.config?.dueDate;
       } },
     );
-    const { error } = await supabase.from('patient_care_plans').update({
+    // Only a still-paused row updates, so when several views load the plan at
+    // once and each auto-resumes it, one resume wins and is logged.
+    const { data: resumed, error } = await supabase.from('patient_care_plans').update({
       status: 'active',
       pause_reason: null,
       pause_note: null,
@@ -2915,7 +2931,7 @@ export const useAppStore = create((set, get) => ({
       paused_by: null,
       next_touchpoint: next,
       updated_at: new Date().toISOString(),
-    }).eq('id', cur.plan.id);
+    }).eq('id', cur.plan.id).eq('status', 'paused').select('id');
     if (error) {
       console.warn('resumeCarePlan:', error.message);
       if (!auto) get().showToast('Could not resume the care plan');
@@ -2928,6 +2944,8 @@ export const useAppStore = create((set, get) => ({
         ...c, plan: { ...c.plan, status: 'active', pause: null, nextTouchpoint: next },
       } } };
     });
+    get().syncSnpCarePlanStatus(patientId, program, { status: 'active', signed_at: cur.plan.signedAt }, null);
+    if (!resumed?.length) return false;
     await get().logCarePlanAudit(patientId, program, resumeAuditEntry(cur.plan.id, { auto, nextTouchpoint: next }));
     return true;
   },
@@ -4757,7 +4775,7 @@ export const useAppStore = create((set, get) => ({
         snpWorklistMembers: (s.snpWorklistMembers || []).map(m => {
           if (m.patientId !== patientId) return m;
           if (m.programId && m.programId !== program.id) return m;
-          return { ...m, carePlanStatus: 'Signed' };
+          return { ...m, carePlanStatus: m.carePlanStatus === 'On Hold' ? 'On Hold' : 'Signed' };
         }),
       }));
     }
@@ -5488,6 +5506,63 @@ export const useAppStore = create((set, get) => ({
     });
   },
 
+  // Paused asks why and until when (PauseCarePlanDialog), records it on the
+  // program (care_program_pause_migration.sql) and pauses the program's care
+  // plan with the same details, so cadence, overdue flags and outreach stop.
+  pauseCareProgramInstance: async (patientId, program, form) => {
+    if (!patientId || !program?.id) return false;
+    const { status: _planStatus, ...pause } = pauseFields(form);
+    const pausedBy = get().currentUserProfile?.name || null;
+    const { error } = await supabase.from('patient_care_programs').update({
+      pause_reason: pause.reason,
+      pause_note: pause.note,
+      paused_on: pause.pausedOn,
+      resume_on: pause.resumeOn,
+      auto_resume: pause.autoResume,
+      paused_by: pausedBy,
+    }).eq('id', program.id);
+    if (error) {
+      console.warn('pauseCareProgramInstance:', error.message);
+      get().showToast(/pause|resume/i.test(error.message || '')
+        ? 'Pausing needs the care program pause migration'
+        : 'Could not pause the program');
+      return false;
+    }
+    get().updateCareProgram(patientId, program.id, {
+      status: 'Paused', statusColor: programStatusColor('Paused'), pause: { ...pause, pausedBy: pausedBy || '' },
+    });
+    await get().fetchPatientCarePlan(patientId, program.id);
+    const plan = get().patientCarePlans[carePlanKey(patientId, program.id)]?.plan;
+    if (plan?.id && plan.status !== 'paused') await get().pauseCarePlan(patientId, program, form);
+    return true;
+  },
+
+  // Moving a program off Paused (by hand, or on its resume date with
+  // auto-resume) clears the pause and resumes its care plan.
+  resumeCareProgramInstance: async (patientId, program, { status = 'Active', auto = false } = {}) => {
+    if (!patientId || !program?.id) return;
+    const { error } = await supabase.from('patient_care_programs').update({
+      pause_reason: null, pause_note: null, paused_on: null, resume_on: null, auto_resume: false, paused_by: null,
+    }).eq('id', program.id);
+    if (error) console.warn('resumeCareProgramInstance:', error.message);
+    get().updateCareProgram(patientId, program.id, { status, statusColor: programStatusColor(status), pause: null });
+    await get().fetchPatientCarePlan(patientId, program.id);
+    const plan = get().patientCarePlans[carePlanKey(patientId, program.id)]?.plan;
+    if (plan?.status === 'paused') await get().resumeCarePlan(patientId, program, { auto });
+  },
+
+  // An SNP plan's pause shows on the worklist's Care Plan Status (On Hold).
+  syncSnpCarePlanStatus: (patientId, program, planRow, pause) => {
+    if (program?.code !== 'SNP') return;
+    set(s => ({
+      snpWorklistMembers: (s.snpWorklistMembers || []).map(m => {
+        if (m.patientId !== patientId) return m;
+        if (m.programId && m.programId !== program.id) return m;
+        return { ...m, carePlanStatus: snpCarePlanStatusLabel(planRow), carePlanPause: pause };
+      }),
+    }));
+  },
+
   updateCareProgram: (patientId, programId, patch) => {
     if (!patientId || !programId) return;
     const now = new Date();
@@ -5540,12 +5615,13 @@ export const useAppStore = create((set, get) => ({
     }
     if (updated && patch.status && patch.status !== prevStatus) {
       const reason = closureReasonLabel(patch.closureReason);
+      const pauseReason = patch.pause ? pauseReasonLabel(patch.pause.reason) : null;
       get().logProgramActivity({
         patientId,
         programCode: updated.code,
         title: reason ? `${updated.code} Program Closed` : `${updated.code} Program Status Change`,
         activityKind: 'status',
-        statusLabel: reason ? `${patch.status} · ${reason}` : patch.status,
+        statusLabel: [patch.status, reason || pauseReason].filter(Boolean).join(' · '),
         statusType: 'warning',
       });
       // UTR / Paused / Completed / Closed carry the program's open care plan

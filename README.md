@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Pausing a care program asks why and until when.** Picking Paused for a
+  care program (header or Care Programs table) opens the same dialog as
+  pausing a care plan: reason, start date, planned resume date, auto-resume
+  and notes. The details are saved on the program
+  (`supabase/care_program_pause_migration.sql`) and its care plan pauses with
+  it. Moving the program off Paused resumes both; with auto-resume it returns
+  to Active when opened on or after the resume date. A paused plan reads
+  On Hold in the SNP worklist's Care Plan Status column and filter, with the
+  pause in a tooltip. Plan auto-resume now logs once when several views load
+  the plan together.
 - **Pharmacy worklist P column and member drawer polish.** The Priority
   column is now P, shown with the shared PriorityIcon; clicking it changes
   the member's priority (P1–P3), which wins over the plan file's and is

@@ -7,6 +7,7 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { ProgramDetailView } from '../program-detail/ProgramDetailView/ProgramDetailView.jsx';
 import { ProgramDetailSkeleton } from '../program-detail/shared/ProgramDetailSkeleton/ProgramDetailSkeleton.jsx';
 import { CloseProgramDialog } from '../program-detail/shared/CloseProgramDialog/CloseProgramDialog.jsx';
+import { PauseCarePlanDialog } from '../care-plan/drawers/PauseCarePlanDialog/PauseCarePlanDialog';
 import { CarePlanSummaryView } from '../care-plan/summary/CarePlanSummaryView/CarePlanSummaryView.jsx';
 import { CarePlanReportView } from '../care-plan/report/CarePlanReportView/CarePlanReportView.jsx';
 import { stepsFor, flatSteps } from '../program-detail/ProgramDetailView/ProgramDetailView.utils';
@@ -96,6 +97,10 @@ export function CareProgramsTab({ header }) {
   const closeCareProgramInstance = useAppStore(s => s.closeCareProgramInstance);
   // { program, status } while the Close Program dialog is open.
   const [closing, setClosing] = useState(null);
+  const pauseCareProgramInstance = useAppStore(s => s.pauseCareProgramInstance);
+  const resumeCareProgramInstance = useAppStore(s => s.resumeCareProgramInstance);
+  // The program while the Pause dialog is open.
+  const [pausing, setPausing] = useState(null);
 
   useEffect(() => {
     if (patientId) fetchCareProgramsForPatient(patientId);
@@ -241,6 +246,9 @@ export function CareProgramsTab({ header }) {
   const changeStatus = (program, status) => {
     // Completed / Discontinued end the enrollment, so they ask for a reason.
     if (status === 'Completed' || status === 'Discontinued') { setClosing({ program: program, status: status }); return; }
+    // Paused asks why and until when; leaving Paused resumes the program and its plan.
+    if (status === 'Paused') { if (program.status !== 'Paused') setPausing(program); return; }
+    if (program.status === 'Paused') { resumeCareProgramInstance(patientId, program, { status }); return; }
     const patch = { status, statusColor: statusColorFor(status) };
     if (status === 'Enrolled' && (!program.startDate || program.startDate === '—')) {
       patch.startDate = todayStr();
@@ -469,6 +477,17 @@ export function CareProgramsTab({ header }) {
             closeCareProgramInstance(patientId, closing.program.id, { reason, note, status });
             showToast?.(`${closing.program.name} closed`);
             setClosing(null);
+          }}
+        />
+      )}
+      {pausing && (
+        <PauseCarePlanDialog
+          subject="program"
+          onCancel={() => setPausing(null)}
+          onSubmit={async (form) => {
+            const program = pausing;
+            setPausing(null);
+            if (await pauseCareProgramInstance(patientId, program, form)) showToast?.(`${program.name} paused`);
           }}
         />
       )}

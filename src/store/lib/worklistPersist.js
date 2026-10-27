@@ -152,11 +152,24 @@ function persistSnpMemberUpdate(id, patch) {
 // derive the worklist labels from that source so the two never drift.
 //
 // Care Plan Status is derived from the plan row alone (cheap enough for the
-// bulk worklist projection). "In Review", which needs the plan's audit log,
-// stays a program-view-only distinction.
+// bulk worklist projection). A paused plan reads On Hold whether or not it was
+// signed. "In Review", which needs the plan's audit log, stays a
+// program-view-only distinction.
 function snpCarePlanStatusLabel(plan) {
   if (!plan) return 'No Care Plan';
+  if (plan.status === 'paused') return 'On Hold';
   return plan.signed_at ? 'Signed' : 'Draft';
+}
+// The pause behind an On Hold plan, in the carePlanPause shape (pauseSummary).
+function snpCarePlanPause(plan) {
+  if (plan?.status !== 'paused') return null;
+  return {
+    reason: plan.pause_reason || 'other',
+    note: plan.pause_note || '',
+    pausedOn: plan.paused_on || null,
+    resumeOn: plan.resume_on || null,
+    autoResume: !!plan.auto_resume,
+  };
 }
 const snpInitialsFromName = (name) =>
   (name || '').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -193,7 +206,7 @@ async function projectSnpProgramState(rows) {
   if (progIds.length) {
     const { data: plans } = await supabase
       .from('patient_care_plans')
-      .select('program_id, signed_at')
+      .select('program_id, signed_at, status, pause_reason, pause_note, paused_on, resume_on, auto_resume')
       .in('program_id', progIds);
     (plans || []).forEach(pl => planByProgram.set(pl.program_id, pl));
   }
@@ -219,6 +232,7 @@ async function projectSnpProgramState(rows) {
       programId:        prog.id,
       programSubStatus: prog.status || row.programSubStatus,
       carePlanStatus:   snpCarePlanStatusLabel(planByProgram.get(prog.id)),
+      carePlanPause:    snpCarePlanPause(planByProgram.get(prog.id)),
       taskCount:        taskCountByPatient.get(row.patientId) || 0,
       assigneeId:       null,
       assigneeRole:     null,
@@ -603,6 +617,7 @@ export {
   persistSnpMemberUpdate,
   projectSnpProgramState,
   writeSnpProgramField,
+  snpCarePlanStatusLabel,
   persistHccGapDelete,
   persistHccMemberInsert,
   toPgDate,

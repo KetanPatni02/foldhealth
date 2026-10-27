@@ -111,6 +111,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   });
   const patientId = useAppStore(s => s.selectedPatientId);
   const updateCareProgram = useAppStore(s => s.updateCareProgram);
+  const resumeCareProgramInstance = useAppStore(s => s.resumeCareProgramInstance);
   const storeLetters = useAppStore(s => s.letters);
   const fetchLetters = useAppStore(s => s.fetchLetters);
 
@@ -224,6 +225,11 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   const changeStatus = (newStatus) => {
     const patch = { status: newStatus, statusColor: statusColorFor(newStatus) };
     const cur = liveProgram || program;
+    // Leaving Paused resumes the program and its care plan.
+    if (cur.status === 'Paused' && newStatus !== 'Paused') {
+      resumeCareProgramInstance(patientId, cur, { status: newStatus });
+      return;
+    }
     if (newStatus === 'Enrolled' && (!cur.startDate || cur.startDate === '—')) {
       const d = new Date();
       patch.startDate = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;

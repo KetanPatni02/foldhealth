@@ -14,6 +14,7 @@ import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
+import { pauseSummary } from '../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanPause';
 import styles from './SnpWorklistRow.module.css';
 import { OutreachStatus } from '../../components/OutreachStatus/OutreachStatus';
 import { outreachFromSummary } from '../../components/OutreachStatus/outreachStatusModel';
@@ -99,20 +100,24 @@ const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
  */
 // Care Plan Status as coloured text with an icon (the column beside it
 // already uses badges): Signed green with a check, Draft in warning colours,
-// anything else (No Care Plan) grey.
+// On Hold (a paused plan) in info blue, anything else (No Care Plan) grey.
 const CARE_PLAN_STATUS_LOOK = {
   Signed: { className: styles.carePlanSigned, icon: 'solar:check-circle-linear' },
   Draft: { className: styles.carePlanDraft, icon: 'solar:pen-2-linear' },
+  'On Hold': { className: styles.carePlanOnHold, icon: 'solar:pause-circle-linear' },
 };
-function CarePlanStatusBadge({ status }) {
+// Statuses with a plan behind them, which open it in the Review drawer.
+const REVIEWABLE_CARE_PLAN = new Set(['Signed', 'Draft', 'On Hold']);
+function CarePlanStatusBadge({ status, pause }) {
   if (!status) return <span className={styles.statusText}>—</span>;
   const look = CARE_PLAN_STATUS_LOOK[status];
-  return (
+  const badge = (
     <span className={`${styles.carePlanStatus} ${look?.className || styles.carePlanNone}`}>
       {look && <Icon name={look.icon} size={14} color="currentColor" />}
       <span className={styles.carePlanStatusLabel}>{status}</span>
     </span>
   );
+  return pause ? <Tooltip label={pauseSummary(pause)}>{badge}</Tooltip> : badge;
 }
 
 export const SNP_MIDDLE_COLUMNS = [
@@ -158,12 +163,12 @@ export const SNP_MIDDLE_COLUMNS = [
     key: 'carePlanStatus',
     label: 'Care Plan Status',
     sortKey: 'carePlanStatus',
-    // Signed or Draft opens the plan in the Review care plan drawer; any other
-    // status (No Care Plan) is plain text.
+    // Signed, Draft or On Hold opens the plan in the Review care plan drawer;
+    // any other status (No Care Plan) is plain text.
     stopRowClickPropagation: true,
     renderCell: (m, ctx) => {
-      const badge = <CarePlanStatusBadge status={m.carePlanStatus} />;
-      if (!(m.patientId && m.programId && (m.carePlanStatus === 'Signed' || m.carePlanStatus === 'Draft'))) return badge;
+      const badge = <CarePlanStatusBadge status={m.carePlanStatus} pause={m.carePlanPause} />;
+      if (!(m.patientId && m.programId && REVIEWABLE_CARE_PLAN.has(m.carePlanStatus))) return badge;
       return (
         <button
           type="button"
