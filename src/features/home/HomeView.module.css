@@ -535,8 +535,12 @@
 }
 
 .calGrid {
+  /* Absolute children (events, now line) are placed from the padding edge,
+     so they read these to stay clear of the hour-label gutter. */
+  --cal-gutter-left: calc(var(--space-10) + var(--space-1));
+  --cal-gutter-right: var(--space-3);
   position: relative;
-  padding: 0 12px 0 44px;
+  padding: 0 var(--cal-gutter-right) 0 var(--cal-gutter-left);
   min-height: 400px;
 }
 
@@ -601,8 +605,8 @@
 
 .calEvent {
   position: absolute;
-  left: 4px;
-  right: 6px;
+  left: calc(var(--cal-gutter-left) + var(--space-1));
+  right: calc(var(--cal-gutter-right) + var(--space-1));
   background: var(--primary-100);
   border-left: 3px solid var(--primary-300);
   border-radius: 4px;
@@ -610,6 +614,28 @@
   overflow: hidden;
   cursor: pointer;
   z-index: 2;
+}
+
+.calEventCompact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.calEventCompact .calEventTitle {
+  flex-shrink: 0;
+  max-width: 60%;
+}
+
+.calEventCompact .calEventMeta {
+  margin-top: 0;
+  min-width: 0;
+}
+
+.calEventCompact .calEventMeta::before {
+  content: '· ';
 }
 
 .calEvent:hover {
@@ -636,8 +662,8 @@
 
 .nowLine {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: var(--cal-gutter-left);
+  right: var(--cal-gutter-right);
   height: 1px;
   background: var(--status-error);
   z-index: 3;
