@@ -8,3 +8,4 @@
   border-radius: var(--space-2);
   box-shadow: var(--shadow-popover);
 }
+.flush { padding: 0; overflow: hidden; }

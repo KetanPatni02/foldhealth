@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDaysMdy, annotateClaims, claimRecordStatus, enrichPharmacyMember, matchFill, measureStatus, medicationStatus,
-  nextFillDueSource, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
+  nextFillDueSource, outreachSummary, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
 } from './pharmacyWorklist.utils.js';
 
 const daysAgo = (n) => addDaysMdy(todayMdy(), -n);
@@ -316,7 +316,7 @@ describe('enrichPharmacyMember: progress and roll-up', () => {
       fillMeasure({ filledDaysAgo: 3, supply: 30 }),
       { ...fillMeasure({ filledDaysAgo: 10, supply: 30, claims: [paid(10)] }), code: 'MAH' },
     ] });
-    expect(m.progress).toMatchObject({ label: 'Partially complete', closed: 1, total: 2 });
+    expect(m.progress).toMatchObject({ label: 'In progress', closed: 1, total: 2 });
   });
 
   it('puts the savability on each gap', () => {
@@ -377,5 +377,33 @@ describe('enrichPharmacyMember: other care gaps', () => {
   it('ignores a member-level manual status', () => {
     const m = enrichPharmacyMember({ ...member, status: 'Open', statusManual: true });
     expect(m.status).toBe('Closed');
+  });
+});
+
+describe('enrichPharmacyMember: priority', () => {
+  const base = { id: 'm', memberId: 'm', measures: [fillMeasure({ filledDaysAgo: 10, supply: 30 })] };
+
+  it('takes the plan file priority, in P1–P3 form', () => {
+    expect(enrichPharmacyMember({ ...base, sourcePriority: 'Medium' }).priority).toBe('P2');
+  });
+
+  it('lets a priority picked on the worklist win over the plan file', () => {
+    expect(enrichPharmacyMember({ ...base, sourcePriority: 'P1', priorityOverride: 'P3' }).priority).toBe('P3');
+  });
+});
+
+describe('outreachSummary: the hover card\'s recent attempts', () => {
+  it('lists the last three, newest first, numbered from the first ever', () => {
+    const calls = [
+      { date: '10/26/2026', time: '13:05', by: 'Pooja', title: 'General', outcome: 'Side effects \u2014 Experienced', result: 'success' },
+      { date: '10/20/2026', time: '01:05 PM', by: 'Pooja', outcome: 'Busy', result: 'failed' },
+      { date: '10/10/2026', by: 'Marcus', outcome: 'Busy', result: 'failed' },
+      { date: '10/01/2026', by: 'Marcus', outcome: 'Busy', result: 'failed' },
+    ];
+    const { recent } = outreachSummary(calls);
+    expect(recent.map(r => r.title)).toEqual(['General (4th Outreach)', 'Outgoing Call (3rd Outreach)', 'Outgoing Call (2nd Outreach)']);
+    expect(recent[0]).toMatchObject({ date: '10/26', time: '01:05 PM', outcome: 'Side effects: Experienced', failed: false });
+    expect(recent[1]).toMatchObject({ time: '01:05 PM', failed: true });
+    expect(recent[2].time).toBeNull();
   });
 });

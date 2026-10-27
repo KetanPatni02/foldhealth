@@ -35,6 +35,8 @@ function rowToMember(r) {
     measures: r.measures || [],
     patientId: r.patient_id,
     sourcePriority: r.source_priority ?? null,
+    priorityOverride: r.priority_override ?? null,
+    comments: r.comments || [],
     otherCareGaps: r.other_care_gaps || [],
     eligibilityStatus: r.eligibility_status || 'Active',
     termDate: r.term_date ?? null,
@@ -62,7 +64,7 @@ const pickupToRow = (p) => ({
 const COLUMN_TO_FIELD = {
   status: 'status', status_manual: 'statusManual', assignee_id: 'assigneeId', assignee_name: 'assigneeName', assignee_initials: 'assigneeInitials',
   measures: 'measures', call_history: 'callHistory', intervention_log: 'interventionLog', barrier: 'barrier',
-  follow_up_due: 'followUpDue',
+  follow_up_due: 'followUpDue', priority_override: 'priorityOverride', comments: 'comments',
 };
 
 // A fill left on the shelf brings the follow-up forward to the next pickup
@@ -308,6 +310,36 @@ export function createPharmacyWorklistSlice(set, get) {
       });
     },
 
+    // A priority picked on the worklist wins over the plan file's and the
+    // derived one (see enrichPharmacyMember).
+    setPharmacyPriority: (id, priority) => {
+      const prev = get().pharmacyWorklistMembers.find(m => m.id === id);
+      const from = prev ? enrichPharmacyMember(prev).priority : null;
+      if (!prev || from === priority) return;
+      update(id, m => ({ ...m, priorityOverride: priority }), ['priority_override'], {
+        t: 'status_change', title: 'Priority changed', note: `${from} → ${priority}`,
+      });
+    },
+
+    // Comments on the member (Pharmacy Gap Details > Comments), newest first.
+    // `comment`: { id, author, authorId, role, date, time, body, mentionIds }.
+    addPharmacyComment: (id, comment) => {
+      update(id, m => ({ ...m, comments: [comment, ...(m.comments || [])] }), ['comments'], {
+        t: 'comment', title: 'Comment added', note: comment.body,
+      });
+    },
+    editPharmacyComment: (id, commentId, body, mentionIds) => {
+      update(id, m => ({
+        ...m,
+        comments: (m.comments || []).map(c => (c.id === commentId ? { ...c, body, mentionIds, edited: true } : c)),
+      }), ['comments'], { t: 'comment', title: 'Comment edited', note: body });
+    },
+    deletePharmacyComment: (id, commentId) => {
+      update(id, m => ({ ...m, comments: (m.comments || []).filter(c => c.id !== commentId) }), ['comments'], {
+        t: 'comment', title: 'Comment deleted',
+      });
+    },
+
     // Patient-level auto-assignment by IPA, then health plan, from the PHARM
     // care teams (see planAutoAssignment). Returns how many were assigned.
     autoAssignPharmacy: () => {
@@ -329,17 +361,35 @@ export function createPharmacyWorklistSlice(set, get) {
     // Medication Review edits (status, SIG, condition, non-adherence reason,
     // notes) live on the medication inside the member's measures jsonb.
     updatePharmacyMedication: (memberRowId, medId, patch) => {
-      const med = get().pharmacyWorklistMembers.find(m => m.id === memberRowId)
-        ?.measures.flatMap(x => x.medications).find(d => d.id === medId);
-      update(memberRowId, m => ({
-        ...m,
-        // A status change (e.g. Discontinued) moves Next Fill Due and the
-        // projected PDC, so the gap is recomputed.
-        measures: m.measures.map(x => (!x.medications.some(d => d.id === medId) ? x : recomputeMeasure({
-          ...x,
-          medications: x.medications.map(d => (d.id === medId ? { ...d, ...patch } : d)),
-        }))),
-      }), ['measures'], {
+      const member = get().pharmacyWorklistMembers.find(m => m.id === memberRowId);
+      const measure = member?.measures.find(x => x.medications.some(d => d.id === medId));
+      const med = measure?.medications.find(d => d.id === medId);
+      // A Reason for Non-Adherence picked on a drug is also its gap's barrier:
+      // a Barriers & Interventions entry that keeps the gap's latest
+      // interventions and result, so the gap's current state stays whole.
+      const reason = patch.nonAdherenceReason;
+      const logReason = !!(reason && med && reason !== med.nonAdherenceReason);
+      update(memberRowId, m => {
+        const next = {
+          ...m,
+          // A status change (e.g. Discontinued) moves Next Fill Due and the
+          // projected PDC, so the gap is recomputed.
+          measures: m.measures.map(x => (!x.medications.some(d => d.id === medId) ? x : recomputeMeasure({
+            ...x,
+            medications: x.medications.map(d => (d.id === medId ? { ...d, ...patch } : d)),
+          }))),
+        };
+        if (!logReason) return next;
+        const latest = (m.interventionLog || []).find(e => e.measures?.[measure.code])?.measures[measure.code];
+        const entry = {
+          date: todayMdy(),
+          by: get().currentUserProfile?.name || 'You',
+          source: 'Medication review',
+          medication: med.name,
+          measures: { [measure.code]: { interventions: [], result: null, ...latest, barriers: [reason] } },
+        };
+        return { ...next, interventionLog: [entry, ...(m.interventionLog || [])] };
+      }, logReason ? ['measures', 'intervention_log'] : ['measures'], {
         t: 'note', title: `Medication updated · ${med?.name || ''}`,
         note: Object.entries(patch).map(([k, v]) => `${MED_FIELD_LABEL[k] || k}: ${Array.isArray(v) ? v.join(', ') : (v || '—')}`).join(' · '),
       });

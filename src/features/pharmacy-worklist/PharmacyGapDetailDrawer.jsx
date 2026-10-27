@@ -22,6 +22,7 @@ import { OutreachTabView } from '../patient/left-panel/tabs/outreach/OutreachTab
 import { PharmacyBarrierStep } from './program/PharmacyBarrierStep';
 import { PharmacyVerificationStep } from './program/PharmacyVerificationStep';
 import { PharmacyActivityLog } from './program/PharmacyActivityLog';
+import { PharmacyCommentsTab } from './program/PharmacyCommentsTab';
 // Same layout system as the HEDIS Care Gap Details drawer, so both read as one.
 import styles from '../hedis-worklist/CareGapDetailDrawer.module.css';
 import local from './PharmacyGapDetailDrawer.module.css';
@@ -30,12 +31,14 @@ import { escalation, pickupReminder } from './pharmacyRules';
 const PHARM_PROGRAM = { code: 'PHARM' };
 const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
 
+// Activity leads; the drawer still opens on Medication Review.
 const TABS = [
+  { key: 'activity', label: 'Activity' },
   { key: 'medication', label: 'Medication Review' },
+  { key: 'comments', label: 'Comments' },
   { key: 'outreach', label: 'Outreaches' },
   { key: 'barriers', label: 'Barriers & Interventions' },
   { key: 'verification', label: 'Verification' },
-  { key: 'activity', label: 'Activity' },
   { key: 'contacts', label: 'Contacts' },
 ];
 
@@ -85,7 +88,8 @@ function PharmacyGapDrawerBody({ target, row }) {
   // Opened from a "Claim not matched" flag: the drug's claim history in the
   // side workspace, outreach logging in the main pane.
   const rework = target.view === 'claims' && target.medId;
-  const [tab, setTab] = useState(rework ? 'outreach' : 'medication');
+  // Opened from the Outreach cell's View All: straight to Outreaches.
+  const [tab, setTab] = useState(rework || target.view === 'outreach' ? 'outreach' : 'medication');
   const [workspace, setWorkspace] = useState(rework ? { medId: target.medId, tab: 'claims' } : null); // 'outreach' | 'verify' | 'barriers' | { medId, tab? }
   const [moreRect, setMoreRect] = useState(null);
   const moreBtnRef = useRef(null);
@@ -159,6 +163,7 @@ function PharmacyGapDrawerBody({ target, row }) {
   const tabCounts = {
     outreach: (m.callHistory || []).filter(c => touchesPicked(c.measures)).length,
     medication: m.gaps.filter(g => selected.has(g.code)).reduce((n, g) => n + g.medications.length, 0),
+    comments: (row.comments || []).length,
   };
 
   return (
@@ -200,7 +205,7 @@ function PharmacyGapDrawerBody({ target, row }) {
             )}
             {workspace === 'verify' && <PharmacyVerificationStep member={scoped} program={PHARM_PROGRAM} />}
             {workspace === 'barriers' && <PharmacyBarrierStep member={scoped} />}
-            {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} interventionLog={m.interventionLog} plan={m.healthPlan} initialTab={workspace.tab} />}
+            {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} interventionLog={m.interventionLog} plan={m.healthPlan} initialTab={workspace.tab} flushTabs />}
           </div>
         </div>
       )}
@@ -212,7 +217,7 @@ function PharmacyGapDrawerBody({ target, row }) {
           <div className={styles.gapToolbar}>
             <div className={styles.yearWrap}>
               <FilterChip
-                label="Measurement Year"
+                label="Measurement"
                 options={[year]}
                 selected={[year]}
                 onChange={() => {}}
@@ -327,11 +332,11 @@ function PharmacyGapDrawerBody({ target, row }) {
           size="S"
         />
 
-        {/* The outreach view pads itself, as in the HEDIS drawer. */}
-        <div className={`${styles.tabContentWrap} ${tab === 'outreach' ? styles.tabContentWrapFlush : ''}`}>
+        {/* The outreach and comments views pad themselves, as in the HEDIS drawer. */}
+        <div className={`${styles.tabContentWrap} ${tab === 'outreach' || tab === 'comments' ? styles.tabContentWrapFlush : ''}`}>
           {picked.length > 0 && (
             <>
-              {tab === 'medication' && <PharmacyMedicationReview compact member={scoped} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab })} />}
+              {tab === 'medication' && <PharmacyMedicationReview compact member={scoped} activeMedId={workspace?.medId ?? null} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab })} />}
               {tab === 'outreach' && (
                 <OutreachTabView tab={scopedOutreach} hideLogForRow hideForm={workspace === 'outreach'} taskMember={m.name} onLogNew={openOutreach} />
               )}
@@ -340,6 +345,7 @@ function PharmacyGapDrawerBody({ target, row }) {
             </>
           )}
           {tab === 'activity' && <PharmacyActivityLog member={row} />}
+          {tab === 'comments' && <PharmacyCommentsTab member={row} />}
           {tab === 'contacts' && <div className={local.contacts}><PharmacyContacts member={row} /></div>}
         </div>
       </div>

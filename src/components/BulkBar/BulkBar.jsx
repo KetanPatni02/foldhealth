@@ -16,7 +16,7 @@ import styles from './BulkBar.module.css';
  *
  * `actions` (optional) lets a caller replace the default Change Assignee /
  * Run Automation / "More" cluster entirely. Each entry:
- *   { label, icon?, variant?: 'primary'|'secondary'|'destructive', onClick(ids, event) }
+ *   { label, icon?, variant?: 'primary'|'secondary'|'destructive', size?: 'S'|'M'|'L' (default S), onClick(ids, event) }
  * `noun` (optional) names what's selected: "26 Appointments Selected".
  * Reach for `actions` when the calling surface has a distinct verb-set
  * (e.g. SFTP review only needs "Add to Worklist" + "Delete"). When
@@ -98,7 +98,7 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
             <Button
               key={a.label || i}
               variant={a.variant || 'secondary'}
-              size="S"
+              size={a.size || 'S'}
               leadingIcon={a.icon}
               disabled={a.disabled}
               onClick={(e) => a.onClick?.(selectedIds, e)}

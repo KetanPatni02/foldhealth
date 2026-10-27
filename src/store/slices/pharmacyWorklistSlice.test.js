@@ -74,3 +74,36 @@ describe('pharmacy outreach edit and delete', () => {
     expect(s.member().callHistory).toEqual([locked]);
   });
 });
+
+describe('reason for non-adherence on a medication', () => {
+  function storeWithMed(interventionLog = []) {
+    const s = storeWith([]);
+    s.get().pharmacyWorklistMembers[0] = {
+      id: '1', callHistory: [], activityLog: [], interventionLog,
+      measures: [{ code: 'MAD', medications: [{ id: 'd1', name: 'Metformin', status: 'Active', refills: [] }] }],
+    };
+    return s;
+  }
+  const prior = { date: '10/02/2026', by: 'Marcus', measures: { MAD: { barriers: [], interventions: ['90/100-day conversion'], result: 'Pending Refill Approval' } } };
+
+  it('logs the reason as a barrier on its gap, keeping the latest interventions and result', () => {
+    updates.length = 0;
+    const s = storeWithMed([prior]);
+    s.get().updatePharmacyMedication('1', 'd1', { nonAdherenceReason: 'Forgetfulness' });
+    const [entry] = s.member().interventionLog;
+    expect(entry).toMatchObject({
+      by: 'Priya', source: 'Medication review', medication: 'Metformin',
+      measures: { MAD: { barriers: ['Forgetfulness'], interventions: ['90/100-day conversion'], result: 'Pending Refill Approval' } },
+    });
+    expect(s.member().interventionLog).toHaveLength(2);
+    expect(updates.at(-1).patch.intervention_log).toHaveLength(2);
+  });
+
+  it('logs nothing when the reason is cleared or unchanged', () => {
+    const s = storeWithMed();
+    s.get().updatePharmacyMedication('1', 'd1', { nonAdherenceReason: 'Cost' });
+    s.get().updatePharmacyMedication('1', 'd1', { nonAdherenceReason: 'Cost' });
+    s.get().updatePharmacyMedication('1', 'd1', { nonAdherenceReason: '' });
+    expect(s.member().interventionLog).toHaveLength(1);
+  });
+});

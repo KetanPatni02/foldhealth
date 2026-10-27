@@ -12,9 +12,11 @@ import styles from './HoverCard.module.css';
  *  - children  ReactNode | (close) => ReactNode — the card content
  *  - width     number (px) — card width, default 280
  *  - ariaLabel string — names the card for assistive tech
+ *  - openDelay number (ms) — hover time before the card opens, default 150
+ *  - flush     boolean — no inner padding, for content that runs edge to edge
  */
-export function HoverCard({ trigger, children, width = 280, ariaLabel }) {
-  const hover = usePatientHoverCard({ openDelay: 150, closeDelay: 200 });
+export function HoverCard({ trigger, children, width = 280, ariaLabel, openDelay = 150, flush = false }) {
+  const hover = usePatientHoverCard({ openDelay, closeDelay: 200 });
   const rect = hover.anchorRect;
   const below = rect && rect.bottom + 240 < window.innerHeight;
   return (
@@ -24,7 +26,7 @@ export function HoverCard({ trigger, children, width = 280, ariaLabel }) {
         <div
           role="dialog"
           aria-label={ariaLabel}
-          className={styles.card}
+          className={`${styles.card} ${flush ? styles.flush : ''}`}
           style={{
             width,
             left: Math.min(rect.left, window.innerWidth - width - 8),

@@ -530,23 +530,29 @@ export function gapStartDate(x) {
   return fills.toSorted((a, b) => parseMdy(a) - parseMdy(b))[0] || null;
 }
 
-// At-a-glance progress across the member's pharmacy gaps.
-export const PROGRESS_LEVELS = ['Not started', 'In progress', 'Partially complete', 'Complete'];
-export const PROGRESS_TONE = { Complete: 'success', 'Partially complete': 'primary', 'In progress': 'primary', 'Not started': 'white' };
+// At-a-glance progress across the member's pharmacy gaps. Work under way,
+// with or without some gaps closed, is In progress (amber).
+export const PROGRESS_LEVELS = ['Not started', 'In progress', 'Complete'];
+export const PROGRESS_TONE = { Complete: 'success', 'In progress': 'warning', 'Not started': 'white' };
 export function gapProgress(statuses) {
   const gaps = Object.values(statuses).map(s => s.gap).filter(g => !UNCOUNTED_GAPS.has(g));
   // Pending Claim is still waiting for its claim, so it is not closed.
   const closed = gaps.filter(g => CLOSED_GAPS.has(g)).length;
   const label = !gaps.length || closed === gaps.length ? 'Complete'
-    : closed > 0 ? 'Partially complete'
-    : gaps.some(g => g !== 'Open') ? 'In progress'
+    : closed > 0 || gaps.some(g => g !== 'Open') ? 'In progress'
     : 'Not started';
   return { label, closed, total: gaps.length };
 }
 
 // Sources send priority as P1–P3 or High/Medium/Low; the worklist always
-// shows P1–P3 so rows compare at a glance. Derived when the source has none.
+// keeps P1–P3 so rows compare at a glance. A priority picked on the worklist
+// wins, then the source's, then one derived from the focus measure.
 const SOURCE_PRIORITY = { P1: 'P1', High: 'P1', P2: 'P2', Medium: 'P2', P3: 'P3', Low: 'P3' };
+export const PRIORITY_LEVELS = [
+  { value: 'P1', icon: 'high', label: 'High' },
+  { value: 'P2', icon: 'medium', label: 'Medium' },
+  { value: 'P3', icon: 'low', label: 'Low' },
+];
 const PRIORITY_RANKS = { P1: 0, P2: 1, P3: 2 };
 export const priorityRank = (p) => PRIORITY_RANKS[p] ?? 3;
 
@@ -577,6 +583,19 @@ export const callMatchesLog = (c, logId) => callKey(c) === logId || (c.logIds ||
 
 // ── Outreach ── same shape the other worklists render: last attempt's
 // result + date, and one dot per attempt (latest three, oldest first).
+// "13:05" (some entries) reads as "01:05 PM", like the rest.
+const clockTime = (t) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
+  if (!m) return t || null;
+  const h = Number(m[1]);
+  return `${String(h % 12 || 12).padStart(2, '0')}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+};
+
+const ordinal = (n) => {
+  const t = n % 100;
+  return `${n}${t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th')}`;
+};
+
 export function outreachSummary(callHistory) {
   const list = callHistory || [];
   if (!list.length) return null;
@@ -591,6 +610,18 @@ export function outreachSummary(callHistory) {
     outcome: last.outcome,
     dots: recent,
     attempts: list.length,
+    // The last three attempts for the cell's hover card, numbered from the
+    // first ever (newest is the Nth outreach). Outcomes stored with a dash
+    // separator show as "Side effects: Experienced".
+    recent: list.slice(0, 3).map((c, i) => ({
+      key: `${c.id || c.date}-${i}`,
+      date: String(c.date || '').slice(0, 5),
+      time: clockTime(c.time),
+      by: c.by || null,
+      title: `${c.title || 'Outgoing Call'} (${ordinal(list.length - i)} Outreach)`,
+      outcome: c.outcome?.replaceAll(' — ', ': ') || null,
+      failed: c.result !== 'success',
+    })),
   };
 }
 
@@ -612,7 +643,7 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
   const urgentOpen = isActiveGap(statuses[urgent?.code]);
   const recon = worstRecon(shown, m.healthPlan);
   const outreach = outreachSummary(m.callHistory);
-  const priority = SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3');
+  const priority = SOURCE_PRIORITY[m.priorityOverride] || SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3');
   const progress = gapProgress(statuses);
   // Open Care Gaps: the member's non-pharmacy gaps still being worked.
   const otherCareGaps = (hedisGapsByMember?.get(normMemberId(m.memberId || m.id)) ?? m.otherCareGaps ?? [])

@@ -37,6 +37,18 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Pharmacy worklist P column and member drawer polish.** The Priority
+  column is now P, shown with the shared PriorityIcon; clicking it changes
+  the member's priority (P1–P3), which wins over the plan file's and is
+  logged (`supabase/pharmacy_priority_override_migration.sql` adds
+  `priority_override`). In the Pharmacy Gap Details drawer: a Drugs column and
+  per-gap prescriber and pharmacy (with phones) in the gap table; medication
+  rows with Recent Fill set in bulk from the shared floating BulkBar, an Info
+  link for prescriber and pharmacy, and a selected-row state for the open
+  drug; medication details in titled sections built from the library's
+  labelled Select, Textarea and RadioOptionGroup. A Reason for Non-Adherence
+  picked on a drug is now also logged as that gap's barrier in Barriers &
+  Interventions.
 - **Care program automations (Settings > Automations).** Enrollment
   auto-apply: clinical criteria can now check urine ACR and assessment
   scores (PHQ-9), and a review task with no reviewer or program owner goes
@@ -61,7 +73,6 @@ build requires esbuild ≥ 0.28 on Node 26.
   database stamps the date and time and locks it, and the date shows under
   the status) and Open (goes to the section) on each row. Needs `supabase/feature_reviews_migration.sql`,
   `feature_reviews_seed.sql` and `feature_reviews_suggestions_migration.sql`.
-
 - **Pharmacy gap status model, filters, rules and reports.** Pharmacy gaps
   follow the status model spec: Open, In Progress, Pending Claim, Closed,
   Met for Year, Failed for Year and Excluded (First Fill and Not Eligible stay
