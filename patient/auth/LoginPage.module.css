@@ -17,30 +17,55 @@
 }
 
 .introSlide {
+  flex: 0 1 440px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-8);
-  max-width: 440px;
+  gap: var(--space-6);
+}
+
+/* Stacked slides: every image and caption sits in the same grid cell, so the
+   block keeps the size of the largest one and nothing shifts on change. */
+.introStage,
+.introCaptions {
+  display: grid;
+  width: 100%;
+}
+
+.introStage {
+  aspect-ratio: 1 / 1;
+  max-height: 60vh;
+}
+
+.introImg,
+.introCaption {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transition: opacity var(--duration-slow) var(--ease-hover);
 }
 
 .introImg {
   width: 100%;
-  aspect-ratio: 452 / 320;
+  height: 100%;
   object-fit: contain;
-  animation: fadeIn var(--duration-base) var(--ease-hover);
 }
 
 .introCaption {
-  margin: 0;
-  max-width: 260px;
+  margin: 0 auto;
+  max-width: 280px;
   text-align: center;
   font-size: var(--font-xl);
   line-height: var(--leading-normal);
   color: var(--neutral-400);
 }
 
+.introVisible {
+  opacity: 1;
+}
+
 .dots {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -60,11 +85,6 @@
 .dotActive {
   height: 48px;
   background: var(--primary-300);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 /* ── Sign-in card ── */
