@@ -91,6 +91,8 @@ function PharmacyGapDrawerBody({ target, row }) {
   const toVerify = useMemo(() => ({ ...scoped, measures: scoped.measures.filter(x => needsVerification(x, row)) }), [scoped, row]);
   // Update Barriers' form lives here so its Save sits in the pane header.
   const barrierForm = useBarrierForm(scoped);
+  // Pharmacy Verification's Lock & Log Call, also in the pane header.
+  const [verifyAction, setVerifyAction] = useState(null);
 
   // Opened from a "Claim not matched" flag: the drug's claim history in the
   // side workspace, outreach logging in the main pane.
@@ -220,6 +222,12 @@ function PharmacyGapDrawerBody({ target, row }) {
                   <span className={styles.headerDivider} />
                 </>
               )}
+              {workspace === 'verify' && (
+                <>
+                  <Button variant="primary" size="M" disabled={!verifyAction?.canLock} onClick={() => verifyAction?.lock()}>Lock &amp; Log Call</Button>
+                  <span className={styles.headerDivider} />
+                </>
+              )}
               <CloseButton size={18} onClick={closeWorkspace} label={`Close ${openMed ? 'medication' : WORKSPACE_TITLE[workspace]}`} />
             </div>
           </div>
@@ -227,7 +235,7 @@ function PharmacyGapDrawerBody({ target, row }) {
             {workspace === 'outreach' && (
               <OutreachTabView tab={outreach} hideLogForRow hideActivity hideFormFooter flush taskMember={m.name} />
             )}
-            {workspace === 'verify' && <PharmacyVerificationStep member={toVerify} program={PHARM_PROGRAM} onLocked={() => setWorkspace(null)} />}
+            {workspace === 'verify' && <PharmacyVerificationStep member={toVerify} program={PHARM_PROGRAM} onLocked={() => setWorkspace(null)} onLockAction={setVerifyAction} />}
             {workspace === 'barriers' && <PharmacyBarrierStep member={scoped} form={barrierForm} />}
             {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} plan={m.healthPlan} initialTab={workspace.tab} flushTabs showMeasure={false} />}
           </div>

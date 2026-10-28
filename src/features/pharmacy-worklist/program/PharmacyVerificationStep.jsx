@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
+import { ActivityLog } from '../../../components/ActivityLog/ActivityLog';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
 import { DashboardCard, DashboardCardShell } from '../../../components/DashboardCard/DashboardCard';
@@ -13,6 +14,7 @@ import {
   MEASURE_NAMES, MEASURE_ORDER, isActiveGap, addDaysMdy, measureStatus, medLabel, todayMdy,
 } from '../pharmacyWorklist.utils';
 import { Switch } from '../../../components/Switch/Switch';
+import { verificationTimeline } from './verificationHistory';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import { MeasureCode } from '../PharmacyCells';
 import styles from './PharmacyVerificationStep.module.css';
@@ -103,34 +105,15 @@ function AnswerCell({ q, gap, answer, onChange }) {
   }
 }
 
-function LockedCall({ entry }) {
-  return (
-    <div className={styles.locked}>
-      <div className={styles.lockedHead}>
-        <Icon name="solar:lock-keyhole-minimalistic-linear" size={14} color="var(--neutral-300)" />
-        <span className={styles.lockedTitle}>{entry.date} · Phone · Outbound · {entry.contact}</span>
-        <Badge size="S" tone="grey" label={entry.outcome} />
-        <span className={styles.muted}>Locked by {entry.by}</span>
-      </div>
-      {(entry.items || []).map(it => (
-        <div key={it.medId} className={styles.lockedItem}>
-          <MeasureCode code={it.measure} />
-          <span className={styles.lockedDrug}>{it.drug}</span>
-          <span className={styles.muted}>{it.steps.join(' · ')}</span>
-        </div>
-      ))}
-      {entry.note ? <div className={styles.lockedNote}>{entry.note}</div> : null}
-    </div>
-  );
-}
-
 // Pharmacy Verification step of the Pharmacy program, as an assessment
 // table: questions down the left, one answer column per pharmacy gap. "Same
 // answer for all" copies an answer across every column; each column stays
 // editable. Each question is labelled with its category (fill history,
 // refill, pickup) in the first column.
 // `onLocked`: called once the call is locked (the gap drawer closes its pane).
-export function PharmacyVerificationStep({ program, member: memberProp, onLocked }) {
+// `onLockAction`: the gap drawer shows Lock & Log Call in its pane header, so
+// the form hands it `{ canLock, lock }` instead of rendering its own button.
+export function PharmacyVerificationStep({ program, member: memberProp, onLocked, onLockAction }) {
   const fromProfile = usePharmacyProgramMember();
   const member = memberProp || fromProfile;
   const lockVerification = useAppStore(s => s.lockPharmacyVerification);
@@ -157,15 +140,11 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
   const [sameForAll, setSameForAll] = useState(false);
   const [note, setNote] = useState('');
   const answerFor = (code) => answers[code] || EMPTY_ANSWER;
-
-  if (!member) {
-    return (
-      <div className={styles.empty}>
-        <Icon name="solar:pills-linear" size={40} color="var(--neutral-200)" />
-        <p>No MAD, MAH or MAC medications on file for this member.</p>
-      </div>
-    );
-  }
+  const allAnswered = gaps.length > 0 && gaps.every(g => isAnswered(answerFor(g.code)));
+  const lockRef = useRef(null);
+  useEffect(() => {
+    onLockAction?.({ canLock: allAnswered, lock: () => lockRef.current?.() });
+  }, [allAnswered, onLockAction]);
 
   const setAnswer = (code, a) => setAnswers(prev => (sameForAll
     ? Object.fromEntries(gaps.map(g => [g.code, a]))
@@ -176,8 +155,7 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
   };
 
   const rows = QUESTIONS.filter(q => !q.when || gaps.some(g => q.when(answerFor(g.code))));
-  const verifications = (member.callHistory || []).filter(e => e.kind === 'pharmacy-verification');
-  const allAnswered = gaps.length > 0 && gaps.every(g => isAnswered(answerFor(g.code)));
+  const history = verificationTimeline(member);
 
   const handleLock = async () => {
     const today = todayMdy();
@@ -250,6 +228,18 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
       : `Verification call locked · could not create ${followUps.length - createdCount} follow-up task${followUps.length - createdCount === 1 ? '' : 's'}`);
   };
 
+  // The header button calls the latest handler, with this render's answers.
+  useEffect(() => { lockRef.current = handleLock; });
+
+  if (!member) {
+    return (
+      <div className={styles.empty}>
+        <Icon name="solar:pills-linear" size={40} color="var(--neutral-200)" />
+        <p>No MAD, MAH or MAC medications on file for this member.</p>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.wrap}>
       {/* The pane names the step; only the sync switch sits above the form. */}
@@ -295,17 +285,19 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
           </div>
           <div className={styles.callFoot}>
             <span className={styles.muted}>Locking logs this call as one action across all gaps (counts as 1 outreach).</span>
-            <Button variant="primary" size="L" disabled={!allAnswered} onClick={handleLock}>
-              Lock &amp; Log Call
-            </Button>
+            {!onLockAction && (
+              <Button variant="primary" size="L" disabled={!allAnswered} onClick={handleLock}>
+                Lock &amp; Log Call
+              </Button>
+            )}
           </div>
         </div>
       </DashboardCardShell>
 
-      <DashboardCard size="S" title="Verification History" count={verifications.length || undefined}>
-        {verifications.length === 0
-          ? <div className={styles.locked}><span className={styles.muted}>No verification calls logged yet.</span></div>
-          : verifications.map((e, i) => <LockedCall key={`${e.date}-${i}`} entry={e} />)}
+      <DashboardCard size="S" title="Verification History">
+        <div className={styles.history}>
+          <ActivityLog entries={history} relaxed flushTop emptyLabel="No verification calls logged yet." />
+        </div>
       </DashboardCard>
     </div>
   );
