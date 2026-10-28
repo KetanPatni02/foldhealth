@@ -1,4 +1,3 @@
-import { Icon } from '../../components/Icon/Icon';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
@@ -170,41 +169,6 @@ export const PHARMACY_MIDDLE_COLUMNS = [
     renderCell: perGap((g) => <PriorYearPdc years={g.priorYearPdc} nonCompliant={g.priorYearNonCompliant} year={PRIOR_YEAR} />),
   },
   {
-    key: 'progress', label: 'Progress', sortKey: 'progressRank', sortType: 'number',
-    renderCell: (m) => <ProgressCell progress={m.progress} />,
-  },
-  {
-    key: 'otherCareGaps', label: 'Open Care Gaps', sortKey: 'otherCareGapsCount', sortType: 'number', stopRowClickPropagation: true,
-    renderCell: (m, ctx) => <OpenCareGaps gaps={m.otherCareGaps} onOpen={ctx.openCareGap} />,
-  },
-  {
-    key: 'outreach', label: 'Outreach', sortKey: 'outreachSort', sortType: 'date',
-    // The hover card's View All opens the drawer; the row must not open too.
-    stopRowClickPropagation: true,
-    renderCell: (m, ctx) => (
-      <OutreachStatusCell
-        outreach={m.outreach}
-        recent={m.outreach?.recent}
-        onViewAll={ctx.openOutreach}
-      />
-    ),
-  },
-  {
-    key: 'leadNote', label: 'Internal Note',
-    renderCell: (m) => (m.leadNote ? (
-      <Tooltip label={m.leadNote} placement="bottom">
-        <span className={styles.leadNote}>
-          <Icon name="solar:notes-linear" size={14} color="var(--neutral-300)" />
-          <span className={styles.truncate}>{m.leadNote}</span>
-        </span>
-      </Tooltip>
-    ) : <Dash />),
-  },
-  {
-    key: 'followUpDue', label: 'Follow-up Due', sortKey: 'followUpDueSort', sortType: 'date',
-    renderCell: (m) => <DateWithDays date={m.followUpDue} alert={isOverdue(m.followUpDue)} />,
-  },
-  {
     key: 'assignee', label: 'Assigned To', sortKey: 'assigneeName', sortType: 'alpha', stopRowClickPropagation: true,
     renderCell: (m, ctx) => (
       m.assigneeName ? (
@@ -227,6 +191,34 @@ export const PHARMACY_MIDDLE_COLUMNS = [
       )
     ),
   },
+  {
+    key: 'followUpDue', label: 'Follow-up Due', sortKey: 'followUpDueSort', sortType: 'date',
+    renderCell: (m) => <DateWithDays date={m.followUpDue} alert={isOverdue(m.followUpDue)} />,
+  },
+  {
+    key: 'progress', label: 'Progress', sortKey: 'progressRank', sortType: 'number',
+    renderCell: (m) => <ProgressCell progress={m.progress} />,
+  },
+  {
+    key: 'otherCareGaps', label: 'Open Care Gaps', sortKey: 'otherCareGapsCount', sortType: 'number', stopRowClickPropagation: true,
+    renderCell: (m, ctx) => <OpenCareGaps gaps={m.otherCareGaps} onOpen={ctx.openCareGap} />,
+  },
+  {
+    key: 'outreach', label: 'Outreach', sortKey: 'outreachSort', sortType: 'date',
+    // The hover card's View All opens the drawer; the row must not open too.
+    stopRowClickPropagation: true,
+    renderCell: (m, ctx) => (
+      <OutreachStatusCell
+        outreach={m.outreach}
+        recent={m.outreach?.recent}
+        onViewAll={ctx.openOutreach}
+      />
+    ),
+  },
+  {
+    key: 'leadNote', label: 'Internal Note',
+    renderCell: (m) => (m.leadNote ? <span className={styles.leadNote}>{m.leadNote}</span> : <Dash />),
+  },
   // Optional, hidden by default.
   {
     key: 'healthPlan', label: 'Health Plan / IPA', optional: true, sortKey: 'healthPlan', sortType: 'alpha',
@@ -239,7 +231,7 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   },
   { key: 'language', label: 'Language', optional: true, renderCell: (m) => <span className={styles.cellText}>{(m.language || 'en').toUpperCase()}</span> },
   { key: 'bookOfBusiness', label: 'Book of Business', optional: true, sortKey: 'bookOfBusiness', sortType: 'alpha', renderCell: (m) => <span className={styles.cellText}>{m.bookOfBusiness || '—'}</span> },
-  { key: 'barrier', label: 'Barrier', optional: true, renderCell: (m) => (m.barrier ? <span className={styles.cellText}>{m.barrier}</span> : <Dash />) },
+  { key: 'barrier', label: 'Barrier', optional: true, renderCell: (m) => (m.activeBarriers?.length ? <span className={styles.cellText}>{m.activeBarriers.join(', ')}</span> : <Dash />) },
   { key: 'daysInQueue', label: 'Days in Queue', optional: true, sortKey: 'daysInQueue', sortType: 'number', renderCell: (m) => <span className={styles.cellText}>{m.daysInQueue ?? '—'}</span> },
   {
     key: 'excluded', label: 'Excluded / Safe for Year', optional: true,

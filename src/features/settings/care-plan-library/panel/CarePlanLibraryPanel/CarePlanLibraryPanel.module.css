@@ -385,3 +385,21 @@
   padding: var(--space-2) var(--space-4);
   border-bottom: 0.5px solid var(--neutral-150);
 }
+
+/* Version badge beside a template name; opens its versions. */
+.versionBadge {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.emptyHint {
+  max-width: 52ch;
+  margin: 0;
+  font-size: var(--font-md);
+  line-height: var(--leading-normal);
+  text-align: center;
+  color: var(--neutral-300);
+}

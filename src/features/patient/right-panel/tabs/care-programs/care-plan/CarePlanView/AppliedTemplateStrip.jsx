@@ -10,6 +10,7 @@ function TemplateBadge({
   template,
   templatePriority,
   version,
+  templateVersion,
   isActive,
   canRemove,
   onSelect,
@@ -24,6 +25,7 @@ function TemplateBadge({
       aria-pressed={isActive}
       onClick={() => onSelect(template.id)}
       aria-label={`${templatePriority} priority, ${template.name}${version ? `, version ${version}` : ''}${isActive ? ', filter active' : ''}`}
+      title={templateVersion?.title}
     >
       <Badge
         tone={isActive ? 'primary' : 'grey'}
@@ -33,6 +35,7 @@ function TemplateBadge({
             <PriorityIcon priority={templatePriority} size={12} />
             {template.name}
             {version && <span className={styles.runVersion}>V{version}</span>}
+            {templateVersion?.pending && <Icon name="solar:refresh-circle-linear" size={12} color="var(--primary-300)" />}
           </>
         )}
         trailingIconElement={canRemove ? (
@@ -109,6 +112,8 @@ export function AppliedTemplateStrip({
   onRemove,
   trailing = null,
   runsByTemplate = {},
+  // { [templateId]: { title, pending } }: the template version each run is on.
+  templateVersions = {},
   // Past-version view: chips show, nothing filters or removes.
   readOnly = false,
 }) {
@@ -221,6 +226,7 @@ export function AppliedTemplateStrip({
       template={e.template}
       templatePriority={appliedTemplatePriorities[e.template.id] || 'medium'}
       version={runsByTemplate[e.template.id]?.version}
+      templateVersion={templateVersions?.[e.template.id]}
       isActive={live && templateFilterId === e.key}
       canRemove={canRemove}
       onSelect={live && !readOnly ? onSelect : () => {}}

@@ -2,7 +2,7 @@ import { supabase } from '../../lib/supabase';
 import { detachSaved, hydrateListFilters } from '../lib/worklistListFilters';
 import { applyPendingPickup, applyPickup, applyRecentFill, recomputeMeasure, withManualRecentFill } from '../../features/pharmacy-worklist/fillEvents';
 import { planAutoAssignment } from '../../features/pharmacy-worklist/pharmacyRules';
-import { addDaysMdy, callMatchesLog, enrichPharmacyMember, measureStatus, parseMdy, reconcileMeasure, setPlanTimers, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
+import { OUTREACH_TONE_COLOR, addDaysMdy, callMatchesLog, enrichPharmacyMember, latestBarrierRecord, measureStatus, medLabel, outreachTone, parseMdy, reconcileMeasure, setPlanTimers, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
 
 function rowToMember(r) {
   return {
@@ -123,6 +123,53 @@ export function createPharmacyWorklistSlice(set, get) {
     for (const col of columns) patch[col] = next[COLUMN_TO_FIELD[col]];
     persist(memberRowId, patch);
   };
+
+  // Takes barriers (`resolve`) and/or one intervention (`complete`) off a
+  // gap's active record, or one drug's (`medId`). A new log entry carries the
+  // record without them, so Active Barriers drops them, plus `resolved` /
+  // `completed` for History; a drug's Reason for Non-Adherence goes when it
+  // is one of the resolved barriers.
+  const closeOutBarrierItems = (memberRowId, { code, medId = null, resolve = [], complete = null }) => {
+    const m = get().pharmacyWorklistMembers.find(x => x.id === memberRowId);
+    const measure = m?.measures.find(x => x.code === code);
+    if (!measure) return;
+    const med = medId ? measure.medications.find(d => d.id === medId) : null;
+    const medName = med ? medLabel(med) : null;
+    const latest = latestBarrierRecord(m.interventionLog, code)?.rec || { barriers: [], interventions: [], result: null };
+    const strip = (r) => ({
+      ...r,
+      barriers: (r.barriers || []).filter(b => !resolve.includes(b)),
+      interventions: (r.interventions || []).filter(v => v !== complete?.intervention),
+    });
+    const medications = latest.medications?.map(r => (!medId || r.id === medId ? strip(r) : r));
+    const rec = medications
+      ? { ...latest, medications, barriers: [...new Set(medications.flatMap(r => r.barriers))], interventions: [...new Set(medications.flatMap(r => r.interventions))] }
+      : (medId ? latest : strip(latest));
+    const tag = { code, ...(medName ? { medication: medName } : {}) };
+    const entry = {
+      date: todayMdy(),
+      by: get().currentUserProfile?.name || 'You',
+      ...(medName ? { medication: medName } : {}),
+      ...(resolve.length ? { resolved: resolve.map(barrier => ({ ...tag, barrier })) } : {}),
+      ...(complete ? { completed: [{ ...tag, ...complete }] } : {}),
+      measures: { [code]: rec },
+    };
+    const where = `${code}${medName ? ` · ${medName}` : ''}`;
+    const title = complete
+      ? `Intervention ${complete.outcome === 'Done' ? 'done' : "didn't work"} · ${where}`
+      : `Barrier resolved · ${where}`;
+    const note = [complete?.intervention, resolve.length ? `${complete ? 'Resolved: ' : ''}${resolve.join(', ')}` : null].filter(Boolean).join('\n');
+    update(memberRowId, x => ({
+      ...x,
+      measures: x.measures.map(g => (g.code !== code ? g : {
+        ...g,
+        medications: g.medications.map(d => ((!medId || d.id === medId) && resolve.includes(d.nonAdherenceReason) ? { ...d, nonAdherenceReason: null } : d)),
+      })),
+      interventionLog: [entry, ...(x.interventionLog || [])],
+      barrier: resolve.includes(x.barrier) ? null : x.barrier,
+    }), ['intervention_log', 'barrier', 'measures'], { t: 'note', title, note });
+  };
+
 
   // One pickup record per measure. Mock rows stay local, like their members.
   const recordPickups = (memberRowId, codes, date, source) => {
@@ -417,7 +464,7 @@ export function createPharmacyWorklistSlice(set, get) {
         return { ...m, status, measures, followUpDue, callHistory: [entry, ...(m.callHistory || [])], _changes: changes };
       }, ['status', 'call_history', 'measures', 'follow_up_due'], (changes) => ({
         t: 'outreach', title: `Outreach · ${entry.contact} (${(entry.measures || []).join(', ')})`,
-        outcome: entry.outcome, outcomeColor: entry.result === 'failed' ? 'var(--status-error)' : 'var(--status-success)',
+        outcome: entry.outcome, outcomeColor: OUTREACH_TONE_COLOR[outreachTone(entry.result)],
         note: [entry.note, ...changes].filter(Boolean).join('\n'),
       }));
     },
@@ -490,26 +537,51 @@ export function createPharmacyWorklistSlice(set, get) {
     // Barrier & Intervention log: one entry per call, recorded per measure
     // (barriers, interventions and result kept apart). The newest barrier
     // feeds the worklist's Barrier column.
-    logPharmacyInterventions: (memberRowId, entry) => {
+    // `clearReasons`: the gap's lists replace what was there (Update Barriers),
+    // so a gap saved with no barrier clears its drugs' reasons too. An outreach
+    // only adds what it found and leaves them.
+    logPharmacyInterventions: (memberRowId, entry, { clearReasons = false } = {}) => {
       update(memberRowId, m => {
         const firstBarrier = Object.values(entry.measures).flatMap(r => r.barriers)[0];
         // A measure's barrier is also each of its active medications' Reason
-        // for Non-Adherence (Medication Review).
+        // for Non-Adherence (Medication Review); set per medication, each
+        // drug takes its own first barrier, and a drug cleared there loses it.
         const measures = m.measures.map(x => {
-          const barrier = entry.measures[x.code]?.barriers?.[0];
-          if (!barrier) return x;
+          const rec = entry.measures[x.code];
+          if (!rec) return x;
+          const byMed = rec.medications ? Object.fromEntries(rec.medications.map(r => [r.id, r])) : null;
           return {
             ...x,
-            medications: x.medications.map(d => (d.status === 'Discontinued' ? d : { ...d, nonAdherenceReason: barrier })),
+            medications: x.medications.map(d => {
+              if (d.status === 'Discontinued') return d;
+              if (byMed?.[d.id]) return { ...d, nonAdherenceReason: byMed[d.id].barriers[0] || null };
+              const barrier = byMed ? null : rec.barriers?.[0];
+              if (barrier) return { ...d, nonAdherenceReason: barrier };
+              return clearReasons && !byMed ? { ...d, nonAdherenceReason: null } : d;
+            }),
           };
         });
         return { ...m, measures, interventionLog: [entry, ...(m.interventionLog || [])], barrier: firstBarrier || m.barrier };
       }, ['intervention_log', 'barrier', 'measures'], {
         t: 'note', title: `Barriers & interventions (${Object.keys(entry.measures).join(', ')})`,
         note: Object.entries(entry.measures)
-          .map(([code, r]) => `${code}: ${[...r.barriers, ...r.interventions, r.result].filter(Boolean).join(', ')}`)
+          .flatMap(([code, r]) => (r.medications
+            ? r.medications.map(d => `${code} · ${d.name}: ${[...d.barriers, ...d.interventions].join(', ') || 'Cleared'}`)
+            : [`${code}: ${[...r.barriers, ...r.interventions, r.result].filter(Boolean).join(', ')}`]))
           .join('\n'),
       });
+    },
+
+    // Resolves one barrier on a gap, or on one drug (`medId`).
+    resolvePharmacyBarrier: (memberRowId, { code, barrier, medId = null }) => {
+      closeOutBarrierItems(memberRowId, { code, medId, resolve: [barrier] });
+    },
+
+    // An intervention on a gap (or one drug) marked Done or Didn't work.
+    // Either way it leaves the active list; Done can resolve the barriers it
+    // addressed (`resolve`), Didn't work leaves them standing.
+    completePharmacyIntervention: (memberRowId, { code, intervention, outcome, medId = null, resolve = [] }) => {
+      closeOutBarrierItems(memberRowId, { code, medId, resolve: outcome === 'Done' ? resolve : [], complete: { intervention, outcome } });
     },
 
     // The gap a user opened from the worklist; the program's Medication

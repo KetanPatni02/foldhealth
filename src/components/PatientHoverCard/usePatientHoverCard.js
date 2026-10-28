@@ -56,6 +56,13 @@ export function usePatientHoverCard({ openDelay = 800, expandDelay = 500, closeD
       expandT.current = setTimeout(() => setStage('expanded'), expandDelay);
     }, openDelay);
   };
+  // Opens at once (a click), skipping the hover delay.
+  const openNow = (el) => {
+    clear(openT); cancelClose();
+    triggerEl.current = el;
+    setAnchorRect(el.getBoundingClientRect());
+    setStage('expanded');
+  };
   const onLeave = () => {
     // Left before it opened: never show it.
     if (openT.current) { clear(openT); return; }
@@ -67,6 +74,7 @@ export function usePatientHoverCard({ openDelay = 800, expandDelay = 500, closeD
     stage,
     anchorRect,
     close,
+    openNow,
     triggerProps: { onMouseEnter: onEnter, onMouseLeave: onLeave },
     cardProps: { onMouseEnter: cancelClose, onMouseLeave: scheduleClose },
   };

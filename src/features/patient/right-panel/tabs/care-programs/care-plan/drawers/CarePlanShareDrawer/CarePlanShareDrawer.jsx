@@ -500,6 +500,11 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
         ? `Recent changes only: what was added, changed or removed since version ${prev.versionNumber}.`
         : 'Recent changes only: there is no earlier version, so everything on the plan is new.';
     }
+    // Patient-facing wording: an IPA overlay's patient title stands in for the clinical one.
+    if (printSettings.patientWording) {
+      const reword = list => (list || []).map(x => (x.patientTitle ? { ...x, title: x.patientTitle } : x));
+      partSelection = { ...partSelection, goals: reword(partSelection.goals), interventions: reword(partSelection.interventions), barriers: reword(partSelection.barriers) };
+    }
     const progresses = partSelection.goals.map(g => Number(g.progress)).filter(n => Number.isFinite(n));
     return {
       meta: {
@@ -519,7 +524,7 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
       },
       selection: partSelection,
     };
-  }), [versionParts, docMeta, shareFilters, filterCtx, goalOff, intvOff, barrierOff, printSettings.recentChangesOnly, versions, liveSlice]);
+  }), [versionParts, docMeta, shareFilters, filterCtx, goalOff, intvOff, barrierOff, printSettings.recentChangesOnly, printSettings.patientWording, versions, liveSlice]);
 
   const handleDownload = async () => {
     const base = buildCarePlanDownloadFilename({

@@ -51,6 +51,16 @@ build requires esbuild ≥ 0.28 on Node 26.
   `staff_only` policy on every table
   (`supabase/staff_patient_rls_split_migration.sql`); patient accounts carry
   `app_metadata.role = 'patient'` and are created server-side only.
+- **Pharmacy barriers and interventions have a lifecycle.** The member
+  drawer's Barriers & Interventions tab is read-only, split into Active
+  Barriers and History. Each barrier can be resolved, and each intervention
+  marked Done or Didn't work; Done offers to resolve the barrier it addresses
+  (`INTERVENTION_ADDRESSES`). Update Barriers logs a gap as a whole or, with
+  Set per medication, one drug at a time. The worklist's Barrier column and
+  filter count active barriers only, and Medication Review shows each gap's
+  barrier count while collapsed. Barrier and intervention icons match the
+  care plan. Also: verification opens from the drawer, outreach shows Note
+  in amber, and pharmacy outreach outcomes are a multi-select by stakeholder.
 - **Pausing a care program asks why and until when.** Picking Paused for a
   care program (header or Care Programs table) opens the same dialog as
   pausing a care plan: reason, start date, planned resume date, auto-resume

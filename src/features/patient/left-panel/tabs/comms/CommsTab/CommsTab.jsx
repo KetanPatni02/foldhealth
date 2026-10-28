@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useAppStore } from '../../../../../../store/useAppStore';
+import { membersForConversation, threadTitle } from '../../../../../messages/comms/smsMembers';
 import { ConversationDrawer } from '../../../../../messages/comms/ConversationDrawer';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { SmsIcon } from '../../../../../../components/Icon/SmsIcon';
@@ -44,7 +46,12 @@ export function CommsTab({ patient }) {
   const [openId, setOpenId] = useState(null);
 
   const id = patient?.id != null ? String(patient.id) : null;
-  const mine = conversations.filter(c => (id && c.patient_id === id) || (!c.patient_id && patient?.name && c.patient_name === patient.name));
+  // A shared number's SMS thread belongs to every member on it (FCS-5677),
+  // so it shows on each of their profiles, not just the owner's.
+  const patients = useAppStore(st => st.allPatients);
+  const mine = conversations.filter(c => (id && c.patient_id === id)
+    || (!c.patient_id && patient?.name && c.patient_name === patient.name)
+    || (id && c.channel === 'sms' && membersForConversation(c, patients || []).some(m => m.id === id)));
 
   if (loading) return <CardSkeleton count={4} />;
   // Didn't load (no answer in time, or an error): say so, with a way to retry.
@@ -73,7 +80,7 @@ export function CommsTab({ patient }) {
           <div className={msgStyles.convInfo}>
             <div className={msgStyles.convNameRow}>
               <div className={[msgStyles.convName, c.unread_count ? '' : styles.readName].join(' ')}>
-                {c.channel === 'chat' ? (c.group_name || `Care for ${c.patient_name}`) : c.channel === 'email' ? (c.subject || 'Email') : c.patient_name}
+                {c.channel === 'chat' ? (c.group_name || `Care for ${c.patient_name}`) : c.channel === 'email' ? (c.subject || 'Email') : c.channel === 'sms' ? threadTitle(c, membersForConversation(c, patients || [])) : c.patient_name}
               </div>
               <div className={msgStyles.convTime}>{formatTime(c.last_message_at)}</div>
             </div>

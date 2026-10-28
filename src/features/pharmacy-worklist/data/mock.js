@@ -1,3 +1,4 @@
+import { OUTREACH_TONE_COLOR, outreachTone } from '../pharmacyWorklist.utils';
 // Pharmacy (Med Adherence) gap worklist. One row per member; each member
 // carries every open measure in `measures`. The row shows its focus measure
 // (see mostUrgentMeasure in pharmacyWorklist.utils.js); the Program view lists them all.
@@ -82,7 +83,7 @@ function seedActivity(base) {
     at: isoAt(c.date, 10 + i), actor: c.by, t: 'outreach',
     title: `Outreach · ${c.contact}${c.measures?.length ? ` (${c.measures.join(', ')})` : ''}`,
     outcome: c.outcome,
-    outcomeColor: c.result === 'failed' ? 'var(--status-error)' : 'var(--status-success)',
+    outcomeColor: OUTREACH_TONE_COLOR[outreachTone(c.result)],
     note: c.note || undefined,
   }));
   const logs = (base.interventionLog || []).map(e => ({

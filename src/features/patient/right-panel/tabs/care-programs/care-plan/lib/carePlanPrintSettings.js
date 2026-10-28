@@ -25,6 +25,7 @@ export const CONTENT_TOGGLES = [
   { key: 'showMedications', label: 'Medications', hint: 'Active medications with their directions.' },
   { key: 'showLabs', label: 'Labs', hint: "The latest reading on each of the plan's lab goals, with its date and target." },
   { key: 'showHistory', label: 'History', hint: 'Medical, surgical and family history.' },
+  { key: 'patientWording', label: 'Patient-facing wording', hint: "Goals, interventions and barriers use the patient wording their IPA's template overlay gives them, where there is one." },
 ];
 
 export const GROUP_BY_OPTIONS = [
@@ -44,6 +45,7 @@ export const DEFAULT_PRINT_SETTINGS = {
   showMedications: false,
   showLabs: false,
   showHistory: false,
+  patientWording: false,
   showHeader: false,
   headerId: null,
   showFooter: true,

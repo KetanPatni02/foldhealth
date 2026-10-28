@@ -222,6 +222,25 @@ export function CarePlanView({ patientId, program }) {
     for (const entry of Object.values(out)) entry.version = entry.previous.length + 1;
     return out;
   }, [live?.templateInstances]);
+  // The template version each active run is on, and the newer one it is
+  // waiting to move to (published with "next review" or a future date).
+  const templateVersionChains = useAppStore(s => s.carePlanTemplateVersions);
+  const templateVersionInfo = useMemo(() => {
+    const out = {};
+    for (const inst of live?.templateInstances || []) {
+      if (inst.status !== 'active' || !inst.templateVersionNumber) continue;
+      const pending = inst.pendingVersionId
+        && (templateVersionChains[inst.templateId] || []).find(v => v.id === inst.pendingVersionId);
+      const when = pending && (inst.pendingMode === 'review'
+        ? 'at the next completed review'
+        : `when opened on or after ${inst.pendingEffectiveDate?.slice(5, 7)}/${inst.pendingEffectiveDate?.slice(8, 10)}/${inst.pendingEffectiveDate?.slice(0, 4)}`);
+      out[inst.templateId] = {
+        pending: !!pending,
+        title: `Template version ${inst.templateVersionNumber}${pending ? `. Version ${pending.versionNumber} applies ${when}.` : ''}`,
+      };
+    }
+    return out;
+  }, [live?.templateInstances, templateVersionChains]);
   // An earlier run picked on the strip (`run:<id>`): its own goals,
   // interventions and barriers, shown read-only in the same tables.
   const viewedRun = useMemo(() => {
@@ -929,6 +948,7 @@ export function CarePlanView({ patientId, program }) {
           onSelect={(id) => setTemplateFilterId(prev => (prev === id ? null : id))}
           onRemove={handleRemoveTemplate}
           runsByTemplate={viewedVersion ? {} : runsByTemplate}
+          templateVersions={viewedVersion ? {} : templateVersionInfo}
           readOnly={!!viewedVersion}
           trailing={(
             <span className={styles.stripActions}>

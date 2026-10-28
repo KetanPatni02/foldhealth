@@ -11,9 +11,10 @@ const TITLES = { sms: 'View SMS', chat: 'View Chat', email: 'View Email', call: 
 /**
  * One conversation opened over the current page (Figma 3540:65953), so a
  * patient's thread can be read and answered without leaving their profile.
- * The thread is the same one the Comms page shows.
+ * The thread is the same one the Comms page shows. `focusMessageId` is the
+ * message the user came from: it is highlighted and scrolled into view.
  */
-export function ConversationDrawer({ conversation, onClose }) {
+export function ConversationDrawer({ conversation, focusMessageId, onClose }) {
   const { patients, me } = useCommsPeople();
   const openCommsDrawer = useAppStore(s => s.openCommsDrawer);
   const patient = patientFor(conversation, patients);
@@ -28,7 +29,7 @@ export function ConversationDrawer({ conversation, onClose }) {
           onCompose={initial => openCommsDrawer('email', { initial })}
         />
       ) : (
-        <CommsThread key={conversation.id} conversation={conversation} patient={patient} me={me} />
+        <CommsThread key={conversation.id} conversation={conversation} patient={patient} me={me} focusMessageId={focusMessageId} />
       )}
     </Drawer>
   );

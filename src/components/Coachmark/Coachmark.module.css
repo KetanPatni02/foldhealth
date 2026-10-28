@@ -42,3 +42,29 @@
   background: var(--neutral-0);
   clip-path: polygon(0 0, 100% 0, 50% 100%);
 }
+
+.backdrop span {
+  position: fixed;
+  z-index: 8999;
+  background: var(--surface-overlay-subtle);
+  backdrop-filter: blur(0.125rem);
+}
+
+.spot {
+  position: fixed;
+  z-index: 8999;
+  border: 1px solid var(--primary-300);
+  border-radius: 0.5rem;
+  pointer-events: none;
+}
+
+.illustration {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.textLarge {
+  font-size: var(--font-lg);
+}
+
+.cardLarge { border-radius: 0.75rem; }

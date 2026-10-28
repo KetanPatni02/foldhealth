@@ -122,3 +122,122 @@ describe('pharmacy verification lock', () => {
     expect(a.note.split('\n')).toEqual(['MAD · Metformin 500 MG: Last fill 10/06/2026 confirmed, Refilled, Picked up', 'Spoke with tech']);
   });
 });
+
+describe('barriers set per medication', () => {
+  it('gives each drug its own reason, clears a cleared one, and logs a line per drug', () => {
+    const s = storeWith([]);
+    s.member().measures = [{ code: 'MAD', medications: [
+      { id: 'a', name: 'Metformin', status: 'Active', nonAdherenceReason: null },
+      { id: 'b', name: 'Glipizide', status: 'Active', nonAdherenceReason: 'Cost Issue' },
+      { id: 'c', name: 'Old Rx', status: 'Discontinued', nonAdherenceReason: null },
+    ] }];
+    s.get().logPharmacyInterventions('1', {
+      date: '10/28/2026', by: 'Priya', note: '', measures: { MAD: {
+        barriers: ['Transportation'], interventions: ['Mail order'], result: null,
+        medications: [
+          { id: 'a', name: 'Metformin 500 MG', barriers: ['Transportation'], interventions: ['Mail order'] },
+          { id: 'b', name: 'Glipizide 5 MG', barriers: [], interventions: [] },
+        ],
+      } },
+    });
+    const meds = s.member().measures[0].medications;
+    expect(meds.map(d => d.nonAdherenceReason)).toEqual(['Transportation', null, null]);
+    expect(s.member().activityLog[0].note.split('\n')).toEqual([
+      'MAD · Metformin 500 MG: Transportation, Mail order',
+      'MAD · Glipizide 5 MG: Cleared',
+    ]);
+  });
+});
+
+describe('resolving a barrier', () => {
+  const meds = () => [
+    { id: 'a', name: 'Metformin', strength: '500', unit: 'MG', status: 'Active', nonAdherenceReason: 'Transportation' },
+    { id: 'b', name: 'Glipizide', strength: '5', unit: 'MG', status: 'Active', nonAdherenceReason: 'Cost Issue' },
+  ];
+  const withLog = (log) => {
+    const s = storeWith([]);
+    Object.assign(s.member(), { measures: [{ code: 'MAD', medications: meds() }], interventionLog: log, barrier: 'Transportation' });
+    return s;
+  };
+
+  it('drops it from the gap, clears matching drug reasons, and records the resolution', () => {
+    const s = withLog([{ date: '10/27/2026', measures: { MAD: { barriers: ['Transportation', 'Cost Issue'], interventions: ['Mail order'], result: null } } }]);
+    s.get().resolvePharmacyBarrier('1', { code: 'MAD', barrier: 'Transportation' });
+    const [entry] = s.member().interventionLog;
+    expect(entry.resolved).toEqual([{ code: 'MAD', barrier: 'Transportation' }]);
+    expect(entry.measures.MAD).toMatchObject({ barriers: ['Cost Issue'], interventions: ['Mail order'] });
+    expect(s.member().measures[0].medications.map(d => d.nonAdherenceReason)).toEqual([null, 'Cost Issue']);
+    expect(s.member().barrier).toBeNull();
+    expect(s.member().activityLog[0]).toMatchObject({ title: 'Barrier resolved · MAD', note: 'Transportation' });
+  });
+
+  it('resolves it on one drug only when given the drug', () => {
+    const s = withLog([{ date: '10/27/2026', measures: { MAD: { barriers: ['Cost Issue'], interventions: [], result: null, medications: [
+      { id: 'a', name: 'Metformin 500 MG', barriers: ['Cost Issue'], interventions: [] },
+      { id: 'b', name: 'Glipizide 5 MG', barriers: ['Cost Issue'], interventions: [] },
+    ] } } }]);
+    s.get().resolvePharmacyBarrier('1', { code: 'MAD', barrier: 'Cost Issue', medId: 'b' });
+    const [entry] = s.member().interventionLog;
+    expect(entry.resolved).toEqual([{ code: 'MAD', barrier: 'Cost Issue', medication: 'Glipizide 5 MG' }]);
+    expect(entry.measures.MAD.medications.map(r => r.barriers)).toEqual([['Cost Issue'], []]);
+    expect(entry.measures.MAD.barriers).toEqual(['Cost Issue']);
+    expect(s.member().measures[0].medications.map(d => d.nonAdherenceReason)).toEqual(['Transportation', null]);
+  });
+
+  it('clears drug reasons when Update Barriers saves a gap with no barrier, but not from an outreach', () => {
+    const s = withLog([]);
+    const empty = { date: '10/28/2026', measures: { MAD: { barriers: [], interventions: ['Mail order'], result: null } } };
+    s.get().logPharmacyInterventions('1', { ...empty, source: 'Outreach' });
+    expect(s.member().measures[0].medications.map(d => d.nonAdherenceReason)).toEqual(['Transportation', 'Cost Issue']);
+    s.get().logPharmacyInterventions('1', empty, { clearReasons: true });
+    expect(s.member().measures[0].medications.map(d => d.nonAdherenceReason)).toEqual([null, null]);
+  });
+});
+
+describe('intervention outcomes', () => {
+  const setup = (rec) => {
+    const s = storeWith([]);
+    Object.assign(s.member(), {
+      measures: [{ code: 'MAD', medications: [
+        { id: 'a', name: 'Metformin', strength: '500', unit: 'MG', status: 'Active', nonAdherenceReason: 'Forgetfulness' },
+        { id: 'b', name: 'Glipizide', strength: '5', unit: 'MG', status: 'Active', nonAdherenceReason: null },
+      ] }],
+      interventionLog: [{ date: '10/27/2026', measures: { MAD: rec } }],
+      barrier: 'Forgetfulness',
+    });
+    return s;
+  };
+
+  it('Done takes the intervention off and resolves the barriers it was told to', () => {
+    const s = setup({ barriers: ['Forgetfulness', 'Cost Issue'], interventions: ['Pill Box Sent'], result: null });
+    s.get().completePharmacyIntervention('1', { code: 'MAD', intervention: 'Pill Box Sent', outcome: 'Done', resolve: ['Forgetfulness'] });
+    const [entry] = s.member().interventionLog;
+    expect(entry.completed).toEqual([{ code: 'MAD', intervention: 'Pill Box Sent', outcome: 'Done' }]);
+    expect(entry.resolved).toEqual([{ code: 'MAD', barrier: 'Forgetfulness' }]);
+    expect(entry.measures.MAD).toMatchObject({ barriers: ['Cost Issue'], interventions: [] });
+    expect(s.member().measures[0].medications[0].nonAdherenceReason).toBeNull();
+    expect(s.member().activityLog[0]).toMatchObject({ title: 'Intervention done · MAD', note: 'Pill Box Sent\nResolved: Forgetfulness' });
+  });
+
+  it("Didn't work takes the intervention off but leaves every barrier", () => {
+    const s = setup({ barriers: ['Forgetfulness'], interventions: ['Pill Box Sent'], result: null });
+    s.get().completePharmacyIntervention('1', { code: 'MAD', intervention: 'Pill Box Sent', outcome: "Didn't work", resolve: ['Forgetfulness'] });
+    const [entry] = s.member().interventionLog;
+    expect(entry.resolved).toBeUndefined();
+    expect(entry.measures.MAD).toMatchObject({ barriers: ['Forgetfulness'], interventions: [] });
+    expect(s.member().measures[0].medications[0].nonAdherenceReason).toBe('Forgetfulness');
+    expect(s.member().activityLog[0].title).toBe("Intervention didn't work · MAD");
+  });
+
+  it('works on one drug of a gap set per medication', () => {
+    const s = setup({ barriers: ['Forgetfulness'], interventions: ['Pill Box Sent', 'Autofill Set-Up'], result: null, medications: [
+      { id: 'a', name: 'Metformin 500 MG', barriers: ['Forgetfulness'], interventions: ['Pill Box Sent'] },
+      { id: 'b', name: 'Glipizide 5 MG', barriers: [], interventions: ['Autofill Set-Up'] },
+    ] });
+    s.get().completePharmacyIntervention('1', { code: 'MAD', intervention: 'Pill Box Sent', outcome: 'Done', medId: 'a', resolve: ['Forgetfulness'] });
+    const rec = s.member().interventionLog[0].measures.MAD;
+    expect(rec.medications.map(d => [d.barriers, d.interventions])).toEqual([[[], []], [[], ['Autofill Set-Up']]]);
+    expect(rec).toMatchObject({ barriers: [], interventions: ['Autofill Set-Up'] });
+    expect(s.member().interventionLog[0].completed[0]).toMatchObject({ medication: 'Metformin 500 MG' });
+  });
+});
