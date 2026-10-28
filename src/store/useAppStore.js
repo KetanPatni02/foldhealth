@@ -241,6 +241,11 @@ import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice'
 import { createPharmacyWorklistSlice } from './slices/pharmacyWorklistSlice';
 import { createPatientOrdersSlice } from './slices/patientOrdersSlice';
 import { createFeatureReviewsSlice } from './slices/featureReviewsSlice';
+import { createTemplateVersionsSlice } from './slices/templateVersionsSlice';
+import { createIpaOverlaysSlice } from './slices/ipaOverlaysSlice';
+import { applyOverlay, blockedSignoffs } from '../features/settings/care-plan-library/lib/ipaOverlays';
+import { contentOf as templateContentOf } from '../features/settings/care-plan-library/lib/templateVersions';
+import { effectiveVersion as effectiveTemplateVersion, todayIso as todayIsoDate } from '../features/settings/care-plan-library/lib/templateVersions';
 import { createClinicalProtocolsSlice } from './slices/clinicalProtocolsSlice';
 
 // patientId → in-flight fetchPatientConsents request.
@@ -381,6 +386,8 @@ export const useAppStore = create((set, get) => ({
   ...createPharmacyWorklistSlice(set, get),
   ...createPatientOrdersSlice(set, get),
   ...createFeatureReviewsSlice(set, get),
+  ...createTemplateVersionsSlice(set, get),
+  ...createIpaOverlaysSlice(set, get),
   ...createClinicalProtocolsSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
@@ -2866,6 +2873,11 @@ export const useAppStore = create((set, get) => ({
     if (plan && isDueToAutoResume(plan)) {
       await get().resumeCarePlan(patientId, { id: programId, code: plan.programCode }, { auto: true });
     }
+    // Template versions published with "migrate all / a cohort" land when the plan is next opened.
+    if (plan && templateInstances.some(i => i.pendingVersionId)) {
+      get().applyPendingTemplateMigrations(patientId, { id: programId, code: plan.programCode }, 'load')
+        .catch(err => console.warn('applyPendingTemplateMigrations:', err?.message || err));
+    }
   },
 
   // ── Pause / resume (care_plan_pause migration) ──
@@ -4135,9 +4147,27 @@ export const useAppStore = create((set, get) => ({
     const libraryGoals = get().carePlanGoals;
     const templates = get().carePlanTemplates;
 
+    // A template goes on with the patient's IPA overlay on top, when there is an active one.
+    const resolved = new Map();
+    const baseById = new Map(templates.map(t => [t.id, t]));
+    // One at a time: each template merges into the same plan's goals, so
+    // concurrent applies would race on the de-duplication.
     for (const templateId of toAdd) {
-      const template = templates.find(t => t.id === templateId);
-      if (template) await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
+      const base = baseById.get(templateId);
+      if (!base) continue;
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      const found = await get().overlayForPatient(templateId, patientId);
+      const template = found
+        ? {
+          ...base, ...applyOverlay(templateContentOf(base), found.overlay.overrides),
+          overlayId: found.overlay.id,
+          signoffRoute: found.overlay.overrides?.signoff?.mode && found.overlay.overrides.signoff.mode !== 'default'
+            ? { ...found.overlay.overrides.signoff, ipaName: found.ipa.name } : null,
+        }
+        : base;
+      resolved.set(templateId, template);
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
     }
 
     const ok = await get().setPatientCarePlanAppliedTemplates(patientId, program, nextIds, priorityUpdates);
@@ -4148,7 +4178,7 @@ export const useAppStore = create((set, get) => ({
     const templateById = new Map(templates.map(t => [t.id, t]));
     const nextSet = new Set(nextIds);
     await Promise.allSettled([
-      ...toAdd.map(id => templateById.get(id)).filter(Boolean)
+      ...toAdd.map(id => resolved.get(id) || templateById.get(id)).filter(Boolean)
         .map(template => get().startCarePlanTemplateInstance(patientId, program, template)),
       ...prevIds.filter(id => !nextSet.has(id))
         .map(id => get().closeCarePlanTemplateInstance(patientId, program, id)),
@@ -4307,6 +4337,8 @@ export const useAppStore = create((set, get) => ({
         detail: `${n} item${n === 1 ? '' : 's'} discussed${durationMs > 0 ? ` · ${Math.max(1, Math.round(durationMs / 60000))} min` : ''}`,
       });
       get().logCarePlanAudit(patientId, program, rows);
+      // "Next review only" template versions land now.
+      await get().applyPendingTemplateMigrations(patientId, program, 'review');
     }
     return saved;
   },
@@ -4423,6 +4455,13 @@ export const useAppStore = create((set, get) => ({
         ? endsOn
         : (startedAt ? templateEndsOn(template, get().carePlanGoals || [], startedAt) : null),
       created_by: get().currentUserProfile?.name || null,
+      // The IPA overlay it went on with, and who must sign because of it.
+      ...(template.overlayId ? { overlay_id: template.overlayId, signoff_route: template.signoffRoute || null } : {}),
+      // The version applied, so the plan keeps it when a newer one is published.
+      ...(() => {
+        const v = effectiveTemplateVersion(get().carePlanTemplateVersions?.[template.id] || [], todayIsoDate());
+        return v ? { template_version_id: v.id, template_version_number: v.versionNumber } : {};
+      })(),
     }).select().single();
     if (error) { console.warn('startCarePlanTemplateInstance:', error.message); return null; }
     const instance = mapTemplateInstanceRow(data);
@@ -4746,6 +4785,13 @@ export const useAppStore = create((set, get) => ({
     const cur = get().patientCarePlans[key];
     const planId = cur?.plan?.id;
     if (!planId) { get().showToast('Add a goal before signing.'); return null; }
+    // An IPA overlay can route sign-off to specific roles or people.
+    const blocked = blockedSignoffs(cur.templateInstances, get().currentUserProfile);
+    if (blocked.length) {
+      const b = blocked[0];
+      get().showToast(`Only ${b.label} can sign this care plan (${b.templateName}${b.ipaName ? `, ${b.ipaName} sign-off route` : ''}).`);
+      return null;
+    }
     // A signed plan with nothing changed since is already that version, so
     // signing again (Share does) must not cut an identical one.
     if (cur.plan.signedAt) {
@@ -5293,6 +5339,8 @@ export const useAppStore = create((set, get) => ({
       carePlanLibraryLoading: false,
       carePlanLibraryDidFetch: true,
     });
+    // Versions (care_plan_template_versioning migration) load alongside.
+    get().fetchCarePlanTemplateVersions().catch(err => console.warn('fetchCarePlanTemplateVersions:', err?.message || err));
   },
 
   saveCarePlanInterventionTemplate: async (values, id = null) => {
@@ -5426,6 +5474,8 @@ export const useAppStore = create((set, get) => ({
       row.patient_id = row.scope === 'patient' ? (values.patientId != null ? String(values.patientId) : null) : null;
     }
     if (values.renewal) row.renewal = values.renewal;
+    // A draft revision of a published template, waiting for approval.
+    if (!id && values.replacesTemplateId) row.replaces_template_id = values.replacesTemplateId;
     if (!id) {
       // The owner must be the signed-in auth user: RLS checks it against auth.uid().
       const { data: { session } } = await supabase.auth.getSession();
@@ -5450,6 +5500,10 @@ export const useAppStore = create((set, get) => ({
     }
     // And the renewal column: the template saves, re-applying falls back to
     // the condition-based default.
+    if (error && /replaces_template_id/.test(error.message || '') && 'replaces_template_id' in row) {
+      const { replaces_template_id: _rt, ...rowWithoutReplaces } = row;
+      ({ data, error } = await run(rowWithoutReplaces));
+    }
     if (error && /renewal/i.test(error.message || '') && 'renewal' in row) {
       const { renewal: _r, ...rowWithoutRenewal } = row;
       ({ data, error } = await run(rowWithoutRenewal));
@@ -5465,7 +5519,131 @@ export const useAppStore = create((set, get) => ({
         ? s.carePlanTemplates.map(t => (t.id === template.id ? template : t))
         : [...s.carePlanTemplates, template],
     }));
+    // A template published for the first time starts its version chain.
+    if (template.status !== 'draft') await get().ensureCarePlanTemplateVersion(template, { effectiveDate: todayIsoDate() });
     return template;
+  },
+
+  // Bulk import (Care Plan Library > Import): every planned add or update
+  // lands as a draft for approval. Adds are inserted in chunks so hundreds of
+  // templates go in a few requests; an update of a draft rewrites it, an
+  // update of a published template is a draft revision that replaces it on
+  // approval. `plans` come from planTemplateImport; skips are only recorded.
+  importCarePlanTemplates: async (plans, { fileName = '', totals = {} } = {}) => {
+    const actor = get().currentUserProfile?.name || null;
+    const { data: { session } } = await supabase.auth.getSession();
+    const owner = session?.user?.id || null;
+    const isMissingColumn = (e) => /import_batch_id|replaces_template_id|approved_/.test(e?.message || '');
+
+    const { data: batch, error: batchErr } = await supabase.from('care_plan_template_imports').insert({
+      file_name: fileName || 'import',
+      totals,
+      summary: plans.map(p => ({ name: p.name, action: p.action, why: p.why, issues: p.issues })),
+      created_by: actor,
+    }).select('id').single();
+    if (batchErr) console.warn('care_plan_template_imports insert (run care_plan_template_import_migration.sql?):', batchErr.message);
+    const batchId = batch?.id || null;
+
+    const rowFor = (p) => ({
+      name: p.template.name,
+      conditions: p.template.conditions,
+      goals: p.template.goals,
+      interventions: p.template.interventions,
+      barriers: p.template.barriers,
+      status: 'draft',
+      // Every row names its renewal: a multi-row insert sends the union of the
+      // rows' columns, so one row without it would send null (NOT NULL column).
+      renewal: p.template.renewal || ((p.template.conditions || []).length ? 'extend' : 'reinstate'),
+      ...(batchId ? { import_batch_id: batchId } : {}),
+      updated_by: actor,
+    });
+    const created = [];
+    const updated = [];
+    let failed = 0;
+
+    const inserts = plans.filter(p => p.action === 'add' || (p.action === 'update' && p.existing?.status !== 'draft'))
+      .map(p => ({
+        ...rowFor(p), scope: 'org', owner_user_id: owner, created_by: actor,
+        replaces_template_id: p.action === 'update' ? p.existing.id : null,
+      }));
+    const insertParts = Array.from({ length: Math.ceil(inserts.length / 100) }, (_, i) => inserts.slice(i * 100, i * 100 + 100));
+    const inserted = await Promise.all(insertParts.map(async (part) => {
+      let { data, error } = await supabase.from('care_plan_templates').insert(part).select();
+      if (error && isMissingColumn(error)) {
+        ({ data, error } = await supabase.from('care_plan_templates')
+          .insert(part.map(({ import_batch_id: _b, replaces_template_id: _r, ...rest }) => rest)).select());
+      }
+      if (error) { console.warn('importCarePlanTemplates insert:', error.message); failed += part.length; return []; }
+      return (data || []).map(mapCarePlanTemplateRow);
+    }));
+    created.push(...inserted.flat());
+
+    const draftUpdates = plans.filter(p => p.action === 'update' && p.existing?.status === 'draft');
+    const results = await Promise.all(draftUpdates.map(async (p) => {
+      const row = { ...rowFor(p), updated_at: new Date().toISOString() };
+      let { data, error } = await supabase.from('care_plan_templates').update(row).eq('id', p.existing.id).select().single();
+      if (error && isMissingColumn(error)) {
+        const { import_batch_id: _b, ...rest } = row;
+        ({ data, error } = await supabase.from('care_plan_templates').update(rest).eq('id', p.existing.id).select().single());
+      }
+      if (error) { console.warn('importCarePlanTemplates update:', error.message); return null; }
+      return mapCarePlanTemplateRow(data);
+    }));
+    for (const t of results) { if (t) updated.push(t); else failed += 1; }
+
+    const byId = new Map(updated.map(t => [t.id, t]));
+    set(s => ({ carePlanTemplates: [...s.carePlanTemplates.map(t => byId.get(t.id) || t), ...created] }));
+    return { created: created.length, updated: updated.length, failed, batchId };
+  },
+
+  // Approve drafts: a new one is published as is; a revision of a published
+  // template writes its content over that template and the draft goes away.
+  approveCarePlanTemplateDrafts: async (ids) => {
+    const actor = get().currentUserProfile?.name || null;
+    const now = new Date().toISOString();
+    const idSet = new Set(ids);
+    const drafts = get().carePlanTemplates.filter(t => idSet.has(t.id) && t.status === 'draft');
+    const stamp = (row) => ({ ...row, status: 'published', approved_by: actor, approved_at: now, updated_by: actor, updated_at: now });
+    const write = async (id, row) => {
+      let res = await supabase.from('care_plan_templates').update(stamp(row)).eq('id', id).select().single();
+      if (res.error && /approved_/.test(res.error.message || '')) {
+        const { approved_by: _a, approved_at: _t, ...rest } = stamp(row);
+        res = await supabase.from('care_plan_templates').update(rest).eq('id', id).select().single();
+      }
+      return res;
+    };
+    const outcomes = await Promise.all(drafts.map(async (d) => {
+      const target = d.replacesTemplateId && get().carePlanTemplates.find(t => t.id === d.replacesTemplateId);
+      if (!target) {
+        const { data, error } = await write(d.id, {});
+        if (error) return { failed: d };
+        const fresh = mapCarePlanTemplateRow(data);
+        await get().ensureCarePlanTemplateVersion(fresh, { effectiveDate: todayIsoDate(), note: 'Approved' });
+        return { published: get().carePlanTemplates.find(t => t.id === fresh.id) || fresh };
+      }
+      const content = { name: d.name, conditions: d.conditions, goals: d.goals, interventions: d.interventions, barriers: d.barriers, renewal: d.renewal };
+      if (get().carePlanTemplateVersioningReady) {
+        // A revision is the template's next version, in effect today; plans
+        // move to it at their next review (Publish version offers the rest).
+        const impactRows = await get().fetchCarePlanTemplateImpact(target.id);
+        const res = await get().publishCarePlanTemplateVersion(target, content, {
+          effectiveDate: todayIsoDate(), note: `Approved revision${d.importBatchId ? ' (imported)' : ''}`, mode: 'review', impactRows,
+        });
+        if (!res) return { failed: d };
+        await supabase.from('care_plan_templates').update({ approved_by: actor, approved_at: now }).eq('id', target.id);
+      } else {
+        const { error } = await write(target.id, content);
+        if (error) return { failed: d };
+      }
+      await supabase.from('care_plan_templates').delete().eq('id', d.id);
+      return { published: get().carePlanTemplates.find(t => t.id === target.id), removed: d.id };
+    }));
+    const published = new Map(outcomes.filter(o => o.published).map(o => [o.published.id, o.published]));
+    const removed = new Set(outcomes.map(o => o.removed).filter(Boolean));
+    set(s => ({ carePlanTemplates: s.carePlanTemplates.filter(t => !removed.has(t.id)).map(t => published.get(t.id) || t) }));
+    const failed = outcomes.filter(o => o.failed).length;
+    if (failed) get().showToast(`Could not approve ${failed} template${failed === 1 ? '' : 's'}`);
+    return { approved: published.size, failed };
   },
 
   deleteCarePlanTemplate: async (id) => {

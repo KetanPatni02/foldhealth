@@ -19,6 +19,10 @@ import { CarePlanTemplateView } from './care-plan-library/templates';
 import { CareProgramConfigPanel } from './care-program-config/CareProgramConfigPanel';
 import { ClinicalProtocolsPanel } from './clinical-protocols/ClinicalProtocolsPanel';
 import { useAppStore } from '../../store/useAppStore';
+import { useState } from 'react';
+import { PublishVersionDrawer } from './care-plan-library/versions/PublishVersionDrawer';
+import { useCanManageTemplates } from './care-plan-library/lib/useCanManageTemplates';
+import { contentOf, todayIso } from './care-plan-library/lib/templateVersions';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { useFloatingSubNavSlot } from '../../components/FloatingSidebar/floatingSubNavSlot';
@@ -69,21 +73,57 @@ export function SettingsLayout() {
   const setCarePlanTab = useAppStore(s => s.setCarePlanTab);
   const showToast = useAppStore(s => s.showToast);
   const automationsView = useAppStore(s => s.automationsView);
+  const templateVersioningReady = useAppStore(s => s.carePlanTemplateVersioningReady);
+  const canManageTemplates = useCanManageTemplates();
+  const [publishing, setPublishing] = useState(null); // { template, content, scope }
   const can = useCan();
 
   // Editing a template owns the whole Settings area, same as New Care Plan.
   if (carePlanTemplateScreen) {
     const { template } = carePlanTemplateScreen;
+    // A published template changes by publishing its next version (supervisors)
+    // or by a draft revision a supervisor approves. Drafts save in place.
+    const versioned = template.status !== 'draft' && templateVersioningReady;
     return (
       <div className={styles.layout}>
         <CarePlanTemplateView
           template={template}
           onClose={() => setCarePlanTemplateScreen(null)}
           onSave={async (values) => {
-            const saved = await saveCarePlanTemplate({ status: template.status, ...values }, template.id);
-            if (saved) setCarePlanTemplateScreen(null);
+            if (!versioned) {
+              const saved = await saveCarePlanTemplate({ status: template.status, ...values }, template.id);
+              if (saved) setCarePlanTemplateScreen(null);
+              return;
+            }
+            const content = { ...contentOf(template), ...contentOf({ ...template, ...values }) };
+            if (canManageTemplates) { setPublishing({ template, content, scope: values.scope }); return; }
+            const saved = await saveCarePlanTemplate({ ...content, status: 'draft', replacesTemplateId: template.id });
+            if (!saved) return;
+            showToast(`Changes saved as a draft revision of "${template.name}" for a supervisor to approve`);
+            setCarePlanTab('drafts');
+            setCarePlanTemplateScreen(null);
           }}
         />
+        {publishing && (
+          <PublishVersionDrawer
+            template={publishing.template}
+            content={publishing.content}
+            onClose={() => setPublishing(null)}
+            onPublished={async (res) => {
+              if (publishing.scope) {
+                const row = useAppStore.getState().carePlanTemplates.find(t => t.id === publishing.template.id);
+                if (row) await saveCarePlanTemplate({ ...row, scope: publishing.scope, patientId: row.patientId }, row.id);
+              }
+              const when = res.version.effectiveDate > todayIso() ? ` effective ${res.version.effectiveDate.slice(5, 7)}/${res.version.effectiveDate.slice(8, 10)}/${res.version.effectiveDate.slice(0, 4)}` : '';
+              const moved = res.pending === 'review'
+                ? `${res.targeted} plan${res.targeted === 1 ? '' : 's'} move at their next review`
+                : when ? `${res.targeted} plan${res.targeted === 1 ? '' : 's'} move then` : `${res.migrated} plan${res.migrated === 1 ? '' : 's'} migrated${res.failed ? `, ${res.failed} failed` : ''}`;
+              showToast(`Version ${res.version.versionNumber} published${when}. ${moved}.`);
+              setPublishing(null);
+              setCarePlanTemplateScreen(null);
+            }}
+          />
+        )}
       </div>
     );
   }

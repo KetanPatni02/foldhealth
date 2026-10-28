@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../../../components/Icon/Icon';
 import { Badge } from '../../../../../components/Badge/Badge';
+import { Tooltip } from '../../../../../components/Tooltip/Tooltip';
 import { BadgeRow } from '../../../../../components/BadgeRow/BadgeRow';
 import { Button } from '../../../../../components/Button/Button';
 import { Input } from '../../../../../components/Input/Input';
@@ -28,6 +29,14 @@ import { AddBarriersDrawer } from '../../barriers/AddBarriersDrawer/AddBarriersD
 import { BarrierDrawer } from '../../barriers/BarrierDrawer/BarrierDrawer';
 import { CreateGoalDrawer } from '../../goals/CreateGoalDrawer/CreateGoalDrawer';
 import { formatGoalTarget, formatGoalDuration } from '../../lib/goalFormat';
+import { TemplateImportDrawer } from '../../import/TemplateImportDrawer';
+import { TemplateVersionsDrawer } from '../../versions/TemplateVersionsDrawer';
+import { OverlayEditorDrawer } from '../../overlays/OverlayEditorDrawer';
+import { IpaRegistryDrawer } from '../../overlays/IpaRegistryDrawer';
+import { overlaySummary } from '../../lib/ipaOverlays';
+import { todayIso } from '../../lib/templateVersions';
+import { BulkBar } from '../../../../../components/BulkBar/BulkBar';
+import { useCanManageTemplates } from '../../lib/useCanManageTemplates';
 import styles from './CarePlanLibraryPanel.module.css';
 
 const CARE_PLAN_TABS = [
@@ -36,6 +45,7 @@ const CARE_PLAN_TABS = [
   { key: 'interventions', label: 'Interventions Library' },
   { key: 'barriers', label: 'Barriers Library' },
   { key: 'drafts', label: 'Draft Templates' },
+  { key: 'overlays', label: 'IPA Overlays' },
 ];
 
 const TAB_META = {
@@ -44,7 +54,16 @@ const TAB_META = {
   interventions: { entityLabel: 'Intervention', emptyIcon: 'solar:clipboard-check-linear' },
   barriers: { entityLabel: 'Barrier', emptyIcon: 'custom:barrier' },
   drafts: { entityLabel: 'Draft', emptyIcon: 'solar:clipboard-list-linear' },
+  overlays: { entityLabel: 'Overlay', emptyIcon: 'solar:layers-linear' },
 };
+const OVERLAY_COLUMNS = [
+  { key: 'template', label: 'Template', sticky: 'left', left: 0, width: 260 },
+  { key: 'ipa', label: 'IPA', width: 160 },
+  { key: 'status', label: 'Status', width: 110 },
+  { key: 'changes', label: 'What it changes', width: 340 },
+  { key: 'updated', label: 'Last Update', width: 200 },
+  { key: 'actions', label: 'Actions', sticky: 'right', width: 132 },
+];
 
 // The intervention kinds a template can carry — same vocabulary as the goal
 // drawer's Add-Intervention menu (Figma 14109:303516).
@@ -118,6 +137,8 @@ const TEMPLATE_COLUMNS = [
   { key: 'updated', label: 'Last Update', sortKey: 'updatedAt', sortType: 'date', width: 200 },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 132 },
 ];
+// Drafts add Approve to the row actions.
+const DRAFT_COLUMNS = TEMPLATE_COLUMNS.map(c => (c.key === 'actions' ? { ...c, width: 168 } : c));
 
 // Figma 14181:316571 — checkbox, Goals Title, Type, Linked Items, Target
 // Value, Duration, Chronic Conditions, Created On, Actions. Widths are the
@@ -170,7 +191,7 @@ function simpleDraftFrom(kind, item) {
 // Kebab "More Action" menu on a template row — Figma only breaks Delete out
 // into this overflow menu; Edit/Duplicate get their own always-visible
 // ActionButtons.
-function TemplateRowMenu({ onDuplicate, onDelete }) {
+function TemplateRowMenu({ onDuplicate, onCustomize, onDelete }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -193,6 +214,12 @@ function TemplateRowMenu({ onDuplicate, onDelete }) {
               <button className={styles.overflowItem} onClick={() => { setOpen(false); onDuplicate(); }}>
                 <Icon name="solar:copy-linear" size={15} color="var(--neutral-300)" />
                 Duplicate
+              </button>
+            )}
+            {onCustomize && (
+              <button className={styles.overflowItem} onClick={() => { setOpen(false); onCustomize(); }}>
+                <Icon name="solar:layers-linear" size={15} color="var(--neutral-300)" />
+                Customize for an IPA
               </button>
             )}
             <button
@@ -246,6 +273,34 @@ export function CarePlanLibraryPanel() {
   const saveCarePlanBarrier = useAppStore(s => s.saveCarePlanBarrier);
   const deleteCarePlanBarrier = useAppStore(s => s.deleteCarePlanBarrier);
   const saveCarePlanTemplate = useAppStore(s => s.saveCarePlanTemplate);
+  const approveCarePlanTemplateDrafts = useAppStore(s => s.approveCarePlanTemplateDrafts);
+  // Importing, approving and versioning templates is for supervisors.
+  const canManageTemplates = useCanManageTemplates();
+  const [importOpen, setImportOpen] = useState(false);
+  const templateVersions = useAppStore(s => s.carePlanTemplateVersions);
+  const [versionsFor, setVersionsFor] = useState(null);
+  const ipas = useAppStore(s => s.ipas);
+  const templateOverlays = useAppStore(s => s.templateOverlays);
+  const overlaysLoaded = useAppStore(s => s.templateOverlaysLoaded);
+  const fetchIpas = useAppStore(s => s.fetchIpas);
+  const fetchTemplateOverlays = useAppStore(s => s.fetchTemplateOverlays);
+  const deleteTemplateOverlay = useAppStore(s => s.deleteTemplateOverlay);
+  const cloneTemplateOverlay = useAppStore(s => s.cloneTemplateOverlay);
+  const [overlayEditor, setOverlayEditor] = useState(null); // { overlay } (null overlay = new)
+  const [ipaRegistryOpen, setIpaRegistryOpen] = useState(false);
+  const [cloneTarget, setCloneTarget] = useState(null); // { overlay, ipaIds }
+  useEffect(() => { fetchIpas(); fetchTemplateOverlays(); }, [fetchIpas, fetchTemplateOverlays]);
+  const [approving, setApproving] = useState(false);
+  const approveDrafts = async (ids) => {
+    if (!ids.length) return;
+    setApproving(true);
+    let approved;
+    try { ({ approved } = await approveCarePlanTemplateDrafts(ids)); }
+    finally { setApproving(false); }
+    const done = new Set(ids);
+    setSelectedTemplateIds(prev => prev.filter(id => !done.has(id)));
+    if (approved) toast.success(`${approved} template${approved === 1 ? '' : 's'} approved and published`);
+  };
   const deleteCarePlanTemplate = useAppStore(s => s.deleteCarePlanTemplate);
   const interventionTemplates = useAppStore(s => s.carePlanInterventionTemplates);
   const saveCarePlanInterventionTemplate = useAppStore(s => s.saveCarePlanInterventionTemplate);
@@ -373,6 +428,7 @@ export function CarePlanLibraryPanel() {
     // Templates get the full-pane New Care Plan view; goals/barriers/
     // interventions keep the lightweight drawer.
     if (activeTab === 'template' || activeTab === 'drafts') { setCarePlanCreateOpen(true); return; }
+    if (activeTab === 'overlays') { setOverlayEditor({ overlay: null }); return; }
     if (activeTab === 'goals') { setDraft(blankSimpleDraft('goal')); return; }
     if (activeTab === 'interventions') { setDraft({ kind: 'intervention', id: null, title: '', description: '', interventionKind: 'internal-task' }); return; }
     setDraft(blankSimpleDraft('barrier'));
@@ -388,7 +444,8 @@ export function CarePlanLibraryPanel() {
 
   const confirmDelete = () => {
     const { kind, id, name } = deleteTarget;
-    if (kind === 'template') deleteCarePlanTemplate(id);
+    if (kind === 'overlay') deleteTemplateOverlay(id);
+    else if (kind === 'template') deleteCarePlanTemplate(id);
     else if (kind === 'goal') deleteCarePlanGoal(id);
     else if (kind === 'intervention') deleteCarePlanInterventionTemplate(id);
     else deleteCarePlanBarrier(id);
@@ -456,6 +513,24 @@ export function CarePlanLibraryPanel() {
         <span className={styles.nameWithScope}>
           <button type="button" className={styles.nameLink} onClick={() => openEditTemplate(t)}>{t.name}</button>
           <TemplateScopeBadge template={t} />
+          {t.status === 'draft' && t.replacesTemplateId && (
+            <Tooltip label={`Replaces the published "${templates.find(x => x.id === t.replacesTemplateId)?.name || 'template'}" when approved`}>
+              <Badge tone="info" size="S" label="Revision" />
+            </Tooltip>
+          )}
+          {t.status === 'draft' && t.importBatchId && !t.replacesTemplateId && <Badge tone="info" size="S" label="Imported" />}
+          {t.status !== 'draft' && (templateVersions[t.id] || []).length > 0 && (() => {
+            const chain = templateVersions[t.id];
+            const scheduled = chain.filter(v => v.effectiveDate > todayIso()).pop();
+            const d = scheduled?.effectiveDate;
+            return (
+              <Tooltip label={scheduled ? `Version ${scheduled.versionNumber} takes effect ${d.slice(5, 7)}/${d.slice(8, 10)}/${d.slice(0, 4)}. See versions` : 'See versions'}>
+                <button type="button" className={styles.versionBadge} onClick={() => setVersionsFor(t)}>
+                  <Badge tone={scheduled ? 'info' : 'grey'} size="S" label={`v${t.currentVersionNumber || 1}${scheduled ? ` → v${scheduled.versionNumber}` : ''}`} />
+                </button>
+              </Tooltip>
+            );
+          })()}
         </span>
       </td>
       <td className={styles.tdConditions}>
@@ -480,6 +555,18 @@ export function CarePlanLibraryPanel() {
           </ActionButton>
           <div className={styles.vDivider} />
           <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditTemplate(t)} />
+          {t.status === 'draft' && canManageTemplates && (
+            <>
+              <div className={styles.vDivider} />
+              <ActionButton
+                icon="solar:check-circle-linear"
+                size="S"
+                tooltip={t.replacesTemplateId ? 'Approve and replace the published template' : 'Approve and publish'}
+                disabled={approving}
+                onClick={() => approveDrafts([t.id])}
+              />
+            </>
+          )}
           <div className={styles.vDivider} />
           <TemplateRowMenu
             onDuplicate={() => setDuplicateTarget({
@@ -487,6 +574,7 @@ export function CarePlanLibraryPanel() {
               name: `${t.name} (Copy)`,
               scope: templateScopeOf(t) === 'user' ? 'user' : 'org',
             })}
+            onCustomize={t.status !== 'draft' && canManageTemplates ? () => setOverlayEditor({ overlay: null, templateId: t.id }) : undefined}
             onDelete={() => setDeleteTarget({ kind: 'template', id: t.id, name: t.name })}
           />
         </div>
@@ -559,6 +647,51 @@ export function CarePlanLibraryPanel() {
     </tr>
   );
 
+  // IPA overlays: newest first, filtered by template or IPA name.
+  const templateById = useMemo(() => new Map((allTemplates || []).map(t => [t.id, t])), [allTemplates]);
+  const ipaById = useMemo(() => new Map((ipas || []).map(i => [i.id, i])), [ipas]);
+  const filteredOverlays = useMemo(() => {
+    const q = searchValue.trim().toLowerCase();
+    return (templateOverlays || []).filter(o => templateById.get(o.templateId) && (!q
+      || templateById.get(o.templateId).name.toLowerCase().includes(q)
+      || (ipaById.get(o.ipaId)?.name || '').toLowerCase().includes(q)));
+  }, [templateOverlays, templateById, ipaById, searchValue]);
+
+  const renderOverlayRow = (o) => {
+    const t = templateById.get(o.templateId);
+    const sum = overlaySummary(t, o.overrides);
+    const changes = [
+      sum.hidden ? `${sum.hidden} hidden` : null,
+      sum.changed ? `${sum.changed} changed` : null,
+      sum.added ? `${sum.added} added` : null,
+      sum.signoff ? `Sign-off: ${sum.signoff}` : null,
+    ].filter(Boolean).join(' • ') || 'No changes yet';
+    return (
+      <tr key={o.id} className={styles.row}>
+        <td className={nameTdClass}>
+          <button type="button" className={styles.nameLink} onClick={() => setOverlayEditor({ overlay: o })}>{t.name}</button>
+        </td>
+        <td className={styles.tdMuted}>{ipaById.get(o.ipaId)?.name || '—'}</td>
+        <td><Badge tone={o.status === 'active' ? 'success' : 'grey'} size="S" label={o.status === 'active' ? 'Active' : 'Draft'} /></td>
+        <td className={styles.tdMuted}>{changes}</td>
+        <td className={styles.tdUpdated}><StampCell name={o.updatedBy}>{formatDateTime(o.updatedAt)}</StampCell></td>
+        <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
+          <div className={styles.actionCell}>
+            <ActionButton icon="solar:pen-linear" size="S" tooltip={canManageTemplates ? 'Edit' : 'View'} onClick={() => setOverlayEditor({ overlay: o })} />
+            {canManageTemplates && (
+              <>
+                <div className={styles.vDivider} />
+                <ActionButton icon="solar:copy-linear" size="S" tooltip="Clone to other IPAs" onClick={() => setCloneTarget({ overlay: o, ipaIds: [] })} />
+                <div className={styles.vDivider} />
+                <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Delete" onClick={() => setDeleteTarget({ kind: 'overlay', id: o.id, name: `${t.name} for ${ipaById.get(o.ipaId)?.name || 'IPA'}` })} />
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   const renderInterventionRow = (item) => (
     <tr key={item.id} className={styles.row}>
       <td className={checkTdClass} onClick={e => e.stopPropagation()}>
@@ -602,7 +735,7 @@ export function CarePlanLibraryPanel() {
 
   const meta = TAB_META[activeTab];
   const isTemplateTab = activeTab === 'template' || activeTab === 'drafts';
-  const primaryActionLabel = `New ${meta.entityLabel}`;
+  const primaryActionLabel = activeTab === 'overlays' && !canManageTemplates ? undefined : `New ${meta.entityLabel}`;
 
   return (
     <div className={styles.wrapper}>
@@ -620,10 +753,22 @@ export function CarePlanLibraryPanel() {
         primaryActionLabel={primaryActionLabel}
         onPrimaryAction={openCreate}
         rightExtras={(
+          <>
+          {activeTab === 'overlays' && (
+            <Button variant="secondary" size="L" leadingIcon="solar:buildings-2-linear" onClick={() => setIpaRegistryOpen(true)}>
+              IPAs
+            </Button>
+          )}
+          {isTemplateTab && canManageTemplates && (
+            <Button variant="secondary" size="L" leadingIcon="solar:upload-minimalistic-linear" onClick={() => setImportOpen(true)}>
+              Import
+            </Button>
+          )}
           <BulkSelectToggle
             active={bulkMode}
             onToggle={() => (bulkMode ? exitBulkMode() : setBulkMode(true))}
           />
+          </>
         )}
       />
 
@@ -669,9 +814,13 @@ export function CarePlanLibraryPanel() {
           draftTemplates.length === 0 ? emptyPane('No Draft Templates') : (
           <WorklistShell
             header={null}
-            columns={withSelect(TEMPLATE_COLUMNS, bulkMode)}
+            columns={withSelect(DRAFT_COLUMNS, bulkMode)}
             rows={filteredDrafts}
             renderRow={renderTemplateRow}
+            selectedIds={bulkMode ? selectedTemplateIds : undefined}
+            onSelectAll={bulkMode ? () => setSelectedTemplateIds(
+              selectedTemplateIds.length === filteredDrafts.length ? [] : filteredDrafts.map(t => t.id),
+            ) : undefined}
             sortKey={templateSort.key}
             sortDir={templateSort.dir}
             onSort={handleTemplateSort}
@@ -683,6 +832,31 @@ export function CarePlanLibraryPanel() {
             }
             minTableWidth={1100}
           />
+          )
+        )}
+        {activeTab === 'overlays' && (
+          !overlaysLoaded ? <TableSkeleton rows={4} /> : (templateOverlays || []).length === 0 ? (
+            <div className={styles.emptyPane}>
+              <RingEmptyState icon="solar:layers-linear" label="No IPA Overlays" />
+              <p className={styles.emptyHint}>Customize a template for one IPA: hide or reprioritize items, change goal cadence, reword items for patients, add local items and route sign-off.</p>
+              {canManageTemplates && (
+                <Button variant="primary" size="L" leadingIconElement={<AddIconMinimalist size={16} />} onClick={openCreate}>New Overlay</Button>
+              )}
+            </div>
+          ) : (
+            <WorklistShell
+              header={null}
+              columns={OVERLAY_COLUMNS}
+              rows={filteredOverlays}
+              renderRow={renderOverlayRow}
+              emptyState={(
+                <div className={styles.emptyState}>
+                  <Icon name="solar:layers-linear" size={32} color="var(--neutral-150)" />
+                  <p>No overlays match "<strong>{searchValue.trim()}</strong>".</p>
+                </div>
+              )}
+              minTableWidth={1100}
+            />
           )
         )}
         {!(libraryLoading && !libraryDidFetch) && activeTab === 'goals' && (
@@ -759,6 +933,64 @@ export function CarePlanLibraryPanel() {
           )
         )}
       </div>
+
+      {activeTab === 'drafts' && bulkMode && canManageTemplates && selectedTemplateIds.length > 0 && (
+        <BulkBar
+          selectedIds={selectedTemplateIds}
+          onClear={() => setSelectedTemplateIds([])}
+          noun="Drafts"
+          actions={[{ label: approving ? 'Approving…' : 'Approve', icon: 'solar:check-circle-linear', variant: 'primary', onClick: (ids) => approveDrafts(ids) }]}
+        />
+      )}
+
+      {versionsFor && <TemplateVersionsDrawer template={versionsFor} onClose={() => setVersionsFor(null)} />}
+
+      {overlayEditor && (
+        <OverlayEditorDrawer
+          key={overlayEditor.overlay?.id || `new-${overlayEditor.templateId || ''}`}
+          overlay={overlayEditor.overlay || (overlayEditor.templateId ? { templateId: overlayEditor.templateId, isNew: true } : null)}
+          canEdit={canManageTemplates}
+          onClose={() => { setOverlayEditor(null); if (activeTab !== 'overlays') handleTabChange('overlays'); }}
+        />
+      )}
+      {ipaRegistryOpen && <IpaRegistryDrawer canEdit={canManageTemplates} onClose={() => setIpaRegistryOpen(false)} />}
+      {cloneTarget && (
+        <ConfirmDialog
+          variant="primary"
+          align="start"
+          icon="solar:copy-linear"
+          iconColor="var(--primary-300)"
+          title={`Clone to other IPAs`}
+          description={`Copies this overlay of ${templateById.get(cloneTarget.overlay.templateId)?.name} to the IPAs you pick, as drafts to adjust. IPAs that already have one for this template are left alone.`}
+          confirmLabel="Clone"
+          onCancel={() => setCloneTarget(null)}
+          onConfirm={async () => {
+            const res = await cloneTemplateOverlay(cloneTarget.overlay, cloneTarget.ipaIds);
+            setCloneTarget(null);
+            if (res) toast.success(`${res.created.length} draft overlay${res.created.length === 1 ? '' : 's'} created${res.skipped ? `; ${res.skipped} skipped` : ''}`);
+          }}
+        >
+          <Select
+            portal
+            label="IPAs"
+            multiple
+            checkboxes
+            badges
+            searchable
+            options={ipas.filter(i => i.active && !templateOverlays.some(o => o.templateId === cloneTarget.overlay.templateId && o.ipaId === i.id)).map(i => ({ value: i.id, label: i.name }))}
+            value={cloneTarget.ipaIds}
+            onChange={v => setCloneTarget(c => ({ ...c, ipaIds: v || [] }))}
+            placeholder="Pick IPAs"
+          />
+        </ConfirmDialog>
+      )}
+
+      {importOpen && (
+        <TemplateImportDrawer
+          onClose={() => setImportOpen(false)}
+          onReviewDrafts={() => { setImportOpen(false); handleTabChange('drafts'); }}
+        />
+      )}
 
       {draft && draft.kind === 'goal' && (
         <CreateGoalDrawer
