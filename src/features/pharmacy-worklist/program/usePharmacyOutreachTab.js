@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { useOutreachTab } from '../../patient/left-panel/tabs/outreach/OutreachTab/useOutreachTab';
-import { MEASURE_ORDER, callKey } from '../pharmacyWorklist.utils';
+import { MEASURE_ORDER, OUTREACH_TONE_COLOR, callKey, outreachTone } from '../pharmacyWorklist.utils';
 import { schemaOutcomeItems } from '../interventionSchema';
 import { fillEventFor, setsRecentFill } from '../fillEvents';
 import { mapOutcomesToIntervention } from '../outcomeMapping';
@@ -38,7 +38,7 @@ function toLogGroups(callHistory) {
       // Stored as "Side effects — Experienced" (outcome matching relies on
       // it); shown as "Side effects: Experienced".
       outcome: c.outcome?.replaceAll(' — ', ': '),
-      outcomeColor: c.result === 'failed' ? 'var(--status-error)' : 'var(--status-success)',
+      outcomeColor: OUTREACH_TONE_COLOR[outreachTone(c.result)],
       note: c.note,
     });
   });
@@ -105,7 +105,7 @@ export function usePharmacyOutreachTab(member, { programCode = 'PHARM', ...optio
       // Schema outcomes are "Stakeholder · Outcome"; the stakeholder is who was contacted.
       contact: firstOutcome.includes(' · ') ? firstOutcome.split(' · ')[0] : first.title,
       outcome: outcomes.join('; '),
-      result: (first.outcomeColor || '').includes('error') ? 'failed' : 'success',
+      result: (first.outcomeColor || '').includes('error') ? 'failed' : (first.outcomeColor || '').includes('warning') ? 'note' : 'success',
       by: first.author,
       note: [...new Set(entries.map(e => e.note).filter(Boolean))].join(' / '),
       measures: entries.map(e => e.programs[0]),
@@ -130,6 +130,8 @@ export function usePharmacyOutreachTab(member, { programCode = 'PHARM', ...optio
         by: first.author,
         note: [...new Set(entries.map(e => e.note).filter(Boolean))].join(' / '),
         source: 'Outreach',
+        // Its History line wears the outreach type's icon (call, SMS, email…).
+        outreachType: first.type,
         measures: byMeasure,
       });
     }

@@ -14,11 +14,13 @@ import styles from './SubTabs.module.css';
  *  - onChange  (key) => void             — called with a tab's key on click.
  *  - leading   ReactNode                 — optional content rendered before the
  *                                          tabs (e.g. a search toggle + divider).
+ *  - size      'M' | 'S'                  — S: 24px tall, 13px text, for a switch
+ *                                          inside a drawer tab
  *  - className string
  */
-export function SubTabs({ tabs, activeKey, onChange, leading, className }) {
+export function SubTabs({ tabs, activeKey, onChange, leading, size = 'M', className }) {
   return (
-    <div className={[styles.subTabs, className].filter(Boolean).join(' ')}>
+    <div className={[styles.subTabs, size === 'S' ? styles.sizeS : '', className].filter(Boolean).join(' ')}>
       {leading}
       {tabs.map((t) => {
         const key = typeof t === 'string' ? t : t.key;

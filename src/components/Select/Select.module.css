@@ -310,6 +310,10 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+/* The first chip may shrink and ellipsize rather than fold into "+N". */
+.triggerBadges > .badgeShrink { flex-shrink: 1; min-width: 0; max-width: 100%; }
+.badgeText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Off-screen mirror of the full badge set — measured for widths, never seen. */
 .triggerBadgesMeasure {
   position: absolute;

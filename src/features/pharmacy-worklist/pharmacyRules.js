@@ -49,7 +49,7 @@ function failedAttempts(gap, member) {
   for (const c of member.callHistory || []) {
     if (!(c.measures || []).includes(gap.code) || (parseMdy(c.date) || 0) < from) continue;
     if (PRESCRIBER_CONTACTS.test(c.contact || '')) return { count, escalated: true };
-    if (c.kind === 'pharmacy-verification' || NOT_MEMBER_CONTACTS.test(c.contact || '')) continue;
+    if (c.kind === 'pharmacy-verification' || c.result === 'note' || NOT_MEMBER_CONTACTS.test(c.contact || '')) continue;
     if (c.result === 'success') break;
     count += 1;
   }

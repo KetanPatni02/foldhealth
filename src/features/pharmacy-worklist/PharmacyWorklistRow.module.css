@@ -88,10 +88,10 @@
   display: inline-flex; align-items: center;
 }
 
-.leadNote { display: inline-flex; align-items: center; gap: var(--space-1); max-width: 200px; }
-.truncate {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--font-md); color: var(--neutral-300);
+/* The whole note in a narrow column, wrapping down into the row's height. */
+.leadNote {
+  display: block; width: 180px; white-space: normal; overflow-wrap: anywhere;
+  font-size: var(--font-md); line-height: var(--leading-tight); color: var(--neutral-300);
 }
 
 .actionsCell { display: flex; align-items: center; gap: var(--space-2); justify-content: flex-end; }
@@ -174,25 +174,25 @@
 }
 .gapBadgeButton:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; }
 
-/* Open Care Gaps hover card: one row per gap, each opening its Care Gap Details. */
-.gapLinks { display: flex; flex-direction: column; }
-.gapLink, .gapLinkStatic {
-  display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  border: none;
-  border-radius: 6px;
-  background: none;
-  text-align: left;
-  font-size: var(--font-sm);
-  color: var(--neutral-400);
+/* Open Care Gaps hover card, laid out like the HCC Open ICDs popup. */
+.gapCard { display: flex; flex-direction: column; max-height: 320px; }
+.gapCardHeader {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-100);
+  font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300);
 }
-.gapLink { cursor: pointer; }
-.gapLink:hover { background: var(--primary-50); color: var(--primary-300); }
-.gapLinkName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gapLinkStatus { color: var(--neutral-300); }
+.gapCardList { display: flex; flex-direction: column; overflow-y: auto; }
+.gapCardRow {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: none; background: var(--neutral-0); text-align: left;
+}
+.gapCardRow + .gapCardRow { border-top: 0.5px solid var(--neutral-100); }
+.gapCardLink { cursor: pointer; transition: background 0.12s; }
+.gapCardLink:hover { background: var(--neutral-50); }
+.gapCardName { font-size: var(--font-md); line-height: var(--leading-tight); color: var(--neutral-400); white-space: normal; }
+.gapCardName b { font-weight: 600; }
 
 /* "Rework task open" under Claim Reconciliation: opens the task. */
 .reworkLink {
