@@ -323,6 +323,7 @@ const SETTINGS_SECTION_TO_NAV = {
   'calls': 'calls',
   'care-plan-library': 'care-plan-library',
   'care-program-config': 'care-program-config',
+  'clinical-protocols': 'clinical-protocols',
   'crm-widgets': 'crm-widgets',
   'embedded-components': 'embedded-components',
   'content': 'content',
