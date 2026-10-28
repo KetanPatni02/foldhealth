@@ -29,7 +29,7 @@ export function ConversationDrawer({ conversation, focusMessageId, onClose }) {
           onCompose={initial => openCommsDrawer('email', { initial })}
         />
       ) : (
-        <CommsThread key={conversation.id} conversation={conversation} patient={patient} me={me} focusMessageId={focusMessageId} />
+        <CommsThread key={conversation.id} conversation={conversation} patient={patient} me={me} focusMessageId={focusMessageId} showIntro={false} />
       )}
     </Drawer>
   );

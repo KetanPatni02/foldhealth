@@ -30,7 +30,7 @@ import { formatDuration } from './call/rtc';
 import {
   initialsOf, patientMetaParts, callLook, fullStamp, dayLabel, patientLink, openInNewTab, formatPhone,
 } from './commsUtils';
-import { membersForConversation, loggedFor, threadTitle, isUnassigned, withForPrefix, activeSession } from './smsMembers';
+import { membersForConversation, loggedFor, threadTitle, isUnassigned, withForPrefix, activeSession, forPrefix, keepPrefix } from './smsMembers';
 import { LogForChip, LogForCoachmark, SelectMemberModal, AssignSmsModal, MemberOption } from './SmsAttribution';
 import styles from './Comms.module.css';
 
@@ -47,7 +47,7 @@ const timeOnly = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'num
  * a message is sent (chat: saved and shown on the patient's page; SMS: sent
  * through the gateway phone; Calls: internal notes only).
  */
-export function CommsThread({ conversation, patient, me, focusMessageId }) {
+export function CommsThread({ conversation, patient, me, focusMessageId, showIntro = true, onOpenProfile }) {
   const { messages, loading } = useCommsMessages(conversation.id);
   const [draft, setDraft] = useState('');
   const [internal, setInternal] = useState(false);
@@ -63,7 +63,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
   const callStatus = useBrowserCall(s => s.status);
   const channel = conversation.channel;
   const openCommsDrawer = useAppStore(s => s.openCommsDrawer);
-  const navigateToPatient = useAppStore(s => s.navigateToPatient);
+  const openQuickView = useAppStore(s => s.openQuickView);
   const sender = { id: me?.id || null, name: me?.name || 'Care team' };
 
   // A number shared by several members (FCS-5677): each SMS is logged for one.
@@ -83,24 +83,42 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
   const session = shared ? activeSession(conversation) : null;
   const sessionMember = session ? members.find(m => m.id === session.member_id) : null;
   const [sentFor, setSentFor] = useState(null);
+  // While a session runs, Log For defaults to its member: a session that
+  // starts or switches (here or elsewhere) clears any earlier pick.
+  const [sessionFor, setSessionFor] = useState(session?.member_id ?? null);
+  if ((session?.member_id ?? null) !== sessionFor) {
+    setSessionFor(session?.member_id ?? null);
+    setLogForId(null);
+  }
   const logFor = members.find(m => m.id === logForId) || sessionMember || members[0];
   // Switching Log For away from whoever the last SMS went to pre-fills
   // "For Liam: " (editable); back to that member, the tag comes off, since
   // a follow-up to the same person isn't tagged again (FCS-5677).
+  // As in New SMS: on a shared number every SMS starts "For Liam: ", locked,
+  // following Log For. Not on internal notes (the family never sees them),
+  // and not while a form or article line names the member already.
+  const tagName = shared && !internal && !share?.forName ? logFor?.name ?? null : null;
+  const [appliedTag, setAppliedTag] = useState(null);
+  if (tagName !== appliedTag) {
+    setAppliedTag(tagName);
+    setDraft(d => withForPrefix(d, tagName));
+  }
+  const tagPrefix = tagName ? forPrefix(tagName) : '';
+  const editDraft = (v) => {
+    const next = tagPrefix ? keepPrefix(v, tagPrefix, draft) : v;
+    setDraft(next);
+    if (!next.slice(tagPrefix.length).trim()) setShare(null);
+  };
   const pickLogFor = (id) => {
     setLogForId(id);
-    const lastOut = [...messages].reverse().find(m => m.direction === 'out' && isSmsText(m));
-    const lastId = lastOut?.logged_for_patient_id || conversation.patient_id;
-    const member = members.find(m => m.id === id);
     // A form or article line already in the box ("…for Annette Brave:")
     // follows the new member too.
+    const member = members.find(m => m.id === id);
     const from = share?.forName;
-    // With a form or article line naming the member, no "For X: " tag too.
-    setDraft(d => withForPrefix(
-      from && member ? d.split(`for ${from}`).join(`for ${member.name}`) : d,
-      !from && member && String(member.id) !== String(lastId) ? member.name : null,
-    ));
-    if (from && member) setShare(s => ({ ...s, forName: member.name }));
+    if (from && member) {
+      setDraft(d => d.split(`for ${from}`).join(`for ${member.name}`));
+      setShare(sh => ({ ...sh, forName: member.name }));
+    }
   };
   const chipRef = useRef(null);
   const [selecting, setSelecting] = useState(false);
@@ -166,10 +184,13 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
       }
       const who = { id: member.id, name: member.name };
       await assignMessages(list, who, 'staff');
-      if (applyTo === 'today') {
-        await setSmsSession(conversation, who);
+      if (applyTo === 'today' || applyTo === 'below') {
+        await setSmsSession(conversation, who, { until: applyTo === 'today' ? 'today' : 'manual' });
         setLogForId(null);
         setSentFor(null);
+      } else if (session?.ends === 'manual') {
+        // Logging an incoming message by hand ends an open-ended session.
+        await setSmsSession(conversation, null);
       }
       setAssignFor(null);
       toast.success(list.length > 1 ? `${list.length} messages assigned to ${member.name}` : `SMS assigned to ${member.name}`);
@@ -186,6 +207,9 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
     setLogging(true);
     try {
       await logMessagesFor([...picked], { id: member.id, name: member.name });
+      if (session?.ends === 'manual' && messages.some(m => picked.has(m.id) && m.direction === 'in')) {
+        await setSmsSession(conversation, null);
+      }
       setMemberModal(false);
       stopSelecting();
       toast.success('SMS Logged For Member Successfully');
@@ -245,9 +269,10 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
   const send = async () => {
     const body = draft.trim();
     const files = pending.filter(f => f.url);
-    if (!body && !files.length) return;
+    // The tag alone isn't a message.
+    if (!draft.slice(tagPrefix.length).trim() && !files.length) return;
     setSending(true);
-    setDraft('');
+    setDraft(tagPrefix);
     setPending([]);
     try {
       if (channel === 'sms' && !internal) {
@@ -257,6 +282,8 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
         for (const phone of to) await sendSms({ conversation, sender, to: phone, body, meta: share?.meta, loggedFor: attribution });
         // Sent for someone other than the session member: offer to switch.
         setSentFor(session && attribution && attribution.id !== session.member_id ? logFor : null);
+        // A one-off send for someone else; Log For goes back to the session member.
+        if (session) setLogForId(null);
       } else {
         // One message per file; the text rides with the last one.
         const items = files.length ? files : [null];
@@ -355,7 +382,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
   ];
 
   return (
-    <div className={listStyles.chatPanel}>
+    <div className={`${listStyles.chatPanel} ${styles.threadPanel}`}>
       <div className={styles.threadHeader}>
         {shared
           ? <Avatar variant="patient" type="icon" iconName="solar:users-group-rounded-linear" size={40} className={styles.headerAvatar} />
@@ -492,15 +519,23 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
             <MenuPopover
               anchorRef={membersRef}
               align="left"
-              width={236}
+              width={280}
               ariaLabel="Members on this number"
               // A row opens that member's profile; one with no profile yet
               // (e.g. a demo family member before its migration) can't be opened.
               items={members.map(m => {
                 const hasProfile = (patients || []).some(p => String(p.id) === m.id);
-                return { key: m.id, tall: true, disabled: !hasProfile, hint: hasProfile ? 'Open profile' : 'No profile in the app yet', label: <MemberOption member={m} /> };
+                return { key: m.id, tall: true, disabled: !hasProfile, hint: hasProfile ? 'Open profile' : 'No profile in the app yet', label: <MemberOption member={m} profileArrow={hasProfile} /> };
               })}
-              onSelect={(id) => { setMembersOpen(false); navigateToPatient((patients || []).find(p => String(p.id) === id)?.id ?? id); }}
+              // The arrow opens their profile in a quick view: docked beside the
+              // thread on the Messages page, over it everywhere else.
+              onSelect={(id) => {
+                setMembersOpen(false);
+                const p = (patients || []).find(x => String(x.id) === id);
+                if (!p) return;
+                const snapshot = { id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language };
+                if (onOpenProfile) onOpenProfile(snapshot); else openQuickView(snapshot);
+              }}
               onClose={() => setMembersOpen(false)}
             />
           )}
@@ -573,15 +608,30 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
       {(sessionMember || sentFor) && (
         <div className={styles.sessionBars}>
           {sessionMember && (
-            <InfoBar variant="inline" icon="solar:user-check-rounded-linear">
-              Auto-assigning replies to {sessionMember.name} until midnight.{' '}
-              <Link onClick={() => { setSmsSession(conversation, null); setSentFor(null); }}>Stop</Link>
+            <InfoBar
+              className={styles.sessionBar}
+              action={(
+                <Link
+                  onClick={async () => {
+                    await setSmsSession(conversation, null);
+                    setSentFor(null);
+                    toast.success('Auto-assigning stopped successfully');
+                  }}
+                >
+                  Stop auto-assigning
+                </Link>
+              )}
+            >
+              Auto-assigning incoming messages to {sessionMember.name}{session.ends === 'manual' ? '' : ' until midnight'}.
             </InfoBar>
           )}
           {sentFor && sessionMember && (
-            <InfoBar variant="inline" icon="solar:user-id-linear" onClose={() => setSentFor(null)}>
-              Sent for {sentFor.name}. Replies still go to {sessionMember.name}.{' '}
-              <Link onClick={() => { setSmsSession(conversation, sentFor); setLogForId(null); setSentFor(null); }}>Switch to {sentFor.name}</Link>
+            <InfoBar
+              className={styles.sessionBar}
+              action={<Link onClick={() => { setSmsSession(conversation, sentFor); setLogForId(null); setSentFor(null); }}>Switch to {sentFor.name}</Link>}
+              onClose={() => setSentFor(null)}
+            >
+              Sent for {sentFor.name}. Incoming messages still go to {sessionMember.name}.
             </InfoBar>
           )}
         </div>
@@ -589,7 +639,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
 
       <MessageComposer
         value={draft}
-        onChange={(v) => { setDraft(v); if (!v.trim()) setShare(null); }}
+        onChange={editDraft}
         onSend={send}
         internal={internal}
         onInternalChange={channel === 'call' ? undefined : setInternal}
@@ -605,7 +655,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId }) {
         toolbarStart={shared && !internal ? (
           <>
             <LogForChip ref={chipRef} members={members} value={logFor?.id} onChange={pickLogFor} />
-            <LogForCoachmark anchorRef={chipRef} />
+            {showIntro && <LogForCoachmark anchorRef={chipRef} />}
           </>
         ) : undefined}
       />
@@ -703,7 +753,7 @@ function ThreadItem({ message: m, prev, conversation, attributed = false, canLog
   const label = source
     ? <span className={styles.byline}>{source}<Icon name="solar:arrow-right-linear" size={12} />{(member || loggedFor(m, conversation)).name}</span>
     : unassigned
-      ? <span className={styles.byline}>{shownName}<Badge tone="warning" size="XS" label="Unassigned" /></span>
+      ? <span className={styles.byline}>{shownName}<Badge tone="grey" size="XS" label="Unassigned" /></span>
       : member && own
         ? <span className={styles.byline}>{name}<Icon name="solar:arrow-right-linear" size={12} />{member.name}</span>
         : shownName;
@@ -713,7 +763,7 @@ function ThreadItem({ message: m, prev, conversation, attributed = false, canLog
     { key: 'task', icon: 'solar:clipboard-add-linear', label: 'Create Task' },
     { key: 'type', icon: 'solar:medal-ribbon-linear', label: 'Assign Message Type' },
     ...(!own ? [{ key: 'unread', icon: 'solar:chat-unread-linear', label: 'Mark as Unread' }] : []),
-    ...(canLogFor && isSmsText(m) ? [{ key: 'logfor', icon: 'solar:user-circle-linear', label: own ? 'Log For Member' : 'Assign to Member' }] : []),
+    ...(canLogFor && isSmsText(m) ? [{ key: 'logfor', icon: 'solar:user-circle-linear', label: 'Log For Member' }] : []),
   ];
   const onMenu = (key) => onAction?.(key, m);
 
@@ -744,10 +794,12 @@ function ThreadItem({ message: m, prev, conversation, attributed = false, canLog
     <ChatBubble
       side={m.internal ? 'internal' : own ? 'right' : 'left'}
       name={label}
-      initials={unassigned ? '?' : initialsOf(shownName)}
+      initials={initialsOf(shownName)}
+      avatarIcon={unassigned ? 'solar:user-linear' : undefined}
       text={m.body}
       attachment={attachment}
-      compact={sameSender && !m.internal}
+      // On a shared number each SMS keeps its avatar and "Sender → Member" line.
+      compact={sameSender && !m.internal && !(attributed && isSmsText(m))}
       time={timeOnly(m.created_at)}
       status={own && !m.internal ? <MessageStatus status={statusOf(m)} onResend={() => retrySend(m)} /> : null}
       menuItems={menuItems}

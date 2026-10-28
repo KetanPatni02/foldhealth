@@ -1,8 +1,10 @@
--- FCS-5677: a shared number's rest-of-today session. When staff log a
--- received SMS for a member with "This message and all upcoming messages to
--- be received today", later replies on that number go to the same member
--- until 11:59 PM, unless someone stops or switches it.
---   sms_session: { member_id, member_name, started_at, until }  (NULL = none)
+-- FCS-5677: a shared number's auto-assign session. When staff log a
+-- received SMS for a member with "…to be received today", later incoming
+-- messages go to that member until 11:59 PM; with "…all incoming messages
+-- after it", until someone logs an incoming message by hand. Either can be
+-- stopped or switched.
+--   sms_session: { member_id, member_name, started_at, until, ends }
+--   until NULL (ends = 'manual') means no end time.  (sms_session NULL = none)
 --
 -- The trigger assigns each new reply as it's saved, so it works whether or
 -- not anyone has the thread open. It only fills in a reply that names no
@@ -35,7 +37,7 @@ BEGIN
     FROM public.patient_conversations c
    WHERE c.id = NEW.conversation_id AND c.channel = 'sms';
   IF s IS NULL OR s->>'member_id' IS NULL
-     OR (s->>'until')::timestamptz <= now()
+     OR (s->>'until' IS NOT NULL AND (s->>'until')::timestamptz <= now())
      OR coalesce(NEW.created_at, now()) < (s->>'started_at')::timestamptz THEN
     RETURN NEW;
   END IF;

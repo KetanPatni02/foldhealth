@@ -37,7 +37,8 @@ export function CommsDrawerHost() {
       />
     );
   }
-  if (drawer.type === 'sms') return <NewSmsDrawer {...drawer.props} onClose={close} onSent={show} />;
+  // Sending an SMS keeps you where you are; the toast confirms it.
+  if (drawer.type === 'sms') return <NewSmsDrawer {...drawer.props} onClose={close} onSent={close} />;
   if (drawer.type === 'call') return <VoiceCallDrawer {...drawer.props} onClose={close} />;
   if (drawer.type === 'content') return <SendContentDrawer {...drawer.props} onClose={close} />;
   if (drawer.type === 'assessment') return <SendAssessmentDrawer {...drawer.props} onClose={close} />;

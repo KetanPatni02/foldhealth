@@ -6,7 +6,7 @@ import styles from './CommsDrawers.module.css';
 const onKey = (fn) => (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
 
 /**
- * Send To made voluntary: closed, it's a grey "+ Add recipients" link and the
+ * Send To made voluntary: closed, it's a grey "+ Add member contacts" link and the
  * message goes to the member alone; opened, it's the Recipients picker with
  * the member already in it, and "Remove" goes back to the member alone.
  * Everything but open/onOpen/onRemove is passed to the Select.
@@ -21,7 +21,7 @@ export function OptInRecipients({ open, onOpen, onRemove, ...select }) {
       <span className={styles.addContacts}>
         <Link variant="secondary" className={styles.addContactsLink} role="button" tabIndex={0} onClick={onOpen} onKeyDown={onKey(onOpen)}>
           <AddIconMinimalist size={12} color="currentColor" />
-          Add recipients
+          Add member contacts
         </Link>
       </span>
     );

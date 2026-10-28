@@ -81,10 +81,14 @@ export function keepPrefix(value, prefix, previous = prefix) {
 /** The text with its "For X: " replaced by `name`'s, or removed (no name). */
 export const withForPrefix = (text, name) => (name ? forPrefix(name) : '') + String(text || '').replace(FOR_PREFIX_RE, '');
 
-/** The thread's rest-of-today session, while it lasts (null otherwise). */
+/**
+ * The thread's auto-assign session while it lasts (null otherwise). One with
+ * no `until` runs until an incoming message is logged by hand.
+ */
 export function activeSession(conversation, at = Date.now()) {
   const s = conversation?.sms_session;
-  return s?.member_id && new Date(s.until).getTime() > at ? s : null;
+  if (!s?.member_id) return null;
+  return !s.until || new Date(s.until).getTime() > at ? s : null;
 }
 
 /** Who a message is logged for: its own pick, else the conversation's patient. */

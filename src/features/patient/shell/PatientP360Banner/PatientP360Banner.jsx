@@ -11,7 +11,7 @@ import { PatientAppActiveIndicator } from '../../../../components/PatientAppActi
 import { FALLBACK_P360 } from '../../data/p360Mock';
 import { ExpandedDemographics, ExpandedHealthStatus, ExpandedAppointments, ExpandedFamily, QuickViewExpanded } from './PatientP360BannerExpanded';
 import { PatientP360BannerDrawer } from './PatientP360BannerDrawer';
-import { MORE_MENU_LABELS } from './PatientP360Banner.utils';
+import { buildPatientRowMenuItems } from '../../../../components/MenuPopover/patientRowMenuItems';
 import { useCcmTimerDockOptional } from '../CcmTimerWidget/CcmTimerDockContext';
 import { PatientConsentPopover } from '../../shared/PatientConsentPopover/PatientConsentPopover';
 import { usePatientConsent } from '../../hooks/usePatientConsent';
@@ -39,7 +39,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const [bannerSize, setBannerSize] = useState('wide');
   const showToast = useAppStore(s => s.showToast);
-  const updatePatient = useAppStore(s => s.updatePatient);
+  const runPatientRowAction = useAppStore(s => s.runPatientRowAction);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
   const { dockRef } = useCcmTimerDockOptional();
@@ -219,32 +219,15 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
           anchorRect={moreMenuRect}
           width={220}
           align="right"
-          items={[
-            { key: 'assessment', icon: 'solar:clipboard-check-linear', label: 'Assessment' },
-            { key: 'education', icon: 'solar:book-linear', label: 'Education' },
-            { key: 'add-task', icon: 'solar:checklist-linear', label: 'Add Task' },
-            { key: 'referral', icon: 'solar:arrow-right-up-linear', label: 'Create Referral' },
-            { key: 'automation', icon: 'solar:bolt-linear', label: 'Run Automation' },
-            { key: 'relatives', icon: 'solar:users-group-two-rounded-linear', label: 'Add Relatives' },
-            { key: 'print', icon: 'solar:printer-linear', label: 'Print Clinical Profile' },
-            { key: 'edit', icon: 'solar:pen-linear', label: 'Edit Details' },
-            { key: 'reset-pw', icon: 'solar:refresh-linear', label: 'Reset Password' },
-            { key: 'inactive', icon: 'solar:user-cross-linear', label: patient.status === 'inactive' ? 'Set Active' : 'Set Inactive' },
-            { divider: true },
-            { key: 'block', icon: 'solar:forbidden-circle-linear', label: 'Block Number', danger: true },
-          ]}
+          // The same actions as a worklist row's menu, minus Send Email:
+          // the Email button sits beside this one.
+          items={buildPatientRowMenuItems().filter(item => item.key !== 'Send Email')}
           onClose={() => setMoreMenuRect(null)}
           onSelect={(key) => {
             setMoreMenuRect(null);
-            if (key === 'edit') { openPatientEdit('basic', patient); return; }
-            if (key === 'print') { showToast('Printing clinical profile…'); window.print(); return; }
-            if (key === 'inactive') {
-              const nextStatus = patient.status === 'inactive' ? 'active' : 'inactive';
-              updatePatient(patient.id, { status: nextStatus });
-              showToast(nextStatus === 'inactive' ? `${patient.name} set to Inactive` : `${patient.name} set to Active`);
-              return;
-            }
-            showToast(`${MORE_MENU_LABELS[key] || 'Action'} — coming soon`);
+            if (runPatientRowAction(key, patient)) return;
+            if (key === 'Edit Details') { openPatientEdit('basic', patient); return; }
+            showToast(`${key} — coming soon`);
           }}
         />
       )}
