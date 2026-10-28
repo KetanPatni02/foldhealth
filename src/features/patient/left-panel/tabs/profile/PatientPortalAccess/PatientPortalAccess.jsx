@@ -84,9 +84,12 @@ export function PatientPortalAccess({ patient, defaultEmail }) {
           onCancel={() => setRemoving(null)}
           onConfirm={async () => {
             setBusy(true);
-            await removeAccess(memberId, removing.userId);
-            setBusy(false);
-            setRemoving(null);
+            try {
+              await removeAccess(memberId, removing.userId);
+            } finally {
+              setBusy(false);
+              setRemoving(null);
+            }
           }}
         />
       )}

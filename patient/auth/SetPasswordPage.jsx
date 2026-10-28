@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/Input/Input';
 import { Button } from '@/components/Button/Button';
@@ -13,29 +13,41 @@ const MIN_LENGTH = 8;
 export function SetPasswordPage({ token, onDone }) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [loading, setLoading] = useState(false);
+  // Which submit is in flight (0 = none); only that submit may clear it.
+  const [pending, setPending] = useState(0);
+  const loading = pending !== 0;
   const [error, setError] = useState('');
+  const attemptRef = useRef(0);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (password.length < MIN_LENGTH) { setError(`Use at least ${MIN_LENGTH} characters.`); return; }
     if (password !== confirm) { setError('The two passwords do not match.'); return; }
-    setLoading(true);
+    // Only the latest submit may write the result; an older one can still be
+    // in flight after a quick retry.
+    const attempt = ++attemptRef.current;
+    const current = () => attempt === attemptRef.current;
+    setPending(attempt);
     setError('');
-    if (token) {
-      const { error: otpError } = await supabase.auth.verifyOtp({ type: token.type, token_hash: token.tokenHash });
-      // A failed submit after a successful verify leaves a session; carry on with it.
-      const { data } = await supabase.auth.getSession();
-      if (otpError && !data.session) {
-        setError('This link has expired or was already used. Ask your care team to send a new invite.');
-        setLoading(false);
-        return;
+    try {
+      if (token) {
+        const { error: otpError } = await supabase.auth.verifyOtp({ type: token.type, token_hash: token.tokenHash });
+        // A failed submit after a successful verify leaves a session; carry on with it.
+        const { data } = await supabase.auth.getSession();
+        if (otpError && !data.session) {
+          if (current()) setError('This link has expired or was already used. Ask your care team to send a new invite.');
+          return;
+        }
       }
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (!current()) return;
+      if (updateError) setError(updateError.message);
+      else onDone?.();
+    } catch {
+      if (current()) setError('Your password could not be saved. Check your connection and try again.');
+    } finally {
+      setPending((p) => (p === attempt ? 0 : p));
     }
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    setLoading(false);
-    if (updateError) setError(updateError.message);
-    else onDone?.();
   };
 
   return (

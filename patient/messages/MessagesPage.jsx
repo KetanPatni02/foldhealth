@@ -67,14 +67,19 @@ function Thread({ memberId, conversation, onChanged }) {
     if (!body) return;
     setSending(true);
     setError('');
-    const { error: e } = await supabase.rpc('patient_send_message', {
-      p_member_id: memberId, p_conversation_id: conversation.id, p_body: body,
-    });
-    setSending(false);
-    if (e) { setError(e.message || 'Your message was not sent. Try again.'); return; }
-    setDraft('');
-    setTick((n) => n + 1);
-    onChanged();
+    try {
+      const { error: e } = await supabase.rpc('patient_send_message', {
+        p_member_id: memberId, p_conversation_id: conversation.id, p_body: body,
+      });
+      if (e) { setError(e.message || 'Your message was not sent. Try again.'); return; }
+      setDraft('');
+      setTick((n) => n + 1);
+      onChanged();
+    } catch {
+      setError('Your message was not sent. Check your connection and try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   const names = conversation.member_names || [];
@@ -128,12 +133,17 @@ function NewMessage({ memberId, careTeam, defaultTo, onStarted, onCancel }) {
   const send = async () => {
     setSending(true);
     setError('');
-    const { data, error: e } = await supabase.rpc('patient_start_conversation', {
-      p_member_id: memberId, p_body: draft.trim(), p_care_team_name: to || null,
-    });
-    setSending(false);
-    if (e) { setError(e.message || 'Your message was not sent. Try again.'); return; }
-    onStarted(data);
+    try {
+      const { data, error: e } = await supabase.rpc('patient_start_conversation', {
+        p_member_id: memberId, p_body: draft.trim(), p_care_team_name: to || null,
+      });
+      if (e) { setError(e.message || 'Your message was not sent. Try again.'); return; }
+      onStarted(data);
+    } catch {
+      setError('Your message was not sent. Check your connection and try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -195,7 +205,7 @@ export function MessagesPage() {
   }, [pendingLink]);
   const pendingTo = pendingLink?.to || null;
   const linked = pendingLink && !loading
-    ? conversations.find((c) => (pendingLink.c ? c.id === pendingLink.c : (c.member_names || []).includes(pendingTo)))
+    ? conversations.find((c) => (pendingLink.c ? c.id === pendingLink.c : (c.member_names || []).some((name) => name === pendingTo)))
     : null;
   const linkedNew = Boolean(pendingTo && !loading && !linked);
 

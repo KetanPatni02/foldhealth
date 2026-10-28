@@ -51,10 +51,10 @@ export function BookVisitDrawer({ profile, onClose, onBooked }) {
 
   const type = types?.find((t) => t.id === typeId);
   const providers = useMemo(() => [...new Set((slots || []).map((s) => s.provider_name))].sort(), [slots]);
-  const shown = useMemo(
-    () => (slots || []).filter((s) => !provider.length || provider.includes(s.provider_name)),
-    [slots, provider],
-  );
+  const shown = useMemo(() => {
+    const picked = new Set(provider);
+    return (slots || []).filter((s) => !picked.size || picked.has(s.provider_name));
+  }, [slots, provider]);
   const days = useMemo(() => groupByDay(shown), [shown]);
   const activeDay = days.find((d) => d.key === day) || days[0];
   const tz = shown[0]?.timezone;
@@ -72,26 +72,31 @@ export function BookVisitDrawer({ profile, onClose, onBooked }) {
     if (!slot) return;
     setBooking(true);
     setError('');
-    const { error: e } = await supabase.rpc('patient_book_appointment', {
-      p_member_id: profile.member_id,
-      p_type_id: typeId,
-      p_user_id: slot.user_id,
-      p_starts_at: slot.starts_at,
-      p_mode: isDualMode(type) ? mode : null,
-      p_reason: reason,
-    });
-    setBooking(false);
-    if (e) {
-      setError(e.message || 'We could not book that time. Please try again.');
-      setSlot(null);
-      setReloadKey((k) => k + 1);
-      return;
+    try {
+      const { error: e } = await supabase.rpc('patient_book_appointment', {
+        p_member_id: profile.member_id,
+        p_type_id: typeId,
+        p_user_id: slot.user_id,
+        p_starts_at: slot.starts_at,
+        p_mode: isDualMode(type) ? mode : null,
+        p_reason: reason,
+      });
+      if (e) {
+        setError(e.message || 'We could not book that time. Please try again.');
+        setSlot(null);
+        setReloadKey((k) => k + 1);
+        return;
+      }
+      toast.success('Visit booked', {
+        description: `${type.name} with ${slot.provider_name}, ${dayParts(activeDay.key).weekday} ${dayParts(activeDay.key).month} ${dayParts(activeDay.key).day} at ${timeLabel(slot.starts_at, slot.timezone)}`,
+      });
+      onBooked?.();
+      setDismissed(true);
+    } catch {
+      setError('We could not book that time. Check your connection and try again.');
+    } finally {
+      setBooking(false);
     }
-    toast.success('Visit booked', {
-      description: `${type.name} with ${slot.provider_name}, ${dayParts(activeDay.key).weekday} ${dayParts(activeDay.key).month} ${dayParts(activeDay.key).day} at ${timeLabel(slot.starts_at, slot.timezone)}`,
-    });
-    onBooked?.();
-    setDismissed(true);
   };
 
   return (

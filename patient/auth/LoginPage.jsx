@@ -26,14 +26,19 @@ export function LoginPage({ notice }) {
     setLoading(true);
     setError('');
     setInfo('');
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ ...id, password });
-    if (authError) {
-      setError('That email, mobile number or password is not right.');
-    } else if (!isPatient(data.session)) {
-      await supabase.auth.signOut();
-      setError('This portal is for patients. Staff members sign in through the Fold Health staff app.');
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ ...id, password });
+      if (authError) {
+        setError('That email, mobile number or password is not right.');
+      } else if (!isPatient(data.session)) {
+        await supabase.auth.signOut();
+        setError('This portal is for patients. Staff members sign in through the Fold Health staff app.');
+      }
+    } catch {
+      setError('We could not sign you in. Check your connection and try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleForgot = async () => {

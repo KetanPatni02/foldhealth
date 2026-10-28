@@ -24,11 +24,14 @@ export function PatientPortalInviteDrawer({ patient, memberId, defaultEmail = ''
   const send = async () => {
     setSending(true);
     setError('');
-    const message = await invite(memberId, { email: email.trim(), relationship });
-    setSending(false);
-    if (message) { setError(message); return; }
-    onSent?.(email.trim());
-    setDismissed(true);
+    try {
+      const message = await invite(memberId, { email: email.trim(), relationship });
+      if (message) { setError(message); return; }
+      onSent?.(email.trim());
+      setDismissed(true);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
