@@ -51,7 +51,11 @@ function ChannelTile({ channel }) {
 /** An SMS logged for the patient (FCS-5677 3540:65716), with View SMS. */
 function SmsLogBody({ entry }) {
   const { message, conversation, onView } = entry.sms;
-  const who = message.sender_name || (message.direction === 'in' ? conversation.patient_name : 'Care team');
+  // A received SMS on a shared number is from whoever it's logged for; its
+  // stored sender is always the thread's owner.
+  const who = message.direction === 'in'
+    ? message.logged_for_name || message.sender_name || conversation.patient_name
+    : message.sender_name || 'Care team';
   return (
     <>
       <MetaLine entry={entry} />
@@ -133,7 +137,7 @@ export function CrmTab({ patientId }) {
       id: `sms-${message.id}`,
       channel: 'sms',
       occurredAt: message.created_at,
-      sms: { message, conversation, onView: () => setViewing(conversation) },
+      sms: { message, conversation, onView: () => setViewing({ conversation, messageId: message.id }) },
     })),
   ], [activities, smsLog]);
   const entries = useMemo(
@@ -157,7 +161,7 @@ export function CrmTab({ patientId }) {
             emptyLabel={channelLabel ? `No ${channelLabel} activity yet.` : 'No communication recorded yet.'}
           />
         )}
-      {viewing && <ConversationDrawer conversation={viewing} onClose={() => setViewing(null)} />}
+      {viewing && <ConversationDrawer conversation={viewing.conversation} focusMessageId={viewing.messageId} onClose={() => setViewing(null)} />}
     </div>
   );
 }

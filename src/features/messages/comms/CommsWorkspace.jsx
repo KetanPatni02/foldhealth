@@ -5,7 +5,7 @@ import { CommsListPanel } from './CommsListPanel';
 import { CommsThread } from './CommsThread';
 import { PatientEmailThread } from './PatientEmailThread';
 import { CommsPanelEmpty } from './CommsEmptyState';
-import { pollInboundSms } from './commsSend';
+import { pollInboundSms, SMS_VIA_GATEWAY } from './commsSend';
 import { patientFor, isMissedCall } from './commsUtils';
 import styles from './Comms.module.css';
 
@@ -35,20 +35,18 @@ export function CommsWorkspace({
   // Only open a conversation that belongs to this view: switching from Chat
   // to SMS must not leave the chat thread showing beside the SMS list.
   const selected = list.find(c => c.id === selectedId && !!c.archived === !!v.archived) || null;
-  const smsInView = view === 'sms' || view === 'all';
+  const smsInView = SMS_VIA_GATEWAY && (view === 'sms' || view === 'all');
 
   useEffect(() => {
     if (!smsInView) return undefined;
     let stopped = false;
     let timer = null;
     const tick = async () => {
-      const { connected } = await pollInboundSms(patients);
+      const { connected } = await pollInboundSms();
       if (!stopped && connected) timer = setTimeout(tick, SMS_POLL_MS);
     };
     tick();
     return () => { stopped = true; clearTimeout(timer); };
-    // Patients only match numbers to names; a new list needn't restart polling.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [smsInView]);
 
   return (

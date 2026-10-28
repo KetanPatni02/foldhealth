@@ -98,7 +98,7 @@ export async function listConversations() {
   }
   const { data, error } = await supabase.from('patient_conversations').select('*').order('last_message_at', { ascending: false });
   if (error) throw error;
-  return data || [];
+  return withSavedThreadNames(data || []);
 }
 
 /**
@@ -175,10 +175,28 @@ export async function updateConversation(id, patch) {
   return data;
 }
 
-/** Find the patient's conversation on a channel, or open one. */
+/**
+ * Find the patient's conversation on a channel, or open one. An SMS thread
+ * belongs to the phone number (FCS-5677: a shared number keeps one thread),
+ * so it's found by number first; whoever sends, it's the same thread.
+ */
 export async function findOrCreateConversation(channel, patient, extra = {}) {
   const key = patient.id != null ? String(patient.id) : null;
+  const phone10 = String(extra.patient_phone || patient.phone || '').replace(/\D/g, '').slice(-10);
   let found;
+  if (channel === 'sms' && phone10.length === 10) {
+    if (await commsMode() === 'remote') {
+      const { data } = await supabase.from('patient_conversations').select('*').eq('channel', 'sms')
+        .like('patient_phone', `%${phone10}`)
+        .order('last_message_at', { ascending: false }).limit(1);
+      found = data?.[0];
+    } else {
+      found = readLocal().conversations
+        .filter(c => c.channel === 'sms' && String(c.patient_phone || '').replace(/\D/g, '').slice(-10) === phone10)
+        .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at))[0];
+    }
+    if (found) return found;
+  }
   if (await commsMode() === 'remote') {
     const { data } = await supabase.from('patient_conversations').select('*').eq('channel', channel)
       .eq(key ? 'patient_id' : 'patient_name', key || patient.name || '')
@@ -196,7 +214,7 @@ export async function findOrCreateConversation(channel, patient, extra = {}) {
     patient_name: patient.name || '',
     patient_email: patient.email || null,
     patient_phone: patient.phone || null,
-    ...(channel === 'chat' ? { patient_token: newPatientToken() } : {}),
+    ...(channel === 'chat' || channel === 'sms' ? { patient_token: newPatientToken() } : {}),
     ...extra,
   });
 }
@@ -257,12 +275,16 @@ function withoutAttribution(row) {
   return rest;
 }
 
-// Until the migration runs, who a message is logged for is kept for this
-// session only, so the flow can still be tried end to end.
-const sessionAttribution = new Map();
+// Until the migration runs, who a message is logged for is kept in this
+// browser (it survives a reload), so the flow can still be tried end to end.
+const ATTRIBUTION_KEY = 'fold-sms-attribution';
+const sessionAttribution = new Map((() => {
+  try { return Object.entries(JSON.parse(localStorage.getItem(ATTRIBUTION_KEY) || '{}')); } catch { return []; }
+})());
 function rememberAttribution(saved, source) {
   const attr = Object.fromEntries(ATTRIBUTION_FIELDS.map(f => [f, source[f] ?? null]));
   sessionAttribution.set(saved.id, attr);
+  try { localStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(Object.fromEntries(sessionAttribution))); } catch { /* storage blocked: this session only */ }
   return { ...saved, ...attr };
 }
 function withSessionAttribution(rows) {
@@ -291,11 +313,23 @@ export async function logMessagesFor(ids, member) {
 }
 
 /**
- * Every SMS logged for a patient, newest first, each with its conversation:
- * the ones logged for them on any number, and the unassigned ones in their
- * own SMS threads.
+ * Assign received SMS to a member, noting how (`by`: 'staff' by hand, or
+ * 'session' by a rest-of-today session), so "all messages below" can stop
+ * at the next one someone assigned by hand.
  */
-export async function listSmsLoggedFor({ patientId, patientName }) {
+export async function assignMessages(messages, member, by) {
+  if (!messages.length) return;
+  await logMessagesFor(messages.map(m => m.id), member);
+  await Promise.all(messages.map(m => updateMessage(m.id, { meta: { ...(m.meta || {}), assigned_by: by } })));
+}
+
+/**
+ * Every SMS logged for a patient, newest first, each with its conversation:
+ * the ones logged for them on any number, and the ones in their own SMS
+ * threads that name no one. `isShared(conversation)` marks shared numbers,
+ * where a received SMS naming no one is Unassigned and belongs to nobody.
+ */
+export async function listSmsLoggedFor({ patientId, patientName, isShared = () => false }) {
   const id = patientId != null ? String(patientId) : null;
   const own = (await listPatientConversations({ patientId, patientName })).filter(c => c.channel === 'sms');
   const ownIds = new Set(own.map(c => c.id));
@@ -310,18 +344,28 @@ export async function listSmsLoggedFor({ patientId, patientName }) {
       const { data, error } = await supabase.from('patient_messages').select('*').eq('logged_for_patient_id', id);
       if (error && !isMissingColumn(error)) throw error;
       elsewhere = data || [];
+      // Before the columns exist, this browser remembers who each SMS was logged for.
+      if (error) {
+        const ids = [...sessionAttribution].filter(([, a]) => a.logged_for_patient_id === id).map(([mid]) => mid);
+        if (ids.length) {
+          const { data: rows } = await supabase.from('patient_messages').select('*').in('id', ids);
+          elsewhere = withSessionAttribution(rows || []);
+        }
+      }
     }
     const seen = new Set();
     messages = [...elsewhere, ...inOwn.filter(m => !m.logged_for_patient_id || m.logged_for_patient_id === id)]
       .filter(m => !seen.has(m.id) && seen.add(m.id));
   }
-  messages = messages.filter(m => m.kind === 'message' && !m.internal && m.status !== 'draft');
+  // Only texts that went out (or came in): a draft or a failed send isn't activity.
+  messages = messages.filter(m => m.kind === 'message' && !m.internal && m.status !== 'draft' && m.status !== 'failed');
   const convs = new Map(own.map(c => [c.id, c]));
   const missing = [...new Set(messages.map(m => m.conversation_id))].filter(cid => !convs.has(cid));
   (await Promise.all(missing.map(getConversation))).forEach(c => { if (c) convs.set(c.id, c); });
   return messages
     .map(message => ({ message, conversation: convs.get(message.conversation_id) }))
     .filter(x => x.conversation?.channel === 'sms')
+    .filter(x => !(x.message.direction === 'in' && !x.message.logged_for_patient_id && isShared(x.conversation)))
     .sort((a, b) => new Date(b.message.created_at) - new Date(a.message.created_at));
 }
 
@@ -350,6 +394,21 @@ export async function deleteMessage(id) {
   }
   await supabase.from('patient_messages').delete().eq('id', id);
   emit({ table: 'patient_messages', type: 'DELETE', row: { id } });
+}
+
+/** Delete a conversation for good; its messages go with it (ON DELETE CASCADE). */
+export async function deleteConversation(id) {
+  if (await commsMode() === 'local') {
+    const db = readLocal();
+    const row = db.conversations.find(c => c.id === id);
+    db.conversations = db.conversations.filter(c => c.id !== id);
+    db.messages = db.messages.filter(m => m.conversation_id !== id);
+    writeLocal(db, { table: 'patient_conversations', type: 'DELETE', row });
+    return;
+  }
+  const { error } = await supabase.from('patient_conversations').delete().eq('id', id);
+  if (error) throw error;
+  emit({ table: 'patient_conversations', type: 'DELETE', row: { id } });
 }
 
 /** Mark a conversation's inbound messages read, from the staff side. */
@@ -414,13 +473,22 @@ function closeSharedChannel() {
 
 // ── Patient page (/#/p/<token>, signed out) ───────────────────────────────
 // The tables are staff-only, so the patient page never reads them directly:
-// it goes through the comms_patient_* functions, which only touch the chat
-// conversation with that token (supabase/patient_conversations_migration.sql).
+// it goes through the comms_patient_* functions, which only touch the Chat
+// or SMS conversation with that token (supabase/patient_conversations_migration.sql,
+// widened to SMS by sms_patient_page_migration.sql).
+
+/** The patient link for a Chat or SMS thread, minting one for an older thread. */
+export async function ensurePatientToken(conversation) {
+  if (conversation.patient_token) return conversation.patient_token;
+  const patient_token = newPatientToken();
+  await updateConversation(conversation.id, { patient_token });
+  return patient_token;
+}
 
 /** { conversation, messages } for a patient link, or null if it's not active. */
 export async function getPatientThread(token) {
   if (await commsMode() === 'local') {
-    const conversation = readLocal().conversations.find(c => c.channel === 'chat' && c.patient_token === token);
+    const conversation = readLocal().conversations.find(c => (c.channel === 'chat' || c.channel === 'sms') && c.patient_token === token);
     return conversation ? { conversation, messages: await listMessages(conversation.id) } : null;
   }
   const { data, error } = await supabase.rpc('comms_patient_thread', { p_token: token });
@@ -431,7 +499,7 @@ export async function getPatientThread(token) {
 /** The patient answers in their chat. Resolves to the saved message. */
 export async function sendAsPatient(token, body) {
   if (await commsMode() === 'local') {
-    const conversation = readLocal().conversations.find(c => c.channel === 'chat' && c.patient_token === token);
+    const conversation = readLocal().conversations.find(c => (c.channel === 'chat' || c.channel === 'sms') && c.patient_token === token);
     if (!conversation) throw new Error('This link is no longer active.');
     return addMessage({
       conversation_id: conversation.id, kind: 'message', direction: 'in',
@@ -471,4 +539,53 @@ export async function listEducationContent() {
     if (!error && data?.length) return data;
   } catch { /* fall back below */ }
   return EDUCATION_LIBRARY.map(c => ({ ...c, source: 'MedlinePlus' }));
+}
+
+// Shared-number fields on a conversation (FCS-5677): the custom thread name
+// (internal only, never sent) and the rest-of-today session. Each has its
+// own column (sms_thread_name_migration.sql, sms_session_migration.sql);
+// until a column exists its value is kept in this browser, so the flow can
+// still be tried.
+const BROWSER_FIELDS = { thread_name: 'fold-sms-thread-names', sms_session: 'fold-sms-sessions' };
+function savedField(field) {
+  try { return JSON.parse(localStorage.getItem(BROWSER_FIELDS[field]) || '{}'); } catch { return {}; }
+}
+function withSavedThreadNames(rows) {
+  return Object.keys(BROWSER_FIELDS).reduce((acc, field) => {
+    const saved = savedField(field);
+    return Object.keys(saved).length
+      ? acc.map(r => (r[field] == null && saved[r.id] != null ? { ...r, [field]: saved[r.id] } : r))
+      : acc;
+  }, rows);
+}
+async function saveConversationField(conversation, field, value) {
+  try {
+    return await updateConversation(conversation.id, { [field]: value });
+  } catch (error) {
+    if (!isMissingColumn(error)) throw error;
+    const saved = savedField(field);
+    if (value != null) saved[conversation.id] = value; else delete saved[conversation.id];
+    try { localStorage.setItem(BROWSER_FIELDS[field], JSON.stringify(saved)); } catch { /* storage blocked: this session only */ }
+    const row = { ...conversation, [field]: value };
+    emit({ table: 'patient_conversations', type: 'UPDATE', row });
+    return row;
+  }
+}
+
+/** Name a shared thread, or clear the name (empty) to show the members' names again. */
+export function renameThread(conversation, name) {
+  return saveConversationField(conversation, 'thread_name', name?.trim() || null);
+}
+
+/**
+ * Start (or switch) a shared number's rest-of-today session: received SMS go
+ * to `member` until local midnight. `null` stops it.
+ */
+export function setSmsSession(conversation, member) {
+  if (!member) return saveConversationField(conversation, 'sms_session', null);
+  const until = new Date();
+  until.setHours(24, 0, 0, 0);
+  return saveConversationField(conversation, 'sms_session', {
+    member_id: String(member.id), member_name: member.name, started_at: now(), until: until.toISOString(),
+  });
 }

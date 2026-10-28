@@ -13,6 +13,7 @@ import {
 } from './sendTo';
 import { formatPhone, toE164 } from './commsUtils';
 import { PersonOption, PersonTip } from './PersonOption';
+import { OptInRecipients } from './OptInRecipients';
 import { VerifyIdCard, VerifyIdStack, VerifyIdReveal } from './VerifyIdCard';
 import styles from './CommsDrawers.module.css';
 
@@ -29,9 +30,10 @@ const loadArticles = () => listEducationContent()
  * identity; the main button puts the message in the thread's message box and
  * the thread's Send sends it (to each person picked).
  *
- * onInsert({ text, meta, targets }) – targets: E.164 numbers (SMS only)
+ * forName – who the line names ("Please fill this form for …"); defaults to the thread's patient
+ * onInsert({ text, meta, targets, forName }) – targets: E.164 numbers (SMS only)
  */
-function ThreadLinkDrawer({ conversation, onInsert, onClose, load, itemLabel, cta, title, line, metaFor }) {
+function ThreadLinkDrawer({ conversation, forName, onInsert, onClose, load, itemLabel, cta, title, line, metaFor }) {
   const { patients } = useCommsPeople();
   const sms = conversation.channel === 'sms';
   const [items, setItems] = useState([]);
@@ -59,6 +61,8 @@ function ThreadLinkDrawer({ conversation, onInsert, onClose, load, itemLabel, ct
     ...(contacts ? withDecisionMakers(contacts) : []).map(c => ({ value: String(c.id), name: c.name, phone: c.phone, email: c.email, dob: c.dob, type: c.type, missing: c.missing, meta: personMeta(c) })),
   ];
   const [picked, setPicked] = useState(() => (patient.phone ? ['patient'] : []));
+  // Recipients are opt-in ("+ Add recipients"); until then it's the member.
+  const [contactsOpen, setContactsOpen] = useState(false);
   // Send To (and with it Verify identity) only shows on SMS when the member
   // has other people on record; otherwise it goes to the member.
   const hasRoles = sms && (contacts || []).length > 0;
@@ -72,7 +76,9 @@ function ThreadLinkDrawer({ conversation, onInsert, onClose, load, itemLabel, ct
   };
 
   const item = items.find(i => i.id === itemId);
-  const activeVerify = hasRoles ? verifyId : { ...verifyId, on: false };
+  // Protect links only matters once the link goes to someone besides the patient.
+  const withOthers = hasRoles && targets.some(t => t.value !== 'patient');
+  const activeVerify = withOthers ? verifyId : { ...verifyId, on: false };
   const blockers = verifyBlockers(activeVerify, targets);
   const canAdd = !!item && targets.length > 0 && !blockers.length;
   // Why the button is greyed out, the first thing missing.
@@ -86,13 +92,16 @@ function ThreadLinkDrawer({ conversation, onInsert, onClose, load, itemLabel, ct
     // "[You have a secure message from Fold Health. ]{line}". The opening
     // sentence only comes with Verify identity on an SMS; Chat just gets the
     // link swapped.
-    const plain = line(patient.name, item);
+    // On a shared number the line names the thread's Log For member.
+    const name = forName || patient.name;
+    const plain = line(name, item);
     const secured = activeVerify.on ? protectSms(plain) : null;
     const body = secured ? secured.text.slice(SECURE_SMS_PREFIX) : plain;
     onInsert?.({
       text: secured && sms ? `${SECURE_SMS_TEXT} ${body}` : body,
       meta: { ...metaFor(item), ...(secured ? { verifyId, secureLinks: secured.links } : {}) },
       targets: sms ? targets.map(t => toE164(t.phone)) : null,
+      forName: name,
     });
     setClosing(true);
   };
@@ -114,16 +123,12 @@ function ThreadLinkDrawer({ conversation, onInsert, onClose, load, itemLabel, ct
           onChange={() => {}}
         />
         {hasRoles && (
-          <Select
-            label="Send To"
+          <OptInRecipients
+            open={contactsOpen}
+            onOpen={() => setContactsOpen(true)}
+            onRemove={() => { pick(['patient']); setContactsOpen(false); }}
             showInfo
             infoText={SEND_TO_INFO}
-            required
-            multiple
-            checkboxes
-            badges
-            searchable
-            searchPlaceholder="Search by name"
             options={people.map(o => ({
               value: o.value,
               triggerLabel: sendToChipLabel(o.name, o.type),
@@ -148,8 +153,8 @@ function ThreadLinkDrawer({ conversation, onInsert, onClose, load, itemLabel, ct
             onChange={setItemId}
             placeholder={`Search ${itemLabel}`}
           />
-          {/* The item is required, so there's always a link; it shows with Send To. */}
-          <VerifyIdReveal show={hasRoles}>
+          {/* The item is required, so there's always a link; it shows once someone besides the patient gets it. */}
+          <VerifyIdReveal show={withOthers}>
             <VerifyIdCard value={verifyId} onChange={setVerifyId} blockers={blockers} />
           </VerifyIdReveal>
         </VerifyIdStack>

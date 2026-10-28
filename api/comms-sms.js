@@ -3,10 +3,13 @@
 // registration and no per-message fee (the phone's plan pays).
 //
 //   POST /api/comms-sms  { to, message }  → { id }
-//   GET  /api/comms-sms                    → { messages: [{ id, from, body, receivedAt }] }
+//   GET  /api/comms-sms?from=<10 digits>,… → { messages: [{ id, from, body, receivedAt }] }
 //
 // GET is polled by Messages > SMS to pull replies into their threads; it
-// needs no public webhook, so it works on localhost too.
+// needs no public webhook, so it works on localhost too. The gateway phone
+// also receives its owner's personal texts, so GET returns only messages
+// from the numbers the app is waiting on (`from`, last ten digits each);
+// with no `from` it returns nothing.
 //
 // Env: TEXTBEE_API_KEY, TEXTBEE_DEVICE_ID (both from the textbee dashboard).
 
@@ -77,7 +80,13 @@ export default async function handler(req, res) {
         console.error('[comms-sms] gateway error', r.status, json);
         return res.status(r.status).json({ error: { message: 'The SMS gateway could not be read.' } });
       }
-      const messages = (json?.data || []).map(m => ({
+      const wanted = new Set(
+        (new URL(req.url, 'http://localhost').searchParams.get('from') || '')
+          .split(',').map(d => d.replace(/\D/g, '').slice(-10)).filter(d => d.length >= 7),
+      );
+      const messages = (json?.data || [])
+        .filter(m => wanted.has(String(m.sender || '').replace(/\D/g, '').slice(-10)))
+        .map(m => ({
         id: `textbee:${m._id || m.id}`,
         from: m.sender,
         body: m.message,

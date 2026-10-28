@@ -21,7 +21,8 @@ function formatBytes(n) {
  * Fold Health ChatBubble (Fold-Pixel 1.0 "Chat Bubble Web", 1288:19893).
  *
  * - side 'left'   – from the other person: white bubble, their avatar beside it
- * - side 'right'  – from us: purple bubble
+ * - side 'right'  – from us: purple bubble, the sender's staff avatar on
+ *   the outer side (mirrors 'left'; the internal card shows it too)
  * - side 'internal' – a staff-only note: dashed orange card with an
  *   "Internal" badge
  *
@@ -33,7 +34,7 @@ function formatBytes(n) {
  *
  * @param {'left'|'right'|'internal'} props.side
  * @param {string}  props.name           – sender name over the bubble
- * @param {string}  [props.initials]     – avatar initials (left / internal)
+ * @param {string}  [props.initials]     – avatar initials; on 'right', omit to hide the avatar
  * @param {string}  [props.text]
  * @param {string}  [props.time]
  * @param {React.ReactNode} [props.status]
@@ -47,6 +48,7 @@ function formatBytes(n) {
  * @param {React.ReactNode} [props.children] – extra content at the end of the bubble (e.g. a card)
  * @param {boolean} [props.flush]          – no padding: `children` lay out the bubble's sections themselves
  * @param {'patient'|'provider'} [props.avatarVariant='patient'] – the sender's avatar colour (provider: an outside org)
+ * @param {'staff'|'patient'} [props.selfAvatarVariant='staff'] – the avatar colour on 'right' (patient on the patient's own page)
  * @param {(bucket: string, path: string, expiresIn: number) => Promise<string>} [props.signUrl]
  *   – signs a private attachment URL; defaults to the signed-in session (see lib/storageUrl.js)
  */
@@ -67,6 +69,7 @@ export function ChatBubble({
   children,
   flush = false,
   avatarVariant = 'patient',
+  selfAvatarVariant = 'staff',
   signUrl,
 }) {
   const menuRef = useRef(null);
@@ -88,7 +91,7 @@ export function ChatBubble({
 
   const menu = menuItems?.length ? (
     <>
-      <ActionButton ref={menuRef} icon="solar:menu-dots-bold" size="S" tooltip="More" onClick={() => setMenuOpen(o => !o)} />
+      <ActionButton ref={menuRef} icon="solar:menu-dots-linear" size="S" tooltip="More" className={styles.menuBtn} onClick={() => setMenuOpen(o => !o)} />
       {menuOpen && (
         <MenuPopover
           anchorRef={menuRef}
@@ -186,7 +189,7 @@ export function ChatBubble({
   }
 
   return (
-    <div className={[styles.wrap, right ? styles.wrapRight : ''].join(' ')}>
+    <div className={[styles.wrap, right ? styles.wrapRight : '', call ? styles.wrapCall : ''].join(' ')}>
       {!right && (
         <span className={styles.avatarCol}>
           {!compact && <Avatar variant={avatarVariant} size="XS" initials={initials} />}
@@ -205,6 +208,11 @@ export function ChatBubble({
         {timeRow}
         {footer}
       </div>
+      {right && initials && (
+        <span className={styles.avatarCol}>
+          {!compact && <Avatar variant={selfAvatarVariant} size="XS" initials={initials} />}
+        </span>
+      )}
     </div>
   );
 }

@@ -359,6 +359,7 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
               </div>
               <Select
                 aria-label="Patient"
+                disabled={!!initial.patient}
                 searchable
                 options={patientOptions}
                 value={patientId}

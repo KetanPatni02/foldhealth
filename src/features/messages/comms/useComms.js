@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useAppStore } from '../../../store/useAppStore';
+import { membersForConversation } from './smsMembers';
 import {
   listConversations, listMessages, listMessagesFor, listSmsLoggedFor, subscribeComms, commsMode,
 } from './commsRepo';
@@ -109,7 +111,8 @@ export function useCommsMessagesFor(conversationIds) {
 
 /**
  * Every SMS logged for a patient ({ message, conversation }, newest first),
- * reloaded when messages change.
+ * reloaded when messages change. Unassigned SMS on a shared number are left
+ * out until someone assigns them.
  */
 export function usePatientSmsLog(patientId) {
   const [state, setState] = useState({ id: null, items: [] });
@@ -117,7 +120,9 @@ export function usePatientSmsLog(patientId) {
   useEffect(() => {
     if (!patientId) return undefined;
     let alive = true;
-    const load = () => listSmsLoggedFor({ patientId })
+    // Patients are read at load time, so a new list doesn't reload the log.
+    const isShared = (c) => membersForConversation(c, useAppStore.getState().allPatients || []).length > 1;
+    const load = () => listSmsLoggedFor({ patientId, isShared })
       .then(items => { if (alive) setState({ id: patientId, items }); })
       .catch(() => { if (alive) setState({ id: patientId, items: [] }); });
     load();
