@@ -11,6 +11,17 @@
 
 begin;
 
+-- Hard stop anywhere but Dev: the Dev test patient only exists there. Also
+-- keeps any tool that runs supabase/*.sql as migrations (PR autopilot) from
+-- writing test data to production.
+do $$
+begin
+  if not exists (select 1 from auth.users where email = 'patient.test@example.com') then
+    raise exception 'patient_app_dev_seed.sql is Dev test data and only runs on Foldhealth Dev';
+  end if;
+end;
+$$;
+
 insert into public.patient_accounts (user_id, member_id, relationship, is_primary)
 select u.id, m.member_id, m.relationship, m.is_primary
   from auth.users u
