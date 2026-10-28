@@ -177,6 +177,29 @@ function mapCarePlanTemplateRow(row) {
     // What adding it again does; before the renewal column, condition
     // templates extend and the rest reinstate.
     renewal: row.renewal || defaultRenewalFor(row.conditions),
+    // Bulk import (care_plan_template_import migration): the upload it came
+    // from, the published template a draft revision replaces, and who approved it.
+    importBatchId: row.import_batch_id || null,
+    replacesTemplateId: row.replaces_template_id || null,
+    approvedBy: row.approved_by || '',
+    approvedAt: row.approved_at || null,
+    // Template versioning: the version whose content this row holds.
+    currentVersionNumber: row.current_version_number ?? null,
+  };
+}
+
+// One version in a template's chain (care_plan_template_versioning migration).
+function mapTemplateVersionRow(row) {
+  return {
+    id: row.id,
+    templateId: row.template_id,
+    versionNumber: row.version_number,
+    effectiveDate: String(row.effective_date || '').slice(0, 10),
+    content: row.content || {},
+    note: row.note || '',
+    migration: row.migration || null,
+    publishedBy: row.published_by || '',
+    publishedAt: row.published_at || null,
   };
 }
 
@@ -196,6 +219,15 @@ function mapTemplateInstanceRow(row) {
     replacedBy: row.replaced_by || null,
     doneCount: row.done_count ?? null,
     totalCount: row.total_count ?? null,
+    // The template version this run is on, and the one it will move to.
+    templateVersionId: row.template_version_id || null,
+    templateVersionNumber: row.template_version_number ?? null,
+    pendingVersionId: row.pending_version_id || null,
+    pendingMode: row.pending_mode || null,
+    pendingEffectiveDate: row.pending_effective_date ? String(row.pending_effective_date).slice(0, 10) : null,
+    // The IPA overlay it was applied with, and who must sign because of it.
+    overlayId: row.overlay_id || null,
+    signoffRoute: row.signoff_route || null,
   };
 }
 
@@ -264,8 +296,15 @@ const aiToRow = (x) => {
 // Why an item holds its status (e.g. 'Program UTR' when a program status
 // automation set it). Only written back when the row was read with the
 // column, so saves keep working before gbi_status_reason_migration.sql runs.
-const reasonFromRow = (row) => ('status_reason' in row ? { statusReason: row.status_reason || '' } : {});
-const reasonToRow = (x) => (x.statusReason !== undefined ? { status_reason: x.statusReason || null } : {});
+const reasonFromRow = (row) => ({
+  ...('status_reason' in row ? { statusReason: row.status_reason || '' } : {}),
+  // Patient-facing wording from an IPA overlay (care_plan_ipa_overlays migration).
+  ...('patient_title' in row ? { patientTitle: row.patient_title || '' } : {}),
+});
+const reasonToRow = (x) => ({
+  ...(x.statusReason !== undefined ? { status_reason: x.statusReason || null } : {}),
+  ...(x.patientTitle !== undefined ? { patient_title: x.patientTitle || null } : {}),
+});
 
 function mapPatientCarePlanGoalRow(row) {
   return {
@@ -750,6 +789,7 @@ export {
   sdohToRow,
   mapCarePlanTemplateRow,
   mapTemplateInstanceRow,
+  mapTemplateVersionRow,
   partitionRetired,
   mapCarePlanInterventionTemplateRow,
   mapInterventionRow,
