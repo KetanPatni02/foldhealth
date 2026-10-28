@@ -1,27 +1,32 @@
 import { useMemo, useState } from 'react';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { ActivityLog, MetaLine } from '../../../components/ActivityLog/ActivityLog';
+import { ActivityLog } from '../../../components/ActivityLog/ActivityLog';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { EmptyState } from '../../../components/EmptyState/EmptyState';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { SubTabs } from '../../../components/SubTabs/SubTabs';
-import { toActivityLogEntries } from '../../hedis-worklist/CareGapDetailDrawer.utils';
 import { useAppStore } from '../../../store/useAppStore';
 import { toast } from '../../../components/Toast/sonnerToast';
 import { MEASURE_NAMES, MEASURE_ORDER, medLabel } from '../pharmacyWorklist.utils';
 import { Sep } from '../PharmacyCells';
-import { BARRIER_ICON, INTERVENTION_ADDRESSES, INTERVENTION_ICON } from '../adherencePicklists';
-import { LOG_TYPE_ICON } from '../../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab.utils';
+import { INTERVENTION_ADDRESSES } from '../adherencePicklists';
+import { buildBarrierHistory, hasBarrierData } from './barrierHistory';
 import styles from './PharmacyBarrierLog.module.css';
 
 // An active barrier with its Resolve button beside it.
-const BarrierChips = ({ items, onResolve, context }) => (items.length ? (
+// `since` (optional) maps an item to the date it was first logged, shown in
+// brackets after it.
+const Since = ({ date }) => (date ? <span className={styles.since}>({date})</span> : null);
+
+const BarrierChips = ({ items, onResolve, context, since }) => (items.length ? (
   <span className={styles.chips}>
     {items.map(v => (
       <span key={v} className={styles.resolvable}>
         <Badge size="S" tone="error" label={v} />
+        <Since date={since?.[v]} />
         <ActionButton size="S" icon="solar:check-circle-linear" tooltip={`Mark ${v} resolved`} aria-label={`Mark ${v} resolved for ${context}`} onClick={() => onResolve(v)} />
         {/* Holds the place of an intervention's ✕ so every ✓ lines up. */}
         <span className={styles.actionSlot} aria-hidden="true" />
@@ -31,11 +36,12 @@ const BarrierChips = ({ items, onResolve, context }) => (items.length ? (
 ) : <span className={styles.none}>None</span>);
 
 // An active intervention with Done and Didn't work beside it.
-const InterventionChips = ({ items, context, onFinish }) => (
+const InterventionChips = ({ items, context, onFinish, since }) => (
   <span className={styles.chips}>
     {items.map(v => (
       <span key={v} className={styles.resolvable}>
         <Badge size="S" tone="grey" label={v} />
+        <Since date={since?.[v]} />
         <ActionButton size="S" icon="solar:check-circle-linear" tooltip={`Mark ${v} done`} aria-label={`Mark ${v} done for ${context}`} onClick={() => onFinish(v, 'Done')} />
         <ActionButton size="S" icon="solar:close-circle-linear" tooltip={`${v} didn't work`} aria-label={`Mark ${v} didn't work for ${context}`} onClick={() => onFinish(v, "Didn't work")} />
       </span>
@@ -56,88 +62,71 @@ const DrugBlock = ({ name, barriers, interventions, onResolve, onFinish }) => (
   </div>
 );
 
-// The rail icon for a History entry: what happened to an item (resolved or
-// done, didn't work), else where it came from (the outreach's own type, a
-// medication edit), else what was logged (a barrier, or only interventions).
-function railFor(e) {
-  if (e.completed?.some(c => c.outcome !== 'Done')) return { icon: 'solar:close-circle-linear', avatarVariant: 'error' };
-  if (e.completed || e.resolved) return { icon: 'solar:check-circle-linear', avatarVariant: 'success' };
-  if (e.source === 'Outreach') {
-    return { icon: LOG_TYPE_ICON[e.outreachType]?.icon || (e.outreachType === 'SMS' ? 'solar:chat-square-linear' : 'solar:phone-calling-linear'), avatarVariant: 'others' };
-  }
-  if (e.source === 'Medication review') return { icon: 'solar:pill-linear', avatarVariant: 'others' };
-  const recs = Object.values(e.measures || {});
-  return recs.some(r => r.barriers?.length)
-    ? { icon: BARRIER_ICON, avatarVariant: 'error' }
-    : { icon: INTERVENTION_ICON, avatarVariant: 'others' };
-}
-
-// Results aren't shown here; a gap whose record only set one is left out.
-const hasBarrierData = (r) => r && (r.barriers.length > 0 || r.interventions.length > 0 || !r.result);
-
-// One logged entry in the shared activity timeline: who, when and from where,
-// then one line per gap it touched, or per drug when set per medication (the
-// gap, the drug or drugs, the barriers and interventions recorded), then its
-// note.
-function EntryBody({ entry }) {
-  return (
-    <>
-      <MetaLine entry={entry} />
-      <span className={styles.entryGaps}>
-        {entry.gaps.map(g => (
-          <span key={g.key} className={styles.entryGap}>
-            <span className={styles.entryContext}>
-              <span className={styles.entryCode}>{g.code}</span>
-              {g.drugs && <><span aria-hidden="true">·</span>{g.drugs}</>}
-            </span>
-            {g.completed ? (
-              g.completed.outcome === 'Done'
-                ? <Badge size="S" tone="success" icon="solar:check-circle-linear" label={`Done: ${g.completed.intervention}`} />
-                : <Badge size="S" tone="error" icon="solar:close-circle-linear" label={`Didn't work: ${g.completed.intervention}`} />
-            ) : g.resolved ? (
-              <Badge size="S" tone="success" icon="solar:check-circle-linear" label={`Resolved: ${g.resolved}`} />
-            ) : (
-              <span className={styles.chips}>
-                {g.rec.barriers.map(v => <Badge key={`b-${v}`} size="S" tone="error" label={v} />)}
-                {g.rec.interventions.map(v => <Badge key={`i-${v}`} size="S" tone="grey" label={v} />)}
-                {!g.rec.barriers.length && !g.rec.interventions.length && <span className={styles.none}>Cleared</span>}
-              </span>
-            )}
-          </span>
-        ))}
-      </span>
-      {entry.note && <span className={styles.note}>{entry.note}</span>}
-    </>
-  );
-}
-
-// Read-only Barriers & Interventions for the gap drawer. Active Barriers: per
-// gap, what stands now (its newest entry) and which drugs carry a barrier.
-// History: every entry across the gaps in one timeline. Here a barrier is
-// resolved and an intervention marked Done or Didn't work; anything else
-// changes through Update Barriers (`onEdit`) or an outreach. A gap with nothing logged at gap level shows only its drugs.
-export function PharmacyBarrierLog({ member, onEdit }) {
-  const [view, setView] = useState('active');
+// Resolve a barrier, or mark an intervention Done / Didn't work, with a
+// toast; Done on an intervention that addresses a barrier still standing in
+// the same place asks whether to resolve that barrier too. `prompt` is that
+// dialog, for the caller to render.
+function useBarrierActions(memberId) {
   const resolveBarrier = useAppStore(s => s.resolvePharmacyBarrier);
   const completeIntervention = useAppStore(s => s.completePharmacyIntervention);
+  const [ask, setAsk] = useState(null);
   const resolve = (code, barrier, med) => {
-    resolveBarrier(member.id, { code, barrier, medId: med?.id || null });
+    resolveBarrier(memberId, { code, barrier, medId: med?.id || null });
     toast.success(`Resolved ${barrier} on ${code}${med ? ` · ${med.name}` : ''}`);
   };
-  // Done on an intervention that addresses a barrier still standing in the
-  // same place asks whether to resolve that barrier too.
-  const [prompt, setPrompt] = useState(null);
   const finish = ({ code, intervention, outcome, med, resolveToo = [] }) => {
-    completeIntervention(member.id, { code, intervention, outcome, medId: med?.id || null, resolve: resolveToo });
+    completeIntervention(memberId, { code, intervention, outcome, medId: med?.id || null, resolve: resolveToo });
     const where = `${code}${med ? ` · ${med.name}` : ''}`;
     if (outcome === 'Done') toast.success(`${intervention} done on ${where}${resolveToo.length ? `; resolved ${resolveToo.join(', ')}` : ''}`);
     else toast(`${intervention} marked didn't work on ${where}`);
   };
   const onFinish = (code, med, standing) => (intervention, outcome) => {
     const addressed = outcome === 'Done' ? (INTERVENTION_ADDRESSES[intervention] || []).filter(b => standing.includes(b)) : [];
-    if (addressed.length) setPrompt({ code, intervention, med, addressed });
+    if (addressed.length) setAsk({ code, intervention, med, addressed });
     else finish({ code, intervention, outcome, med });
   };
+  const prompt = ask && (
+    <ConfirmDialog
+      variant="primary"
+      icon="solar:check-circle-linear"
+      iconColor="var(--status-success)"
+      title={`Also resolve ${ask.addressed.join(', ')}?`}
+      description={`${ask.intervention} addresses ${ask.addressed.join(', ')} on ${ask.code}${ask.med ? ` · ${ask.med.name}` : ''}. Resolve it now, or keep it active if the member still faces it.`}
+      confirmLabel="Resolve too"
+      cancelLabel="Just mark done"
+      onConfirm={() => { finish({ ...ask, outcome: 'Done', resolveToo: ask.addressed }); setAsk(null); }}
+      onCancel={() => { finish({ ...ask, outcome: 'Done' }); setAsk(null); }}
+      onClose={() => setAsk(null)}
+    />
+  );
+  return { resolve, onFinish, prompt };
+}
+
+// When each item has stood since: walking back from the newest entry for the
+// gap, the date of the oldest entry in the unbroken run that still lists it.
+// `listOf(rec)` picks the list to read (a drug's own, else the gap's).
+function sinceDates(log, code, items, listOf) {
+  const out = {};
+  for (const v of items) {
+    for (const e of log || []) {
+      const rec = e.measures?.[code];
+      if (!rec || !hasBarrierData(rec)) continue;
+      if (!listOf(rec).includes(v)) break;
+      out[v] = e.date;
+    }
+  }
+  return out;
+}
+
+// Read-only Barriers & Interventions for the gap drawer. Active Barriers: per
+// gap, what stands now (its newest entry) and which drugs carry a barrier.
+// History: every entry across the gaps in one timeline. Here a barrier is
+// resolved and an intervention marked Done or Didn't work; anything else
+// changes through Update Barriers (`onEdit`) or an outreach. A gap with
+// nothing logged at gap level shows only its drugs.
+export function PharmacyBarrierLog({ member, onEdit }) {
+  const [view, setView] = useState('active');
+  const { resolve, onFinish, prompt } = useBarrierActions(member.id);
 
   const measures = useMemo(() => (member?.measures || [])
     .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code)), [member]);
@@ -147,38 +136,20 @@ export function PharmacyBarrierLog({ member, onEdit }) {
     const current = latest?.measures[x.code];
     // Logged for the whole gap, a barrier is every drug's reason too; only a
     // drug whose reason differs gets its own block.
-    const gapLevel = current && !current.medications && (current.barriers.length > 0 || current.interventions.length > 0);
+    // An entry made from one drug (a Medication Review edit) isn't gap-wide.
+    const gapLevel = current && !current.medications && !latest.medication && (current.barriers.length > 0 || current.interventions.length > 0);
     const drugBarriers = x.medications.filter(d => d.status !== 'Discontinued' && d.nonAdherenceReason
       && !(gapLevel && current.barriers.includes(d.nonAdherenceReason)));
     return { x, latest, current, gapLevel, drugBarriers };
   }).filter(g => g.current?.barriers.length || g.current?.interventions.length || g.drugBarriers.length), [measures, member]);
 
-  const history = useMemo(() => {
-    const byCode = Object.fromEntries(measures.map(x => [x.code, x]));
-    const raw = (member.interventionLog || []).map(e => ({
-      t: 'note', when: e.date, actor: e.by, note: e.note, context: e.source || null, ...railFor(e),
-      // The drug an entry names, else every drug on the gap it was logged for.
-      // A resolution shows what was resolved, not the record left behind.
-      gaps: (e.completed || e.resolved) ? [
-        ...(e.completed || []).map(r => ({ ...r, key: `c-${r.code}-${r.medication || ''}-${r.intervention}`, completed: r })),
-        ...(e.resolved || []).map(r => ({ ...r, key: `r-${r.code}-${r.medication || ''}-${r.barrier}`, resolved: r.barrier })),
-      ].filter(r => byCode[r.code]).map(r => ({ ...r, drugs: r.medication || byCode[r.code].medications.map(medLabel).join(', ') }))
-        : Object.entries(e.measures || {})
-        .filter(([code, r]) => byCode[code] && hasBarrierData(r))
-        .toSorted(([a], [b]) => MEASURE_ORDER.indexOf(a) - MEASURE_ORDER.indexOf(b))
-        .flatMap(([code, r]) => (r.medications
-          ? r.medications.map(d => ({ key: `${code}-${d.id}`, code, rec: d, drugs: d.name }))
-          : [{ key: code, code, rec: r, drugs: e.medication || byCode[code].medications.map(medLabel).join(', ') }])),
-    })).filter(e => e.gaps.length);
-    return toActivityLogEntries(raw)
-      .map(e => (e.t === 'group' ? e : { ...e, time: '', render: (entry) => <EntryBody entry={entry} /> }));
-  }, [measures, member]);
+  const history = useMemo(() => buildBarrierHistory(member, measures), [measures, member]);
 
   return (
     <div className={styles.wrap}>
       <div className={styles.toolbar}>
         <SubTabs
-          tabs={[{ key: 'active', label: 'Active Barriers' }, { key: 'history', label: 'History' }]}
+          tabs={[{ key: 'active', label: 'Active' }, { key: 'history', label: 'History' }]}
           activeKey={view}
           onChange={setView}
           size="S"
@@ -254,22 +225,72 @@ export function PharmacyBarrierLog({ member, onEdit }) {
         </DashboardCard>
       )))}
 
-      {prompt && (
-        <ConfirmDialog
-          variant="primary"
-          icon="solar:check-circle-linear"
-          iconColor="var(--status-success)"
-          title={`Also resolve ${prompt.addressed.join(', ')}?`}
-          description={`${prompt.intervention} addresses ${prompt.addressed.join(', ')} on ${prompt.code}${prompt.med ? ` · ${prompt.med.name}` : ''}. Resolve it now, or keep it active if the member still faces it.`}
-          confirmLabel="Resolve too"
-          cancelLabel="Just mark done"
-          onConfirm={() => { finish({ ...prompt, outcome: 'Done', resolveToo: prompt.addressed }); setPrompt(null); }}
-          onCancel={() => { finish({ ...prompt, outcome: 'Done' }); setPrompt(null); }}
-          onClose={() => setPrompt(null)}
-        />
-      )}
+      {prompt}
 
       {view === 'history' && <ActivityLog entries={history} flushTop emptyLabel="No barriers or interventions logged yet." />}
+    </div>
+  );
+}
+
+// One drug's Barriers & Interventions (its detail panel), in the tab's
+// layout: what stands for it now (its own record, or the gap's when logged
+// for every drug, plus its Reason for Non-Adherence), with the same Resolve /
+// Done / Didn't work actions, then its history, collapsed until opened.
+export function DrugBarriers({ member, code, medId }) {
+  const [showHistory, setShowHistory] = useState(false);
+  const { resolve, onFinish, prompt } = useBarrierActions(member?.id);
+  const x = member?.measures.find(m => m.code === code);
+  const d = x?.medications.find(m => m.id === medId);
+  // Its own lines (by id, or by name on older entries) and the gap-wide ones.
+  const history = useMemo(() => {
+    if (!x || !d) return [];
+    const names = [d.name, medLabel(d)];
+    return buildBarrierHistory(member, [x], line => (line.medId ? line.medId === d.id : (!line.medication || names.includes(line.medication))));
+  }, [member, x, d]);
+  if (!x || !d) return null;
+
+  const latest = (member.interventionLog || []).find(e => hasBarrierData(e.measures?.[code]));
+  const current = latest?.measures[code];
+  const own = current?.medications?.find(r => r.id === d.id);
+  const gapWide = !!current && !current.medications;
+  const gapLevel = gapWide && !latest.medication && (current.barriers.length > 0 || current.interventions.length > 0);
+  const fromRecord = own || (gapWide ? current : { barriers: [], interventions: [] });
+  const reason = d.status !== 'Discontinued' && d.nonAdherenceReason;
+  const barriers = [...fromRecord.barriers, ...(reason && !fromRecord.barriers.includes(reason) ? [reason] : [])];
+  const interventions = fromRecord.interventions;
+  const me = { id: d.id, name: medLabel(d) };
+  // A gap-wide barrier resolves for the whole gap; the drug's own, for it.
+  const scopeOf = (v) => (gapWide && current.barriers.includes(v) ? null : me);
+  const ownList = (key) => (rec) => (rec.medications ? (rec.medications.find(r => r.id === d.id)?.[key] || []) : rec[key]);
+  const barrierSince = sinceDates(member.interventionLog, code, barriers, ownList('barriers'));
+  const interventionSince = sinceDates(member.interventionLog, code, interventions, ownList('interventions'));
+  const count = history.filter(e => e.t !== 'group').length;
+
+  return (
+    <div className={styles.drugPanel}>
+      {gapLevel && <span className={styles.titleSub}>Applies to all {code} medications</span>}
+      {barriers.length || interventions.length ? (
+        <div className={styles.current}>
+          {barriers.length > 0 && <>
+            <span className={styles.label}>Barriers</span>
+            <BarrierChips items={barriers} context={me.name} since={barrierSince} onResolve={v => resolve(code, v, scopeOf(v))} />
+          </>}
+          {interventions.length > 0 && <>
+            <span className={styles.label}>Interventions</span>
+            <InterventionChips items={interventions} context={me.name} since={interventionSince} onFinish={onFinish(code, own ? me : null, barriers)} />
+          </>}
+        </div>
+      ) : <span className={styles.none}>No active barriers or interventions.</span>}
+      {count > 0 && (
+        <>
+          <button type="button" className={styles.historyToggle} aria-expanded={showHistory} onClick={() => setShowHistory(v => !v)}>
+            <DownChevronIcon size={12} color="currentColor" className={`${styles.chevron} ${showHistory ? '' : styles.chevronRight}`} />
+            History ({count})
+          </button>
+          {showHistory && <ActivityLog entries={history} flushTop />}
+        </>
+      )}
+      {prompt}
     </div>
   );
 }

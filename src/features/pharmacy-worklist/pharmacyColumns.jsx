@@ -47,22 +47,17 @@ const viewMoreButton = (ctx) => (
  */
 export const PHARMACY_MIDDLE_COLUMNS = [
   {
-    key: 'priority', label: 'P', sortKey: 'priorityRank', sortType: 'number', stopRowClickPropagation: true,
+    key: 'priority', label: 'P', sortKey: 'priorityRank', sortType: 'number',
     // Divider before the per-gap block, like the one after it.
     getTdClassName: () => `${styles.td} ${styles.tdGapDivide}`,
-    renderCell: (m, ctx) => {
+    // Set by the PDC / refill-overdue rule (memberPriority); not editable.
+    renderCell: (m) => {
       const level = PRIORITY_LEVELS.find(l => l.value === m.priority);
-      const fromPlan = m.sourcePriority && !m.priorityOverride && m.sourcePriority !== m.priority ? ` (plan file: ${m.sourcePriority})` : '';
       return (
-        <Tooltip label={`${level?.label || m.priority} priority${fromPlan}`} placement="bottom">
-          <button
-            type="button"
-            className={styles.priorityButton}
-            aria-label={`Priority ${level?.label || m.priority}, change`}
-            onClick={(e) => ctx.openPriorityMenu(e.currentTarget.getBoundingClientRect())}
-          >
+        <Tooltip label={`${level?.label || m.priority} priority · ${m.priorityReason}`} placement="bottom">
+          <span className={styles.priorityIcon} aria-label={`Priority ${level?.label || m.priority}: ${m.priorityReason}`}>
             <PriorityIcon priority={level?.icon || 'none'} size={16} />
-          </button>
+          </span>
         </Tooltip>
       );
     },

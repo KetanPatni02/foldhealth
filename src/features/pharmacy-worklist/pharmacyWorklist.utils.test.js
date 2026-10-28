@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDaysMdy, annotateClaims, claimRecordStatus, enrichPharmacyMember, matchFill, measureStatus, medicationStatus,
-  activeBarriers, needsVerification, nextFillDueSource, outreachSummary, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
+  activeBarriers, memberPriority, needsVerification, nextFillDueSource, outreachSummary, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
 } from './pharmacyWorklist.utils.js';
 
 const daysAgo = (n) => addDaysMdy(todayMdy(), -n);
@@ -380,15 +380,27 @@ describe('enrichPharmacyMember: other care gaps', () => {
   });
 });
 
-describe('enrichPharmacyMember: priority', () => {
-  const base = { id: 'm', memberId: 'm', measures: [fillMeasure({ filledDaysAgo: 10, supply: 30 })] };
+describe('memberPriority: the spec rule', () => {
+  const gap = (pdc, dueIn, code = 'MAD') => ({ code, pdc, nextFillDue: addDaysMdy(todayMdy(), dueIn), medications: [] });
 
-  it('takes the plan file priority, in P1–P3 form', () => {
-    expect(enrichPharmacyMember({ ...base, sourcePriority: 'Medium' }).priority).toBe('P2');
+  it('is P1 when one gap has PDC below 80% and a refill overdue', () => {
+    expect(memberPriority([gap(72, -5)])).toMatchObject({ priority: 'P1', reason: 'MAD: PDC 72% and refill 5d overdue' });
   });
 
-  it('lets a priority picked on the worklist win over the plan file', () => {
-    expect(enrichPharmacyMember({ ...base, sourcePriority: 'P1', priorityOverride: 'P3' }).priority).toBe('P3');
+  it('is P2 when a gap has only one of the two, even split across gaps', () => {
+    expect(memberPriority([gap(72, 10)]).priority).toBe('P2');
+    expect(memberPriority([gap(90, -3)]).priority).toBe('P2');
+    expect(memberPriority([gap(72, 10, 'MAD'), gap(90, -3, 'MAH')]).priority).toBe('P2');
+  });
+
+  it('is P3 otherwise, and for a member with no open gaps', () => {
+    expect(memberPriority([gap(85, 10)]).priority).toBe('P3');
+    expect(memberPriority([]).priority).toBe('P3');
+  });
+
+  it('ignores a plan-file or picked priority on the member', () => {
+    const base = { id: 'm', memberId: 'm', measures: [fillMeasure({ filledDaysAgo: 10, supply: 30 })] };
+    expect(enrichPharmacyMember({ ...base, sourcePriority: 'P1', priorityOverride: 'P1' }).priority).toBe('P3');
   });
 });
 

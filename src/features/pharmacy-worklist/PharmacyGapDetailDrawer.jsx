@@ -26,6 +26,7 @@ import { PharmacyVerificationStep } from './program/PharmacyVerificationStep';
 import { PharmacyActivityLog } from './program/PharmacyActivityLog';
 import { PharmacyCommentsTab } from './program/PharmacyCommentsTab';
 // Same layout system as the HEDIS Care Gap Details drawer, so both read as one.
+import { MeasureCode } from './PharmacyCells';
 import styles from '../hedis-worklist/CareGapDetailDrawer.module.css';
 import local from './PharmacyGapDetailDrawer.module.css';
 import { escalation, pickupReminder } from './pharmacyRules';
@@ -196,9 +197,16 @@ function PharmacyGapDrawerBody({ target, row }) {
       {inSplit && (
         <div className={styles.leftPane}>
           <div className={styles.paneHeader}>
-            <span className={styles.paneTitle}>
-              {openMed ? `${medLabel(openMed)} (${openMed.generic})` : `${WORKSPACE_TITLE[workspace]}${scope === 'all' ? '' : ` · ${scopeLabel}`}`}
-            </span>
+            {openMed ? (
+              <span className={`${styles.paneTitle} ${styles.paneTitleRow}`}>
+                {`${medLabel(openMed)} (${openMed.generic})`}
+                <MeasureCode code={openMed.measure} />
+              </span>
+            ) : (
+              <span className={styles.paneTitle}>
+                {`${WORKSPACE_TITLE[workspace]}${scope === 'all' ? '' : ` · ${scopeLabel}`}`}
+              </span>
+            )}
             <div className={styles.paneHeaderRight}>
               {workspace === 'outreach' && (
                 <>
@@ -221,7 +229,7 @@ function PharmacyGapDrawerBody({ target, row }) {
             )}
             {workspace === 'verify' && <PharmacyVerificationStep member={toVerify} program={PHARM_PROGRAM} onLocked={() => setWorkspace(null)} />}
             {workspace === 'barriers' && <PharmacyBarrierStep member={scoped} form={barrierForm} />}
-            {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} interventionLog={m.interventionLog} plan={m.healthPlan} initialTab={workspace.tab} flushTabs />}
+            {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} plan={m.healthPlan} initialTab={workspace.tab} flushTabs showMeasure={false} />}
           </div>
         </div>
       )}
