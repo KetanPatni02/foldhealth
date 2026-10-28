@@ -270,7 +270,7 @@
 .cGroupHead:focus-visible { outline: 2px solid var(--primary-200); outline-offset: -2px; }
 .cCode { font-weight: 500; color: var(--neutral-400); }
 .cName { font-weight: 400; color: var(--neutral-400); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cCount { margin-left: auto; display: inline-flex; }
+.cCount { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-1); }
 
 /* Checkbox, Rx, Last Fill, Recent Fill, Next Fill, PDC, Barrier, actions. */
 /* Select all lines up with the row checkboxes (12px inset). */

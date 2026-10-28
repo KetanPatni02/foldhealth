@@ -3,13 +3,16 @@ import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import styles from './OutreachActivityCard.module.css';
 
+const OUTCOME_CLASS = { success: styles.outcomeOk, warning: styles.outcomeNote, error: styles.outcomeFailed };
+
 /**
  * OutreachActivityCard — a member's latest outreach attempts as a short
  * timeline (Figma P360 Revamp 608:347090), shown on hover of a worklist
  * Outreach cell.
  *
  * Props:
- *  - items      [{ key, date, time?, by?, title, outcome?, failed?, kind? }],
+ *  - items      [{ key, date, time?, by?, title, outcome?, failed?, tone?, kind? }],
+ *                 tone ('success' | 'warning' | 'error') wins over failed.
  *               newest first. `kind: 'letter'` shows a document icon.
  *  - onViewAll  () => void — optional "View All" link to the full log
  */
@@ -34,7 +37,7 @@ export function OutreachActivityCard({ items, onViewAll }) {
                 ))}
               </div>
               <div className={styles.title}>{it.title}</div>
-              {it.outcome && <div className={it.failed ? styles.outcomeFailed : styles.outcomeOk}>{it.outcome}</div>}
+              {it.outcome && <div className={OUTCOME_CLASS[it.tone || (it.failed ? 'error' : 'success')]}>{it.outcome}</div>}
             </div>
           </div>
         ))}

@@ -37,6 +37,7 @@
 .title { color: var(--neutral-500); }
 .outcomeOk { color: var(--status-success); }
 .outcomeFailed { color: var(--status-error); }
+.outcomeNote { color: var(--status-warning); }
 .footer { padding: var(--space-2) var(--space-3); border-top: 0.5px solid var(--neutral-150); }
 .viewAll {
   display: inline-flex;

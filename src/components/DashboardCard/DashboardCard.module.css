@@ -62,6 +62,8 @@
   text-overflow: ellipsis;
 }
 
+.titleS { font-size: var(--font-base); }
+
 .aiTitle {
   background: var(--ai-gradient-text);
   -webkit-background-clip: text;

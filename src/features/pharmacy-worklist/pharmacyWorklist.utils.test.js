@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDaysMdy, annotateClaims, claimRecordStatus, enrichPharmacyMember, matchFill, measureStatus, medicationStatus,
-  needsVerification, nextFillDueSource, outreachSummary, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
+  activeBarriers, needsVerification, nextFillDueSource, outreachSummary, planTimers, reconcileMeasure, savability, setPlanTimers, todayMdy,
 } from './pharmacyWorklist.utils.js';
 
 const daysAgo = (n) => addDaysMdy(todayMdy(), -n);
@@ -402,9 +402,20 @@ describe('outreachSummary: the hover card\'s recent attempts', () => {
     ];
     const { recent } = outreachSummary(calls);
     expect(recent.map(r => r.title)).toEqual(['General (4th Outreach)', 'Outgoing Call (3rd Outreach)', 'Outgoing Call (2nd Outreach)']);
-    expect(recent[0]).toMatchObject({ date: '10/26', time: '01:05 PM', outcome: 'Side effects: Experienced', failed: false });
-    expect(recent[1]).toMatchObject({ time: '01:05 PM', failed: true });
+    expect(recent[0]).toMatchObject({ date: '10/26', time: '01:05 PM', outcome: 'Side effects: Experienced', tone: 'success' });
+    expect(recent[1]).toMatchObject({ time: '01:05 PM', tone: 'error' });
     expect(recent[2].time).toBeNull();
+  });
+
+  it('shows a note as Note in amber, not Attended', () => {
+    const summary = outreachSummary([
+      { date: '10/27/2026', outcome: 'Member · Left voicemail', result: 'note' },
+      { date: '10/20/2026', outcome: 'Busy', result: 'failed' },
+      { date: '10/10/2026', outcome: 'Reached', result: 'success' },
+    ]);
+    expect(summary).toMatchObject({ status: 'Note', tone: 'warning', failed: false });
+    expect(summary.dots).toEqual(['success', 'error', 'warning']);
+    expect(outreachSummary([{ date: '10/27/2026', result: 'success' }])).toMatchObject({ status: 'Attended', dots: ['success', 'none', 'none'] });
   });
 });
 
@@ -419,5 +430,24 @@ describe('needsVerification', () => {
 
   it('is done once a verification call covers the gap this fill cycle', () => {
     expect(needsVerification(open, { callHistory: [verified(5)] })).toBe(false);
+  });
+});
+
+describe('activeBarriers', () => {
+  const med = (o) => ({ id: 'a', status: 'Active', nonAdherenceReason: null, ...o });
+  it("joins each gap's newest record, its drugs' lists and drug reasons", () => {
+    const m = {
+      measures: [
+        { code: 'MAD', medications: [med({ nonAdherenceReason: 'Cost Issue' }), med({ id: 'b', status: 'Discontinued', nonAdherenceReason: 'Side Effects' })] },
+        { code: 'MAH', medications: [med({})] },
+      ],
+      interventionLog: [
+        { measures: { MAH: { barriers: [], interventions: [], result: 'Rx Pick Up Confirmed' } } },
+        { measures: { MAH: { barriers: ['Transportation'], interventions: [], result: null, medications: [{ id: 'a', barriers: ['Forgetfulness'], interventions: [] }] } } },
+        { measures: { MAD: { barriers: [], interventions: [], result: null } } },
+        { measures: { MAD: { barriers: ['Refused to Refill'], interventions: [], result: null } } },
+      ],
+    };
+    expect(activeBarriers(m).toSorted()).toEqual(['Cost Issue', 'Forgetfulness', 'Transportation']);
   });
 });

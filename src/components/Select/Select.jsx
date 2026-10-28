@@ -237,7 +237,9 @@ export function Select({
         used = next;
         fit += 1;
       }
-      setVisibleBadgeCount(fit);
+      // The first pick always shows, cut short with an ellipsis if it must
+      // be, so a lone long name never reads as a bare "+1".
+      setVisibleBadgeCount(Math.max(fit, 1));
     };
 
     const ro = new ResizeObserver(recompute);
@@ -314,13 +316,14 @@ export function Select({
   // field and the open, searchable one.
   const badgeRow = (
     <span ref={badgeRowRef} className={styles.triggerBadges}>
-      {selectedMulti.slice(0, visibleBadgeCount).map(o => {
+      {selectedMulti.slice(0, visibleBadgeCount).map((o, i) => {
         const badge = (
           <Badge
             key={o.value}
             tone="grey"
             size="S"
-            label={o.triggerLabel ?? o.label}
+            className={i === 0 ? styles.badgeShrink : undefined}
+            label={i === 0 ? <span className={styles.badgeText}>{o.triggerLabel ?? o.label}</span> : (o.triggerLabel ?? o.label)}
             trailingIconElement={<CloseIcon size={12} color="currentColor" />}
             trailingIconLabel={`Remove ${o.triggerLabel ?? o.label}`}
             onTrailingIconClick={() => onChange(valueArray.filter(v => v !== o.value))}

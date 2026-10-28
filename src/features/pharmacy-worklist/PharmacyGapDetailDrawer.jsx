@@ -20,6 +20,8 @@ import { MedicationDetail, PharmacyMedicationReview } from './program/PharmacyMe
 import { usePharmacyOutreachTab } from './program/usePharmacyOutreachTab';
 import { OutreachTabView } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
 import { PharmacyBarrierStep } from './program/PharmacyBarrierStep';
+import { useBarrierForm } from './program/useBarrierForm';
+import { PharmacyBarrierLog } from './program/PharmacyBarrierLog';
 import { PharmacyVerificationStep } from './program/PharmacyVerificationStep';
 import { PharmacyActivityLog } from './program/PharmacyActivityLog';
 import { PharmacyCommentsTab } from './program/PharmacyCommentsTab';
@@ -86,6 +88,8 @@ function PharmacyGapDrawerBody({ target, row }) {
   // The picked gaps still to confirm with the pharmacy: Verify with Pharmacy
   // shows while any are left, and its form asks about only those.
   const toVerify = useMemo(() => ({ ...scoped, measures: scoped.measures.filter(x => needsVerification(x, row)) }), [scoped, row]);
+  // Update Barriers' form lives here so its Save sits in the pane header.
+  const barrierForm = useBarrierForm(scoped);
 
   // Opened from a "Claim not matched" flag: the drug's claim history in the
   // side workspace, outreach logging in the main pane.
@@ -202,6 +206,12 @@ function PharmacyGapDrawerBody({ target, row }) {
                   <span className={styles.headerDivider} />
                 </>
               )}
+              {workspace === 'barriers' && (
+                <>
+                  <Button variant="primary" size="M" disabled={!barrierForm.canSave} onClick={barrierForm.save}>Save</Button>
+                  <span className={styles.headerDivider} />
+                </>
+              )}
               <CloseButton size={18} onClick={closeWorkspace} label={`Close ${openMed ? 'medication' : WORKSPACE_TITLE[workspace]}`} />
             </div>
           </div>
@@ -210,7 +220,7 @@ function PharmacyGapDrawerBody({ target, row }) {
               <OutreachTabView tab={outreach} hideLogForRow hideActivity hideFormFooter flush taskMember={m.name} />
             )}
             {workspace === 'verify' && <PharmacyVerificationStep member={toVerify} program={PHARM_PROGRAM} onLocked={() => setWorkspace(null)} />}
-            {workspace === 'barriers' && <PharmacyBarrierStep member={scoped} />}
+            {workspace === 'barriers' && <PharmacyBarrierStep member={scoped} form={barrierForm} />}
             {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} interventionLog={m.interventionLog} plan={m.healthPlan} initialTab={workspace.tab} flushTabs />}
           </div>
         </div>
@@ -346,7 +356,7 @@ function PharmacyGapDrawerBody({ target, row }) {
               {tab === 'outreach' && (
                 <OutreachTabView tab={scopedOutreach} hideLogForRow hideForm={workspace === 'outreach'} taskMember={m.name} onLogNew={openOutreach} />
               )}
-              {tab === 'barriers' && <PharmacyBarrierStep member={scoped} />}
+              {tab === 'barriers' && <PharmacyBarrierLog member={scoped} onEdit={() => setWorkspace('barriers')} />}
             </>
           )}
           {tab === 'activity' && <PharmacyActivityLog member={row} />}

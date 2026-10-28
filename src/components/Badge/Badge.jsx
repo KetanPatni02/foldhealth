@@ -88,7 +88,9 @@ export function Badge({
       {icon && (
         isDownChevron(icon)
           ? <DownChevronIcon size={iconPx} color="currentColor" />
-          : <Icon name={toLinear(icon)} size={iconPx} />
+          // currentColor: a custom glyph (e.g. custom:barrier) takes the badge's
+          // tone like a Solar icon does, instead of its own default fill.
+          : <Icon name={toLinear(icon)} size={iconPx} color="currentColor" />
       )}
       {tone === 'unity' && label != null ? <span className={styles.unityText}>{label}</span> : label}
       {trailingIconElement && (

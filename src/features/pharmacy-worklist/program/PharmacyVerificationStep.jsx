@@ -302,7 +302,7 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
         </div>
       </DashboardCardShell>
 
-      <DashboardCard title="Verification History" count={verifications.length || undefined}>
+      <DashboardCard size="S" title="Verification History" count={verifications.length || undefined}>
         {verifications.length === 0
           ? <div className={styles.locked}><span className={styles.muted}>No verification calls logged yet.</span></div>
           : verifications.map((e, i) => <LockedCall key={`${e.date}-${i}`} entry={e} />)}
