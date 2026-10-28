@@ -294,6 +294,7 @@ export function createTemplateVersionsSlice(set, get) {
       if (!get().carePlanTemplateVersionsLoaded) await get().fetchCarePlanTemplateVersions();
       let n = 0;
       // One at a time: every migration rewrites items of this same plan.
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
       for (const inst of due) {
         const toVersion = versionsOf(inst.templateId).find(v => v.id === inst.pendingVersionId);
         if (!toVersion) continue;

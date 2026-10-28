@@ -4152,6 +4152,7 @@ export const useAppStore = create((set, get) => ({
     const baseById = new Map(templates.map(t => [t.id, t]));
     // One at a time: each template merges into the same plan's goals, so
     // concurrent applies would race on the de-duplication.
+    // react-doctor-disable-next-line react-doctor/async-await-in-loop
     for (const templateId of toAdd) {
       const base = baseById.get(templateId);
       if (!base) continue;
