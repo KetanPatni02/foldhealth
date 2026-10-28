@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
-import { Avatar } from '../Avatar/Avatar';
+import { AvatarBase } from '../Avatar/AvatarBase';
 import { Button } from '../Button/Button';
 import { Tooltip } from '../Tooltip/Tooltip';
 import {
@@ -745,7 +745,7 @@ function MentionMenu({ anchor, matches, activeIdx, onPick }) {
           // click actually reaches this handler.
           onMouseDown={(e) => { e.preventDefault(); onPick(u); }}
         >
-          <Avatar variant="staff" initials={u.initials} size="XS" />
+          <AvatarBase variant="staff" initials={u.initials} size="XS" />
           <span className={styles.mentionName}>{u.name}</span>
           {u.role && <span className={styles.mentionRole}>{u.role}</span>}
         </button>

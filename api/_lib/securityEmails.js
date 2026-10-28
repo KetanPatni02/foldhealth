@@ -146,6 +146,17 @@ export function renderSecurityEmail(kind, payload = {}) {
           'You have been signed out everywhere. Sign in again with your new password.',
         ]),
       };
+    case 'patient_invite':
+      return {
+        subject: 'Your Fold Health patient portal',
+        html: layout('Welcome to your Fold Health patient portal', [
+          `Hi ${name}, your care team set up the Fold Health patient portal for you${payload.relationship === 'self' ? '' : ` to help with ${esc(payload.patientName)}'s care`}.`,
+          'In the portal you can book visits and see what is coming up next.',
+          `Your sign-in email: <strong>${esc(payload.email)}</strong>`,
+          'Choose a password with this link to get started. It works once and expires in 24 hours.',
+          `<a href="${esc(payload.link)}" style="display:inline-block;padding:10px 16px;border-radius:6px;background:#8C5AE2;color:#FFFFFF;text-decoration:none;font-weight:500">Set your password</a>`,
+        ]),
+      };
     case 'unlock_link':
       return {
         subject: 'Your Fold Health account was unlocked',

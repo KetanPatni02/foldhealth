@@ -37,6 +37,20 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Patient app: health records and notifications.** Home's right panel now has the Care Tasks, Health Records, Documents and Claims tabs, with Health Records live (problems, allergies, active medications, immunizations; no clinician notes). The header bell opens a notifications drawer with care-team messages and visit reminders. See `supabase/patient_notifications_records_migration.sql`.
+- **Patient app: messages and care team.** Patients (and parents, guardians or caregivers) message their care team from the patient app: the same chat conversations staff answer in Messages > Chat, with unread badges on both sides. Home shows the Care Team with a message shortcut per person. Patients never see internal notes, drafts, calls or emails. `MessageComposer` gains `showSchedule` and hides an empty toolbar; `ChatBubble` uses `AvatarBase`. See `supabase/patient_messages_migration.sql`.
+- **Patient portal access for staff.** The patient Profile tab has a Patient Portal section: who can use the patient app for this patient, Give portal access (emails a set-password link; the account is created server-side with the patient role) and Remove access. Settings → Calendar → Appointment types now lists every visit type with an Online booking switch. See `api/_handlers/patient-invite.js` and `supabase/patient_portal_staff_migration.sql`.
+- **Patient app: profiles and booking.** A patient account can manage several people (`patient_accounts`): after sign-in a picker chooses who you are acting for, and Home has a switcher. Book Appointment opens a drawer with open times computed from staff availability, and the booking lands in the staff calendar. Patients reach data only through SECURITY DEFINER functions (`patient_profiles`, `patient_available_slots`, `patient_book_appointment`, `patient_upcoming_appointments`); every table stays staff-only. See `supabase/patient_accounts_migration.sql`, `supabase/patient_appointments_migration.sql` and W2 / W12 in `docs/features/patient-app-workflows.md`.
+- **Patient app scaffold (patients.foldhealth.org).** A second Vite entry in
+  `patient/` (`bun run dev:patient`, `bun run build:patient`) with the
+  patient login (email or mobile + password, reset link) and the app shell
+  from the Fold Patient Web App Figma. It reuses `src/components`; the build
+  fails if anything, even transitively, imports `src/features` or
+  `src/store`. New store-free primitives: `NavRail`, and `AvatarBase` split
+  out of `Avatar`. Patients share the Supabase project behind a RESTRICTIVE
+  `staff_only` policy on every table
+  (`supabase/staff_patient_rls_split_migration.sql`); patient accounts carry
+  `app_metadata.role = 'patient'` and are created server-side only.
 - **Pharmacy barriers and interventions have a lifecycle.** The member
   drawer's Barriers & Interventions tab is read-only, split into Active
   Barriers and History. Each barrier can be resolved, and each intervention

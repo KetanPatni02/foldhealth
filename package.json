@@ -8,6 +8,8 @@
     "dev": "bun run build:report-viewer && vite",
     "build": "bun run build:report-viewer && vite build",
     "build:report-viewer": "vite build -c vite.report-viewer.config.js",
+    "dev:patient": "vite -c vite.patient.config.js",
+    "build:patient": "vite build -c vite.patient.config.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "docs": "cd docs && mint dev",

@@ -1,0 +1,39 @@
+.intro {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.scroll {
+  flex: 1;
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  padding: var(--space-2) var(--space-4);
+  text-align: left;
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.name {
+  color: var(--neutral-500);
+}

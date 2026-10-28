@@ -240,6 +240,7 @@ import { rowToReferral, sampleReferralsFor } from '../features/patient/data/pati
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
 import { createPharmacyWorklistSlice } from './slices/pharmacyWorklistSlice';
 import { createPatientOrdersSlice } from './slices/patientOrdersSlice';
+import { createPatientPortalSlice } from './slices/patientPortalSlice';
 import { createFeatureReviewsSlice } from './slices/featureReviewsSlice';
 import { createTemplateVersionsSlice } from './slices/templateVersionsSlice';
 import { createIpaOverlaysSlice } from './slices/ipaOverlaysSlice';
@@ -385,6 +386,7 @@ export const useAppStore = create((set, get) => ({
   ...createHccWorklistFiltersSlice(set, get),
   ...createPharmacyWorklistSlice(set, get),
   ...createPatientOrdersSlice(set, get),
+  ...createPatientPortalSlice(set, get),
   ...createFeatureReviewsSlice(set, get),
   ...createTemplateVersionsSlice(set, get),
   ...createIpaOverlaysSlice(set, get),
@@ -15848,6 +15850,18 @@ export const useAppStore = create((set, get) => ({
       .order('name');
     if (!error && data) set({ appointmentTypes: data });
   }, opts),
+  // Settings → Calendar → Online booking. Optimistic; rolls back on failure.
+  setAppointmentTypeBookable: async (id, bookable) => {
+    const patch = (value) => set(s => ({ appointmentTypes: s.appointmentTypes.map(t => (t.id === id ? { ...t, patient_bookable: value } : t)) }));
+    patch(bookable);
+    const { error } = await supabase.from('appointment_types').update({ patient_bookable: bookable }).eq('id', id);
+    if (error) {
+      patch(!bookable);
+      get().showToast?.('Online booking could not be updated. Try again.');
+      return false;
+    }
+    return true;
+  },
 
   // ── Appointments ──
   appointments: [],

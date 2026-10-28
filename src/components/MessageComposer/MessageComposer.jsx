@@ -40,6 +40,7 @@ import styles from './MessageComposer.module.css';
  *   – files attached but not sent yet, shown as cards inside the box
  *   (Figma Communications 1:36070); Send goes out with them
  * @param {(id: string) => void} [props.onRemoveAttachment]
+ * @param {boolean}  [props.showSchedule=true] – the (not yet available) Schedule send button
  */
 const MAX_BOX_HEIGHT = 150;
 
@@ -61,6 +62,7 @@ export function MessageComposer({
   toolbarStart,
   attachments = [],
   onRemoveAttachment,
+  showSchedule = true,
 }) {
   const ref = useRef(null);
   const isInternal = internal || internalOnly;
@@ -84,6 +86,7 @@ export function MessageComposer({
 
   return (
     <div className={[styles.root, isInternal ? styles.internal : ''].filter(Boolean).join(' ')}>
+      {(onInternalChange || internalOnly || toolbarStart || tools.length > 0) && (
       <div className={styles.toolbar}>
         <div className={styles.toolbarStart}>
           {onInternalChange && !internalOnly && (
@@ -102,6 +105,7 @@ export function MessageComposer({
           ))}
         </div>
       </div>
+      )}
 
       {above}
 
@@ -135,10 +139,14 @@ export function MessageComposer({
           <button type="button" className={styles.sendBtn} onClick={send} disabled={!canSend} aria-label="Send">
             <Icon name="solar:plain-2-linear" size={16} />
           </button>
-          <span className={styles.sendDivider} />
-          <button type="button" className={styles.sendBtn} disabled aria-label="Schedule send">
-            <Icon name="solar:clock-circle-linear" size={16} />
-          </button>
+          {showSchedule && (
+            <>
+              <span className={styles.sendDivider} />
+              <button type="button" className={styles.sendBtn} disabled aria-label="Schedule send">
+                <Icon name="solar:clock-circle-linear" size={16} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../Icon/Icon';
-import { Avatar } from '../Avatar/Avatar';
+import { AvatarBase } from '../Avatar/AvatarBase';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { MenuPopover } from '../MenuPopover/MenuPopover';
 import { useStorageUrl } from '../../lib/storageUrl';
@@ -177,7 +177,7 @@ export function ChatBubble({
               Internal
             </span>
             <span className={styles.internalName}>{name}</span>
-            <Avatar variant="staff" size="XS" initials={initials} />
+            <AvatarBase variant="staff" size="XS" initials={initials} />
             {menu}
           </div>
           {inner}
@@ -192,7 +192,7 @@ export function ChatBubble({
     <div className={[styles.wrap, right ? styles.wrapRight : '', call ? styles.wrapCall : ''].join(' ')}>
       {!right && (
         <span className={styles.avatarCol}>
-          {!compact && <Avatar variant={avatarVariant} size="XS" initials={initials} />}
+          {!compact && <AvatarBase variant={avatarVariant} size="XS" initials={initials} />}
         </span>
       )}
       <div className={styles.col}>
@@ -210,7 +210,7 @@ export function ChatBubble({
       </div>
       {right && initials && (
         <span className={styles.avatarCol}>
-          {!compact && <Avatar variant={selfAvatarVariant} size="XS" initials={initials} />}
+          {!compact && <AvatarBase variant={selfAvatarVariant} size="XS" initials={initials} />}
         </span>
       )}
     </div>

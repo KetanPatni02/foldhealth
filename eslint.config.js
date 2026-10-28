@@ -11,6 +11,8 @@ export default defineConfig([globalIgnores([
   'dist', 'storybook-static', 'coverage',
   // Generated bundle (vite.report-viewer.config.js → public/report-viewer), gitignored.
   'public/report-viewer',
+  // Patient app build output (vite.patient.config.js).
+  'patient/dist',
   // Agent tooling installs, not app code (same reason as .claude).
   '.claude', '.agents', '.github/skills',
 ]), {
@@ -79,9 +81,21 @@ export default defineConfig([globalIgnores([
     ],
   },
 }, {
-  files: ['vite.config.js', 'vitest.config.js', 'vite-plugin-dev-api.js', 'scripts/**/*.{js,mjs}', 'api/**/*.js', 'api/**/*.jsx'],
+  files: ['vite.config.js', 'vite.patient.config.js', 'vitest.config.js', 'vite-plugin-dev-api.js', 'scripts/**/*.{js,mjs}', 'api/**/*.js', 'api/**/*.jsx'],
   languageOptions: {
     globals: { ...globals.node },
     parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+  },
+}, {
+  // Patient app: never import staff screens or the staff store. Direct imports
+  // fail here; transitive ones fail the build (vite.patient.config.js).
+  files: ['patient/**/*.{js,jsx}'],
+  rules: {
+    'no-restricted-imports': ['error', {
+      patterns: [{
+        group: ['**/features/**', '**/store/**', '@/features/**', '@/store/**'],
+        message: 'Patient app must not import staff features or the staff store. Move what it needs into src/lib or src/components.',
+      }],
+    }],
   },
 }, ...storybook.configs["flat/recommended"]])
