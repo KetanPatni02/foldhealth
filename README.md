@@ -37,6 +37,7 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Patient app: profiles and booking.** A patient account can manage several people (`patient_accounts`): after sign-in a picker chooses who you are acting for, and Home has a switcher. Book Appointment opens a drawer with open times computed from staff availability, and the booking lands in the staff calendar. Patients reach data only through SECURITY DEFINER functions (`patient_profiles`, `patient_available_slots`, `patient_book_appointment`, `patient_upcoming_appointments`); every table stays staff-only. See `supabase/patient_accounts_migration.sql`, `supabase/patient_appointments_migration.sql` and W2 / W12 in `docs/features/patient-app-workflows.md`.
 - **Patient app scaffold (patients.foldhealth.org).** A second Vite entry in
   `patient/` (`bun run dev:patient`, `bun run build:patient`) with the
   patient login (email or mobile + password, reset link) and the app shell

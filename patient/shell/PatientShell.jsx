@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { NavRail } from '@/components/NavRail/NavRail';
 import { Button } from '@/components/Button/Button';
 import { Icon } from '@/components/Icon/Icon';
-import { Tooltip } from '@/components/Tooltip/Tooltip';
 import { AvatarBase } from '@/components/Avatar/AvatarBase';
 import { useHashRoute } from '../lib/useHashRoute';
+import { useProfile } from '../lib/profileContext';
+import { initialsOf } from '../lib/profileFormat';
 import { HomePage } from '../pages/HomePage';
 import { ComingSoonPage } from '../pages/ComingSoonPage';
+import { BookVisitDrawer } from '../appointments/BookVisitDrawer';
 import styles from './PatientShell.module.css';
 
 const NAV = [
@@ -19,20 +22,17 @@ const FOOTER_NAV = [
   { id: 'logout', label: 'Logout', icon: 'solar:logout-2-linear' },
 ];
 const PAGES = {
-  home: { title: 'Home', render: () => <HomePage /> },
+  home: { title: 'Home', render: (p) => <HomePage {...p} /> },
   messages: { title: 'Messages', render: () => <ComingSoonPage icon="solar:chat-round-line-linear" title="Messages" /> },
   settings: { title: 'Settings', render: () => <ComingSoonPage icon="solar:settings-linear" title="Settings" /> },
   help: { title: 'Help', render: () => <ComingSoonPage icon="solar:question-circle-linear" title="Help" /> },
 };
 
-function initialsOf(user) {
-  const name = user.user_metadata?.full_name?.trim();
-  if (name) return name.split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
-  return (user.email || '?')[0].toUpperCase();
-}
-
-export function PatientShell({ user }) {
+export function PatientShell() {
+  const { profile } = useProfile();
   const [route, navigate] = useHashRoute('home');
+  const [booking, setBooking] = useState(false);
+  const [visitsVersion, setVisitsVersion] = useState(0);
   const page = PAGES[route] || PAGES.home;
 
   const handleSelect = (id) => {
@@ -50,16 +50,24 @@ export function PatientShell({ user }) {
             <button type="button" className={styles.iconButton} aria-label="Notifications">
               <Icon name="solar:bell-linear" size={20} color="var(--neutral-300)" />
             </button>
-            <Tooltip label="Booking is coming soon" placement="bottom">
-              <Button variant="primary" size="L" leadingIcon="solar:calendar-add-linear" disabled>
-                Book Appointment
-              </Button>
-            </Tooltip>
-            <AvatarBase variant="patient" size="M" initials={initialsOf(user)} />
+            <Button variant="primary" size="L" leadingIcon="solar:calendar-add-linear" onClick={() => setBooking(true)}>
+              Book Appointment
+            </Button>
+            <AvatarBase variant="patient" size="M" initials={initialsOf(profile)} />
           </div>
         </header>
-        <div className={styles.content}>{page.render()}</div>
+        <div className={styles.content}>
+          {page.render({ refreshKey: `${profile.member_id}:${visitsVersion}`, onBook: () => setBooking(true) })}
+        </div>
       </div>
+      {booking && (
+        <BookVisitDrawer
+          key={profile.member_id}
+          profile={profile}
+          onClose={() => setBooking(false)}
+          onBooked={() => setVisitsVersion((v) => v + 1)}
+        />
+      )}
     </div>
   );
 }

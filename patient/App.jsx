@@ -4,6 +4,8 @@ import { isPatient, usePatientSession } from './lib/usePatientSession';
 import { LoginPage } from './auth/LoginPage';
 import { SetPasswordPage } from './auth/SetPasswordPage';
 import { PatientShell } from './shell/PatientShell';
+import { ProfileGate } from './profiles/ProfileGate';
+import { Toaster } from '@/components/Toast/Toast';
 
 const NOT_A_PATIENT = 'This portal is for patients. Staff members sign in through the Fold Health staff app.';
 
@@ -19,5 +21,12 @@ export function App() {
   if (!ready) return null;
   if (recovering && session) return <SetPasswordPage />;
   if (!session || staffSession) return <LoginPage notice={staffSession ? NOT_A_PATIENT : notice} />;
-  return <PatientShell user={session.user} />;
+  return (
+    <>
+      <ProfileGate key={session.user.id} user={session.user}>
+        <PatientShell />
+      </ProfileGate>
+      <Toaster />
+    </>
+  );
 }
