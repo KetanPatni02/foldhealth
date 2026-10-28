@@ -4149,8 +4149,11 @@ export const useAppStore = create((set, get) => ({
 
     // A template goes on with the patient's IPA overlay on top, when there is an active one.
     const resolved = new Map();
+    const baseById = new Map(templates.map(t => [t.id, t]));
+    // One at a time: each template merges into the same plan's goals, so
+    // concurrent applies would race on the de-duplication.
     for (const templateId of toAdd) {
-      const base = templates.find(t => t.id === templateId);
+      const base = baseById.get(templateId);
       if (!base) continue;
       const found = await get().overlayForPatient(templateId, patientId);
       const template = found
@@ -5561,16 +5564,17 @@ export const useAppStore = create((set, get) => ({
         ...rowFor(p), scope: 'org', owner_user_id: owner, created_by: actor,
         replaces_template_id: p.action === 'update' ? p.existing.id : null,
       }));
-    for (let i = 0; i < inserts.length; i += 100) {
-      const part = inserts.slice(i, i + 100);
+    const insertParts = Array.from({ length: Math.ceil(inserts.length / 100) }, (_, i) => inserts.slice(i * 100, i * 100 + 100));
+    const inserted = await Promise.all(insertParts.map(async (part) => {
       let { data, error } = await supabase.from('care_plan_templates').insert(part).select();
       if (error && isMissingColumn(error)) {
         ({ data, error } = await supabase.from('care_plan_templates')
           .insert(part.map(({ import_batch_id: _b, replaces_template_id: _r, ...rest }) => rest)).select());
       }
-      if (error) { console.warn('importCarePlanTemplates insert:', error.message); failed += part.length; continue; }
-      created.push(...(data || []).map(mapCarePlanTemplateRow));
-    }
+      if (error) { console.warn('importCarePlanTemplates insert:', error.message); failed += part.length; return []; }
+      return (data || []).map(mapCarePlanTemplateRow);
+    }));
+    created.push(...inserted.flat());
 
     const draftUpdates = plans.filter(p => p.action === 'update' && p.existing?.status === 'draft');
     const results = await Promise.all(draftUpdates.map(async (p) => {
@@ -5595,7 +5599,8 @@ export const useAppStore = create((set, get) => ({
   approveCarePlanTemplateDrafts: async (ids) => {
     const actor = get().currentUserProfile?.name || null;
     const now = new Date().toISOString();
-    const drafts = get().carePlanTemplates.filter(t => ids.includes(t.id) && t.status === 'draft');
+    const idSet = new Set(ids);
+    const drafts = get().carePlanTemplates.filter(t => idSet.has(t.id) && t.status === 'draft');
     const stamp = (row) => ({ ...row, status: 'published', approved_by: actor, approved_at: now, updated_by: actor, updated_at: now });
     const write = async (id, row) => {
       let res = await supabase.from('care_plan_templates').update(stamp(row)).eq('id', id).select().single();

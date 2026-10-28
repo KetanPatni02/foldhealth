@@ -223,13 +223,13 @@ export function planTemplateImport(parsed, library = {}) {
     }
 
     const resolveGoals = (refs, where, kindWord) => {
-      const out = [];
+      const out = new Set();
       for (const ref of list(refs)) {
         const t = goalTitles.get(norm(ref));
-        if (t) { if (!out.includes(t)) out.push(t); }
+        if (t) out.add(t);
         else issues.push({ level: 'error', message: `${where}: ${kindWord} refers to goal "${ref}", which isn't in this template.` });
       }
-      return out;
+      return [...out];
     };
 
     const interventions = [];

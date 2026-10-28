@@ -28,13 +28,12 @@ const chunks = (list, n = 200) => Array.from({ length: Math.ceil(list.length / n
 
 // Rows of `table` whose `col` is in `values`, in chunks so long id lists fit a request.
 async function selectIn(table, columns, col, values) {
-  const out = [];
-  for (const part of chunks([...new Set(values)].filter(v => v != null))) {
+  const parts = await Promise.all(chunks([...new Set(values)].filter(v => v != null)).map(async (part) => {
     const { data, error } = await supabase.from(table).select(columns).in(col, part);
-    if (error) { console.warn(`${table}:`, error.message); continue; }
-    out.push(...(data || []));
-  }
-  return out;
+    if (error) { console.warn(`${table}:`, error.message); return []; }
+    return data || [];
+  }));
+  return parts.flat();
 }
 
 // Runs `fn` over `items`, `limit` at a time.
@@ -145,6 +144,7 @@ export function createTemplateVersionsSlice(set, get) {
       const personById = new Map(people.map(p => [String(p.member_id), p]));
       const { data: groups } = await supabase.from('population_groups').select('name, member_ids').overlaps('member_ids', [...new Set(patientIds)]);
       const versionNo = new Map(versionsOf(templateId).map(v => [v.id, v.versionNumber]));
+      const groupMembers = (groups || []).map(g => ({ name: g.name, members: new Set((g.member_ids || []).map(String)) }));
       return runs.map((r) => {
         const plan = planById.get(r.plan_id);
         if (!plan) return null;
@@ -158,7 +158,7 @@ export function createTemplateVersionsSlice(set, get) {
           patientName: person?.name || get().patients?.find(p => String(p.id) === patientId)?.name || patientId,
           programId: plan.program_id, programCode: plan.program_code || program?.code || '', programName: program?.name || '',
           careManager, ipa: person?.ipa || '',
-          groups: (groups || []).filter(g => (g.member_ids || []).map(String).includes(patientId)).map(g => g.name),
+          groups: groupMembers.filter(g => g.members.has(patientId)).map(g => g.name),
           versionNumber: r.template_version_number ?? 1,
           templateVersionId: r.template_version_id || null,
           overlayId: r.overlay_id || null,
@@ -194,11 +194,11 @@ export function createTemplateVersionsSlice(set, get) {
 
       // Every targeted run waits on the new version; 'auto' ones move now if it is in effect.
       const ids = targets.rows.map(r => r.instanceId);
-      for (const part of chunks(ids)) {
+      await Promise.all(chunks(ids).map(async (part) => {
         const { error: e } = await supabase.from('patient_care_plan_template_instances')
           .update({ pending_version_id: version.id, pending_mode: targets.pending, pending_effective_date: effective }).in('id', part);
         if (e) console.warn('publishCarePlanTemplateVersion (pending):', e.message);
-      }
+      }));
       let migrated = 0;
       let failed = 0;
       if (targets.pending === 'auto' && effective <= today) {
@@ -293,6 +293,7 @@ export function createTemplateVersionsSlice(set, get) {
       if (!due.length) return 0;
       if (!get().carePlanTemplateVersionsLoaded) await get().fetchCarePlanTemplateVersions();
       let n = 0;
+      // One at a time: every migration rewrites items of this same plan.
       for (const inst of due) {
         const toVersion = versionsOf(inst.templateId).find(v => v.id === inst.pendingVersionId);
         if (!toVersion) continue;

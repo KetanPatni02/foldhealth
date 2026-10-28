@@ -106,8 +106,9 @@ export function OverlayEditorDrawer({ overlay, onClose, canEdit }) {
 
   const save = async (status) => {
     setSaving(true);
-    const saved = await saveTemplateOverlay({ templateId, ipaId, status, overrides }, overlay?.id || null);
-    setSaving(false);
+    let saved;
+    try { saved = await saveTemplateOverlay({ templateId, ipaId, status, overrides }, overlay?.id || null); }
+    finally { setSaving(false); }
     if (!saved) return;
     showToast(status === 'active' ? `Overlay for ${ipa?.name} is active. Plans for its patients use it from now on.` : 'Overlay saved as a draft');
     onClose();

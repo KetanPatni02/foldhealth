@@ -84,7 +84,7 @@ export function PublishVersionDrawer({ template, content, onClose, onPublished }
   const fetchImpact = useAppStore(s => s.fetchCarePlanTemplateImpact);
   const publish = useAppStore(s => s.publishCarePlanTemplateVersion);
   const [rows, setRows] = useState(null);
-  const [effectiveDate, setEffectiveDate] = useState(todayIso());
+  const [effectiveDate, setEffectiveDate] = useState(todayIso);
   const [note, setNote] = useState('');
   const [mode, setMode] = useState('review');
   const [cohort, setCohort] = useState({});

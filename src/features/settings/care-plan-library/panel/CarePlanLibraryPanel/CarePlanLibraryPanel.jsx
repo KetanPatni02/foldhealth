@@ -294,9 +294,11 @@ export function CarePlanLibraryPanel() {
   const approveDrafts = async (ids) => {
     if (!ids.length) return;
     setApproving(true);
-    const { approved } = await approveCarePlanTemplateDrafts(ids);
-    setApproving(false);
-    setSelectedTemplateIds(prev => prev.filter(id => !ids.includes(id)));
+    let approved;
+    try { ({ approved } = await approveCarePlanTemplateDrafts(ids)); }
+    finally { setApproving(false); }
+    const done = new Set(ids);
+    setSelectedTemplateIds(prev => prev.filter(id => !done.has(id)));
     if (approved) toast.success(`${approved} template${approved === 1 ? '' : 's'} approved and published`);
   };
   const deleteCarePlanTemplate = useAppStore(s => s.deleteCarePlanTemplate);

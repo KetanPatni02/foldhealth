@@ -14,8 +14,9 @@ const splitAliases = (s) => String(s || '').split(',').map(a => a.trim()).filter
 
 function IpaRow({ ipa, patients, onSave, onDelete, canEdit }) {
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(ipa.name);
-  const [aliases, setAliases] = useState(ipa.aliases.join(', '));
+  const [name, setName] = useState('');
+  const [aliases, setAliases] = useState('');
+  const startEditing = () => { setName(ipa.name); setAliases(ipa.aliases.join(', ')); setEditing(true); };
   if (editing) {
     return (
       <li className={styles.ipaRow}>
@@ -41,7 +42,7 @@ function IpaRow({ ipa, patients, onSave, onDelete, canEdit }) {
       {canEdit && (
         <div className={styles.ipaActions}>
           <Switch checked={ipa.active} onChange={v => onSave({ ...ipa, active: v })} ariaLabel={`${ipa.name} active`} />
-          <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => setEditing(true)} />
+          <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={startEditing} />
           <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Delete" onClick={() => onDelete(ipa)} />
         </div>
       )}
