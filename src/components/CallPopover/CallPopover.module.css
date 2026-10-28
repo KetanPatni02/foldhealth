@@ -60,6 +60,17 @@
 
 .number:hover { background: var(--neutral-50); }
 
+.numberSelected {
+  border-left: 3px solid var(--primary-300);
+  background: var(--primary-50);
+}
+
+.empty {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+
 .numberInfo { flex: 1; }
 
 .numberValue {
@@ -148,3 +159,5 @@
 }
 
 .callBtn:hover { background: var(--primary-400); }
+
+.callBtn:disabled { opacity: .5; cursor: not-allowed; }

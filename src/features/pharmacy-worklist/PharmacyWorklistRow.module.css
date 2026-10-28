@@ -122,7 +122,7 @@
 /* Row under the gaps when more than 2: "View More N" in Pharmacy Gaps, an
    empty spacer in the other gap columns so they stay aligned. */
 .gapFooter {
-  min-height: 32px;
+  min-height: 28px;
   display: flex;
   align-items: center;
   border-top: 0.5px solid var(--neutral-150);
