@@ -26,6 +26,7 @@
 .label { font-size: var(--font-md); color: var(--neutral-300); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .resolvable { display: inline-flex; align-items: center; gap: 0.125rem; }
+.since { margin-left: var(--space-1); font-size: var(--font-sm); color: var(--neutral-300); white-space: nowrap; }
 /* Active chips sit at the card's right edge, each with its actions in fixed
    slots (✓, then ✕ or an empty slot), so the buttons form one column. */
 .current .chips { justify-content: flex-end; }
@@ -46,9 +47,37 @@
 .block.drugs { gap: 0; padding-bottom: var(--space-2); }
 .drugName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
 
-/* History entry: one line per gap, its context on the left, chips beside. */
-.entryGaps { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-1); }
-.entryGap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.entryContext { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; font-size: var(--font-md); color: var(--neutral-400); }
-.entryCode { font-weight: 500; }
 .note { font-size: var(--font-md); color: var(--neutral-300); margin-top: var(--space-1); }
+
+/* One drug's view (its detail panel): no card, the same rows. */
+.drugPanel { display: flex; flex-direction: column; gap: var(--space-2); }
+.drugPanel .current { padding: 0; }
+.historyToggle {
+  display: inline-flex; align-items: center; gap: var(--space-1); align-self: flex-start;
+  padding: 0; border: none; background: none; cursor: pointer;
+  font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300);
+}
+.historyToggle:hover { color: var(--neutral-400); }
+.chevron { transition: transform 0.15s ease; }
+.chevronRight { transform: rotate(-90deg); }
+
+/* History entry: its title • View Details, then a card of what changed,
+   in the Active rows' layout (label left, badges right). */
+.entryTitleRow { display: flex; align-items: center; flex-wrap: wrap; }
+.entryTitle { font-size: var(--font-base); font-weight: 400; color: var(--neutral-500); }
+.entryCard {
+  margin-top: var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+}
+.entryCard .current { padding: 0 var(--space-3); }
+.entryLabel { font-size: var(--font-md); color: var(--neutral-300); }
+.entryNote {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-top: 0.5px solid var(--neutral-150);
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+}
+.struck { text-decoration: line-through; }

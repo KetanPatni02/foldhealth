@@ -74,21 +74,21 @@ export function mostUrgentMeasure(measures, statuses) {
   })[0] || null;
 }
 
-// P1–P3 from fail-date proximity, PDC ≤ 90%, and prior-year non-compliance.
-// Thresholds are a proposal (spec status: "Proposed").
-export function derivePriority(measure) {
-  if (!measure) return 'P3';
-  const days = daysFromToday(effectiveFailDate(measure));
-  const pdc = effectivePdc(measure);
-  const lowPdc = pdc != null && pdc <= 90;
-  let score = 0;
-  if (days != null && days <= 14) score += 2;
-  else if (days != null && days <= 45) score += 1;
-  if (lowPdc) score += 1;
-  if (measure.priorYearNonCompliant) score += 1;
-  if (score >= 3) return 'P1';
-  if (score >= 2) return 'P2';
-  return 'P3';
+// Priority is a Fold rule, not editable (spec: "P1 = PDC below 80% and a
+// refill overdue", confirmed for now). Over the member's open gaps: P1 when
+// one gap has both, P2 when a gap has either, P3 otherwise. `reason` says why,
+// for the P column's tooltip.
+export function memberPriority(openGaps) {
+  let p2 = null;
+  for (const x of openGaps) {
+    const pdc = effectivePdc(x);
+    const due = daysFromToday(x.nextFillDue);
+    const low = pdc != null && pdc < 80;
+    const overdue = due != null && due < 0;
+    if (low && overdue) return { priority: 'P1', reason: `${x.code}: PDC ${pdc}% and refill ${-due}d overdue` };
+    if (!p2 && (low || overdue)) p2 = { priority: 'P2', reason: low ? `${x.code}: PDC ${pdc}% is below 80%` : `${x.code}: refill ${-due}d overdue` };
+  }
+  return p2 || { priority: 'P3', reason: 'PDC 80% or higher and no refill overdue' };
 }
 
 // Color is reserved for "act now": PDC under the 80% measure threshold and
@@ -556,7 +556,6 @@ export function gapProgress(statuses) {
 // Sources send priority as P1–P3 or High/Medium/Low; the worklist always
 // keeps P1–P3 so rows compare at a glance. A priority picked on the worklist
 // wins, then the source's, then one derived from the focus measure.
-const SOURCE_PRIORITY = { P1: 'P1', High: 'P1', P2: 'P2', Medium: 'P2', P3: 'P3', Low: 'P3' };
 export const PRIORITY_LEVELS = [
   { value: 'P1', icon: 'high', label: 'High' },
   { value: 'P2', icon: 'medium', label: 'Medium' },
@@ -686,7 +685,7 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
   const urgentOpen = isActiveGap(statuses[urgent?.code]);
   const recon = worstRecon(shown, m.healthPlan);
   const outreach = outreachSummary(m.callHistory);
-  const priority = SOURCE_PRIORITY[m.priorityOverride] || SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3');
+  const { priority, reason: priorityReason } = memberPriority(shown.filter(x => isActiveGap(statuses[x.code])));
   const progress = gapProgress(statuses);
   // Open Care Gaps: the member's non-pharmacy gaps still being worked.
   const otherCareGaps = (hedisGapsByMember?.get(normMemberId(m.memberId || m.id)) ?? m.otherCareGaps ?? [])
@@ -723,6 +722,7 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
     otherCareGaps,
     otherCareGapsCount: otherCareGaps.length,
     priority,
+    priorityReason,
     priorityRank: priorityRank(priority),
     pdc: effectivePdc(urgent),
     failDate: effectiveFailDate(urgent),

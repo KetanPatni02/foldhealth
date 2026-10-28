@@ -61,6 +61,8 @@
 }
 /* Preview mode — title collapses to 14px medium and a 12px subtitle
    sits below it so the reader knows who signed and when at a glance. */
+/* A title with a tag beside it (the pharmacy drug pane's gap code). */
+.paneTitleRow { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .paneTitleStack {
   display: flex;
   flex-direction: column;

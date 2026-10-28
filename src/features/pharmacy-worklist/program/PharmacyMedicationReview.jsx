@@ -19,7 +19,9 @@ import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActive
 import { MeasureCode, Sep, SubStatus } from '../PharmacyCells';
 import { BARRIERS, BARRIER_ICON } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
+import { DrugBarriers } from './PharmacyBarrierLog';
 import styles from './PharmacyMedicationReview.module.css';
+import claimStyles from './MedicationClaims.module.css';
 
 const CONDITIONS = ['Type 2 diabetes', 'Hypertension', 'Hyperlipidemia', 'Chronic kidney disease', 'Heart failure', "I don't know"];
 
@@ -121,17 +123,12 @@ function RecentFillChip({ date, label, onChange }) {
 const URGENT_MED_STATUSES = new Set(['Refill overdue', 'Fill reversed', 'Not matched – rework']);
 
 // `flushTabs`: the host pads its pane, and the tab strip should still run
-// edge to edge (the gap drawer's left pane).
-export function MedicationDetail({ med, memberRowId, interventionLog, plan, initialTab, flushTabs = false }) {
-  // Barrier & Intervention log entries for this medication's measure; an
-  // entry set per medication contributes only this drug's record.
-  const barrierLog = (interventionLog || [])
-    .filter(e => e.measures?.[med.measure])
-    .map(e => {
-      const rec = e.measures[med.measure];
-      const own = rec.medications?.find(r => r.id === med.id);
-      return { date: e.date, by: e.by, source: e.source, medication: own ? own.name : e.medication, rec: own ? { ...own, result: null } : rec };
-    });
+// edge to edge (the gap drawer's left pane). `showMeasure={false}` when the
+// host already shows the gap code beside the drug's name.
+export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs = false, showMeasure = true }) {
+  // The member as stored (measures and barrier log), for the drug's
+  // Barriers & Interventions.
+  const member = useAppStore(s => s.pharmacyWorklistMembers.find(m => m.id === memberRowId));
   const update = useAppStore(s => s.updatePharmacyMedication);
   const save = (patch) => update(memberRowId, med.id, patch);
   // Claims tab (as in HCC), or the medication's details.
@@ -143,6 +140,9 @@ export function MedicationDetail({ med, memberRowId, interventionLog, plan, init
   const openClaimId = tab === 'claims' && claims.some(c => c.claimId === claimId) ? claimId : null;
   const countedClaims = new Set(claims.filter(c => c.counts).map(claimKey));
   const claimCount = (med.refills || []).length;
+  // Fills only: claims that count, and fills confirmed in Fold. Reversals,
+  // voided and other-coverage lines stay in Claim History.
+  const fills = (med.refills || []).filter(r => r.source || countedClaims.has(claimKey(r)));
   const conditions = conditionsOf(med);
   const toggleCondition = (c) => save({
     conditions: conditions.includes(c) ? conditions.filter(x => x !== c) : [...conditions, c],
@@ -151,24 +151,68 @@ export function MedicationDetail({ med, memberRowId, interventionLog, plan, init
   return (
     <div className={styles.detail}>
       {!openClaimId && <TabStrip
-        items={[{ key: 'details', label: 'Details' }, { key: 'claims', label: `Claim History (${claimCount})` }]}
+        items={[
+          { key: 'details', label: 'Details' },
+          { key: 'claims', label: `Claim History (${claimCount})` },
+          { key: 'refills', label: `Refill History (${fills.length})` },
+        ]}
         activeKey={tab}
         onChange={setTab}
         fullWidth={false}
         size="S"
         className={flushTabs ? styles.tabsFlush : undefined}
       />}
-      {tab === 'claims' ? <MedicationClaims med={med} plan={plan} memberRowId={memberRowId} selectedId={openClaimId} onSelect={setClaimId} flush={flushTabs} /> : <>
-      <div className={styles.detailHead}>
-        <MeasureCode code={med.measure} />
-        <span className={styles.detailMeta}><span>Dose Form</span>{med.doseForm || '—'}</span>
-        <span className={styles.detailMeta}><span>Route</span>{med.route || '—'}</span>
+      {tab === 'claims' ? <MedicationClaims med={med} plan={plan} selectedId={openClaimId} onSelect={setClaimId} flush={flushTabs} /> : tab === 'refills' ? (
+      <section className={`${styles.detailSection} ${styles.detailSectionFirst}`}>
+      {fills.length === 0 ? <span className={styles.muted}>No fills on file for this medication.</span> : (
+      // One row per fill, laid out like the Notes table: the fill date, then
+      // quantity and supply, then where and who (address on hover); its
+      // source on the right. Fits the pane without a sideways scroll.
+      <div className={claimStyles.dataTable}>
+        <div className={`${claimStyles.dataTableHead} ${styles.refillGrid}`}>
+          <span>Fill</span>
+          <span>Source</span>
+        </div>
+        {fills.map((r, i) => (
+          <div key={`${r.date}-${r.source || 'claim'}-${i}`} className={`${claimStyles.dataTableRow} ${styles.refillGrid}`}>
+            <div className={styles.refillCell}>
+              <span className={styles.refillDate}>{r.date}</span>
+              <span className={styles.refillMeta}>
+                {[r.qty != null && `Qty ${r.qty}`, r.daysSupply != null && `${r.daysSupply} days supply`].filter(Boolean).map((t, j) => <Fragment key={t}>{j > 0 && <Sep />}{t}</Fragment>)}
+              </span>
+              <span className={styles.refillMeta} title={r.prescriberAddress ? `Prescriber address: ${r.prescriberAddress}` : undefined}>
+                {[r.pharmacy, r.prescriber].filter(Boolean).map((t, j) => <Fragment key={t}>{j > 0 && <Sep />}{t}</Fragment>)}
+              </span>
+            </div>
+            {/* Call-confirmed pickups land here before the claim does. */}
+            {r.source ? (
+              <span className={styles.sourceCell}>
+                <Badge size="S" tone="grey" icon={r.manual ? 'solar:pen-linear' : 'solar:phone-linear'} label={r.manual ? 'Entered by hand' : r.source} />
+                <FillMatchTag match={matchFill(r, claims, plan)} onRework={() => setTab('claims')} />
+              </span>
+            ) : <span><Badge size="S" tone="grey" label="Claim" /></span>}
+          </div>
+        ))}
       </div>
+      )}
+      </section>
+      ) : <>
+      {showMeasure && <div className={styles.detailHead}><MeasureCode code={med.measure} /></div>}
 
       {/* Sections read top to bottom: the drug, who prescribes and fills it,
           notes, then its barrier log. */}
-      <section className={styles.detailSection}>
+      <section className={`${styles.detailSection} ${showMeasure ? '' : styles.detailSectionFirst}`}>
         <div className={styles.subTitle}>Medication</div>
+        <div className={styles.detailRow}>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Dose Form</span>
+            <span className={styles.fieldValue}>{med.doseForm || '—'}</span>
+          </div>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Route</span>
+            <span className={styles.fieldValue}>{med.route || '—'}</span>
+          </div>
+        </div>
         <div className={styles.detailRow}>
           <RadioOptionGroup
             className={styles.medStatus}
@@ -218,48 +262,9 @@ export function MedicationDetail({ med, memberRowId, interventionLog, plan, init
 
       <section className={styles.detailSection}>
         <div className={styles.subTitle}>Barriers &amp; Interventions ({med.measure})</div>
-        {barrierLog.length === 0 && <span className={styles.muted}>None logged for {med.measure} yet.</span>}
-        {barrierLog.map((e, i) => (
-          <div key={`${e.date}-${i}`} className={`${styles.barrierEntry} ${i === 0 ? styles.barrierLatest : ''}`}>
-            <span className={styles.barrierMeta}>
-              {[i === 0 && 'Latest', e.date, e.by, e.source && `from ${e.source.toLowerCase()}${e.medication ? ` (${e.medication})` : ''}`].filter(Boolean).map((t, j) => <Fragment key={t}>{j > 0 && <Sep />}{t}</Fragment>)}
-            </span>
-            <span className={styles.barrierChips}>
-              {e.rec.barriers.map(b => <Badge key={b} size="S" tone="grey" label={b} />)}
-              {e.rec.interventions.map(v => <Badge key={v} size="S" tone="grey" label={v} />)}
-              {e.rec.result && <Badge size="S" tone="grey" icon="solar:check-circle-linear" label={e.rec.result} />}
-            </span>
-          </div>
-        ))}
+        <DrugBarriers member={member} code={med.measure} medId={med.id} />
       </section>
 
-      <section className={styles.detailSection}>
-      <div className={styles.subTitle}>Refill History</div>
-      <div className={styles.tableScroll}>
-        <table className={styles.table}>
-          <thead>
-            <tr><th>Fill Date</th><th>Quantity</th><th>Days Supply</th><th>Pharmacy</th><th>Prescriber</th><th>Prescriber Address</th><th>Source</th></tr>
-          </thead>
-          <tbody>
-            {/* Only claims that count are fills; reversals, voided and other
-                coverage lines are in Claim History only. */}
-            {med.refills.filter(r => r.source || countedClaims.has(claimKey(r))).map((r, i) => (
-              <tr key={`${r.date}-${r.source || 'claim'}-${i}`}>
-                <td>{r.date}</td><td>{r.qty}</td><td>{r.daysSupply}</td>
-                <td>{r.pharmacy}</td><td>{r.prescriber}</td><td>{r.prescriberAddress}</td>
-                {/* Call-confirmed pickups land here before the claim does. */}
-                <td>{r.source ? (
-                  <span className={styles.sourceCell}>
-                    <Badge size="S" tone="grey" icon={r.manual ? 'solar:pen-linear' : 'solar:phone-linear'} label={r.manual ? 'Entered by hand' : r.source} />
-                    <FillMatchTag match={matchFill(r, claims, plan)} onRework={() => setTab('claims')} />
-                  </span>
-                ) : 'Claim'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      </section>
       </>}
     </div>
   );
@@ -678,7 +683,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
           onClose={() => setOpenId(null)}
           width={760}
         >
-          <MedicationDetail key={`${openMed.id}-${openTab || 'details'}`} med={openMed} memberRowId={member.id} interventionLog={member.interventionLog} plan={member.healthPlan} initialTab={openTab} />
+          <MedicationDetail key={`${openMed.id}-${openTab || 'details'}`} med={openMed} memberRowId={member.id} plan={member.healthPlan} initialTab={openTab} />
         </Drawer>
       )}
     </div>

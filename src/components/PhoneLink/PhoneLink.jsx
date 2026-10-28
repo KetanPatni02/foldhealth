@@ -1,10 +1,13 @@
 import { Icon } from '../Icon/Icon';
+import { useAppStore } from '../../store/useAppStore';
 import styles from './PhoneLink.module.css';
 
 /**
- * PhoneLink — click-to-dial for a phone number that isn't a patient's
- * (prescriber, pharmacy, facility). Opens the device's dialer / softphone
- * through a `tel:` link; `onDial` lets the caller log the attempt.
+ * PhoneLink: click-to-call for a phone number that isn't a patient's
+ * (prescriber, pharmacy, facility). Opens the app's Voice Call drawer on
+ * "Dial a number" with the number filled in, so the user picks the line to
+ * call from and the call is logged in Comms. `onDial` lets the caller log
+ * the attempt too.
  *
  * Props:
  *  - number  string — display format, e.g. "(626) 555-0190"
@@ -12,17 +15,21 @@ import styles from './PhoneLink.module.css';
  *  - onDial  () => void — optional
  */
 export function PhoneLink({ number, label, onDial }) {
+  const openCommsDrawer = useAppStore(s => s.openCommsDrawer);
   if (!number) return <span className={styles.empty}>—</span>;
-  const digits = number.replace(/[^\d+]/g, '');
   return (
-    <a
+    <button
+      type="button"
       className={styles.link}
-      href={`tel:${digits}`}
-      onClick={(e) => { e.stopPropagation(); onDial?.(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        openCommsDrawer('call', { initialMode: 'dial', initialNumber: number });
+        onDial?.();
+      }}
       aria-label={label ? `Call ${label} at ${number}` : `Call ${number}`}
     >
       <Icon name="solar:phone-linear" size={14} color="currentColor" />
       {number}
-    </a>
+    </button>
   );
 }

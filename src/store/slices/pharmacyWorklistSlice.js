@@ -35,7 +35,6 @@ function rowToMember(r) {
     measures: r.measures || [],
     patientId: r.patient_id,
     sourcePriority: r.source_priority ?? null,
-    priorityOverride: r.priority_override ?? null,
     comments: r.comments || [],
     otherCareGaps: r.other_care_gaps || [],
     eligibilityStatus: r.eligibility_status || 'Active',
@@ -64,7 +63,7 @@ const pickupToRow = (p) => ({
 const COLUMN_TO_FIELD = {
   status: 'status', status_manual: 'statusManual', assignee_id: 'assigneeId', assignee_name: 'assigneeName', assignee_initials: 'assigneeInitials',
   measures: 'measures', call_history: 'callHistory', intervention_log: 'interventionLog', barrier: 'barrier',
-  follow_up_due: 'followUpDue', priority_override: 'priorityOverride', comments: 'comments',
+  follow_up_due: 'followUpDue', comments: 'comments',
 };
 
 // A fill left on the shelf brings the follow-up forward to the next pickup
@@ -148,6 +147,7 @@ export function createPharmacyWorklistSlice(set, get) {
     const tag = { code, ...(medName ? { medication: medName } : {}) };
     const entry = {
       date: todayMdy(),
+      at: new Date().toISOString(),
       by: get().currentUserProfile?.name || 'You',
       ...(medName ? { medication: medName } : {}),
       ...(resolve.length ? { resolved: resolve.map(barrier => ({ ...tag, barrier })) } : {}),
@@ -357,17 +357,6 @@ export function createPharmacyWorklistSlice(set, get) {
       });
     },
 
-    // A priority picked on the worklist wins over the plan file's and the
-    // derived one (see enrichPharmacyMember).
-    setPharmacyPriority: (id, priority) => {
-      const prev = get().pharmacyWorklistMembers.find(m => m.id === id);
-      const from = prev ? enrichPharmacyMember(prev).priority : null;
-      if (!prev || from === priority) return;
-      update(id, m => ({ ...m, priorityOverride: priority }), ['priority_override'], {
-        t: 'status_change', title: 'Priority changed', note: `${from} → ${priority}`,
-      });
-    },
-
     // Comments on the member (Pharmacy Gap Details > Comments), newest first.
     // `comment`: { id, author, authorId, role, date, time, body, mentionIds }.
     addPharmacyComment: (id, comment) => {
@@ -430,6 +419,7 @@ export function createPharmacyWorklistSlice(set, get) {
         const latest = (m.interventionLog || []).find(e => e.measures?.[measure.code])?.measures[measure.code];
         const entry = {
           date: todayMdy(),
+          at: new Date().toISOString(),
           by: get().currentUserProfile?.name || 'You',
           source: 'Medication review',
           medication: med.name,
@@ -561,7 +551,8 @@ export function createPharmacyWorklistSlice(set, get) {
             }),
           };
         });
-        return { ...m, measures, interventionLog: [entry, ...(m.interventionLog || [])], barrier: firstBarrier || m.barrier };
+        // `at`: when it was logged, so History and Activity can show the time.
+        return { ...m, measures, interventionLog: [{ at: new Date().toISOString(), ...entry }, ...(m.interventionLog || [])], barrier: firstBarrier || m.barrier };
       }, ['intervention_log', 'barrier', 'measures'], {
         t: 'note', title: `Barriers & interventions (${Object.keys(entry.measures).join(', ')})`,
         note: Object.entries(entry.measures)
