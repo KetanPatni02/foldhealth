@@ -12,6 +12,7 @@ import { usePatientConsent } from '../../../../hooks/usePatientConsent';
 import { isProgramClosed } from '../../../../data/programStatus';
 import { CHANNEL_OPTIONS, CONTACT_STATUS_OPTIONS, CONTACT_STATUS_TONE, LITERACY_OPTIONS, mergeContactPoints, optionLabel } from '../../../../data/patientPreferences';
 import { PatientPreferencesDrawer } from '../PatientPreferencesDrawer/PatientPreferencesDrawer';
+import { PatientPortalAccess } from '../PatientPortalAccess/PatientPortalAccess';
 import styles from './ProfileTab.module.css';
 
 const PROFILE_VIEWS = [
@@ -238,6 +239,10 @@ export function ProfileTab({ patient }) {
                   : 'Inactive'}
               </Field>
             )}
+          </Section>
+
+          <Section title="Patient Portal">
+            <PatientPortalAccess patient={patient} defaultEmail={email} />
           </Section>
 
           <Section title="Address">

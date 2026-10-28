@@ -8,6 +8,8 @@ import { initialsOf, sexAndAge } from '../lib/profileFormat';
 import { ProfileSwitcher } from '../profiles/ProfileSwitcher';
 import { useUpcomingVisits } from '../appointments/useUpcomingVisits';
 import { visitWhen } from '../appointments/slotFormat';
+import { CareTeamCard } from './CareTeamCard';
+import { HomeTabs } from './HomeTabs';
 import styles from './HomePage.module.css';
 
 function VisitCard({ visit }) {
@@ -36,7 +38,7 @@ function VisitCard({ visit }) {
   );
 }
 
-export function HomePage({ refreshKey, onBook }) {
+export function HomePage({ refreshKey, onBook, onMessage }) {
   const { profile } = useProfile();
   const { loading, error, visits } = useUpcomingVisits(profile.member_id, refreshKey);
 
@@ -59,6 +61,7 @@ export function HomePage({ refreshKey, onBook }) {
             <span className={styles.contact}><Icon name="solar:phone-linear" size={16} color="currentColor" />{profile.phone}</span>
           )}
         </section>
+        <CareTeamCard memberId={profile.member_id} onMessage={onMessage} />
       </aside>
 
       <section className={`${styles.column} ${styles.events}`} aria-labelledby="upcoming-visits">
@@ -89,13 +92,7 @@ export function HomePage({ refreshKey, onBook }) {
       </section>
 
       <section className={styles.column} aria-label="Care">
-        <div className={styles.card}>
-          <EmptyState
-            icon="solar:home-2-linear"
-            title="More of your care is on its way"
-            description="Care tasks, health records, documents and claims will show here."
-          />
-        </div>
+        <HomeTabs memberId={profile.member_id} />
       </section>
     </div>
   );

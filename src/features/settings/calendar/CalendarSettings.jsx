@@ -4,6 +4,7 @@ import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyStat
 import { HolidaysTab } from './HolidaysTab';
 import { OooRecordsTab } from './OooRecordsTab';
 import { UserAvailabilityTab } from './availability/UserAvailabilityTab';
+import { AppointmentTypesTab } from './AppointmentTypesTab';
 import styles from './CalendarSettings.module.css';
 
 const TABS = [
@@ -22,6 +23,7 @@ export function CalendarSettings() {
   if (tab === 'ooo') return <OooRecordsTab tabs={TABS} activeTab={tab} onTabChange={setTab} />;
   if (tab === 'holidays') return <HolidaysTab tabs={TABS} activeTab={tab} onTabChange={setTab} />;
   if (tab === 'users') return <UserAvailabilityTab tabs={TABS} activeTab={tab} onTabChange={setTab} />;
+  if (tab === 'types') return <AppointmentTypesTab tabs={TABS} activeTab={tab} onTabChange={setTab} />;
   return (
     <div className={styles.wrapper}>
       <SectionTitleBar

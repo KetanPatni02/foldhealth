@@ -160,3 +160,38 @@
     border-bottom: 1px solid var(--neutral-100);
   }
 }
+
+.team {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.teamRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.teamRow .identityText {
+  flex: 1;
+}
+
+.teamName {
+  font-size: var(--font-sm);
+  color: var(--neutral-500);
+}
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: calc(-1 * var(--space-3));
+}
+
+.tabBody {
+  padding: var(--space-3);
+}

@@ -120,7 +120,8 @@ flowchart TD
 5. Below the card: "Stay connected with your healthcare experts on the go via our mobile apps" with App Store and Google Play badges.
 
 **Built:** steps 1 to 4, reset, staff rejection (`patient/auth/`).
-**Open:** first sign-in from a care-team invite (account creation is server-side; needs an edge function plus an invite email); terms and privacy URLs; whether mobile apps exist (badges left out until they do); phone sign-in needs Supabase phone auth.
+**Invites (built):** staff give access from the patient's Profile tab (Patient Portal section). `/api/patient-invite` creates the account with `role: patient` (or reuses an existing patient account), links it in `patient_accounts` and emails a link to `#/set-password?token_hash=…`; the patient app redeems the token only on submit.
+**Open:** terms and privacy URLs; whether mobile apps exist (badges left out until they do); phone sign-in needs Supabase phone auth.
 
 ### W2. Choose or switch profile
 
@@ -132,7 +133,8 @@ flowchart TD
 
 **Built:** `supabase/patient_accounts_migration.sql` (`patient_accounts`, `patient_can_access(member_id)`, `patient_profiles()`) and `patient/profiles/` (picker after sign-in when there are several profiles, the switcher on Home, a "not set up yet" page with none). The choice lasts for the browser tab's session. Names show as first names unless two profiles share one.
 **Data:** `patient_accounts` links `auth.users` to member_ids; patients read it only through `patient_profiles()`, which takes names and contact details from `all_patients`.
-**Open:** what a manager may do for a dependent (message as them? book for them? see claims?); adding a profile (Settings, Family Members has no frame); minors aging out.
+**Staff side (built):** Profile tab → Patient Portal lists linked accounts (relationship, Active or Invite sent, other patients they manage), invites and removes access.
+**Open:** what a manager may do for a dependent (message as them? book for them? see claims?); adding a profile from the patient app (Settings, Family Members has no frame); minors aging out.
 
 ### W3. Home at a glance
 
@@ -141,7 +143,8 @@ flowchart TD
 - Next visit card with Join Appointment (W12), Care Team with a message shortcut per member (opens W8 thread with that person), Membership card, Packages promo (W11).
 - Unread counts on Messages and the bell.
 
-**Data:** `appointments` (next one for `patient_id`), `care_teams` and the patient's assigned staff (`patients.nurse_coach`, `coordinator`, `social_worker`, `community_health_worker` today), `patient_contacts`.
+**Built:** profile column (switcher, name, sex and age, email, phone), Care Team card from `p360_profiles.care_team` (`patient_care_team`) with a message shortcut per person, Upcoming visits.
+**Data:** `appointments` (next one for `patient_id`), `p360_profiles.care_team`, `patient_contacts`.
 **Open:** Membership has no table (plan name, price, status, expiry); what the ⋯ menu on the visit card offers (reschedule, cancel, add to calendar?).
 
 ### W4. Edit profile
@@ -190,6 +193,7 @@ Four sections, each a list with a ⋯ menu per row:
 
 - Problems (name, since year), Allergies (name, severity, reaction), Medications (name, dose, frequency), Immunizations (vaccine, due date).
 
+**Built:** Health Records tab on Home (`patient/records/`, `patient_health_records`). Problems (active first, others badged), allergies with risk and reactions, active medications only, immunizations with the date given. Clinician `note` fields are never sent to the patient app.
 **Data:** `patient_problems`, `patient_allergies`, `patient_medications`, `patient_immunizations` (read-only for patients).
 **Open:** the sections reuse the **All Done** link from Care Tasks, which makes no sense for records (likely "View all"); what the ⋯ menu does (details? report an error?).
 
@@ -213,8 +217,9 @@ Four sections, each a list with a ⋯ menu per row:
 3. Composer: text, attach, voice note.
 4. Entry points: Messages in the rail, the message icon on a Care Team member, **Reply** on a notification.
 
-**Data:** `patient_conversations` + `patient_messages` (the staff app's patient threads; the existing `#/p/<token>` portal already sends through `comms_patient_*` RPCs), `chat_groups` / `chat_participants`.
-**Open:** whether patients may start a new thread or only reply; voice notes and calls (provider?); attachment size and type limits.
+**Built:** `supabase/patient_messages_migration.sql` and `patient/messages/`. The patient sees the profile's chat conversations (the same `patient_conversations` staff use in Messages > Chat), reads and replies, and starts a new message to the whole care team or one member (reusing an existing thread with that person). Unread staff replies show as a badge on Messages (30-second poll; an open thread polls every 10 seconds and marks replies read). Patients see chat messages only: never internal notes, drafts, call logs or emails. A message from a parent, guardian or caregiver account is labeled as such for staff. At most 5 new threads per profile per day.
+**Data:** member-keyed twins of the token portal's `comms_patient_*` functions: `patient_conversations`, `patient_conversation_messages`, `patient_send_message`, `patient_start_conversation`, `patient_mark_conversation_read`.
+**Open:** attachments (shown by name only; files are staff-only in storage), voice notes and calls, staff assignment of patient-started threads, realtime instead of polling.
 
 ### W9. Notifications
 
@@ -223,8 +228,8 @@ Four sections, each a list with a ⋯ menu per row:
 - Drawer from the bell, grouped by day, newest first.
 - Types shown: new message (**Reply** opens W8), new assessment (**Review** opens the form in W5), appointment reminder. Read items are greyed.
 
-**Data:** `notifications` (staff-only today; needs patient rows keyed to the account).
-**Open:** first group is labeled "EDUCATION" (likely "Today"); mark-all-read; push and email copies.
+**Built:** bell drawer (`patient/notifications/`, `patient_notifications`), derived rather than stored: care-team messages from the last 14 days (unread until the thread is opened, read ones greyed, Reply opens the thread) and visits today or tomorrow. The bell badge counts unread messages.
+**Open:** assessments join the feed with W5 (patients can't fill forms yet); mark-all-read; push and email copies; the design's first group label ("EDUCATION", likely "Today").
 
 ### W10. Claims and coverage
 
@@ -275,6 +280,7 @@ flowchart TD
 **Design status:** only the **Book Appointment** button and the visit card exist. The booking steps above are the proposed flow, not designed yet.
 **Built:** `supabase/patient_appointments_migration.sql` and `patient/appointments/`. Book Appointment opens a drawer: visit type (types with `appointment_types.patient_bookable`), in person or video for dual-mode types, the next 14 days of open times (weekdays from availability, in the provider's timezone, filterable by provider), optional reason. Home lists upcoming visits. A booking is saved as an ordinary `appointments` row (status `Booked`, the staff calendar's text formats), so it shows in the staff calendar at once.
 **Data:** `_appointment_open_slots` mirrors the staff app's availability rules (`occursOn`, timezones, holidays) minus the provider's existing appointments; `patient_book_appointment` re-checks the slot under a per-provider lock and allows 3 upcoming online bookings per patient. Patients never read `user_availability` or `appointments` directly.
+**Staff side (built):** Settings → Calendar → Appointment types has an Online booking switch per visit type.
 **Not built yet:** reschedule and cancel, Join for video visits, choosing a provider's location when they work at several.
 **Open:** which visit types patients may self-book; video provider for Join; reschedule and cancel rules.
 

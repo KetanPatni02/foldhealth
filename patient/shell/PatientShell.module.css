@@ -43,6 +43,7 @@
 }
 
 .iconButton {
+  position: relative;
   width: 32px;
   height: 32px;
   border: 0;
@@ -64,4 +65,22 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
+}
+
+.bellBadge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 var(--space-1);
+  box-sizing: border-box;
+  border-radius: 4px;
+  background: var(--secondary-300);
+  color: var(--neutral-0);
+  font-size: var(--font-2xs);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

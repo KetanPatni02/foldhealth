@@ -55,6 +55,10 @@
       "destination": "/api/account?route=auth-activity"
     },
     {
+      "source": "/api/patient-invite",
+      "destination": "/api/account?route=patient-invite"
+    },
+    {
       "source": "/api/pop-group-rule-from-nl",
       "destination": "/api/ai?route=pop-group-rule-from-nl"
     },
