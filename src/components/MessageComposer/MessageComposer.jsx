@@ -4,11 +4,13 @@ import { Switch } from '../Switch/Switch';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Icon } from '../Icon/Icon';
 import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
+import { Link } from '../Link/Link';
 import { LinkHighlightTextarea } from '../Textarea/Textarea';
 import styles from './MessageComposer.module.css';
 
 /**
- * Fold Health MessageComposer: the conversation type box (Figma 846:22174).
+ * Fold Health MessageComposer: the conversation type box (Figma 846:22174,
+ * spacing per 3540:63749).
  * Internal toggle and tool icons on top, the message line with Send and
  * Schedule beside it, "Press Enter to send" and Archive on send below.
  * Internal on turns the box orange: the message is for staff only.
@@ -24,7 +26,8 @@ import styles from './MessageComposer.module.css';
  * @param {boolean}  [props.internal]
  * @param {(v: boolean) => void} [props.onInternalChange] – omit to hide the toggle
  * @param {boolean}  [props.internalOnly] – always internal (e.g. a Calls thread)
- * @param {Array<{ key: string, icon: string, tooltip: string, onClick?: () => void }>} [props.tools]
+ * @param {Array<{ key: string, icon?: string, iconNode?: React.ReactNode, tooltip: string, onClick?: () => void }>} [props.tools]
+ *   – `iconNode` is a custom icon for tools with no Solar match
  * @param {boolean}  [props.archiveOnSend]
  * @param {(v: boolean) => void} [props.onArchiveOnSendChange]
  * @param {string}   [props.placeholder]
@@ -84,7 +87,7 @@ export function MessageComposer({
       <div className={styles.toolbar}>
         <div className={styles.toolbarStart}>
           {onInternalChange && !internalOnly && (
-            <Switch checked={internal} onChange={onInternalChange} label="Internal" labelGap={6} />
+            <Switch checked={internal} onChange={onInternalChange} label="Internal" />
           )}
           {toolbarStart && (
             <>
@@ -95,7 +98,7 @@ export function MessageComposer({
         </div>
         <div className={styles.tools}>
           {tools.map(t => (
-            <ActionButton key={t.key} icon={t.icon} size="S" tooltip={t.tooltip} onClick={t.onClick} />
+            <ActionButton key={t.key} icon={t.icon} size="S" tooltip={t.tooltip} onClick={t.onClick}>{t.iconNode}</ActionButton>
           ))}
         </div>
       </div>
@@ -114,7 +117,7 @@ export function MessageComposer({
             disabled={disabled}
             placeholder={placeholder || (isInternal
               ? 'Internal messages are not visible to patient(s)'
-              : 'Visible to everyone • Shift+Enter to change the line')}
+              : 'Type message here')}
             onChange={(e) => { onChange(e.target.value); grow(e.target); }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); }
@@ -140,7 +143,9 @@ export function MessageComposer({
       </div>
 
       <div className={styles.footer}>
-        <span>Press Enter to send</span>
+        <span>
+          Press Enter to send • <Link className={styles.changeLink}>Change</Link>
+        </span>
         {onArchiveOnSendChange && (
           <label className={styles.archive}>
             <Checkbox checked={archiveOnSend} onCheckedChange={v => onArchiveOnSendChange(v === true)} />

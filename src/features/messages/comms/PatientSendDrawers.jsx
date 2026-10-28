@@ -68,12 +68,14 @@ function useMember(initialPatient) {
   }, [patients, initialPatient]);
   const member = patients.find(p => String(p.id) === memberId)
     || (initialPatient && String(initialPatient.id) === memberId ? initialPatient : null);
-  return { memberId, setMemberId, options, member };
+  // Opened for a patient (P360, a worklist row), the member is fixed.
+  return { memberId, setMemberId, options, member, locked: initialPatient?.id != null };
 }
 
-function MemberField({ memberId, setMemberId, options }) {
+function MemberField({ memberId, setMemberId, options, locked }) {
   return (
     <Select
+      disabled={locked}
       searchable
       options={options}
       value={memberId}
@@ -154,7 +156,10 @@ async function deliver({ recipient, targets, via, me, subject, html, smsBody, me
   if (phones.length) {
     const own = recipient.phone ? toE164(recipient.phone) : phones[0];
     const conv = await findOrCreateConversation('sms', { ...recipient, phone: own }, { patient_phone: own });
-    for (const phone of phones) results.push(['SMS', await sendSms({ conversation: conv, sender, to: phone, body: smsBody, meta })]);
+    // The drawer is locked to this patient, so every copy (caregivers' too)
+    // is logged for them (FCS-5677: tag to the selected user).
+    const loggedFor = recipient.id != null ? { id: String(recipient.id), name: recipient.name } : undefined;
+    for (const phone of phones) results.push(['SMS', await sendSms({ conversation: conv, sender, to: phone, body: smsBody, meta, loggedFor })]);
   }
   const failed = results.filter(([, m]) => m?.status === 'failed');
   const channels = [...new Set(results.map(([c]) => c))];

@@ -23,6 +23,13 @@
   line-height: 1.2;
   color: var(--neutral-200);
 }
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 .labelInfo {
   flex-shrink: 0;
   cursor: help;

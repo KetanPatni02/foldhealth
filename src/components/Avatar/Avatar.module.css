@@ -238,3 +238,22 @@
   text-align: left;
   white-space: nowrap;
 }
+
+/* Figma draws avatars at 100% corner smoothing: the curve eases in over
+   twice the radius. A squircle at double the radius is the CSS match;
+   browsers without corner-shape keep the plain radii above. */
+@supports (corner-shape: squircle) {
+  .patient, .provider, .success, .error, .warning, .primary,
+  .assignee, .others, .generic { corner-shape: squircle; }
+
+  .patient, .provider, .success, .error, .warning, .primary,
+  .others, .generic { border-radius: 1rem; }
+  .assignee { border-radius: 0.75rem; }
+
+  .sizeXS  { border-radius: 0.625rem; }
+  .sizeS   { border-radius: 0.75rem; }
+  .sizeM   { border-radius: 1rem; }
+  .sizeL   { border-radius: 1.25rem; }
+  .sizeXL  { border-radius: 1.5rem; }
+  .sizeDXL { border-radius: 2rem; }
+}

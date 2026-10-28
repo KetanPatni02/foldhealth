@@ -81,6 +81,8 @@ export function Select({
   required = false,
   showInfo = false,
   infoText,
+  // Optional control at the right end of the label row (e.g. a Remove link).
+  labelAction,
   helperText,
   errorText,
   // Multi-select mode. When true, `value` is an array of strings and
@@ -546,26 +548,29 @@ export function Select({
   if (!needsField) return trigger;
 
   const activeError = errorText != null ? errorText : null;
+  const labelEl = label && (
+    <label className={styles.label} htmlFor={triggerId}>
+      <span>{label}</span>
+      {showInfo && (
+        <Tooltip label={infoText} maxWidth={280}>
+          <Icon
+            name="solar:info-circle-linear"
+            size={12}
+            color="var(--neutral-300)"
+            className={styles.labelInfo}
+            aria-label={infoText}
+          />
+        </Tooltip>
+      )}
+      {required && <span className={styles.required} aria-hidden="true" />}
+    </label>
+  );
 
   return (
     <div className={[styles.field, wrapperClassName || className || ''].filter(Boolean).join(' ')}>
-      {label && (
-        <label className={styles.label} htmlFor={triggerId}>
-          <span>{label}</span>
-          {showInfo && (
-            <Tooltip label={infoText} maxWidth={280}>
-              <Icon
-                name="solar:info-circle-linear"
-                size={12}
-                color="var(--neutral-300)"
-                className={styles.labelInfo}
-                aria-label={infoText}
-              />
-            </Tooltip>
-          )}
-          {required && <span className={styles.required} aria-hidden="true" />}
-        </label>
-      )}
+      {label && (labelAction
+        ? <div className={styles.labelRow}>{labelEl}{labelAction}</div>
+        : labelEl)}
       {trigger}
       {typeof activeError === 'string' && activeError && (
         <span className={styles.errorText}>{activeError}</span>

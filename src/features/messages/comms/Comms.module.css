@@ -202,3 +202,95 @@
   width: 1rem;
   flex-shrink: 0;
 }
+
+/* The message opened from a patient's Activity. */
+.focusedMessage {
+  display: flex;
+  flex-direction: column;
+  margin: 0 calc(var(--space-2) * -1);
+  padding: var(--space-2);
+  border-radius: 0.5rem;
+  background: var(--primary-50);
+}
+
+/* Chat header (Figma 3540:63625). */
+.threadHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.threadHeader .headerAvatar { border-radius: 0.5rem; }
+@supports (corner-shape: squircle) {
+  .threadHeader .headerAvatar { border-radius: 1rem; }
+}
+
+.headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.headerNameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.headerName {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+
+.headerMeta {
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metaGender { color: var(--secondary-300); }
+
+/* "3 members": opens who shares the number. */
+.membersCount {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--primary-300);
+  cursor: pointer;
+}
+.membersCount:hover { text-decoration: underline; }
+
+.headerActions {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.headerDivider {
+  width: 0.5px;
+  height: 1rem;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* Rest-of-today session banners, just above the type box. */
+.sessionBars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
+}

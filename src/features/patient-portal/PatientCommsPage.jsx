@@ -113,18 +113,10 @@ function PatientShell({ token, conversation, messages, onSent, reload }) {
 
   return (
     <div className={styles.page}>
-      <nav className={styles.rail} aria-label="Patient app">
-        <span className={styles.railItem}><Icon name="solar:home-2-linear" size={20} />Home</span>
-        <span className={[styles.railItem, styles.railActive].join(' ')}><Icon name="solar:chat-round-linear" size={20} />Messages</span>
-        <span className={styles.railItem}><Icon name="solar:settings-linear" size={20} />Settings</span>
-      </nav>
-
       <div className={styles.main}>
         <header className={styles.top}>
-          <span className={styles.topTitle}>Home</span>
+          <span className={styles.topTitle}>Messages</span>
           <span className={styles.topRight}>
-            <Icon name="solar:bell-linear" size={20} color="var(--neutral-300)" />
-            <Button variant="primary" size="L" disabled>Book Appointment</Button>
             <Avatar variant="patient" size={32} initials={initialsOf(name)} />
           </span>
         </header>
@@ -167,6 +159,7 @@ function PatientShell({ token, conversation, messages, onSent, reload }) {
                     <ChatBubble
                       side={mine ? 'right' : 'left'}
                       name={mine ? 'You' : sender}
+                      selfAvatarVariant="patient"
                       initials={initialsOf(sender)}
                       text={m.body}
                       attachment={m.meta?.attachment}

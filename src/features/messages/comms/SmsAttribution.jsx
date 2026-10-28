@@ -3,10 +3,28 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Coachmark } from '../../../components/Coachmark/Coachmark';
+import { UserAccountsIcon } from '../../../components/Icon/UserAccountsIcon';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../../components/ShadcnDialog/ShadcnDialog';
-import { PersonOption } from './PersonOption';
+import { Avatar } from '../../../components/Avatar/Avatar';
 import { memberMeta, sharedBy } from './smsMembers';
 import styles from './SmsAttribution.module.css';
+
+/**
+ * One member in the Log For menu (3540:64946) and the Select Member popup
+ * (3540:64628): light avatar, name ("(Default)" for the number's owner)
+ * over gender • date of birth.
+ */
+export function MemberOption({ member: m }) {
+  return (
+    <span className={styles.member}>
+      <Avatar variant="patient" initials={m.initials} className={styles.memberAvatar} />
+      <span className={styles.memberText}>
+        <span className={styles.memberName}>{m.isOwner ? `${m.name} (Default)` : m.name}</span>
+        <span className={styles.memberMeta}>{memberMeta(m)}</span>
+      </span>
+    </span>
+  );
+}
 
 /**
  * "Log For: Member ⌄" beside the composer's Internal toggle (3540:64859):
@@ -27,21 +45,22 @@ export function LogForChip({ ref, members, value, onChange }) {
         aria-expanded={open}
         onClick={() => setOpen(o => !o)}
       >
-        <Icon name="solar:user-linear" size={12} color="var(--neutral-300)" />
+        <Icon name="solar:user-linear" size={10} color="var(--neutral-300)" />
         <span className={styles.chipText}>Log For: {current?.name}</span>
+        <span className={styles.chipDivider} aria-hidden="true" />
         <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
       </button>
       {open && (
         <MenuPopover
           anchorRef={anchorRef}
           align="left"
-          width={300}
+          width={236}
           ariaLabel="Log SMS for"
           items={members.map(m => ({
             key: m.id,
             tall: true,
             selected: m.id === current?.id,
-            label: <PersonOption name={m.name} initials={m.initials} meta={memberMeta(m)} />,
+            label: <MemberOption member={m} />,
           }))}
           onSelect={onChange}
           onClose={() => setOpen(false)}
@@ -51,22 +70,16 @@ export function LogForChip({ ref, members, value, onChange }) {
   );
 }
 
-const COACHMARK_KEY = 'fold-sms-logfor-coachmark';
-
-function readSeen(userId) {
-  try { return localStorage.getItem(`${COACHMARK_KEY}:${userId || 'me'}`) === '1'; } catch { return false; }
-}
-
-/** Shown once per user, until dismissed (3540:64643). */
-export function LogForCoachmark({ anchorRef, userId }) {
-  const [seen, setSeen] = useState(() => readSeen(userId));
-  if (seen) return null;
-  const dismiss = () => {
-    try { localStorage.setItem(`${COACHMARK_KEY}:${userId || 'me'}`, '1'); } catch { /* storage blocked: hide for now */ }
-    setSeen(true);
-  };
+/**
+ * Shown each time a shared-number SMS chat opens (3540:64643), for any
+ * patient, until closed for that chat.
+ */
+export function LogForCoachmark({ anchorRef }) {
+  const [closed, setClosed] = useState(false);
+  if (closed) return null;
+  const dismiss = () => setClosed(true);
   return (
-    <Coachmark anchorRef={anchorRef} icon="solar:user-id-linear" onClose={dismiss}>
+    <Coachmark anchorRef={anchorRef} illustration={<UserAccountsIcon />} width={369} onClose={dismiss}>
       When a number is shared by multiple members, select who the SMS is logged for before sending. Sent SMS is logged to that member&apos;s Activity.
     </Coachmark>
   );
@@ -98,7 +111,7 @@ export function SelectMemberModal({ open, members, saving = false, onClose, onSa
                 className={[styles.memberRow, m.id === picked ? styles.memberRowPicked : ''].filter(Boolean).join(' ')}
                 onClick={() => setPicked(m.id)}
               >
-                <PersonOption name={m.isOwner ? `${m.name} (Default)` : m.name} initials={m.initials} meta={memberMeta(m)} />
+                <MemberOption member={m} />
               </button>
             ))}
           </div>
@@ -111,6 +124,85 @@ export function SelectMemberModal({ open, members, saving = false, onClose, onSa
             fullWidth
             disabled={!member || saving}
             onClick={async () => { if (member && await onSave(member) !== false) setPicked(null); }}
+          >
+            Save
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const APPLY_TO = [
+  { value: 'one', label: 'This message only' },
+  { value: 'today', label: 'This message and all upcoming messages to be received today (till 11:59 PM)' },
+  { value: 'below', label: 'This message and all incoming messages after it (till an incoming message is manually assigned)' },
+];
+
+/**
+ * "Select Member to log SMS for:" with Apply to (4620:54956), for a received
+ * SMS on a shared number: who it's from, and how far the choice reaches.
+ * Only "rest of today" starts the session that auto-assigns new replies.
+ *
+ * @param {(member, applyTo: 'one'|'below'|'today') => Promise<boolean|void>} props.onSave
+ */
+export function AssignSmsModal({ open, members, saving = false, onClose, onSave }) {
+  const [picked, setPicked] = useState(null);
+  const [applyTo, setApplyTo] = useState('one');
+  const reset = () => { setPicked(null); setApplyTo('one'); };
+  const close = () => { reset(); onClose(); };
+  const member = members.find(m => m.id === picked);
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) close(); }}>
+      <DialogContent className={`${styles.modal} ${styles.assignModal}`} hideClose>
+        <DialogTitle className={styles.modalTitle}>Select Member to log SMS for:</DialogTitle>
+        <div className={styles.modalBody}>
+          <DialogDescription className={styles.modalHelper}>
+            {sharedBy(members)} Selected SMS will be logged for the member you select below :
+          </DialogDescription>
+          <div className={styles.memberList} role="radiogroup" aria-label="Members">
+            {members.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                role="radio"
+                aria-checked={m.id === picked}
+                className={[styles.memberRow, m.id === picked ? styles.memberRowPicked : ''].filter(Boolean).join(' ')}
+                onClick={() => setPicked(m.id)}
+              >
+                <MemberOption member={m} />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={styles.applySection}>
+          <div className={styles.applyTo}>
+            <span className={styles.applyToLabel} id="assign-apply-to">Apply to:</span>
+            <div className={styles.applyToList} role="radiogroup" aria-labelledby="assign-apply-to">
+              {APPLY_TO.map(o => (
+                <button
+                  key={o.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={applyTo === o.value}
+                  className={[styles.applyRow, applyTo === o.value ? styles.applyRowPicked : ''].filter(Boolean).join(' ')}
+                  onClick={() => setApplyTo(o.value)}
+                >
+                  <span className={styles.applyRadio} aria-hidden="true" />
+                  <span className={styles.applyLabel}>{o.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className={styles.modalFooter}>
+          <Button variant="secondary" size="L" fullWidth onClick={close}>Cancel</Button>
+          <Button
+            variant="primary"
+            size="L"
+            fullWidth
+            disabled={!member || saving}
+            onClick={async () => { if (member && await onSave(member, applyTo) !== false) reset(); }}
           >
             Save
           </Button>
