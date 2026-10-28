@@ -6439,6 +6439,7 @@ export const useAppStore = create((set, get) => ({
 
   // UI state
   callPopoverPatient: null,
+  callPopoverNumber: null, // { number, label, onDial } for prescriber / pharmacy calls
   callPopoverBtnRef: null,
   outreachPopoverPatient: null,
   activeCallPatient: null,
@@ -15001,9 +15002,12 @@ export const useAppStore = create((set, get) => ({
       state.showToast?.('Unable to start call — patient not found');
       return;
     }
-    set({ callPopoverPatient: patient.id, callPopoverBtnRef: btnRef });
+    set({ callPopoverPatient: patient.id, callPopoverNumber: null, callPopoverBtnRef: btnRef });
   },
-  closeCallPopover: () => set({ callPopoverPatient: null, callPopoverBtnRef: null }),
+  openNumberCallPopover: (target, btnRef) => {
+    set({ callPopoverNumber: target, callPopoverPatient: null, callPopoverBtnRef: btnRef });
+  },
+  closeCallPopover: () => set({ callPopoverPatient: null, callPopoverNumber: null, callPopoverBtnRef: null }),
 
   startActiveCall: (patientId) => {
     track('call.started', { patientId });
