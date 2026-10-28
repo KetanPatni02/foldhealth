@@ -4152,10 +4152,10 @@ export const useAppStore = create((set, get) => ({
     const baseById = new Map(templates.map(t => [t.id, t]));
     // One at a time: each template merges into the same plan's goals, so
     // concurrent applies would race on the de-duplication.
-    // react-doctor-disable-next-line react-doctor/async-await-in-loop
     for (const templateId of toAdd) {
       const base = baseById.get(templateId);
       if (!base) continue;
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
       const found = await get().overlayForPatient(templateId, patientId);
       const template = found
         ? {
@@ -4166,6 +4166,7 @@ export const useAppStore = create((set, get) => ({
         }
         : base;
       resolved.set(templateId, template);
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
       await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
     }
 

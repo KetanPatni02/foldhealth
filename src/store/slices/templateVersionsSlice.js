@@ -294,10 +294,10 @@ export function createTemplateVersionsSlice(set, get) {
       if (!get().carePlanTemplateVersionsLoaded) await get().fetchCarePlanTemplateVersions();
       let n = 0;
       // One at a time: every migration rewrites items of this same plan.
-      // react-doctor-disable-next-line react-doctor/async-await-in-loop
       for (const inst of due) {
         const toVersion = versionsOf(inst.templateId).find(v => v.id === inst.pendingVersionId);
         if (!toVersion) continue;
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop
         if (await get().migrateCarePlanTemplateInstance({ patientId, programId: program.id, programCode: program.code, programName: program.name }, inst, toVersion)) n += 1;
       }
       if (n) get().showToast(`Care plan updated to the latest template version${n === 1 ? '' : 's'}`);
