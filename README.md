@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Patient app scaffold (patients.foldhealth.org).** A second Vite entry in
+  `patient/` (`bun run dev:patient`, `bun run build:patient`) with the
+  patient login (email or mobile + password, reset link) and the app shell
+  from the Fold Patient Web App Figma. It reuses `src/components`; the build
+  fails if anything, even transitively, imports `src/features` or
+  `src/store`. New store-free primitives: `NavRail`, and `AvatarBase` split
+  out of `Avatar`. Patients share the Supabase project behind a RESTRICTIVE
+  `staff_only` policy on every table
+  (`supabase/staff_patient_rls_split_migration.sql`); patient accounts carry
+  `app_metadata.role = 'patient'` and are created server-side only.
 - **Pausing a care program asks why and until when.** Picking Paused for a
   care program (header or Care Programs table) opens the same dialog as
   pausing a care plan: reason, start date, planned resume date, auto-resume

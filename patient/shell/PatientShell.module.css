@@ -1,0 +1,67 @@
+.shell {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-1) var(--space-1) 0;
+  box-sizing: border-box;
+  background: var(--neutral-50);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.header {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-2xl);
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.iconButton {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  background: var(--neutral-75);
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
