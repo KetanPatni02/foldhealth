@@ -20,46 +20,32 @@
 }
 .dataTableRow:last-child { border-bottom: none; }
 .dataTableRow:hover { background: var(--neutral-25); }
+.drugsGrid {
+  display: grid;
+  grid-template-columns: 2fr 0.7fr 0.6fr 0.9fr 0.9fr;
+  gap: var(--space-3);
+}
+.drugName { font-weight: 500; color: var(--neutral-500); }
 .claimsGrid {
   display: grid;
-  grid-template-columns: 2.3fr 0.9fr 0.8fr 1.1fr 0.7fr;
+  grid-template-columns: 2.3fr 1fr 1.2fr auto;
   gap: var(--space-3);
 }
 
 /* Starts 16px under the drug's tabs, like Details and Refill History. */
 .history { display: flex; flex-direction: column; gap: var(--space-3); margin-top: calc(-1 * var(--space-1)); }
 
-/* One claim group: its story line, then each transaction. */
+/* One claim group: each of its transactions. */
 .claimGroup { border-bottom: 0.5px solid var(--neutral-150); }
 .claimGroup:last-child { border-bottom: none; }
 .claimGroup .dataTableRow:last-child { border-bottom: none; }
-/* A fill's story, flush under its rows: no stroke or radius, the tint on
-   the left fading out to the right (the CIS dose reason bar). */
-.storyBar {
-  padding: var(--space-1) var(--space-3);
-  border: none;
-  border-radius: 0;
-  background: linear-gradient(90deg, var(--status-error-light) 0%, transparent 100%);
-}
-/* Settled on a claim that counts: the same bar in grey. */
-.storyBar.storyBarQuiet {
-  background: linear-gradient(90deg, var(--neutral-75) 0%, transparent 100%);
-  color: var(--neutral-400);
-}
-.claimGroup .dataTableRow:has(+ .storyBar) { border-bottom: none; }
 .idCell { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
 .rowMeta { font-size: var(--font-sm); color: var(--neutral-300); }
 .badges { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
-.inlineLink {
-  border: none; background: none; padding: 0; cursor: pointer;
-  font-size: var(--font-sm); color: var(--primary-300);
-}
-.inlineLink:hover { text-decoration: underline; }
 
 /* Voided, superseded and reversal lines read as history, not as fills. */
 .rowVoid { color: var(--neutral-300); }
-.rowVoid .claimDate, .rowVoid .claimAmount { color: var(--neutral-300); }
-.struck { text-decoration: line-through; }
+.rowVoid .claimDate { color: var(--neutral-300); }
 
 /* Fills confirmed in Fold: projected, set apart from claims. */
 .rowFill { background: var(--neutral-25); border-left: 2px dashed var(--neutral-200); }
@@ -78,7 +64,6 @@
 }
 .claimIdLink:hover { text-decoration: underline; }
 .claimDate { color: var(--neutral-400); font-variant-numeric: tabular-nums; }
-.claimAmount { font-weight: 500; color: var(--neutral-500); font-variant-numeric: tabular-nums; }
 
 .claimDetailHead {
   display: flex;

@@ -129,6 +129,7 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
   // The member as stored (measures and barrier log), for the drug's
   // Barriers & Interventions.
   const member = useAppStore(s => s.pharmacyWorklistMembers.find(m => m.id === memberRowId));
+  const memberMeds = useMemo(() => (member?.measures || []).flatMap(x => x.medications.map(d => ({ ...d, measure: x.code }))), [member]);
   const update = useAppStore(s => s.updatePharmacyMedication);
   const save = (patch) => update(memberRowId, med.id, patch);
   // Claims tab (as in HCC), or the medication's details.
@@ -162,7 +163,7 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
         size="S"
         className={flushTabs ? styles.tabsFlush : undefined}
       />}
-      {tab === 'claims' ? <MedicationClaims med={med} plan={plan} selectedId={openClaimId} onSelect={setClaimId} flush={flushTabs} /> : tab === 'refills' ? (
+      {tab === 'claims' ? <MedicationClaims med={med} plan={plan} memberMeds={memberMeds} selectedId={openClaimId} onSelect={setClaimId} flush={flushTabs} /> : tab === 'refills' ? (
       <section className={`${styles.detailSection} ${styles.detailSectionFirst}`}>
       {fills.length === 0 ? <span className={styles.muted}>No fills on file for this medication.</span> : (
       // One row per fill, laid out like the Notes table: the fill date, then

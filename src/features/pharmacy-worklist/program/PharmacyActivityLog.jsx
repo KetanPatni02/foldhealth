@@ -8,11 +8,8 @@ import { Link } from '../../../components/Link/Link';
 import { toActivityLogEntries } from '../../hedis-worklist/CareGapDetailDrawer.utils';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import { barrierHistoryEntries } from './barrierHistory';
+import { withBullets, withVerificationDetails } from './verificationHistory';
 import styles from './PharmacyActivityLog.module.css';
-
-// Saved titles join their parts with a middle dot (·); show the same bullet
-// (•) the meta line above them uses.
-const withBullets = (text) => (typeof text === 'string' ? text.replaceAll(' · ', ' • ') : text);
 
 // Barrier & intervention changes come from the barrier log, in the History
 // entry layout (one per gap, what changed, View Details); their one-line
@@ -54,11 +51,12 @@ export function PharmacyActivityLog({ member }) {
   const all = useMemo(() => {
     const activity = (member?.activityLog || [])
       .filter(e => !BARRIER_ACTIVITY.test(e.title || ''))
+      .map(withVerificationDetails)
       .map(e => ({ ...e, when: e.at, title: withBullets(e.title), note: withBullets(e.note), outcome: withBullets(e.outcome) }));
     const barriers = member ? barrierHistoryEntries(member, member.measures || []) : [];
     const allDrugs = [...new Set(Object.values(drugsByGap).flat())];
     return [...activity, ...barriers].map(e => {
-      const text = `${e.title || ''} ${e.note || ''}`;
+      const text = `${e.title || ''} ${e.note || ''} ${(e.details || []).map(d => d.label).join(' ')}`;
       const codes = e.line ? [e.line.code] : [...new Set(text.match(GAP_CODES) || [])];
       // A barrier line names its drug, or covers every drug of its gap.
       const drugs = e.line
