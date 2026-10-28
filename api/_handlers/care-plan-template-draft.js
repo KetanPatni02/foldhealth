@@ -1,16 +1,16 @@
 /**
  * POST /api/care-plan-template-draft
  *
- * Drafts a care plan template from a plain-English description via Gemini.
+ * Drafts a care plan template from a plain-English description (OpenAI; see _lib/aiJson.js).
  * The client sends the description and a compact catalog of the care plan
  * library; the answer is checked against that catalog (normalizeTemplateDraft)
- * so every library reference is real. GOOGLE_AI_API_KEY stays server-side.
+ * so every library reference is real. The AI keys stay server-side.
  *
  * Body: { description: string, catalog: { goals, interventions, barriers } }
  * Returns: { draft } or { error: { message } }
  */
 
-import { geminiGenerateContent } from '../_lib/googleGemini.js';
+import { aiBusy, aiConfigured, generateJson } from '../_lib/aiJson.js';
 import { requireUser } from '../_lib/requireUser.js';
 import { bodyWithinLimit } from '../_lib/limits.js';
 import {
@@ -28,8 +28,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: { message: 'Method not allowed' } });
   }
 
-  const key = process.env.GOOGLE_AI_API_KEY;
-  if (!key) {
+  if (!aiConfigured()) {
     return res.status(500).json({ error: { message: 'AI drafting is not set up on this deployment.' } });
   }
 
@@ -50,46 +49,26 @@ export default async function handler(req, res) {
     barriers: asList(body.catalog?.barriers),
   };
 
-  const requestBody = {
-    contents: [{ role: 'user', parts: [{ text: buildTemplateDraftPrompt(description, catalog) }] }],
-    generationConfig: {
-      temperature: 0.3,
-      responseMimeType: 'application/json',
-      responseSchema: TEMPLATE_DRAFT_SCHEMA,
-      // Matching a description to the catalog needs little reasoning; low
-      // thinking roughly halves the wait.
-      thinkingConfig: { thinkingLevel: 'low' },
-    },
-  };
-
   try {
-    const { response: upstream, model } = await geminiGenerateContent({
-      apiKey: key,
-      requestBody,
+    const ai = await generateJson({
+      prompt: buildTemplateDraftPrompt(description, catalog),
+      schema: TEMPLATE_DRAFT_SCHEMA,
+      name: 'care_plan_template',
+      temperature: 0.3,
+      geminiThinking: 'low',
       logTag: 'care-plan-template-draft',
       // A stalled call fails over instead of leaving the editor waiting; a
       // busy model's quick 503 falls through to the next, within a minute.
       timeoutMs: 25000,
       deadlineMs: 60000,
     });
-    if (!upstream.ok) {
-      const detail = await upstream.text();
-      console.error('[care-plan-template-draft] gemini error', upstream.status, model, detail.slice(0, 400));
-      const message = [503, 504, 429].includes(upstream.status)
+    if (!ai.ok) {
+      const message = aiBusy(ai.status)
         ? 'The AI service is busy right now. Please try again in a moment.'
         : 'Could not draft the template. Please try again.';
       return res.status(502).json({ error: { message } });
     }
-
-    const json = await upstream.json();
-    const text = json?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      console.error('[care-plan-template-draft] non-JSON:', text.slice(0, 500));
-      return res.status(502).json({ error: { message: 'The AI returned an unreadable draft. Please try again.' } });
-    }
+    const parsed = ai.data;
 
     const draft = normalizeTemplateDraft(parsed, catalog);
     if (!draft) {

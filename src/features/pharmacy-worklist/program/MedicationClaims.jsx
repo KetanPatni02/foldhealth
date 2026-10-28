@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
 import { Icon } from '../../../components/Icon/Icon';
@@ -109,12 +108,12 @@ function Section({ title, aside, children }) {
 // Inline claim detail, as in the HCC Claims tab: back arrow and title, then
 // the claim, its transaction, the drug dispensed, the pharmacy and the
 // prescriber.
-function ClaimDetail({ med, claim, onBack, onOpen }) {
+function ClaimDetail({ med, claim, onBack, onOpen, flush }) {
   const pharmacy = med.pharmacy?.name === claim.pharmacy ? med.pharmacy : { name: claim.pharmacy };
   const prescriber = med.prescriber;
   const original = claim.reversesClaimId || (claim.claimGroup !== claim.claimId ? claim.claimGroup : null);
   return (
-    <div>
+    <div className={flush ? styles.claimDetailFlush : undefined}>
       <div className={styles.claimDetailHead}>
         <button type="button" className={styles.claimBackBtn} onClick={onBack} aria-label="Back to claims">
           <Icon name="solar:arrow-left-linear" size={18} color="var(--neutral-400)" />
@@ -219,17 +218,18 @@ function FillRow({ f }) {
  * confirmed in Fold sit in the same timeline with their source and match
  * status, tagged Projected until a claim matches. Pharmacy-confirmed pickups
  * are listed below, apart from claim data. A claim ID opens its detail in the
- * same panel with a back arrow.
+ * same panel with a back arrow. The host owns which claim is open
+ * (`selectedId` / `onSelect`), so it can hide its own tabs meanwhile.
+ * `flush`: the open claim runs edge to edge in a padded host pane.
  */
-export function MedicationClaims({ med, plan, memberRowId }) {
-  const [selectedId, setSelectedId] = useState(null);
+export function MedicationClaims({ med, plan, memberRowId, selectedId, onSelect: setSelectedId, flush = false }) {
   const allPickups = useAppStore(s => s.pharmacyPickups ?? EMPTY);
   const claims = annotateClaims(med.refills);
   const fills = confirmedFills(med).map(f => ({ ...f, match: matchFill(f, claims, plan) }));
   const pickups = allPickups.filter(p => p.memberRowId === memberRowId && p.measureCode === med.measure);
   const selected = selectedId ? claims.find(c => c.claimId === selectedId) : null;
 
-  if (selected) return <ClaimDetail med={med} claim={selected} onBack={() => setSelectedId(null)} onOpen={setSelectedId} />;
+  if (selected) return <ClaimDetail med={med} claim={selected} onBack={() => setSelectedId(null)} onOpen={setSelectedId} flush={flush} />;
 
   const groups = new Map();
   for (const c of claims) groups.set(c.claimGroup, [...(groups.get(c.claimGroup) || []), c]);

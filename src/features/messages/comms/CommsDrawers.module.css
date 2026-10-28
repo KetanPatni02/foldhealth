@@ -18,12 +18,6 @@
   color: var(--neutral-300);
 }
 
-.logForTitle {
-  font-size: var(--font-base);
-  font-weight: 500;
-  color: var(--neutral-400);
-}
-
 .req {
   width: 0.25rem;
   height: 0.25rem;
@@ -121,3 +115,18 @@
   font-size: var(--font-sm);
   color: var(--neutral-300);
 }
+
+/* New SMS: the member's contacts are opt-in, behind a link under Member. */
+.addContacts {
+  display: inline-flex;
+  margin-top: calc(var(--space-2) * -1);
+}
+.addContactsLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+}
+
+.removeLink { font-size: var(--font-sm); }
+

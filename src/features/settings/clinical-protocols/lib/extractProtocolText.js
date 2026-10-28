@@ -23,14 +23,15 @@ async function pdfText(file) {
   const { getDocument, GlobalWorkerOptions } = await import('pdfjs-dist');
   GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   const pdf = await getDocument({ data: await file.arrayBuffer() }).promise;
-  const pages = [];
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
+  // Pages are independent; pdf.js queues the work in its worker, and
+  // Promise.all keeps them in page order.
+  const pages = await Promise.all(Array.from({ length: pdf.numPages }, async (_, idx) => {
+    const page = await pdf.getPage(idx + 1);
     const { items } = await page.getTextContent();
     // Keep line breaks where the PDF has them so tables stay readable.
     const text = items.map(it => `${it.str}${it.hasEOL ? '\n' : ' '}`).join('').replace(/[ \t]+\n/g, '\n').trim();
-    pages.push(`[Page ${i}]\n${text}`);
-  }
+    return `[Page ${idx + 1}]\n${text}`;
+  }));
   return { text: pages.join('\n\n'), pages: pdf.numPages };
 }
 

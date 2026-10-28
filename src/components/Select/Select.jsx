@@ -81,6 +81,8 @@ export function Select({
   required = false,
   showInfo = false,
   infoText,
+  // Optional control at the right end of the label row (e.g. a Remove link).
+  labelAction,
   helperText,
   errorText,
   // Multi-select mode. When true, `value` is an array of strings and
@@ -237,7 +239,9 @@ export function Select({
         used = next;
         fit += 1;
       }
-      setVisibleBadgeCount(fit);
+      // The first pick always shows, cut short with an ellipsis if it must
+      // be, so a lone long name never reads as a bare "+1".
+      setVisibleBadgeCount(Math.max(fit, 1));
     };
 
     const ro = new ResizeObserver(recompute);
@@ -314,13 +318,14 @@ export function Select({
   // field and the open, searchable one.
   const badgeRow = (
     <span ref={badgeRowRef} className={styles.triggerBadges}>
-      {selectedMulti.slice(0, visibleBadgeCount).map(o => {
+      {selectedMulti.slice(0, visibleBadgeCount).map((o, i) => {
         const badge = (
           <Badge
             key={o.value}
             tone="grey"
             size="S"
-            label={o.triggerLabel ?? o.label}
+            className={i === 0 ? styles.badgeShrink : undefined}
+            label={i === 0 ? <span className={styles.badgeText}>{o.triggerLabel ?? o.label}</span> : (o.triggerLabel ?? o.label)}
             trailingIconElement={<CloseIcon size={12} color="currentColor" />}
             trailingIconLabel={`Remove ${o.triggerLabel ?? o.label}`}
             onTrailingIconClick={() => onChange(valueArray.filter(v => v !== o.value))}
@@ -543,26 +548,29 @@ export function Select({
   if (!needsField) return trigger;
 
   const activeError = errorText != null ? errorText : null;
+  const labelEl = label && (
+    <label className={styles.label} htmlFor={triggerId}>
+      <span>{label}</span>
+      {showInfo && (
+        <Tooltip label={infoText} maxWidth={280}>
+          <Icon
+            name="solar:info-circle-linear"
+            size={12}
+            color="var(--neutral-300)"
+            className={styles.labelInfo}
+            aria-label={infoText}
+          />
+        </Tooltip>
+      )}
+      {required && <span className={styles.required} aria-hidden="true" />}
+    </label>
+  );
 
   return (
     <div className={[styles.field, wrapperClassName || className || ''].filter(Boolean).join(' ')}>
-      {label && (
-        <label className={styles.label} htmlFor={triggerId}>
-          <span>{label}</span>
-          {showInfo && (
-            <Tooltip label={infoText} maxWidth={280}>
-              <Icon
-                name="solar:info-circle-linear"
-                size={12}
-                color="var(--neutral-300)"
-                className={styles.labelInfo}
-                aria-label={infoText}
-              />
-            </Tooltip>
-          )}
-          {required && <span className={styles.required} aria-hidden="true" />}
-        </label>
-      )}
+      {label && (labelAction
+        ? <div className={styles.labelRow}>{labelEl}{labelAction}</div>
+        : labelEl)}
       {trigger}
       {typeof activeError === 'string' && activeError && (
         <span className={styles.errorText}>{activeError}</span>

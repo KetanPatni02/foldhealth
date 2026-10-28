@@ -1,8 +1,10 @@
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../components/Toast/sonnerToast';
 
-const SIGNOFF_COLUMNS = 'id, feature_id, reviewer_email, reviewer_name, assigned_by, assigned_at, signed_at, comment, commented_at';
-const COLUMNS = `id, parent_id, status, kind, decided_by, decided_at, title, description, area, link, created_by, created_at, feature_review_signoffs(${SIGNOFF_COLUMNS})`;
+const SIGNOFF_COLUMNS = 'id, feature_id, reviewer_email, reviewer_name, assigned_by, assigned_at, signed_at, comment, commented_at, inherited_from';
+// The relationship is named so the embed stays unambiguous if the signoffs
+// table ever gains another reference to feature_reviews.
+const COLUMNS = `id, parent_id, status, kind, decided_by, decided_at, title, description, area, link, created_by, created_at, feature_review_signoffs!feature_review_signoffs_feature_id_fkey(${SIGNOFF_COLUMNS})`;
 
 function rowToSignoff(s) {
   return {
@@ -14,6 +16,8 @@ function rowToSignoff(s) {
     signedAt: s.signed_at || null,
     comment: s.comment || '',
     commentedAt: s.commented_at || null,
+    // Set when the reviewer comes from the parent feature (assigned there).
+    inheritedFrom: s.inherited_from || null,
   };
 }
 
@@ -83,31 +87,67 @@ export function createFeatureReviewsSlice(set, get) {
     return true;
   };
 
+  // Re-read features whose reviewer rows the database changed on its own:
+  // inherited reviewers on sub-items, and a feature signed when its last
+  // sub-item is.
+  const refreshFeatures = async (ids) => {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (!unique.length) return;
+    const { data, error } = await supabase.from('feature_reviews').select(COLUMNS).in('id', unique);
+    if (error || !data) return;
+    const fresh = new Map(data.map(r => [r.id, rowToReview(r)]));
+    set({ featureReviews: get().featureReviews.map(f => fresh.get(f.id) || f) });
+  };
+  const familyIds = (id) => {
+    const all = get().featureReviews;
+    const item = all.find(f => f.id === id);
+    const parentId = item?.parentId || null;
+    return [id, parentId, ...all.filter(f => f.parentId === id).map(f => f.id)];
+  };
+
   return {
     featureReviews: [],
     featureReviewManagers: [],
+    // Who's signed in, from the auth session (always there), so manager and
+    // reviewer checks don't wait on the profile, which some pages load late.
+    featureReviewsEmail: null,
+    featureReviewsActor: null,
     featureReviewsLoading: false,
     _featureReviewsFetched: false,
 
     // Once per session: the nav badge needs it, and nothing else changes
     // these rows often enough to justify a refetch or a realtime socket.
-    fetchFeatureReviews: async () => {
-      if (get()._featureReviewsFetched) return;
-      set({ _featureReviewsFetched: true, featureReviewsLoading: true });
-      const [reviews, managers] = await Promise.all([
+    // The nav badge loads this once per session; the drawer passes `refresh`
+    // on every open, so items added since (by other managers, the changelog
+    // trigger, or SQL) show up without a page reload. Only the first load
+    // shows the skeleton, and a failed refresh keeps the current list.
+    fetchFeatureReviews: async ({ refresh = false } = {}) => {
+      const loaded = get()._featureReviewsFetched;
+      if (loaded && !refresh) return;
+      set({ _featureReviewsFetched: true, ...(loaded ? {} : { featureReviewsLoading: true }) });
+      const [reviews, managers, session] = await Promise.all([
         supabase.from('feature_reviews').select(COLUMNS).neq('status', 'dismissed').order('created_at', { ascending: false }).limit(500),
-        supabase.from('feature_review_managers').select('email'),
+        supabase.from('feature_review_managers').select('email, name'),
+        supabase.auth.getSession(),
       ]);
-      if (reviews.error) console.warn('[store] feature reviews fetch failed:', reviews.error.message);
+      if (reviews.error) {
+        console.warn('[store] feature reviews fetch failed:', reviews.error.message);
+        if (loaded) { set({ featureReviewsLoading: false }); return; }
+      }
+      const user = session.data?.session?.user;
+      const email = user?.email?.toLowerCase() || null;
+      const manager = (managers.data || []).find(m => m.email.toLowerCase() === email);
       set({
         featureReviews: (reviews.data || []).map(rowToReview),
         featureReviewManagers: (managers.data || []).map(m => m.email.toLowerCase()),
+        featureReviewsEmail: email,
+        featureReviewsActor: manager?.name || user?.user_metadata?.full_name || null,
         featureReviewsLoading: false,
       });
     },
 
     addFeatureReview: async ({ title, kind, description, area, link, parentId, reviewers }) => {
-      const by = get().currentUserProfile?.name || null;
+      const by = get().currentUserProfile?.name || get().featureReviewsActor;
       const { data, error } = await supabase
         .from('feature_reviews')
         .insert({
@@ -144,7 +184,7 @@ export function createFeatureReviewsSlice(set, get) {
       const have = new Set(feature.reviewers.map(r => r.email.toLowerCase()));
       const removed = feature.reviewers.filter(r => !want.has(r.email.toLowerCase()) && !r.signedAt);
       const added = reviewers.filter(r => !have.has(r.email.toLowerCase()));
-      const by = get().currentUserProfile?.name || null;
+      const by = get().currentUserProfile?.name || get().featureReviewsActor;
 
       if (removed.length) {
         const { error } = await supabase.from('feature_review_signoffs').delete().in('id', removed.map(r => r.id));
@@ -166,6 +206,8 @@ export function createFeatureReviewsSlice(set, get) {
           reviewers: [...f.reviewers.filter(r => !removedIds.has(r.id)), ...inserted],
         })),
       });
+      // A feature's reviewers flow down to its sub-items.
+      await refreshFeatures(familyIds(featureId));
       return true;
     },
 
@@ -177,6 +219,34 @@ export function createFeatureReviewsSlice(set, get) {
         return false;
       }
       set({ featureReviews: get().featureReviews.map(f => (f.id === id ? { ...f, ...fields } : f)) });
+      return true;
+    },
+
+    // Nest an item under a top-level feature, or move it back to the top level
+    // (parentId null). Managers only (RLS); the database keeps it one level
+    // deep. Moves at once and rolls back if the database refuses.
+    moveFeatureReview: async (id, parentId, { undo = true } = {}) => {
+      const item = get().featureReviews.find(f => f.id === id);
+      if (!item || item.parentId === parentId) return false;
+      const from = item.parentId;
+      const setParent = (p) => set({
+        featureReviews: get().featureReviews.map(f => (f.id === id ? { ...f, parentId: p } : f)),
+      });
+      setParent(parentId);
+      const { error } = await supabase.from('feature_reviews').update({ parent_id: parentId }).eq('id', id);
+      if (error) {
+        setParent(from);
+        toast.error(`Couldn't move it: ${error.message}`);
+        return false;
+      }
+      // Moving changes which feature's reviewers it inherits.
+      refreshFeatures([id]);
+      if (undo) {
+        const parent = get().featureReviews.find(f => f.id === parentId);
+        toast(parentId ? `Nested under ${parent?.title || 'feature'}` : 'Moved to the top level', {
+          action: { label: 'Undo', onClick: () => get().moveFeatureReview(id, from, { undo: false }) },
+        });
+      }
       return true;
     },
 
@@ -203,19 +273,27 @@ export function createFeatureReviewsSlice(set, get) {
       return true;
     },
 
-    signOffFeatureReview: async (signoffId) => {
-      const { data, error } = await supabase
-        .from('feature_review_signoffs')
-        // The trigger replaces this timestamp with the server clock.
-        .update({ signed_at: new Date().toISOString() })
-        .eq('id', signoffId)
-        .select(SIGNOFF_COLUMNS)
-        .single();
+    // `withSubItems`: also sign the signed-in reviewer's rows on the feature's
+    // sub-items, in one request. Signing a sub-item can sign its feature
+    // (database roll-up), so the family is re-read afterwards.
+    signOffFeatureReview: async (signoffId, { withSubItems = false } = {}) => {
+      const feature = get().featureReviews.find(f => f.reviewers.some(r => r.id === signoffId));
+      if (!feature) return false;
+      const mine = feature.reviewers.find(r => r.id === signoffId);
+      // The trigger replaces this timestamp with the server clock.
+      const stamp = { signed_at: new Date().toISOString() };
+      const query = withSubItems
+        ? supabase.from('feature_review_signoffs').update(stamp)
+          .eq('reviewer_email', mine.email.toLowerCase())
+          .in('feature_id', familyIds(feature.id).filter(id => id !== feature.parentId))
+          .is('signed_at', null)
+        : supabase.from('feature_review_signoffs').update(stamp).eq('id', signoffId);
+      const { error } = await query.select(SIGNOFF_COLUMNS);
       if (error) {
         toast.error(`Couldn't sign off: ${error.message}`);
         return false;
       }
-      patchSignoff(rowToSignoff(data));
+      await refreshFeatures(familyIds(feature.id));
       return true;
     },
 

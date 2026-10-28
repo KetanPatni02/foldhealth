@@ -4,9 +4,9 @@
  * Unity's per-section summaries for the patient Overview's Recap: one short
  * plain-language paragraph for each section (touchpoints, clinical events,
  * vitals, medications, programs, open items, and an overall one) saying what
- * happened and what changed. Server-side proxy for Gemini, like
- * care-plan-summary, so GOOGLE_AI_API_KEY stays off the client. One call
- * covers every section.
+ * happened and what changed. Server-side (see _lib/aiJson.js), like
+ * care-plan-summary, so the AI keys stay off the client. One call covers
+ * every section.
  *
  * Body: { patientName, period, sections: [{ key, title, headline, changes, events, items }] }
  *   changes: [{ label, from, to, delta, note }]  (computed client-side, already accurate)
@@ -17,9 +17,7 @@
 
 import { requireUser } from '../_lib/requireUser.js';
 import { bodyWithinLimit } from '../_lib/limits.js';
-
-const MODEL = process.env.GOOGLE_AI_MODEL || 'gemini-3.8-flash';
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+import { aiBusy, aiConfigured, generateJson } from '../_lib/aiJson.js';
 
 // A hung upstream would hold the function (and the Recap's loading state)
 // until the platform kills it; give up and let the Recap show its own summary.
@@ -84,9 +82,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: { message: 'Method not allowed' } });
   }
 
-  const key = process.env.GOOGLE_AI_API_KEY;
-  if (!key) {
-    console.error('[patient-recap-summary] GOOGLE_AI_API_KEY is not set');
+  if (!aiConfigured()) {
+    console.error('[patient-recap-summary] no AI key is set');
     return res.status(500).json({ error: { message: 'AI summaries are not set up on this deployment.' } });
   }
 
@@ -96,48 +93,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: { message: 'Missing or invalid recap body' } });
   }
 
-  const requestBody = JSON.stringify({
-    contents: [{ role: 'user', parts: [{ text: buildPrompt(body) }] }],
-    generationConfig: {
-      temperature: 0.3,
-      responseMimeType: 'application/json',
-      responseSchema: RESPONSE_SCHEMA,
-    },
-  });
-
   try {
-    // Gemini intermittently returns 503 (overloaded) / 429 (rate limit); a
-    // couple of short backoff retries turn most of those into a clean result.
-    let upstream;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      upstream = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: requestBody,
-        signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
-      });
-      if (upstream.ok || (upstream.status !== 503 && upstream.status !== 429)) break;
-      await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
-    }
-
-    if (!upstream.ok) {
-      const detail = await upstream.text();
-      console.error('[patient-recap-summary] gemini error', upstream.status, detail);
-      const msg = upstream.status === 503 || upstream.status === 429
+    const ai = await generateJson({
+      prompt: buildPrompt(body),
+      schema: RESPONSE_SCHEMA,
+      name: 'recap_summaries',
+      temperature: 0.3,
+      logTag: 'patient-recap-summary',
+      timeoutMs: ATTEMPT_TIMEOUT_MS,
+      deadlineMs: ATTEMPT_TIMEOUT_MS * 2,
+    });
+    if (!ai.ok) {
+      const msg = aiBusy(ai.status)
         ? 'The AI service is busy right now. Please try again in a moment.'
-        : `AI service returned ${upstream.status}. Please try again.`;
+        : `AI service returned ${ai.status}. Please try again.`;
       return res.status(502).json({ error: { message: msg } });
     }
-
-    const json = await upstream.json();
-    const text = json?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      console.error('[patient-recap-summary] non-JSON model output:', text.slice(0, 500));
-      return res.status(502).json({ error: { message: 'AI returned an unreadable summary. Please try again.' } });
-    }
+    const parsed = ai.data;
 
     // Only keys that were asked for, as strings.
     const asked = new Set(body.sections.map(s => String(s.key)));

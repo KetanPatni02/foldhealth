@@ -297,7 +297,8 @@ const VALUES = {
   inQueue: (m) => yes(m.gaps.some(inOutreachQueue)),
   escalate: (m) => yes(m.gaps.some(g => escalation(g, m))),
   unableToReach: (m) => {
-    const calls = m.callHistory || [];
+    // A note is not a contact attempt.
+    const calls = (m.callHistory || []).filter(c => c.result !== 'note');
     return yes(calls.length >= 2 && calls.slice(0, 2).every(c => c.result !== 'success'));
   },
   hasNote: (m) => yes(!!m.leadNote),
@@ -310,7 +311,8 @@ const VALUES = {
   bookOfBusiness: (m) => [m.bookOfBusiness].filter(Boolean),
   pharmacy: (m) => [pharmaciesUsed(m)[0]?.name].filter(Boolean),
   prescriber: (m) => prescribersOf(m).map(p => p.name),
-  barrier: (m) => [m.barrier || 'None'],
+  // Active barriers only: a resolved one no longer matches.
+  barrier: (m) => (m.activeBarriers?.length ? m.activeBarriers : ['None']),
   daysInQueue: (m) => nums([m.daysInQueue]),
 };
 

@@ -38,6 +38,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
       onEdit={tab.setEditingUser}
       onViewOoo={setOooUser}
       onResetPassword={tab.resetPassword}
+      onUnlock={setUnlockUser}
       onToggleStatus={tab.toggleUserStatus}
       onReviewSignup={tab.reviewSignup}
       onDelete={tab.deleteUser}

@@ -91,7 +91,7 @@ import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/t
 import { templateContentFromApplied, templateContentFromWholePlan } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateSave';
 import { DEFAULT_CARE_PLAN_MODE, normalizeCarePlanMode } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanMode';
 import { buildCarePlanSnapshot, carePlanUnsignedChanges, isFullSnapshot, withLiveValues } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanDraft';
-import { resolvePatientStoreId } from '../lib/resolvePatientStoreId';
+import { resolvePatientStoreId, worklistRowId } from '../lib/resolvePatientStoreId';
 import { resolvePatientForCall } from '../lib/patientCall';
 
 import { reportPersistFailure } from './lib/reportPersistFailure';
@@ -246,6 +246,7 @@ import { createIpaOverlaysSlice } from './slices/ipaOverlaysSlice';
 import { applyOverlay, blockedSignoffs } from '../features/settings/care-plan-library/lib/ipaOverlays';
 import { contentOf as templateContentOf } from '../features/settings/care-plan-library/lib/templateVersions';
 import { effectiveVersion as effectiveTemplateVersion, todayIso as todayIsoDate } from '../features/settings/care-plan-library/lib/templateVersions';
+import { createClinicalProtocolsSlice } from './slices/clinicalProtocolsSlice';
 
 // patientId → in-flight fetchPatientConsents request.
 const consentFetches = new Map();
@@ -387,6 +388,7 @@ export const useAppStore = create((set, get) => ({
   ...createFeatureReviewsSlice(set, get),
   ...createTemplateVersionsSlice(set, get),
   ...createIpaOverlaysSlice(set, get),
+  ...createClinicalProtocolsSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
   // keyed by member id. Falls back to the bundled MONITORING_SEED until
@@ -8419,7 +8421,7 @@ export const useAppStore = create((set, get) => ({
     const now = new Date();
     const stamp = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
     const row = {
-      id:               `snpw-${Date.now()}`,
+      id:               worklistRowId(src),
       initials:         src.initials || (src.name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(),
       name:             src.name,
       gender:           src.gender || src.g || null,

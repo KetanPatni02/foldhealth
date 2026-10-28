@@ -401,6 +401,15 @@ function subStatus(x, worst, timers) {
 // reopens the cycle).
 export const cycleStart = (x, since) => Math.max(...(x.medications || []).map(d => parseMdy(d.lastFill) || 0), parseMdy(since) || 0, 0);
 
+// An open gap still to confirm with the pharmacy: no locked verification
+// call covers it since its latest fill (a new fill cycle asks again).
+export function needsVerification(x, member) {
+  if (!isActiveGap(measureStatus(x, member))) return false;
+  const from = cycleStart(x);
+  return !(member.callHistory || []).some(e => e.kind === 'pharmacy-verification'
+    && (e.measures || []).includes(x.code) && (parseMdy(e.date) || 0) >= from);
+}
+
 // Outreach attempts logged on the gap this fill cycle.
 export function attemptsThisCycle(x, member) {
   const from = cycleStart(x);
@@ -596,15 +605,23 @@ const ordinal = (n) => {
   return `${n}${t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th')}`;
 };
 
+// An outreach's result as a tone: a successful call is green, a note amber,
+// anything else (unsuccessful, follow-up) red.
+export const outreachTone = (result) => (result === 'success' ? 'success' : result === 'note' ? 'warning' : 'error');
+export const OUTREACH_TONE_COLOR = { success: 'var(--status-success)', warning: 'var(--status-warning)', error: 'var(--status-error)' };
+const OUTREACH_STATUS = { success: 'Attended', warning: 'Note', error: 'Failed' };
+
 export function outreachSummary(callHistory) {
   const list = callHistory || [];
   if (!list.length) return null;
   const last = list[0];
-  const recent = list.slice(0, 3).reverse().map(c => (c.result === 'success' ? 'blue' : 'red'));
-  while (recent.length < 3) recent.push('grey');
+  const tone = outreachTone(last.result);
+  const recent = list.slice(0, 3).reverse().map(c => outreachTone(c.result));
+  while (recent.length < 3) recent.push('none');
   return {
-    status: last.result === 'success' ? 'Attended' : 'Failed',
-    failed: last.result !== 'success',
+    status: OUTREACH_STATUS[tone],
+    tone,
+    failed: tone === 'error',
     date: last.date,
     contact: last.contact,
     outcome: last.outcome,
@@ -620,7 +637,7 @@ export function outreachSummary(callHistory) {
       by: c.by || null,
       title: `${c.title || 'Outgoing Call'} (${ordinal(list.length - i)} Outreach)`,
       outcome: c.outcome?.replaceAll(' — ', ': ') || null,
-      failed: c.result !== 'success',
+      tone: outreachTone(c.result),
     })),
   };
 }
@@ -631,6 +648,32 @@ export const normMemberId = (v) => String(v ?? '').replace(/^#/, '').trim().toLo
 // `hedisGapsByMember` (normMemberId -> [{ code, name, status }]) supplies the
 // member's live HEDIS gaps for Other Care Gaps; the stored `otherCareGaps`
 // (plan file) is only the fallback for members with no HEDIS record.
+// A gap's newest Barriers & Interventions record, skipping entries that only
+// set a result (results aren't part of barrier tracking any more).
+export function latestBarrierRecord(log, code) {
+  for (const e of log || []) {
+    const r = e.measures?.[code];
+    if (r && (r.barriers?.length || r.interventions?.length || !r.result)) return { entry: e, rec: r };
+  }
+  return null;
+}
+
+// Barriers still standing for the member: each gap's newest record (its own
+// and its drugs' lists) plus each active drug's Reason for Non-Adherence. A
+// resolved barrier has left all of these, so it no longer counts.
+export function gapActiveBarriers(m, x) {
+  const out = new Set();
+  const rec = latestBarrierRecord(m.interventionLog, x.code)?.rec;
+  (rec?.barriers || []).forEach(b => out.add(b));
+  (rec?.medications || []).forEach(d => d.barriers.forEach(b => out.add(b)));
+  x.medications.forEach(d => { if (d.status !== 'Discontinued' && d.nonAdherenceReason) out.add(d.nonAdherenceReason); });
+  return [...out];
+}
+
+export function activeBarriers(m) {
+  return [...new Set((m.measures || []).flatMap(x => gapActiveBarriers(m, x)))];
+}
+
 export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
   const statuses = Object.fromEntries((m.measures || []).map(x => [x.code, measureStatus(x, m)]));
   // First Fill and Not Eligible gaps stay off the worklist, and out of the
@@ -699,6 +742,7 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
     status: rollupGapStatus(statuses),
     subStatus: urgent ? { ...statuses[urgent.code], code: urgent.code } : null,
     followUpDueSort: parseMdy(m.followUpDue),
+    activeBarriers: activeBarriers(m),
   };
 }
 

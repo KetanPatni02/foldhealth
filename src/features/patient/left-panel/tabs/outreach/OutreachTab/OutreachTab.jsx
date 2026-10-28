@@ -127,6 +127,7 @@ export function OutreachTabView({
           sharedPanelTitle={tab.sharedPanelTitle}
           addOutcome={tab.addOutcome}
           removeOutcome={tab.removeOutcome}
+          setOutcomes={tab.setOutcomes}
           handleNoteChange={tab.handleNoteChange}
           canSave={tab.canSave}
           handleLogForChange={tab.handleLogForChange}

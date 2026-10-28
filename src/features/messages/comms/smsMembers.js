@@ -46,6 +46,47 @@ export function membersForConversation(conversation, patients = []) {
   return [owner, ...others].filter(p => p?.id != null).map(p => toMember(p, ownerId));
 }
 
+/**
+ * A received SMS on a shared number that no one has assigned yet: it isn't
+ * clear which member sent it, so it belongs to no one until staff pick (the
+ * rest-of-today session rule, once built, will pick for them).
+ */
+export const isUnassigned = (message, shared) => !!shared && message?.direction === 'in' && !message?.logged_for_patient_id;
+
+// "For Liam: " at the start of an SMS (FCS-5677 "Tag SMS For"), so the
+// family can tell who a text on their shared phone is about.
+export const forPrefix = (name) => `For ${String(name || '').trim().split(/\s+/)[0]}: `;
+const FOR_PREFIX_RE = /^For [^\s:]{1,40}:\s*/;
+/**
+ * Apply an edit (`previous` → `value`) to the text after a locked `prefix`
+ * only. Whatever part of the edit falls inside the prefix (backspacing into
+ * it, typing before or inside it, select-all delete) is moved to, or
+ * dropped at, the start of the person's own text, so the prefix appears
+ * exactly once.
+ */
+export function keepPrefix(value, prefix, previous = prefix) {
+  if (!previous.startsWith(prefix)) return prefix + value;
+  // The edited span: what both texts share at the start and at the end.
+  let start = 0;
+  const shortest = Math.min(previous.length, value.length);
+  while (start < shortest && previous[start] === value[start]) start++;
+  let end = 0;
+  while (end < shortest - start && previous[previous.length - 1 - end] === value[value.length - 1 - end]) end++;
+  const inserted = value.slice(start, value.length - end);
+  const own = previous.slice(prefix.length);
+  const from = Math.max(start, prefix.length) - prefix.length;
+  const to = Math.max(previous.length - end, prefix.length) - prefix.length;
+  return prefix + own.slice(0, from) + inserted + own.slice(to);
+}
+/** The text with its "For X: " replaced by `name`'s, or removed (no name). */
+export const withForPrefix = (text, name) => (name ? forPrefix(name) : '') + String(text || '').replace(FOR_PREFIX_RE, '');
+
+/** The thread's rest-of-today session, while it lasts (null otherwise). */
+export function activeSession(conversation, at = Date.now()) {
+  const s = conversation?.sms_session;
+  return s?.member_id && new Date(s.until).getTime() > at ? s : null;
+}
+
 /** Who a message is logged for: its own pick, else the conversation's patient. */
 export function loggedFor(message, conversation) {
   if (message?.logged_for_patient_id) {
@@ -85,4 +126,19 @@ export function memberLabel(m) {
 }
 
 export const sharedBy = (members) => `This number is shared by ${members.length} members.`;
-export const logForHelper = (members) => `${sharedBy(members)} Select one to log this SMS for`;
+
+const firstName = (name) => String(name || '').trim().split(/\s+/)[0];
+
+/**
+ * What a thread is called: its custom name, else on a shared number its
+ * members' first names (the owner first), else the patient's name. With
+ * `max`, names past it fold into "+N": "Annette, Liam, +1".
+ */
+export function threadTitle(conversation, members = [], { max } = {}) {
+  if (conversation?.thread_name) return conversation.thread_name;
+  if (members.length < 2) return conversation?.patient_name || 'Unknown';
+  const names = members.map(m => firstName(m.name));
+  return max && names.length > max
+    ? `${names.slice(0, max).join(', ')}, +${names.length - max}`
+    : names.join(', ');
+}

@@ -4,6 +4,7 @@ import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { HoverCard } from '../../components/HoverCard/HoverCard';
 import { GAP_STATUS_TONE, MEASURE_NAMES, PROGRESS_TONE, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, isActiveGap, medLabel, pdcTone } from './pharmacyWorklist.utils';
 import { useAppStore } from '../../store/useAppStore';
+import { STATUS_BADGE_VARIANT } from '../hedis-worklist/HedisWorklistRow';
 import styles from './PharmacyWorklistRow.module.css';
 
 // The measure code (MAD / MAH / MAC) as a neutral chip with its full name on
@@ -133,34 +134,46 @@ export function DrugsCount({ meds }) {
 }
 
 // Count of the member's open non-pharmacy care gaps. The hover card lists
-// them; each one opens its Care Gap Details when the member has a HEDIS row.
+// them in the Open ICDs popup's layout (header band, code and name, a status
+// chip below); a click keeps it open. Each opens its Care Gap Details when
+// the member has a HEDIS row.
 export function OpenCareGaps({ gaps, onOpen }) {
   if (!gaps.length) return <Dash />;
   return (
     <HoverCard
       ariaLabel="Open care gaps"
+      width={360}
+      flush
+      pinOnClick
       trigger={<span className={styles.countLink}>{gaps.length} gap{gaps.length === 1 ? '' : 's'}</span>}
     >
       {(close) => (
-        <span className={styles.gapLinks}>
-          {gaps.map(g => (g.hedisMemberId ? (
-            <button
-              key={g.code}
-              type="button"
-              className={styles.gapLink}
-              onClick={() => { close(); onOpen?.(g.hedisMemberId, g.code); }}
-            >
-              <b>{g.code}</b>
-              <span className={styles.gapLinkName}>{g.name || g.code}</span>
-              <span className={styles.gapLinkStatus}>{g.status}</span>
-            </button>
-          ) : (
-            <span key={g.code} className={styles.gapLinkStatic}>
-              <b>{g.code}</b>
-              <span className={styles.gapLinkName}>{g.name || g.code}</span>
-              <span className={styles.gapLinkStatus}>{g.status}</span>
-            </span>
-          )))}
+        <span className={styles.gapCard}>
+          <span className={styles.gapCardHeader}>Open Care Gaps ({gaps.length}):</span>
+          <span className={styles.gapCardList}>
+            {gaps.map(g => {
+              const body = (
+                <>
+                  <span className={styles.gapCardName}><b>{g.code}</b> - {g.name || g.code}</span>
+                  {/* Same status colors as the HEDIS worklist. Badge centers
+                      itself in a flex column; its own span keeps it left. */}
+                  {g.status && <span><Badge size="S" variant={STATUS_BADGE_VARIANT[g.status] || 'ai-neutral'} label={g.status} /></span>}
+                </>
+              );
+              return g.hedisMemberId ? (
+                <button
+                  key={g.code}
+                  type="button"
+                  className={`${styles.gapCardRow} ${styles.gapCardLink}`}
+                  onClick={() => { close(); onOpen?.(g.hedisMemberId, g.code); }}
+                >
+                  {body}
+                </button>
+              ) : (
+                <span key={g.code} className={styles.gapCardRow}>{body}</span>
+              );
+            })}
+          </span>
         </span>
       )}
     </HoverCard>
@@ -196,20 +209,21 @@ export function PdcValue({ pdc, open, source, medications }) {
 }
 
 // Where the gap's latest fill stands against the claim feed. The badge opens
-// that drug's claim history; a rework task, once created, shows on the line
-// below and opens the task.
+// that drug's claim history; the days left in the claim window, or a rework
+// task once created, show on the line below.
 export function ClaimReconCell({ recon, showCode, followUpTask, onOpenClaims }) {
   const openTask = useAppStore(s => s.openTaskFromNotification);
-  const label = recon.status === 'Awaiting claim' && recon.daysLeft != null
-    ? `Awaiting claim · ${recon.daysLeft > 0 ? `${recon.daysLeft}d left` : 'window ends today'}`
-    : recon.status;
+  const windowLeft = recon.status === 'Awaiting claim' && recon.daysLeft != null
+    ? (recon.daysLeft > 0 ? `${recon.daysLeft}d left` : 'Window ends today')
+    : null;
   return (
     <span className={styles.stack}>
       <Tooltip label={recon.detail} placement="bottom">
         <button type="button" className={styles.badgeBtn} onClick={onOpenClaims} aria-label={`${recon.status}: open claim history`}>
-          <Badge size="S" tone={RECON_TONE[recon.status]} label={showCode ? `${label} · ${recon.code}` : label} />
+          <Badge size="S" tone={RECON_TONE[recon.status]} label={showCode ? `${recon.status} · ${recon.code}` : recon.status} />
         </button>
       </Tooltip>
+      {windowLeft && <span className={styles.subText}>{windowLeft}</span>}
       {recon.rework && followUpTask?.taskId != null && (
         <button type="button" className={styles.reworkLink} onClick={() => openTask?.(followUpTask.taskId)}>Rework task open</button>
       )}

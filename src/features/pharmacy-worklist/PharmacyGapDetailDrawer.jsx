@@ -14,12 +14,14 @@ import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
-import { MEASURE_ORDER, PROGRESS_TONE, enrichPharmacyMember, medLabel } from './pharmacyWorklist.utils';
+import { MEASURE_ORDER, PROGRESS_TONE, enrichPharmacyMember, medLabel, needsVerification } from './pharmacyWorklist.utils';
 import { PharmacyContacts, PharmacyGapsCard } from './program/PharmacySnapshotStep';
 import { MedicationDetail, PharmacyMedicationReview } from './program/PharmacyMedicationReview';
 import { usePharmacyOutreachTab } from './program/usePharmacyOutreachTab';
 import { OutreachTabView } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
 import { PharmacyBarrierStep } from './program/PharmacyBarrierStep';
+import { useBarrierForm } from './program/useBarrierForm';
+import { PharmacyBarrierLog } from './program/PharmacyBarrierLog';
 import { PharmacyVerificationStep } from './program/PharmacyVerificationStep';
 import { PharmacyActivityLog } from './program/PharmacyActivityLog';
 import { PharmacyCommentsTab } from './program/PharmacyCommentsTab';
@@ -38,7 +40,6 @@ const TABS = [
   { key: 'comments', label: 'Comments' },
   { key: 'outreach', label: 'Outreaches' },
   { key: 'barriers', label: 'Barriers & Interventions' },
-  { key: 'verification', label: 'Verification' },
   { key: 'contacts', label: 'Contacts' },
 ];
 
@@ -84,13 +85,22 @@ function PharmacyGapDrawerBody({ target, row }) {
 
   // The member as the tabs see it: only the picked gaps.
   const scoped = useMemo(() => ({ ...row, measures: row.measures.filter(x => selected.has(x.code)) }), [row, selected]);
+  // The picked gaps still to confirm with the pharmacy: Verify with Pharmacy
+  // shows while any are left, and its form asks about only those.
+  const toVerify = useMemo(() => ({ ...scoped, measures: scoped.measures.filter(x => needsVerification(x, row)) }), [scoped, row]);
+  // Update Barriers' form lives here so its Save sits in the pane header.
+  const barrierForm = useBarrierForm(scoped);
 
   // Opened from a "Claim not matched" flag: the drug's claim history in the
   // side workspace, outreach logging in the main pane.
   const rework = target.view === 'claims' && target.medId;
   // Opened from the Outreach cell's View All: straight to Outreaches.
   const [tab, setTab] = useState(rework || target.view === 'outreach' ? 'outreach' : 'medication');
-  const [workspace, setWorkspace] = useState(rework ? { medId: target.medId, tab: 'claims' } : null); // 'outreach' | 'verify' | 'barriers' | { medId, tab? }
+  const [openWorkspace, setWorkspace] = useState(rework ? { medId: target.medId, tab: 'claims' } : null); // 'outreach' | 'verify' | 'barriers' | { medId, tab? }
+  // The verify pane shows only while a gap in scope still needs verifying
+  // (switching the gap toggle to verified gaps hides it, rather than an
+  // empty form).
+  const workspace = openWorkspace === 'verify' && !toVerify.measures.length ? null : openWorkspace;
   const [moreRect, setMoreRect] = useState(null);
   const moreBtnRef = useRef(null);
 
@@ -187,12 +197,18 @@ function PharmacyGapDrawerBody({ target, row }) {
         <div className={styles.leftPane}>
           <div className={styles.paneHeader}>
             <span className={styles.paneTitle}>
-              {openMed ? `${medLabel(openMed)} (${openMed.generic})` : `${WORKSPACE_TITLE[workspace]} · ${scopeLabel}`}
+              {openMed ? `${medLabel(openMed)} (${openMed.generic})` : `${WORKSPACE_TITLE[workspace]}${scope === 'all' ? '' : ` · ${scopeLabel}`}`}
             </span>
             <div className={styles.paneHeaderRight}>
               {workspace === 'outreach' && (
                 <>
                   <Button variant="primary" size="M" disabled={!outreach.canSave} onClick={saveOutreach}>Save</Button>
+                  <span className={styles.headerDivider} />
+                </>
+              )}
+              {workspace === 'barriers' && (
+                <>
+                  <Button variant="primary" size="M" disabled={!barrierForm.canSave} onClick={barrierForm.save}>Save</Button>
                   <span className={styles.headerDivider} />
                 </>
               )}
@@ -203,8 +219,8 @@ function PharmacyGapDrawerBody({ target, row }) {
             {workspace === 'outreach' && (
               <OutreachTabView tab={outreach} hideLogForRow hideActivity hideFormFooter flush taskMember={m.name} />
             )}
-            {workspace === 'verify' && <PharmacyVerificationStep member={scoped} program={PHARM_PROGRAM} />}
-            {workspace === 'barriers' && <PharmacyBarrierStep member={scoped} />}
+            {workspace === 'verify' && <PharmacyVerificationStep member={toVerify} program={PHARM_PROGRAM} onLocked={() => setWorkspace(null)} />}
+            {workspace === 'barriers' && <PharmacyBarrierStep member={scoped} form={barrierForm} />}
             {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} interventionLog={m.interventionLog} plan={m.healthPlan} initialTab={workspace.tab} flushTabs />}
           </div>
         </div>
@@ -297,7 +313,7 @@ function PharmacyGapDrawerBody({ target, row }) {
               </div>
               <div className={local.actionRow}>
                 <Button variant="primary" size="L" onClick={openOutreach}>Add Outreach</Button>
-                <Button variant="tertiary" size="L" onClick={() => setWorkspace('verify')}>Verify with Pharmacy</Button>
+                {toVerify.measures.length > 0 && <Button variant="tertiary" size="L" onClick={() => setWorkspace('verify')}>Verify with Pharmacy</Button>}
                 <Button variant="tertiary" size="L" onClick={() => setWorkspace('barriers')}>Update Barriers</Button>
                 {escalating.length > 0 && <Button variant="tertiary" size="L" leadingIcon="solar:stethoscope-linear" onClick={openOutreach}>Call Prescriber</Button>}
               </div>
@@ -340,8 +356,7 @@ function PharmacyGapDrawerBody({ target, row }) {
               {tab === 'outreach' && (
                 <OutreachTabView tab={scopedOutreach} hideLogForRow hideForm={workspace === 'outreach'} taskMember={m.name} onLogNew={openOutreach} />
               )}
-              {tab === 'barriers' && <PharmacyBarrierStep member={scoped} />}
-              {tab === 'verification' && <PharmacyVerificationStep member={scoped} program={PHARM_PROGRAM} />}
+              {tab === 'barriers' && <PharmacyBarrierLog member={scoped} onEdit={() => setWorkspace('barriers')} />}
             </>
           )}
           {tab === 'activity' && <PharmacyActivityLog member={row} />}

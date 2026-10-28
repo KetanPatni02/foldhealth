@@ -29,6 +29,8 @@ import { sampleFaxes, faxToRow } from '../src/features/messages/efax/efaxData.js
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
 import { PHARMACY_WORKLIST_MEMBERS } from '../src/features/pharmacy-worklist/data/mock.js';
 import { CMP_MEMBERS } from '../src/features/cmp-worklist/data/mock.js';
+import { SAMPLE_PROTOCOLS, HARBOR_HYPERTENSION_TEXT_FILE } from '../src/features/settings/clinical-protocols/data/sampleProtocols.js';
+import { protocolToRow } from '../src/features/settings/clinical-protocols/lib/protocolSchema.js';
 import { BUILT_IN_ROLES } from '../src/lib/accessControl.js';
 import { snpSnapshotFormRow } from '../src/features/forms/templates/snpSnapshotForm.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
@@ -657,6 +659,17 @@ function practiceLocationToRow(l) {
   };
 }
 
+const clinicalProtocolSeedRow = sourceText => p => ({
+  id: p.id,
+  ...protocolToRow(p),
+  source_kind: p.sourceKind,
+  source_name: p.sourceName,
+  source_text: sourceText,
+  uploaded_by: p.uploadedBy,
+  approved_by: p.approvedBy,
+  approved_at: p.approvedAt,
+});
+
 function cmpToRow(m) {
   return {
     id:                 m.id,
@@ -1011,6 +1024,14 @@ async function main() {
     .from('cmp_members')
     .upsert(CMP_MEMBERS.map(cmpToRow), { onConflict: 'id' });
   if (cmpErr) { console.error('  ✗', cmpErr.message, '(run supabase/cmp_members_migration.sql first)'); } else { console.log(`  ✓ ${CMP_MEMBERS.length} members`); }
+
+  // Sample clinical protocol (Settings > Clinical Protocols), with its document text.
+  console.log('Seeding clinical_protocols...');
+  const protocolText = readFileSync(new URL(`../src/features/settings/clinical-protocols/data/${HARBOR_HYPERTENSION_TEXT_FILE}`, import.meta.url), 'utf8');
+  const { error: protoErr } = await supabase
+    .from('clinical_protocols')
+    .upsert(SAMPLE_PROTOCOLS.map(clinicalProtocolSeedRow(protocolText)), { onConflict: 'id' });
+  if (protoErr) { console.error('  ✗', protoErr.message, '(run supabase/clinical_protocols_migration.sql first)'); } else { console.log(`  ✓ ${SAMPLE_PROTOCOLS.length} protocol`); }
 
   // Built-in roles for Access Control, everything allowed. By name, so the
   // permissions an admin has since switched off are left alone.

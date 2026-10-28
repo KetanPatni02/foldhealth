@@ -15,9 +15,9 @@ import { MedicationClaims } from './MedicationClaims';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { DatePickerPopover } from '../../../components/DatePicker/DatePickerPopover';
-import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, medicationStatus, pdcTone, todayMdy } from '../pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, medicationStatus, pdcTone, todayMdy, gapActiveBarriers } from '../pharmacyWorklist.utils';
 import { MeasureCode, Sep, SubStatus } from '../PharmacyCells';
-import { BARRIERS } from '../adherencePicklists';
+import { BARRIERS, BARRIER_ICON } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacyMedicationReview.module.css';
 
@@ -123,15 +123,24 @@ const URGENT_MED_STATUSES = new Set(['Refill overdue', 'Fill reversed', 'Not mat
 // `flushTabs`: the host pads its pane, and the tab strip should still run
 // edge to edge (the gap drawer's left pane).
 export function MedicationDetail({ med, memberRowId, interventionLog, plan, initialTab, flushTabs = false }) {
-  // Barrier & Intervention log entries for this medication's measure.
+  // Barrier & Intervention log entries for this medication's measure; an
+  // entry set per medication contributes only this drug's record.
   const barrierLog = (interventionLog || [])
     .filter(e => e.measures?.[med.measure])
-    .map(e => ({ date: e.date, by: e.by, source: e.source, medication: e.medication, rec: e.measures[med.measure] }));
+    .map(e => {
+      const rec = e.measures[med.measure];
+      const own = rec.medications?.find(r => r.id === med.id);
+      return { date: e.date, by: e.by, source: e.source, medication: own ? own.name : e.medication, rec: own ? { ...own, result: null } : rec };
+    });
   const update = useAppStore(s => s.updatePharmacyMedication);
   const save = (patch) => update(memberRowId, med.id, patch);
   // Claims tab (as in HCC), or the medication's details.
   const [tab, setTab] = useState(initialTab || 'details');
+  // An open claim replaces the tabs; its back arrow returns to Claim History.
+  const [claimId, setClaimId] = useState(null);
   const claims = annotateClaims(med.refills);
+  // Another drug opened in the same panel has none of this claim id.
+  const openClaimId = tab === 'claims' && claims.some(c => c.claimId === claimId) ? claimId : null;
   const countedClaims = new Set(claims.filter(c => c.counts).map(claimKey));
   const claimCount = (med.refills || []).length;
   const conditions = conditionsOf(med);
@@ -141,15 +150,15 @@ export function MedicationDetail({ med, memberRowId, interventionLog, plan, init
 
   return (
     <div className={styles.detail}>
-      <TabStrip
+      {!openClaimId && <TabStrip
         items={[{ key: 'details', label: 'Details' }, { key: 'claims', label: `Claim History (${claimCount})` }]}
         activeKey={tab}
         onChange={setTab}
         fullWidth={false}
         size="S"
         className={flushTabs ? styles.tabsFlush : undefined}
-      />
-      {tab === 'claims' ? <MedicationClaims med={med} plan={plan} memberRowId={memberRowId} /> : <>
+      />}
+      {tab === 'claims' ? <MedicationClaims med={med} plan={plan} memberRowId={memberRowId} selectedId={openClaimId} onSelect={setClaimId} flush={flushTabs} /> : <>
       <div className={styles.detailHead}>
         <MeasureCode code={med.measure} />
         <span className={styles.detailMeta}><span>Dose Form</span>{med.doseForm || '—'}</span>
@@ -377,6 +386,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
   // lines: Rx and the fill columns, then quantity, days supply, prescriber
   // and pharmacy; a note icon (when the drug has one) and its details sit in
   // a fixed column on the right.
+  const barriersOf = (x) => gapActiveBarriers(member, x);
   const renderCompactGroup = (x) => {
     const expanded = isExpanded(x.code);
     const keys = activeKeys([x]);
@@ -386,7 +396,16 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
           <DownChevronIcon size={16} className={`${styles.chevron} ${expanded ? '' : styles.chevronRight}`} />
           <span className={styles.cCode}>{x.code}</span>
           <span className={styles.cName}>({MEASURE_NAMES[x.code]})</span>
-          <span className={styles.cCount}><Badge size="S" tone="grey" label={`${x.medications.length} Med${x.medications.length === 1 ? '' : 's'}`} /></span>
+          <span className={styles.cCount}>
+            {/* Collapsed, the gap shows how many barriers stand on it; the
+                drug rows show them once it is open. */}
+            {!expanded && barriersOf(x).length > 0 && (
+              <Tooltip label={barriersOf(x).join(', ')} placement="bottom">
+                <Badge size="S" tone="error" icon={BARRIER_ICON} label={`${barriersOf(x).length} Barrier${barriersOf(x).length === 1 ? '' : 's'}`} />
+              </Tooltip>
+            )}
+            <Badge size="S" tone="grey" label={`${x.medications.length} Med${x.medications.length === 1 ? '' : 's'}`} />
+          </span>
         </button>
         {expanded && (
           <div className={styles.cTable} role="table" aria-label={`${x.code} medications`}>
@@ -427,17 +446,26 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                     <span className={styles.cRx}>{d.name} {d.strength} {d.unit}</span>
                     <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
                       {supply.length > 0 && <span className={styles.cMetaLine}>{supply.map((t, i) => <Fragment key={t}>{i > 0 && <Sep />}{t}</Fragment>)}</span>}
-                      {source.length > 0 && (
-                        <Tooltip
-                          placement="bottom"
-                          align="left"
-                          maxWidth={260}
-                          label={<span className={styles.cSource}>{source.map(([k, v]) => <span key={k}>{k}: {v}</span>)}</span>}
-                        >
-                          <button type="button" className={styles.cInfoLink} aria-label={source.map(([k, v]) => `${k}: ${v}`).join(', ')}>Info</button>
-                        </Tooltip>
+                      {(source.length > 0 || d.nonAdherenceReason) && (
+                        <span className={styles.cLinks}>
+                          {source.length > 0 && (
+                            <Tooltip
+                              placement="bottom"
+                              align="left"
+                              maxWidth={260}
+                              label={<span className={styles.cSource}>{source.map(([k, v]) => <span key={k}>{k}: {v}</span>)}</span>}
+                            >
+                              <button type="button" className={styles.cInfoLink} aria-label={source.map(([k, v]) => `${k}: ${v}`).join(', ')}>Info</button>
+                            </Tooltip>
+                          )}
+                          {source.length > 0 && d.nonAdherenceReason && <Sep />}
+                          {d.nonAdherenceReason && (
+                            <Tooltip placement="bottom" align="left" maxWidth={260} label={`Barrier: ${d.nonAdherenceReason}`}>
+                              <button type="button" className={`${styles.cInfoLink} ${styles.cBarrierText}`} aria-label={`Barrier: ${d.nonAdherenceReason}`}>1 Barrier</button>
+                            </Tooltip>
+                          )}
+                        </span>
                       )}
-                      {d.nonAdherenceReason && <span className={`${styles.cMetaLine} ${styles.cBarrierText}`}>Barrier: {d.nonAdherenceReason}</span>}
                     </span>
                   </span>
                   <span className={styles.cValue}>{d.lastFill || '—'}</span>
