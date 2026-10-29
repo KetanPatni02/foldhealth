@@ -183,6 +183,12 @@ export function Drawer({
     if (!closeOnEscape) return undefined;
     const entry = {};
     drawerStack.push(entry);
+    // One observer per drawer, connected only while an Escape is checked.
+    // Records arrive in its callback (a microtask, before the timeout), so
+    // collect them there; takeRecords() only has what's still queued.
+    let records = [];
+    const observer = new MutationObserver(list => { records.push(...list); });
+    let timer = null;
     const onKey = (e) => {
       if (e.key !== 'Escape' || e.isComposing || drawerStack[drawerStack.length - 1] !== entry) return;
       const panel = panelRef.current;
@@ -190,12 +196,10 @@ export function Drawer({
       // Focus in something outside the panel (a portaled menu, a dialog on
       // top) belongs to that layer.
       if (focusBefore && focusBefore !== document.body && !panel?.contains(focusBefore)) return;
-      // Records arrive in the callback (a microtask, before the timeout), so
-      // collect them there; takeRecords() only has what's still queued.
-      const records = [];
-      const observer = new MutationObserver(list => { records.push(...list); });
+      clearTimeout(timer);
+      records = [];
       observer.observe(document.body, ESCAPE_WATCH);
-      setTimeout(() => {
+      timer = setTimeout(() => {
         records.push(...observer.takeRecords());
         observer.disconnect();
         if (!escapeWasHandled(e, records, focusBefore)) requestCloseRef.current();
@@ -205,6 +209,8 @@ export function Drawer({
     window.addEventListener('keydown', onKey, true);
     return () => {
       window.removeEventListener('keydown', onKey, true);
+      clearTimeout(timer);
+      observer.disconnect();
       drawerStack.splice(drawerStack.indexOf(entry), 1);
     };
   }, [closeOnEscape]);
