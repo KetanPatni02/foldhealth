@@ -207,7 +207,7 @@ export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
   const [picked, setPicked] = useState(() => memberPick(to));
   const [logForId, setLogForId] = useState(null);
   const [appliedTag, setAppliedTag] = useState(null);
-  // Contacts are opt-in: "+ Add recipients" opens Recipients, with the
+  // Contacts are opt-in: "+ Add member contacts" opens Recipients, with the
   // member already in it.
   const [contactsOpen, setContactsOpen] = useState(false);
   const [pickedFor, setPickedFor] = useState(to);
@@ -277,7 +277,7 @@ export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
       }
       const failed = sent.filter(m => m?.status === 'failed');
       if (failed.length) toast.error(`SMS not sent: ${failed[0].failure_reason}`);
-      else toast.success(targets.length > 1 ? `SMS sent to ${targets.length} recipients` : 'SMS sent');
+      else toast.success('SMS Sent Successfully');
       onSent(conv);
     } catch {
       toast.error('Could not send the SMS.');

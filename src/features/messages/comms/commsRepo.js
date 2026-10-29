@@ -578,14 +578,20 @@ export function renameThread(conversation, name) {
 }
 
 /**
- * Start (or switch) a shared number's rest-of-today session: received SMS go
- * to `member` until local midnight. `null` stops it.
+ * Start (or switch) a shared number's auto-assign session: received SMS go
+ * to `member`. `until: 'today'` ends it at local midnight; 'manual' keeps it
+ * until someone logs an incoming message by hand (or stops it). `null`
+ * member stops it.
  */
-export function setSmsSession(conversation, member) {
+export function setSmsSession(conversation, member, { until = 'today' } = {}) {
   if (!member) return saveConversationField(conversation, 'sms_session', null);
-  const until = new Date();
-  until.setHours(24, 0, 0, 0);
+  let end = null;
+  if (until === 'today') {
+    end = new Date();
+    end.setHours(24, 0, 0, 0);
+  }
   return saveConversationField(conversation, 'sms_session', {
-    member_id: String(member.id), member_name: member.name, started_at: now(), until: until.toISOString(),
+    member_id: String(member.id), member_name: member.name, started_at: now(),
+    until: end ? end.toISOString() : null, ends: until,
   });
 }

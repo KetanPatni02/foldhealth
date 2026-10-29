@@ -61,7 +61,7 @@ function ThreadLinkDrawer({ conversation, forName, onInsert, onClose, load, item
     ...(contacts ? withDecisionMakers(contacts) : []).map(c => ({ value: String(c.id), name: c.name, phone: c.phone, email: c.email, dob: c.dob, type: c.type, missing: c.missing, meta: personMeta(c) })),
   ];
   const [picked, setPicked] = useState(() => (patient.phone ? ['patient'] : []));
-  // Recipients are opt-in ("+ Add recipients"); until then it's the member.
+  // Recipients are opt-in ("+ Add member contacts"); until then it's the member.
   const [contactsOpen, setContactsOpen] = useState(false);
   // Send To (and with it Verify identity) only shows on SMS when the member
   // has other people on record; otherwise it goes to the member.

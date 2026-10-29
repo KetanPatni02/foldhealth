@@ -14,7 +14,7 @@ import styles from './SmsAttribution.module.css';
  * (3540:64628): light avatar, name ("(Default)" for the number's owner)
  * over gender • date of birth.
  */
-export function MemberOption({ member: m }) {
+export function MemberOption({ member: m, profileArrow = false }) {
   return (
     <span className={styles.member}>
       <Avatar variant="patient" initials={m.initials} className={styles.memberAvatar} />
@@ -22,6 +22,8 @@ export function MemberOption({ member: m }) {
         <span className={styles.memberName}>{m.isOwner ? `${m.name} (Default)` : m.name}</span>
         <span className={styles.memberMeta}>{memberMeta(m)}</span>
       </span>
+      {/* Trailing arrow: the row opens their profile. */}
+      {profileArrow && <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-300)" className={styles.memberArrow} />}
     </span>
   );
 }

@@ -64,3 +64,10 @@ describe('keepPrefix', () => {
     expect(keepPrefix('New message', prefix, prev)).toBe('For Liam: New message');
   });
 });
+
+describe('activeSession with no end time', () => {
+  it('runs until it is cleared', () => {
+    const s = { member_id: 'liam', member_name: 'Liam Johnson', started_at: '2026-10-27T09:00:00Z', until: null, ends: 'manual' };
+    expect(activeSession({ sms_session: s }, Date.parse('2027-01-01T00:00:00Z'))).toBe(s);
+  });
+});
