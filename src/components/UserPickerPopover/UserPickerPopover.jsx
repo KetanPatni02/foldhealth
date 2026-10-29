@@ -26,11 +26,16 @@ const initialsOf = (name) => String(name || '?').trim().split(/\s+/).map(w => w[
  *   (opening leftward, for triggers at the right of a panel)
  * @param {boolean}  [props.multiple]     – Checkbox rows (Figma Eventus 16978:128250): `selected` is
  *   an array of ids/names, each click toggles one and calls `onSelect(nextArray)`, and the menu stays open
+ * @param {{ label: string, keys: string[] }} [props.pinned] – Users (by id/name) listed first under their
+ *   own section header, the rest after a divider under `restLabel`. The group is fixed when the menu
+ *   opens, so rows don't jump as they're ticked.
+ * @param {string}   [props.restLabel='All Users'] – Header for the users after the pinned group
  */
 const NO_USERS = [];
 
-export function UserPickerPopover({ anchorRect, users = NO_USERS, selected, onSelect, onUnassign, onClose, title = 'Select User', emptyText = 'No users available.', align = 'left', multiple = false }) {
+export function UserPickerPopover({ anchorRect, users = NO_USERS, selected, onSelect, onUnassign, onClose, title = 'Select User', emptyText = 'No users available.', align = 'left', multiple = false, pinned = null, restLabel = 'All Users' }) {
   const ref = useRef(null);
+  const [pinnedKeys] = useState(() => (pinned?.keys || []).map(String));
   const searchRef = useRef(null);
   const [query, setQuery] = useState('');
   useEffect(() => { searchRef.current?.focus(); }, []);
@@ -45,6 +50,15 @@ export function UserPickerPopover({ anchorRect, users = NO_USERS, selected, onSe
   const q = query.trim().toLowerCase();
   const shown = useMemo(() => users.filter(u => !q || `${u.name} ${u.role || ''}`.toLowerCase().includes(q)), [users, q]);
   const keyOf = (u) => (u.id != null ? String(u.id) : u.name);
+  // Pinned first, in the order given; everyone else keeps the caller's order.
+  const groups = useMemo(() => {
+    if (!pinnedKeys.length) return null;
+    const rank = new Map(pinnedKeys.map((k, i) => [k, i]));
+    const rankOf = (u) => rank.get(u.id != null ? String(u.id) : u.name) ?? rank.get(u.name);
+    const top = shown.filter(u => rankOf(u) != null).sort((a, b) => rankOf(a) - rankOf(b));
+    const rest = shown.filter(u => rankOf(u) == null);
+    return top.length ? { top, rest } : null;
+  }, [shown, pinnedKeys]);
   const pickedSet = new Set(multiple ? (selected || []).map(String) : []);
   const isPicked = (u) => (multiple
     ? pickedSet.has(keyOf(u)) || pickedSet.has(u.name)
@@ -108,7 +122,13 @@ export function UserPickerPopover({ anchorRect, users = NO_USERS, selected, onSe
         )}
         {shown.length === 0 ? (
           <span className={styles.empty}>{q ? 'No users match your search.' : emptyText}</span>
-        ) : shown.map(u => (
+        ) : (groups ? [
+          { key: 'pinned', label: pinned.label, rows: groups.top },
+          { key: 'rest', label: restLabel, rows: groups.rest },
+        ] : [{ key: 'all', rows: shown }]).filter(g => g.rows.length).map((g, gi) => (
+          <div key={g.key} className={gi ? styles.groupNext : undefined} role="group" aria-label={g.label}>
+            {g.label && <span className={styles.groupLabel}>{g.label}</span>}
+            {g.rows.map(u => (
           <button
             key={u.id || u.name}
             type="button"
@@ -125,6 +145,8 @@ export function UserPickerPopover({ anchorRect, users = NO_USERS, selected, onSe
             </span>
             {isPicked(u) && !multiple && <Icon name="solar:check-circle-linear" size={16} color="var(--primary-300)" />}
           </button>
+            ))}
+          </div>
         ))}
       </div>
     </div>,
