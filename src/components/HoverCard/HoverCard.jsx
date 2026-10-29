@@ -18,20 +18,27 @@ import styles from './HoverCard.module.css';
  *  - pinOnClick boolean — a click on the trigger opens the card and keeps it
  *               open until the trigger is clicked again, a click lands
  *               outside, or Escape
+ *  - className string — extra class on the trigger wrapper (e.g. to fill
+ *               its cell)
  */
-export function HoverCard({ trigger, children, width = 280, ariaLabel, openDelay = 150, flush = false, pinOnClick = false }) {
+export function HoverCard({ trigger, children, width = 280, ariaLabel, openDelay = 150, flush = false, pinOnClick = false, className = '' }) {
   const hover = usePatientHoverCard({ openDelay, closeDelay: 200 });
   const rect = hover.anchorRect;
   const [pinned, setPinned] = useState(false);
   const triggerRef = useRef(null);
   const cardRef = useRef(null);
+  // Set by a mousedown anywhere in the card's React tree, including popovers
+  // it portals out (a date picker), which the DOM check below can't see.
+  const insideRef = useRef(false);
   const { close } = hover;
   const closeAll = () => { setPinned(false); close(); };
 
   useEffect(() => {
     if (!pinned) return undefined;
     const onDown = (e) => {
-      if (cardRef.current?.contains(e.target) || triggerRef.current?.contains(e.target)) return;
+      const inside = insideRef.current;
+      insideRef.current = false;
+      if (inside || cardRef.current?.contains(e.target) || triggerRef.current?.contains(e.target)) return;
       setPinned(false); close();
     };
     const onKey = (e) => { if (e.key === 'Escape') { setPinned(false); close(); } };
@@ -45,6 +52,7 @@ export function HoverCard({ trigger, children, width = 280, ariaLabel, openDelay
   const onTriggerClick = (e) => {
     e.stopPropagation();
     if (pinned) { closeAll(); return; }
+    insideRef.current = false;
     hover.openNow(e.currentTarget);
     setPinned(true);
   };
@@ -55,7 +63,7 @@ export function HoverCard({ trigger, children, width = 280, ariaLabel, openDelay
     <>
       <span
         ref={triggerRef}
-        className={`${styles.trigger} ${pinOnClick ? styles.clickable : ''}`}
+        className={`${styles.trigger} ${pinOnClick ? styles.clickable : ''} ${className}`}
         {...triggerProps}
         {...(pinOnClick ? { onClick: onTriggerClick } : {})}
       >
@@ -73,6 +81,7 @@ export function HoverCard({ trigger, children, width = 280, ariaLabel, openDelay
             ...(below ? { top: rect.bottom + 4 } : { bottom: window.innerHeight - rect.top + 4 }),
           }}
           {...cardProps}
+          onMouseDownCapture={() => { insideRef.current = true; }}
         >
           {typeof children === 'function' ? children(closeAll) : children}
         </div>,

@@ -40,3 +40,6 @@ export const seriesStartDate = (result) => result.antigens
 
 /** Given and counted, on time or late. */
 export const isGiven = (status) => status === CIS_DOSE_STATUS.completed || status === CIS_DOSE_STATUS.completedLate;
+
+/** At least one dose is on record (given, counted or not). */
+export const hasGivenDose = (result) => result.antigens.some(a => a.rows.some(r => r.kind === 'given'));

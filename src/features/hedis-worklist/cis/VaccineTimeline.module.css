@@ -126,7 +126,7 @@
   border-left-width: 3px;
   border-radius: 0;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
   transition: box-shadow 160ms ease-out, transform 160ms ease-out, background-color 160ms ease-out, color 160ms ease-out, opacity 120ms ease-out;
 }
 /* Hover / focus: the bar pops out of the grid. */
@@ -161,12 +161,6 @@
   color: var(--neutral-300);
 }
 .bell.bellLate {
-  color: var(--status-warning-dark);
-}
-.detailReminder {
-  color: var(--primary-300);
-}
-.detailReminderLate {
   color: var(--status-warning-dark);
 }
 .doseTitle {
@@ -237,18 +231,3 @@
   border-color: var(--primary-300);
 }
 
-.detail {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-1) / 2);
-  font-size: var(--font-sm);
-  color: var(--neutral-400);
-  text-align: left;
-}
-.detailTitle {
-  font-weight: 500;
-  color: var(--neutral-500);
-}
-.detailReason {
-  color: var(--status-error-dark);
-}

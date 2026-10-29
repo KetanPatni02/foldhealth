@@ -523,18 +523,20 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     if (ok && (payload.inserts?.length || payload.updates?.length)) advanceCisStatus('Engaged');
     return ok;
   };
-  // Save to Document & Sync to EHR: the record goes to this gap's Documents
-  // and is synced to the patient's EHR. A non-standard note, so nothing is
-  // billed.
-  const saveCisRecord = ({ file, caption }) => {
+  // Sync to EHR (toolbar) or Save to Document (⋯ menu): either way the
+  // record goes to this gap's Documents; `sync` also sends it to the
+  // patient's EHR. A non-standard note, so nothing is billed.
+  const saveCisRecord = ({ file, caption, sync }) => {
     const doc = createMemberDocument({ file, caption, docType: CIS_RECORD_DOC_TYPE });
     if (!doc || !member?.id) return;
     logCareGapActivity(member.id, {
       when: new Date().toISOString(),
       actor: currentActorName(),
       t: 'immunization',
-      title: 'Immunization Record Synced to EHR',
-      outcome: `${caption} saved to Documents and synced to the patient's EHR. Non-billable.`,
+      title: sync ? 'Immunization Record Synced to EHR' : 'Immunization Record Saved to Documents',
+      outcome: sync
+        ? `${caption} synced to the patient's EHR and saved to Documents. Non-billable.`
+        : `${caption} saved to Documents. Non-billable.`,
       docId: doc.id,
       gapCodes: [CIS_CODE],
     });

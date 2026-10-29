@@ -2,7 +2,6 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
 import { Icon } from '../../../components/Icon/Icon';
-import { Input } from '../../../components/Input/Input';
 import { FilterChip } from '../../../components/FilterChip/FilterChip';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { InfoBar } from '../../../components/InfoBar/InfoBar';
@@ -14,11 +13,12 @@ import { CisStatusBadge } from './CisStatus';
 import { CisDoseProgress } from './CisDoseProgress';
 import { DOSE_BADGE, fmtDate, isGiven, seriesStartDate } from './cisStatusConfig';
 import { VaccineTimeline } from './VaccineTimeline';
+import { DoseNoteInput } from './DoseNoteInput';
 import { DoseDateField } from './DoseDateField';
 import { DoseAppointmentChip } from './DoseAppointmentChip';
 import { appointmentForDose } from './cisAppointments';
 import { CisMoreMenu } from './CisMoreMenu';
-import { CisSaveRecordButton } from './CisSaveRecordButton';
+import { CisSyncEhrButton } from './CisSyncEhrButton';
 import { SeriesDosesPicker } from './SeriesDosesPicker';
 import styles from './VaccineCalendarDialog.module.css';
 
@@ -150,13 +150,14 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
       width={1120}
       headerRight={(
         <>
-          <CisSaveRecordButton size="L" member={member} result={result} notes={savedNotes} onSaveEvidence={onSaveEvidence} />
+          <CisSyncEhrButton size="L" member={member} result={result} notes={savedNotes} onSaveEvidence={onSaveEvidence} />
           <span className={styles.headerDivider} aria-hidden="true" />
           <CisMoreMenu
             size="L"
             member={member}
             result={result}
             notes={savedNotes}
+            onSaveEvidence={onSaveEvidence}
           />
           <span className={styles.headerDivider} aria-hidden="true" />
         </>
@@ -211,7 +212,17 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
             </span>
           </div>
 
-          {view === 'timeline' && result.dob && <VaccineTimeline result={result} antigenOrder={order} statusFilter={statusFilter} appointments={appointments} />}
+          {view === 'timeline' && result.dob && (
+            <VaccineTimeline
+              result={result}
+              antigenOrder={order}
+              statusFilter={statusFilter}
+              appointments={appointments}
+              notes={savedNotes}
+              onDateChange={changeDate}
+              onNoteSave={saveNote}
+            />
+          )}
           <div className={styles.tableWrap} hidden={view === 'timeline' && !!result.dob}>
             <table className={`${styles.table} ${byAge ? styles.tableByAge : ''}`}>
               <thead>
@@ -304,7 +315,7 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                             {row.reason && !bar && <span className={styles.reasonText}>{row.reason}</span>}
                           </td>
                           <td className={styles.noteCell}>
-                            <NoteInput
+                            <DoseNoteInput
                               key={savedNote}
                               saved={savedNote}
                               label={`${antigen.label} dose ${row.number} note`}
@@ -372,22 +383,5 @@ function AgeCell({ group }) {
       <span className={styles.vaccineMeta}>{fmtDate(group.items[0].row.start)}</span>
       <span className={styles.vaccineMeta}>{given} of {group.items.length} given</span>
     </>
-  );
-}
-
-// Note saves when the field loses focus (or on Enter), if it changed.
-function NoteInput({ saved, label, onSave }) {
-  const [text, setText] = useState(saved);
-  const commit = () => { if (text.trim() !== saved) onSave(text); };
-  return (
-    <Input
-      variant="quiet"
-      value={text}
-      onChange={(e) => setText(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-      placeholder="Add a note"
-      aria-label={label}
-    />
   );
 }
