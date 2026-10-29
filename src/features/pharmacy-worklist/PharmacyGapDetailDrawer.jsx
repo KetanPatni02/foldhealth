@@ -197,8 +197,8 @@ function PharmacyGapDrawerBody({ target, row }) {
       bodyClassName={inSplit ? `${styles.drawerBody} ${styles.drawerBodySplit}` : styles.drawerBody}
       headerRight={
         <div className={styles.headerNav}>
-          <ActionButton icon="solar:alt-arrow-left-linear" size="L" tooltip="Previous member" state={at > 0 ? 'active' : 'disabled'} onClick={() => goMember(-1)} />
-          <ActionButton icon="solar:alt-arrow-right-linear" size="L" tooltip="Next member" state={at >= 0 && at < ids.length - 1 ? 'active' : 'disabled'} onClick={() => goMember(1)} />
+          <ActionButton icon="solar:alt-arrow-left-linear" tooltip="Previous member" disabled={!(at > 0)} onClick={() => goMember(-1)} />
+          <ActionButton icon="solar:alt-arrow-right-linear" tooltip="Next member" disabled={!(at >= 0 && at < ids.length - 1)} onClick={() => goMember(1)} />
           <span className={styles.headerDivider} />
         </div>
       }
@@ -222,19 +222,19 @@ function PharmacyGapDrawerBody({ target, row }) {
             <div className={styles.paneHeaderRight}>
               {workspace === 'outreach' && (
                 <>
-                  <Button variant="primary" size="M" disabled={!outreach.canSave} onClick={saveOutreach}>Save</Button>
+                  <Button disabled={!outreach.canSave} onClick={saveOutreach}>Save</Button>
                   <span className={styles.headerDivider} />
                 </>
               )}
               {workspace === 'barriers' && (
                 <>
-                  <Button variant="primary" size="M" disabled={!barrierForm.canSave} onClick={barrierForm.save}>Save</Button>
+                  <Button disabled={!barrierForm.canSave} onClick={barrierForm.save}>Save</Button>
                   <span className={styles.headerDivider} />
                 </>
               )}
               {workspace === 'verify' && (
                 <>
-                  <Button variant="primary" size="M" disabled={!verifyAction?.canLock} onClick={() => verifyAction?.lock()}>Save</Button>
+                  <Button disabled={!verifyAction?.canLock} onClick={() => verifyAction?.lock()}>Save</Button>
                   <span className={styles.headerDivider} />
                 </>
               )}
@@ -291,7 +291,6 @@ function PharmacyGapDrawerBody({ target, row }) {
               <ActionButton
                 ref={moreBtnRef}
                 icon="solar:menu-dots-linear"
-                size="L"
                 tooltip="More"
                 tooltipBelow
                 tooltipLeft
@@ -349,10 +348,10 @@ function PharmacyGapDrawerBody({ target, row }) {
                 <Icon name="custom:ai" size={14} color="var(--primary-300)" /> Suggested Actions
               </div>
               <div className={local.actionRow}>
-                <Button variant="primary" size="L" onClick={openOutreach}>Add Outreach</Button>
-                {toVerify.measures.length > 0 && <Button variant="tertiary" size="L" onClick={() => setWorkspace('verify')}>Verify with Pharmacy</Button>}
-                <Button variant="tertiary" size="L" onClick={() => setWorkspace('barriers')}>Update Barriers</Button>
-                {escalating.length > 0 && <Button variant="tertiary" size="L" leadingIcon="solar:stethoscope-linear" onClick={openOutreach}>Call Prescriber</Button>}
+                <Button onClick={openOutreach}>Add Outreach</Button>
+                {toVerify.measures.length > 0 && <Button variant="soft" onClick={() => setWorkspace('verify')}>Verify with Pharmacy</Button>}
+                <Button variant="soft" onClick={() => setWorkspace('barriers')}>Update Barriers</Button>
+                {escalating.length > 0 && <Button variant="soft" leadingIcon="solar:stethoscope-linear" onClick={openOutreach}>Call Prescriber</Button>}
               </div>
             </>
           )}

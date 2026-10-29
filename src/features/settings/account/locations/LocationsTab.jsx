@@ -174,8 +174,8 @@ export function LocationsTab({ tabsForBar, activeTab, setActiveTab }) {
       <td className={styles.td}>{loc.zipCode || '—'}</td>
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
-          <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit" onClick={() => setEditing(loc)} />
-          <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete" onClick={() => setDeleting(loc)} />
+          <ActionButton icon="solar:pen-linear" tooltip="Edit" onClick={() => setEditing(loc)} />
+          <ActionButton icon="solar:trash-bin-minimalistic-linear" tooltip="Delete" onClick={() => setDeleting(loc)} />
         </div>
       </td>
     </tr>

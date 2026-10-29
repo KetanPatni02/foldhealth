@@ -33,8 +33,8 @@ export function IndividualizedPlanCard({ state, pending = 0, error, onDraft, onU
             <span className={styles.title}>{pending} AI-drafted {pending === 1 ? 'item' : 'items'} awaiting review</span>
             <span className={styles.text}>Open an item’s AI · Review badge to see why it was suggested and the patient inputs it cites. Edit or remove anything before signing.</span>
           </div>
-          <Button variant="secondary" size="S" disabled={busy} onClick={onDiscard}>Discard AI Items</Button>
-          <Button size="S" disabled={busy} onClick={onReviewAll}>Mark All Reviewed</Button>
+          <Button variant="outline" size="sm" disabled={busy} onClick={onDiscard}>Discard AI Items</Button>
+          <Button size="sm" disabled={busy} onClick={onReviewAll}>Mark All Reviewed</Button>
         </div>
       </div>
     );
@@ -47,10 +47,10 @@ export function IndividualizedPlanCard({ state, pending = 0, error, onDraft, onU
       </span>
       {error && <span className={styles.error}>{error}</span>}
       <div className={styles.actions}>
-        <Button size="L" leadingIconElement={<UnityIcon size={16} color="currentColor" />} onClick={onDraft}>
+        <Button leadingIconElement={<UnityIcon size={16} color="currentColor" />} onClick={onDraft}>
           Draft Individualized Plan
         </Button>
-        {onUseTemplate && <Button variant="secondary" size="L" onClick={onUseTemplate}>Use Template</Button>}
+        {onUseTemplate && <Button variant="outline" onClick={onUseTemplate}>Use Template</Button>}
       </div>
     </div>
   );

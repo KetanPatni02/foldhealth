@@ -57,7 +57,7 @@ export function TestRunPanel({ test, onConfigChange, onClose, onPublish, isActiv
             <li>Delays are skipped automatically.</li>
             <li>Fix a step right here if it fails, then test it again.</li>
           </ul>
-          <Button size="L" onClick={test.start}>Start test</Button>
+          <Button onClick={test.start}>Start test</Button>
         </div>
       </section>
     );
@@ -82,9 +82,9 @@ export function TestRunPanel({ test, onConfigChange, onClose, onPublish, isActiv
               : `${summary.passed} step${summary.passed === 1 ? '' : 's'} passed, ${summary.skipped} skipped${summary.failed ? `, ${summary.failed} failed` : ''}. Test the skipped steps before going live.`}
           </p>
           <div className={styles.doneActions}>
-            {clean && !isActive && <Button size="L" onClick={onPublish}>Publish</Button>}
-            <Button variant="secondary" size="L" onClick={test.start}>Test again</Button>
-            <Button variant="tertiary" size="L" onClick={onClose}>Done</Button>
+            {clean && !isActive && <Button onClick={onPublish}>Publish</Button>}
+            <Button variant="outline" onClick={test.start}>Test again</Button>
+            <Button variant="soft" onClick={onClose}>Done</Button>
           </div>
         </div>
       </section>
@@ -124,8 +124,8 @@ export function TestRunPanel({ test, onConfigChange, onClose, onPublish, isActiv
       <header className={builderStyles.panelHeader}>
         <h2 className={builderStyles.panelTitle}>Test Run</h2>
         <span className={builderStyles.panelHeaderActions}>
-          <Button variant="secondary" size="M" leadingIcon="solar:play-linear" disabled={autoplay || running} onClick={test.playAll}>Play All Steps</Button>
-          <Button size="M" leadingIcon="solar:stop-linear" onClick={() => { test.stop(); onClose(); }}>Stop</Button>
+          <Button variant="outline" leadingIcon="solar:play-linear" disabled={autoplay || running} onClick={test.playAll}>Play All Steps</Button>
+          <Button leadingIcon="solar:stop-linear" onClick={() => { test.stop(); onClose(); }}>Stop</Button>
         </span>
       </header>
       <p className={styles.infoLine}><Icon name="solar:info-circle-linear" size={14} /> Testing mode: no real data changes.</p>
@@ -135,7 +135,7 @@ export function TestRunPanel({ test, onConfigChange, onClose, onPublish, isActiv
           <span className={builderStyles.panelHeadingIcon} style={{ color: family.color, background: family.bg }}><Icon name={isTrigger ? 'solar:bolt-linear' : def?.icon} size={16} /></span>
           <span className={styles.stepTitle}>{isTrigger ? def?.label : def?.nodeLabel}</span>
           {badge && <Badge size="S" tone={badge.tone} label={badge.label} />}
-          {status === 'error' && <Button variant="secondary" size="S" className={styles.continueBtn} onClick={test.skip}>Continue</Button>}
+          {status === 'error' && <Button variant="outline" size="sm" className={styles.continueBtn} onClick={test.skip}>Continue</Button>}
         </div>
       </div>
       <div className={builderStyles.panelBody}>
@@ -149,8 +149,8 @@ export function TestRunPanel({ test, onConfigChange, onClose, onPublish, isActiv
       </div>
       {ready && !autoplay && (
         <footer className={styles.footer}>
-          <Button size="L" leadingIcon="solar:play-linear" disabled={running} onClick={test.run}>Test This Step</Button>
-          <Button variant="secondary" size="L" trailingIcon="solar:skip-next-linear" disabled={running} onClick={test.skip}>Skip This Step</Button>
+          <Button leadingIcon="solar:play-linear" disabled={running} onClick={test.run}>Test This Step</Button>
+          <Button variant="outline" trailingIcon="solar:skip-next-linear" disabled={running} onClick={test.skip}>Skip This Step</Button>
         </footer>
       )}
     </section>

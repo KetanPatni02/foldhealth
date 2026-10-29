@@ -511,7 +511,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                         tooltip say what is already written. */}
                     <ActionButton
                       icon="solar:notes-linear"
-                      size="S"
+                      size="sm"
                       count={noteCount ? String(noteCount) : undefined}
                       tooltip={note || 'Add a note'}
                       tooltipLeft
@@ -567,8 +567,8 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
         actions={[{
           label: 'Set Recent Fill',
           icon: 'solar:calendar-linear',
-          variant: 'primary',
-          size: 'L',
+          variant: 'solid',
+          size: 'md',
           onClick: (_ids, e) => setBulkRect(e.currentTarget.getBoundingClientRect()),
         }]}
       />

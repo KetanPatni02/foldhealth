@@ -141,8 +141,8 @@ export function FilePreview({ src, file, name, ext, className, hideScrollbar = f
           This file type can&rsquo;t be previewed in the app.
         </div>
         <Button
-          variant="secondary"
-          size="S"
+          variant="outline"
+          size="sm"
           leadingIcon="solar:square-top-down-linear"
           onClick={() => openSafeUrl(src || resolvedSrc, 'noopener')}
         >

@@ -16,7 +16,7 @@ export function NoProfilePage({ error, onRetry }) {
           actionLabel={error ? 'Try again' : undefined}
           onAction={error ? onRetry : undefined}
         />
-        <Button variant="secondary" size="L" onClick={() => supabase.auth.signOut()}>Sign out</Button>
+        <Button variant="outline" onClick={() => supabase.auth.signOut()}>Sign out</Button>
       </div>
     </main>
   );

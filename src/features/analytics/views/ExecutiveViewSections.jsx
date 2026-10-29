@@ -102,7 +102,7 @@ export function ExecutiveTcocSection({
 
 export function ExecutiveQualitySection({ qualitySummary, qualFallback, showToast }) {
   return (
-    <Card title="Quality Summary" actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Quality view')}>Full View &rarr;</Button>}>
+    <Card title="Quality Summary" actions={<Button variant="ghost" size="sm" onClick={() => showToast?.('Opening Quality view')}>Full View &rarr;</Button>}>
       {qualitySummary === null ? (
         <ProgressBarSkeleton count={5} />
       ) : (
@@ -119,7 +119,7 @@ export function ExecutiveCareSection({ careProgramData, carePrograms, showToast 
     <Card
       title="Care Program Command Center"
       sub={`8 programs · $7.3M saved · 3.7× blended ROI`}
-      actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Care Management view')}>Full Program View &rarr;</Button>}
+      actions={<Button variant="ghost" size="sm" onClick={() => showToast?.('Opening Care Management view')}>Full Program View &rarr;</Button>}
       flush
     >
       <div className={s.tblWrap}>
@@ -171,7 +171,7 @@ export function ExecutiveSavingsSection({
     <Card
       title="Shared Savings Trajectory"
       sub={periodLabel}
-      actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Shared Savings view')}>Full View &rarr;</Button>}
+      actions={<Button variant="ghost" size="sm" onClick={() => showToast?.('Opening Shared Savings view')}>Full View &rarr;</Button>}
     >
       <div style={{ display: 'flex', gap: 20, marginBottom: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
         <div>

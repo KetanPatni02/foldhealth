@@ -125,7 +125,7 @@ export function PublishVersionDrawer({ template, content, onClose, onPublished }
   };
 
   const primaryAction = (
-    <Button variant="primary" size="L" onClick={run} disabled={!rows || !!busy || cohortEmpty || !effectiveDate}>
+    <Button onClick={run} disabled={!rows || !!busy || cohortEmpty || !effectiveDate}>
       {busy ? (busy.total ? `Migrating ${busy.done}/${busy.total}…` : 'Publishing…') : `Publish version ${number}`}
     </Button>
   );

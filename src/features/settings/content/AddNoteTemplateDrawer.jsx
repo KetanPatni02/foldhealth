@@ -88,8 +88,6 @@ export function AddNoteTemplateDrawer({ onClose }) {
       width={520}
       primaryAction={
         <Button
-          variant="primary"
-          size="L"
           onClick={handleSave}
           disabled={!canSave || saving}
         >
@@ -97,7 +95,7 @@ export function AddNoteTemplateDrawer({ onClose }) {
         </Button>
       }
       secondaryAction={
-        <Button variant="secondary" size="L" onClick={onClose} disabled={saving}>
+        <Button variant="outline" onClick={onClose} disabled={saving}>
           Cancel
         </Button>
       }

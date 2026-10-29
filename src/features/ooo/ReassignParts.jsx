@@ -69,8 +69,8 @@ export function DeptGroup({ title, count, detail, lead, controls, items, renderI
           {items.length > 0 && (
             <div className={styles.pager}>
               <span>{pageNow * PAGE + 1}–{Math.min(items.length, pageNow * PAGE + PAGE)} of {items.length}</span>
-              <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" state={pageNow === 0 ? 'disabled' : 'active'} onClick={() => pageNow > 0 && setPage(pageNow - 1)} />
-              <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next" state={pageNow >= pages - 1 ? 'disabled' : 'active'} onClick={() => pageNow < pages - 1 && setPage(pageNow + 1)} />
+              <ActionButton icon="solar:alt-arrow-left-linear" size="sm" tooltip="Previous" disabled={pageNow === 0} onClick={() => pageNow > 0 && setPage(pageNow - 1)} />
+              <ActionButton icon="solar:alt-arrow-right-linear" size="sm" tooltip="Next" disabled={pageNow >= pages - 1} onClick={() => pageNow < pages - 1 && setPage(pageNow + 1)} />
             </div>
           )}
         </div>

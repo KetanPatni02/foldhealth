@@ -66,7 +66,7 @@ export function MemberTrace({ id, runMemberId }) {
     return (
       <div className={`${styles.page} ${styles.centered}`}>
         <RingEmptyState icon="solar:user-cross-rounded-linear" label="This member’s run is older than 90 days or was removed.">
-          <Button variant="secondary" size="L" leadingIcon="solar:arrow-left-linear" onClick={automation ? close : () => openAutomationsList()}>
+          <Button variant="outline" leadingIcon="solar:arrow-left-linear" onClick={automation ? close : () => openAutomationsList()}>
             {automation ? 'Back to analytics' : 'Back to automations'}
           </Button>
         </RingEmptyState>
@@ -92,9 +92,9 @@ export function MemberTrace({ id, runMemberId }) {
           <h1 className={styles.title}>{automation.name}</h1>
           <Badge tone={status.tone} size="S" label={status.label} />
           <div className={styles.headerActions}>
-            <Button variant="secondary" size="L" leadingIcon="solar:user-id-linear" onClick={() => navigateToPatient(member.patientId)}>View patient profile</Button>
+            <Button variant="outline" leadingIcon="solar:user-id-linear" onClick={() => navigateToPatient(member.patientId)}>View patient profile</Button>
             <Tooltip label={member.status === 'completed' ? 'This member completed the automation.' : RETRY_HINT} maxWidth={260} align="right">
-              <Button variant="primary" size="L" leadingIcon="solar:restart-linear" disabled={member.status === 'completed' || busy} onClick={retrigger}>
+              <Button leadingIcon="solar:restart-linear" disabled={member.status === 'completed' || busy} onClick={retrigger}>
                 {busy ? 'Re-triggering…' : 'Re-trigger'}
               </Button>
             </Tooltip>

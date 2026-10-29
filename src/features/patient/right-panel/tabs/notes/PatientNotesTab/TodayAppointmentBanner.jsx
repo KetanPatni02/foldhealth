@@ -20,7 +20,7 @@ export function TodayAppointmentBanner({ appointment, onAddVisitNote }) {
           <span className={styles.title}>{title}</span>
           <span className={styles.meta}>{metaLine(appointment, title)}</span>
         </div>
-        <Button variant="secondary" size="S" leadingIcon="solar:add-circle-linear" onClick={() => onAddVisitNote(title)}>
+        <Button variant="outline" size="sm" leadingIcon="solar:add-circle-linear" onClick={() => onAddVisitNote(title)}>
           Visit Note
         </Button>
       </div>

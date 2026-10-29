@@ -26,7 +26,6 @@ export function ClaimsLog({ claims }) {
       <div className={styles.logTools}>
         <ActionButton
           icon="solar:sort-vertical-linear"
-          size="M"
           tooltip={recentFirst ? 'Recent first' : 'Oldest first'}
           tooltipLeft
           aria-label={recentFirst ? 'Sorted recent first; show oldest first' : 'Sorted oldest first; show recent first'}

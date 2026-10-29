@@ -43,7 +43,7 @@ export function AddConditionPopover({ anchorRect, inline = false, onSelect, onCl
     >
         <div className={styles.popoverHeader}>
           <span className={styles.popoverTitle}>Add Condition</span>
-          <ActionButton icon="solar:close-circle-linear" size="L" tooltip="Close" onClick={onClose} />
+          <ActionButton icon="solar:close-circle-linear" tooltip="Close" onClick={onClose} />
         </div>
         <div className={styles.popoverColumns}>
           {COLUMN_LAYOUT.map((groupKeys, col) => (

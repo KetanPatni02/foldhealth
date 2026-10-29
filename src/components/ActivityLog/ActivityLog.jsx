@@ -434,7 +434,7 @@ function ActivityLogEntry({ entry, isFirst, isLast, afterGroup = false, hideComm
             <span className={styles.openButton}>
               <ActionButton
                 icon="solar:arrow-right-up-linear"
-                size="S"
+                size="sm"
                 tooltip={entry.openTooltip || 'Open'}
                 onClick={entry.onOpen}
               />
@@ -907,7 +907,7 @@ function CommentEntryBody({ entry, hideTitle = false }) {
           <span className={[styles.commentMenu, menuAnchor ? styles.commentMenuOpen : ''].filter(Boolean).join(' ')}>
             <ActionButton
               icon="solar:menu-dots-linear"
-              size="S"
+              size="sm"
               tooltip="Comment actions"
               onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget.getBoundingClientRect()); }}
             />
@@ -1035,7 +1035,7 @@ function ReferralEntryBody({ entry }) {
           {menuItems.length > 0 && (
             <ActionButton
               icon="solar:menu-dots-linear"
-              size="S"
+              size="sm"
               tooltip="More actions"
               tooltipLeft
               onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget.getBoundingClientRect()); }}

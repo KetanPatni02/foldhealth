@@ -145,12 +145,12 @@ export function NonVisitNoteDrawer({ patient, initialTitle = '', onClose }) {
       onClose={onClose}
       width={640}
       primaryAction={
-        <Button variant="primary" size="L" onClick={() => save('signed')} disabled={!canSave}>
+        <Button onClick={() => save('signed')} disabled={!canSave}>
           Sign &amp; Save
         </Button>
       }
       secondaryAction={
-        <Button variant="secondary" size="L" onClick={() => save('draft')} disabled={saving}>
+        <Button variant="outline" onClick={() => save('draft')} disabled={saving}>
           Save as Draft
         </Button>
       }

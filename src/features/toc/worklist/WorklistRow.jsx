@@ -330,7 +330,6 @@ export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect 
           <div className={styles.actionsCell}>
             <ActionButton
               icon="solar:document-text-linear"
-              size="L"
               tooltip="View details"
               onClick={() => {
                 if (p.status === 'oncall') openLiveDrawer(p.id);
@@ -342,7 +341,6 @@ export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect 
               <ActionButton
                 ref={callBtnRef}
                 icon="solar:phone-linear"
-                size="L"
                 tooltip={p.status === 'oncall' ? 'View live call' : 'Call patient'}
                 iconColor={p.status === 'oncall' ? '#059669' : undefined}
                 className={p.status === 'oncall' ? styles.oncall : p.status === 'queued' ? styles.queuedCall : ''}
@@ -355,7 +353,6 @@ export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect 
               <ActionButton
                 ref={dropBtnRef}
                 icon="solar:menu-dots-linear"
-                size="L"
                 tooltip="More options"
                 onClick={handleDropdownToggle}
               />

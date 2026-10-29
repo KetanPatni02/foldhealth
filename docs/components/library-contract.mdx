@@ -89,6 +89,27 @@ component needs one of these concepts, it uses exactly this prop.
 and `<Badge variant="outline" tone="success">` both work without a new class
 per combination.
 
+A component's default tone may follow its variant. `Button` is the model:
+`solid` and `soft` default to `primary`, `outline` and `ghost` to `neutral`,
+so the common buttons need one prop:
+
+| Old `Button` variant | Now |
+|---|---|
+| `primary` | (default) |
+| `secondary` | `variant="outline"` |
+| `tertiary` | `variant="soft"` |
+| `ghost` | `variant="ghost"` |
+| `alt` | `variant="outline" tone="primary"` |
+| `success` | `variant="soft" tone="success"` |
+| `danger` | `variant="soft" tone="danger"` |
+| `dangerFilled` | `tone="danger"` |
+| `info` | `tone="info"` |
+
+`scripts/codemods/button-variants.mjs` rewrites `Button` and `ActionButton`
+call sites (run it on a branch that predates the change). The old names still
+work at runtime with a one-time warning in development, and the guardrails
+block them on changed lines.
+
 Feature-specific looks are **not** variants of a primitive. A status like
 "AWV due" or "Outreach attempted" lives in a domain component that maps the
 status to a `tone`:
@@ -144,6 +165,45 @@ keep a native `onChange(event)` in addition, because consumers expect it there.
 - Popovers that pick a value are named for the value (`DatePicker`,
   `UserPicker`); the floating surface itself is just `Popover`.
 
+## Overlays
+
+Anything that floats next to a trigger is built on
+[`Popover`](https://github.com/designedbyalok/foldhealth/blob/main/src/components/Popover/Popover.jsx),
+never on `createPortal` and hand-written coordinates. `Popover` owns the parts
+that were reimplemented in every picker:
+
+| Concern | What `Popover` does |
+|---|---|
+| Position | Floating UI: flips to the side with room, shifts to stay 8px inside the viewport, caps its height to the space available, and follows an element anchor on scroll and resize |
+| Stacking | One layer (z-index 10000) for every popover; the one opened last sits on top, so a menu opened inside a picker is never hidden behind it |
+| Dismissal | Escape closes only the top popover and stops there, so a drawer or dialog underneath stays open. An outside click closes it; with `overlay` (default) the click is absorbed, with `overlay={false}` it also reaches what was clicked (right for form pickers) |
+| Focus | Moves into the panel on open unless content already took it (`autoFocus`), returns to the trigger on close. Pass `initialFocus={false}` when the trigger is a text field the user keeps typing in |
+| Keyboard | `listNavigation`: Arrow Up/Down move between the panel's controls (wrapping), Home/End jump to the ends. On for menus and pick lists; off for content that uses arrows itself (sliders, calendars, drag handles) |
+| Events | Clicks inside don't bubble to rows or parent popovers |
+| Surface | One background, 0.5px border, 8px radius and `--shadow-popover`; `unstyled` drops it |
+
+```jsx
+<Popover
+  anchor={triggerRef}            // an element, a ref, or a DOMRect
+  open={open}
+  onOpenChange={setOpen}
+  placement="bottom-end"
+  width={240}
+  role="menu"
+  aria-label="Row actions"
+>
+  …
+</Popover>
+```
+
+`Drawer` is a modal dialog: `role="dialog"`, `aria-modal`, labelled by its
+title, focus moves in on open and back on close, and Tab wraps inside it.
+Escape closes the top drawer (through `beforeClose`, so unsaved-changes
+guards still ask first) unless something else answered the key first: an
+inline dropdown closing, an edit being cancelled, a popover or dialog on top,
+or a handler calling `preventDefault`. Pass `closeOnEscape={false}` to opt
+out.
+
 ## Definition of done for a library component
 
 - [ ] Listed under `primitives` or `patterns` in `layers.json`
@@ -174,12 +234,26 @@ are existing debt, fixed in later phases rather than blocking anyone today.
 | `ProductTour` | pattern | `lib/supabase` | Take `onComplete` to persist progress |
 | `WorklistColumns` | pattern | store | Take `hidden` and `onHiddenChange` |
 
+### Overlays not yet on Popover
+
+Built on `Popover`: `MenuPopover`, `AnchoredPopover`, `CheckboxListPopover`,
+`RadioListPopover`, `SearchListPopover`, `SortPopover`, `MonthPickerPopover`,
+`RangeSliderPopover`, `DateRangePopover`, `DatePickerPopover`,
+`UserPickerPopover`, `ColumnConfigPopover`, `RenamePopover`,
+`TypographyPopover`.
+
+Still positioning themselves:
+
+| Layer | Components |
+|---|---|
+| primitives | `Select`, `Tooltip`, `HoverCard`, `TimePicker`, `DateTimePicker`, `Coachmark`, `Textarea` (mention menu), `TabStrip` (overflow menu) |
+| patterns | `SectionTitleBar`, `CommentComposer` (mention menu), `AssigneeChange` |
+| app, domain | `CreateNewPopover`, `HelpPopover`, `NotificationsPopover`, `ConsentPopover`, `OutreachPopover`, `VoicePreviewPopover`, `CallPopover`, `PatientHoverCard`, `IcdSearch`, the `ScheduleDrawer` pickers |
+
 ### Prop names that diverge from the vocabulary
 
 | Component | Today | Target |
 |---|---|---|
-| `Button` | `variant` mixes emphasis and intent (`primary`, `secondary`, `tertiary`, `ghost`, `alt`, `success`, `danger`, `dangerFilled`, `info`); `size` `S`/`L`/`XL` | `variant` + `tone`; `size` `sm`/`md`/`lg` (same 24/32/52px) |
-| `ActionButton` | `state` `active`/`disabled`/`error`; `size` `S`/`L`/`XL` | `data-active`, `disabled`, `tone="danger"`; `sm`/`md`/`lg` |
 | `Badge` | `tone` plus a legacy `variant` with about 30 feature looks (`status*`, `outreach*`, `awv*`, `toc*`, `compliance*`); `size` `XS`/`S`/`M`/`L` | `variant` + `tone` only; feature looks move to domain badges; `xs`/`sm`/`md`/`lg` |
 | `InfoBar`, `Alert` | Both carry `tone`; `InfoBar` adds a `variant` | One `Banner` with `tone` and `variant` |
 | `Toggle`, `SubTabs` | `size="M"`; `onChange(key)` | `size="md"`; `value`/`defaultValue`/`onValueChange` |

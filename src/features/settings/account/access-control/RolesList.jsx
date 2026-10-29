@@ -26,8 +26,8 @@ function RoleNameField({ initial = '', onSave, onCancel }) {
         aria-label="Role name"
         wrapperClassName={styles.nameInput}
       />
-      <ActionButton icon="solar:check-read-linear" size="S" tooltip="Save" state={value.trim() ? 'active' : 'disabled'} onClick={save} />
-      <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Cancel" onClick={onCancel} />
+      <ActionButton icon="solar:check-read-linear" size="sm" tooltip="Save" disabled={!value.trim()} onClick={save} />
+      <ActionButton icon="solar:close-circle-linear" size="sm" tooltip="Cancel" onClick={onCancel} />
     </div>
   );
 }
@@ -62,7 +62,7 @@ export function RolesList({
               {canEdit && (
                 <>
                   <span className={styles.headerDivider} />
-                  <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={onStartCreate} disabled={creating}>
+                  <Button variant="outline" leadingIcon="solar:add-circle-linear" onClick={onStartCreate} disabled={creating}>
                     New Role
                   </Button>
                 </>
@@ -93,7 +93,7 @@ export function RolesList({
               {canEdit && (
                 <ActionButton
                   icon="solar:menu-dots-linear"
-                  size="S"
+                  size="sm"
                   tooltip="More actions"
                   onClick={(e) => { e.stopPropagation(); setMenu({ role, rect: e.currentTarget.getBoundingClientRect() }); }}
                 />

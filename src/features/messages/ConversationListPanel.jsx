@@ -192,7 +192,7 @@ export function ConversationListPanel({
           onClear={() => setPicked([])}
           noun={picked.length === 1 ? 'Chat' : 'Chats'}
           actions={[
-            { label: 'Mark as Read', icon: 'solar:check-read-linear', variant: 'primary', onClick: (ids) => { onMarkRead?.(ids); setPicked([]); } },
+            { label: 'Mark as Read', icon: 'solar:check-read-linear', variant: 'solid', onClick: (ids) => { onMarkRead?.(ids); setPicked([]); } },
           ]}
         />
       )}

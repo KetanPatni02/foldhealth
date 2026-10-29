@@ -76,7 +76,7 @@ export function ToolUsageView({ showToast, editing = false, resetTick = 0 }) {
       <ProgressBar label="HCC Alerts Acted On" value="78%" pct={78} color="green" sub="Within 48 hours ✓" />
       <ProgressBar label="Rx Opportunities Acted On" value="62%" pct={62} color="amber" sub="Target 75%" />
       <ProgressBar label="Quality Flags Reviewed" value="71%" pct={71} color="teal" sub="Target 80%" />
-      <Button variant="primary" size="S" fullWidth style={{ marginTop: 8 }} onClick={() => showToast?.('Viewing 12 non-adopters')}>
+      <Button size="sm" fullWidth style={{ marginTop: 8 }} onClick={() => showToast?.('Viewing 12 non-adopters')}>
         View 12 Non-Adopters &rarr;
       </Button>
     </Card>

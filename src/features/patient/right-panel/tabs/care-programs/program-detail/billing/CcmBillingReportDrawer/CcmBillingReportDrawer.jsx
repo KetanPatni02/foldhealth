@@ -53,7 +53,7 @@ export function CcmBillingReportDrawer({ report, onClose }) {
       onClose={onClose}
       headerRight={
         <>
-          <Button variant="ghost" size="S" leadingIcon="solar:printer-linear" onClick={() => window.print()}>
+          <Button variant="ghost" size="sm" leadingIcon="solar:printer-linear" onClick={() => window.print()}>
             Print
           </Button>
           <span className={styles.headerDivider} />

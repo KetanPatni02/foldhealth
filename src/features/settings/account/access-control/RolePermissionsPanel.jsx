@@ -57,7 +57,7 @@ export function RolePermissionsPanel({ role, userCount, canEdit, menuItems, onMe
           {menuItems.length > 0 && (
             <ActionButton
               icon="solar:menu-dots-linear"
-              size="S"
+              size="sm"
               tooltip="More actions"
               tooltipLeft
               onClick={e => setMenuRect(e.currentTarget.getBoundingClientRect())}

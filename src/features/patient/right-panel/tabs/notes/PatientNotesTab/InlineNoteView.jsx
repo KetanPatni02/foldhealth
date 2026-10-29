@@ -59,7 +59,7 @@ function InlineNoteHeader({ note, onBack, actions }) {
     <div className={styles.inlineHeader}>
       <ActionButton
         icon="solar:arrow-left-linear"
-        size="S"
+        size="sm"
         tooltip="Back to notes list"
         onClick={onBack}
       />

@@ -332,7 +332,7 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
           return false;
         }}
         primaryAction={(
-          <Button variant="primary" size="L" leadingIcon="solar:plain-2-linear" onClick={send} disabled={!canSend} disabledReason={sendBlockedReason}>
+          <Button leadingIcon="solar:plain-2-linear" onClick={send} disabled={!canSend} disabledReason={sendBlockedReason}>
             {busy ? 'Sending…' : 'Send'}
           </Button>
         )}
@@ -448,10 +448,9 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
                     <Input label="Email" required type="email" value={newContact.email} onChange={e => setNewContact(c => ({ ...c, email: e.target.value }))} />
                     <Input label="Date of Birth" type="date" value={newContact.dob} onChange={e => setNewContact(c => ({ ...c, dob: e.target.value }))} />
                     <span className={styles.newContactActions}>
-                      <Button variant="secondary" size="S" onClick={() => setNewContact(null)}>Cancel</Button>
+                      <Button variant="outline" size="sm" onClick={() => setNewContact(null)}>Cancel</Button>
                       <Button
-                        variant="primary"
-                        size="S"
+                        size="sm"
                         disabled={!newContact.name.trim() || !isEmailAddress(newContact.email)}
                         onClick={() => { setDirty(true); setExtraContacts(list => [...list, { ...newContact, name: newContact.name.trim() }]); setNewContact(null); }}
                       >

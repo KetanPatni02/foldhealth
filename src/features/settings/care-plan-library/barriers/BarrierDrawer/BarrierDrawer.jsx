@@ -25,11 +25,9 @@ export function BarrierDrawer({ barrier, initialTitle = '', onClose, onSave }) {
     <Drawer
       title={barrier ? 'Edit Barrier' : 'Add Barrier'}
       onClose={onClose}
-      secondaryAction={<Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>}
+      secondaryAction={<Button variant="outline" onClick={onClose}>Cancel</Button>}
       primaryAction={(
         <Button
-          variant="primary"
-          size="L"
           disabled={!canSave}
           onClick={() => onSave({ title: title.trim(), description: description.trim() })}
         >

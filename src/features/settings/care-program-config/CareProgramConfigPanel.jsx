@@ -35,8 +35,6 @@ function CreateProgramDrawer({ types, onCreate, onClose }) {
       headerRight={(
         <>
           <Button
-            variant="primary"
-            size="L"
             disabled={!canSave}
             onClick={() => onCreate({ name: name.trim(), code: cleanCode, description: description.trim(), from })}
           >
@@ -88,7 +86,7 @@ function ProgramCard({ type, selected, onOpen, onMenu }) {
         <span className={styles.programCardName}>{type.name}</span>
         <span className={styles.programCardMeta}>{type.code} · {counts.on} of {counts.total} steps · {status.label}</span>
       </span>
-      <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" onClick={(e) => { e.stopPropagation(); onMenu(e.currentTarget.getBoundingClientRect()); }} />
+      <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" onClick={(e) => { e.stopPropagation(); onMenu(e.currentTarget.getBoundingClientRect()); }} />
     </div>
   );
 }
@@ -152,13 +150,12 @@ export function CareProgramConfigPanel() {
             <span className={styles.paneActions}>
               <ActionButton
                 icon="solar:magnifer-linear"
-                size="L"
                 tooltip="Search"
                 active={searchOpen}
                 onClick={() => { setSearchOpen(o => !o); if (searchOpen) setSearch(''); }}
               />
               <span className={styles.headerDivider} />
-              <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setCreateOpen(true)}>New Program</Button>
+              <Button variant="outline" leadingIcon="solar:add-circle-linear" onClick={() => setCreateOpen(true)}>New Program</Button>
             </span>
           </div>
           {searchOpen && (

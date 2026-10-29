@@ -386,7 +386,7 @@ function PdfPreviewPane({ selected, member, docStatus, expanded, onToggleExpand 
           <span className={styles.pdfPaneActionsDivider} aria-hidden="true" />
           <ActionButton
             icon={expanded ? 'solar:quit-full-screen-linear' : 'solar:full-screen-linear'}
-            size="S"
+            size="sm"
             tooltip={expanded ? 'Collapse' : 'Expand'}
             tooltipBelow
             onClick={onToggleExpand}
@@ -394,7 +394,7 @@ function PdfPreviewPane({ selected, member, docStatus, expanded, onToggleExpand 
           />
           <ActionButton
             icon="solar:external-link-linear"
-            size="S"
+            size="sm"
             tooltip="Open in new tab"
             tooltipBelow
             tooltipLeft

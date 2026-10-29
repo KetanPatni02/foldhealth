@@ -56,8 +56,7 @@ function FaqDrawer({ mode, faq, onClose, onSave, saving }) {
   const headerRight = (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
       <Button
-        variant="primary"
-        size="S"
+        size="sm"
         onClick={() => canSave && onSave(form)}
         disabled={!canSave || saving}
         style={{ opacity: saving ? 0.6 : 1 }}
@@ -260,10 +259,10 @@ export function KnowledgeBasePanel({ searchQuery = '' }) {
               <td style={{ ...tdStyle, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', whiteSpace: 'nowrap' }}>{faq.updatedAt}</td>
               <td style={tdStyle} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit FAQ"
+                  <ActionButton icon="solar:pen-linear" tooltip="Edit FAQ"
                     onClick={() => handleOpenEdit(faq)} />
                   <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-                  <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete FAQ"
+                  <ActionButton icon="solar:trash-bin-minimalistic-linear" tooltip="Delete FAQ"
                     onClick={() => setDeleteTarget(faq)} />
                 </div>
               </td>

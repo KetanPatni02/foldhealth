@@ -80,7 +80,7 @@ export function PatientSynopsisWidget() {
           <BadgeSelect value={template} options={TEMPLATES} onChange={setTemplate} />
           <BadgeSelect value={version} options={VERSIONS} onChange={setVersion} />
           <PanelSectionDivider />
-          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+          <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" />
         </>
       )}
     >
@@ -90,7 +90,7 @@ export function PatientSynopsisWidget() {
         </div>
         <Button
           variant="ghost"
-          size="S"
+          size="sm"
           trailingIcon={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
           className={styles.seeMore}
           onClick={() => setExpanded(v => !v)}
@@ -106,19 +106,19 @@ export function PatientSynopsisWidget() {
           <>
             <ActionButton
               icon="solar:like-linear"
-              size="S"
+              size="sm"
               tooltip="Helpful"
               iconColor={feedback === 'up' ? 'var(--primary-300)' : undefined}
               onClick={() => setFeedback(v => (v === 'up' ? null : 'up'))}
             />
             <ActionButton
               icon="solar:dislike-linear"
-              size="S"
+              size="sm"
               tooltip="Not helpful"
               iconColor={feedback === 'down' ? 'var(--primary-300)' : undefined}
               onClick={() => setFeedback(v => (v === 'down' ? null : 'down'))}
             />
-            <ActionButton icon="solar:refresh-linear" size="S" tooltip="Regenerate" />
+            <ActionButton icon="solar:refresh-linear" size="sm" tooltip="Regenerate" />
           </>
         )}
       />

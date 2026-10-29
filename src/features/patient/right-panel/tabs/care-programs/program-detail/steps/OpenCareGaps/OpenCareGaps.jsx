@@ -52,7 +52,7 @@ function GapRow({ item }) {
         </span>
       </td>
       <td className={styles.actionCell}>
-        <Button variant="tertiary" size="S">{meta.action || 'Add Value'}</Button>
+        <Button variant="soft" size="sm">{meta.action || 'Add Value'}</Button>
       </td>
     </tr>
   );

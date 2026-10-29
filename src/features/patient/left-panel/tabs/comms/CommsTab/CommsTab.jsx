@@ -59,7 +59,7 @@ export function CommsTab({ patient }) {
     return (
       <div className={styles.state}>
         <RingEmptyState icon="solar:chat-round-dots-linear" label="Conversations failed to load">
-          <Button variant="secondary" size="S" onClick={retry}>Try again</Button>
+          <Button variant="outline" size="sm" onClick={retry}>Try again</Button>
         </RingEmptyState>
       </div>
     );

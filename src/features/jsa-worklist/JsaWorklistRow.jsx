@@ -280,7 +280,6 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
         <div className={styles.actionsCell}>
           <ActionButton
             icon="solar:document-text-linear"
-            size="L"
             tooltip="View Program"
             onClick={onView}
           />
@@ -288,7 +287,6 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
           <ActionButton
             ref={callBtnRef}
             icon="solar:phone-linear"
-            size="L"
             tooltip="Call patient"
             onClick={(e) => {
               e.stopPropagation();
@@ -298,7 +296,6 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
           <span className={styles.actionDivider} />
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="L"
             tooltip="More"
             onClick={() => showToast(`More actions for ${member.name} — coming soon`)}
           />

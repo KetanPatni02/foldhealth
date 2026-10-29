@@ -35,8 +35,8 @@ export function InviteUserBulkReviewStep({
       bodyClassName={styles.inviteDrawerBody}
       headerRight={
         <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="secondary" size="L" onClick={onPrevious}>Previous</Button>
-          <Button variant="primary" size="L" onClick={onImport} disabled={sending}>{sending ? 'Importing...' : 'Import'}</Button>
+          <Button variant="outline" onClick={onPrevious}>Previous</Button>
+          <Button onClick={onImport} disabled={sending}>{sending ? 'Importing...' : 'Import'}</Button>
         </div>
       }
     >
@@ -47,9 +47,9 @@ export function InviteUserBulkReviewStep({
             <span className={styles.bulkStepLine} />
             <span className={styles.bulkStepActive}><span className={styles.bulkStepNum}>2</span> Profile Review</span>
           </div>
-          <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" onClick={onAddRow}>Add Row</Button>
+          <Button variant="ghost" size="sm" leadingIcon="solar:add-circle-linear" onClick={onAddRow}>Add Row</Button>
           <div style={{ position: 'relative' }}>
-            <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" onClick={() => setAddColOpen(v => !v)}>Add Column</Button>
+            <Button variant="ghost" size="sm" leadingIcon="solar:add-circle-linear" onClick={() => setAddColOpen(v => !v)}>Add Column</Button>
             {addColOpen && (
               <AddColumnDropdown
                 available={BULK_EXTRA_COLUMNS.filter(c => !bulkColumns.includes(c))}
@@ -106,8 +106,8 @@ export function InviteUserBulkReviewStep({
                     ))}
                     <td className={styles.stickyRight} style={{ background: isHighlighted ? 'var(--primary-25)' : 'var(--neutral-0)' }}>
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <ActionButton icon="solar:copy-linear" size="S" tooltip="Duplicate" onClick={() => onDuplicateRow(row)} />
-                        <ActionButton icon="solar:trash-bin-minimalistic-linear" size="S" tooltip="Delete" state="error" onClick={() => onDeleteRow(row._id)} />
+                        <ActionButton icon="solar:copy-linear" size="sm" tooltip="Duplicate" onClick={() => onDuplicateRow(row)} />
+                        <ActionButton icon="solar:trash-bin-minimalistic-linear" size="sm" tooltip="Delete" tone="danger" onClick={() => onDeleteRow(row._id)} />
                       </div>
                     </td>
                   </tr>

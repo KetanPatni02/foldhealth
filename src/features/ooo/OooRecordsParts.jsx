@@ -5,7 +5,7 @@ import { OOO_ICON } from './oooUtils';
 import styles from './ooo.module.css';
 
 export function NewButton({ onClick }) {
-  return <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={onClick}>New OOO Record</Button>;
+  return <Button variant="outline" leadingIcon="solar:add-circle-linear" onClick={onClick}>New OOO Record</Button>;
 }
 
 export function RecordsBody({ loading, records, emptyLabel, actions, showUser, oneLineDates, highlightDate, highlightId, embedded = true, pagination }) {

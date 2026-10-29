@@ -120,7 +120,7 @@ function CardNode({ data }) {
         {editing && !isTrigger && (
           <span className={styles.cardActions}>
             <ActionButton
-              size="S"
+              size="sm"
               icon="solar:trash-bin-trash-linear"
               tooltip="Delete"
               onClick={(e) => { e.stopPropagation(); ctx.onDeleteNode?.(node.id); }}

@@ -141,7 +141,6 @@ export function CaptureConsentDrawer({ patientId, scopeType: initialType, scope:
         <>
           <ActionButton
             icon={showHistory ? 'solar:arrow-left-linear' : 'solar:history-linear'}
-            size="L"
             tooltip={showHistory ? 'Back' : 'Consent history'}
             onClick={() => setShowHistory(v => !v)}
           />
@@ -149,7 +148,7 @@ export function CaptureConsentDrawer({ patientId, scopeType: initialType, scope:
         </>
       )}
       primaryAction={showHistory ? null : (
-        <Button variant="primary" size="L" disabled={!!problem || saving} onClick={save}>{saving ? 'Saving…' : 'Save Consent'}</Button>
+        <Button disabled={!!problem || saving} onClick={save}>{saving ? 'Saving…' : 'Save Consent'}</Button>
       )}
       banner={patient ? (
         <PatientBanner
@@ -251,7 +250,7 @@ export function CaptureConsentDrawer({ patientId, scopeType: initialType, scope:
                 <FileRow
                   file={file}
                   phase="ready"
-                  actions={<ActionButton icon="solar:close-circle-linear" size="S" tooltip="Remove file" onClick={() => setFile(null)} />}
+                  actions={<ActionButton icon="solar:close-circle-linear" size="sm" tooltip="Remove file" onClick={() => setFile(null)} />}
                 />
               ) : (
                 <Dropzone

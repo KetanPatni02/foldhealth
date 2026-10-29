@@ -582,7 +582,7 @@ export function EmployerImpactView({ snapshot = null } = {}) {
         {!readOnly && (
         <div className={styles.headerActions}>
           {/* Tooltips open below: above, the page's top bar clips them. */}
-          <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={() => setPrintOpen(true)}>
+          <Button variant="outline" leadingIcon="solar:download-minimalistic-linear" onClick={() => setPrintOpen(true)}>
             Export
           </Button>
           <span className={styles.actionDivider} aria-hidden="true" />

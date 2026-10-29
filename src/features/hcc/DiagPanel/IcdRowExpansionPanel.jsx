@@ -50,7 +50,7 @@ export function IcdRowExpansionPanel({
           </button>
           <Button
             variant="ghost"
-            size="S"
+            size="sm"
             leadingIcon="solar:close-linear"
             className={styles.expandClose}
             onClick={() => setPanel('none')}

@@ -87,7 +87,7 @@ export function UploadDocumentDrawerPickerBody(p) {
             onChange={(vals) => setRecordFilters(f => ({ ...f, date: vals }))}
           />
           {filterActive && (
-            <Button variant="ghost" size="S" leadingIcon="solar:close-circle-linear" className={styles.filterChipClear} onClick={clearAllFilters}>
+            <Button variant="ghost" size="sm" leadingIcon="solar:close-circle-linear" className={styles.filterChipClear} onClick={clearAllFilters}>
               Clear All
             </Button>
           )}

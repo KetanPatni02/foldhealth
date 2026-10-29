@@ -129,7 +129,7 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
 
   const headerRight = (
     <>
-      <Button variant="primary" size="L" disabled={!planned || running} onClick={confirm}>Confirm</Button>
+      <Button disabled={!planned || running} onClick={confirm}>Confirm</Button>
       <span className={styles.headerDivider} aria-hidden="true" />
     </>
   );

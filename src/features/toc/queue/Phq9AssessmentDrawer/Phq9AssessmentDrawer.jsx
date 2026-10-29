@@ -28,7 +28,7 @@ export function Phq9AssessmentDrawer({ patient, onClose }) {
       title="PHQ-9 Assessment"
       onClose={onClose}
       primaryAction={
-        <Button variant="primary" size="L" disabled={!dirty} onClick={handleSave}>
+        <Button disabled={!dirty} onClick={handleSave}>
           Save
         </Button>
       }

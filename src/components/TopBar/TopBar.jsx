@@ -157,8 +157,8 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-            <Button variant="ghost" size="S" onClick={() => setEditing(false)}>Cancel</Button>
-            <Button variant="primary" size="S" disabled={saving || !firstName.trim() || !lastName.trim()} onClick={handleSaveName}>
+            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button size="sm" disabled={saving || !firstName.trim() || !lastName.trim()} onClick={handleSaveName}>
               {saving ? 'Saving...' : 'Save'}
             </Button>
           </div>
@@ -616,7 +616,7 @@ export function TopBar() {
             </div>
           )}
         </div>
-        <Button variant="alt" size="L" leadingIcon="solar:bolt-bold">
+        <Button variant="outline" tone="primary" leadingIcon="solar:bolt-bold">
           Ask Unity
         </Button>
       </div>
@@ -625,7 +625,6 @@ export function TopBar() {
         <div ref={bellRef} className={styles.bellWrap}>
           <ActionButton
             icon="solar:bell-linear"
-            size="L"
             tooltip="Notifications"
             onClick={() => setShowNotifications(v => !v)}
           />
@@ -644,8 +643,6 @@ export function TopBar() {
         <div className={styles.createNewWrap}>
           <Button
             ref={btnRef}
-            variant="primary"
-            size="L"
             leadingIcon="solar:add-circle-bold"
             onClick={() => setShowCreateNew(!showCreateNew)}
           >
@@ -655,7 +652,7 @@ export function TopBar() {
             <CreateNewPopover onClose={() => setShowCreateNew(false)} anchorRef={btnRef} />
           )}
         </div>
-        <Button variant="tertiary" size="L" onClick={() => setShowSchedule(true)}>Schedule</Button>
+        <Button variant="soft" onClick={() => setShowSchedule(true)}>Schedule</Button>
         <div style={{ position: 'relative' }}>
           <button
             ref={profileBtnRef}

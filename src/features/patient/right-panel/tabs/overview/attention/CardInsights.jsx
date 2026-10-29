@@ -17,7 +17,7 @@ export function CardInsightsButton({ open, onToggle }) {
   const { widgetKey, signals } = useCardSignals();
   if (!signals.length) return null;
   return (
-    <ActionButton size="S" active={open} dot={!open} tooltip={widgetInsightSummary(widgetKey, signals)} tooltipLeft aria-label="Unity insights" onClick={onToggle}>
+    <ActionButton size="sm" active={open} dot={!open} tooltip={widgetInsightSummary(widgetKey, signals)} tooltipLeft aria-label="Unity insights" onClick={onToggle}>
       <AiInsightIcon size={16} />
     </ActionButton>
   );
@@ -29,15 +29,15 @@ export function SignalActions({ signal, onRun, onReview, primary = false }) {
     <>
       {signal.action && (
         <Button
-          variant={primary ? 'primary' : 'tertiary'}
-          size="S"
+          variant={primary ? 'solid' : 'soft'}
+          size="sm"
           leadingIcon={ACTION_ICON[signal.action.key]}
           onClick={() => onRun(signal)}
         >
           {signal.action.label}
         </Button>
       )}
-      <ActionButton icon="solar:check-read-linear" size="S" tooltip="Mark reviewed" onClick={() => onReview(signal, true)} />
+      <ActionButton icon="solar:check-read-linear" size="sm" tooltip="Mark reviewed" onClick={() => onReview(signal, true)} />
     </>
   );
 }

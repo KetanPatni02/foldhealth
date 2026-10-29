@@ -79,7 +79,7 @@ export function CareJourneysWidget() {
             onChange={(v) => { setView(v); setExpanded(false); }}
           />
           <PanelSectionDivider />
-          <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add Care Journey" />
+          <ActionButton icon="solar:add-circle-linear" size="sm" tooltip="Add Care Journey" />
         </>
       )}
     >

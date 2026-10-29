@@ -35,8 +35,7 @@ export function SdohReferralDialog({ partner, barrier, zip, onCancel, onSubmit }
           </p>
           {url && (
             <Button
-              variant="secondary"
-              size="L"
+              variant="outline"
               leadingIcon="solar:square-top-down-linear"
               onClick={() => window.open(url, '_blank', 'noopener')}
             >
@@ -58,9 +57,8 @@ export function SdohReferralDialog({ partner, barrier, zip, onCancel, onSubmit }
             aria-label="Referral notes"
           />
           <div className={styles.footer}>
-            <Button variant="secondary" size="L" fullWidth onClick={onCancel}>Cancel</Button>
+            <Button variant="outline" fullWidth onClick={onCancel}>Cancel</Button>
             <Button
-              size="L"
               fullWidth
               disabled={!program.trim()}
               onClick={() => onSubmit?.({ partner, program, note, status })}

@@ -75,7 +75,7 @@ export function PatientShell() {
               <Icon name="solar:bell-linear" size={20} color="var(--neutral-300)" />
               {messages.unread > 0 && <span className={styles.bellBadge} aria-hidden="true">{messages.unread > 99 ? '99+' : messages.unread}</span>}
             </button>
-            <Button variant="primary" size="L" leadingIcon="solar:calendar-add-linear" onClick={() => setBooking(true)}>
+            <Button leadingIcon="solar:calendar-add-linear" onClick={() => setBooking(true)}>
               Book Appointment
             </Button>
             <AvatarBase variant="patient" size="M" initials={initialsOf(profile)} />

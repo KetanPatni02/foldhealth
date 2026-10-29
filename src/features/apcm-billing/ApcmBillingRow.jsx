@@ -288,9 +288,8 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
         <div className={styles.actionsBtns}>
           <ActionButton
             icon="solar:bill-list-linear"
-            size="L"
             tooltipLeft
-            state={cannotAttest ? 'disabled' : 'active'}
+            disabled={cannotAttest}
             tooltip={cannotAttest
               ? 'Cannot attest — no qualifying Dx documented in the last 36 months'
               : 'Trigger Attestation'}
@@ -303,7 +302,6 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
           <span className={styles.actionDivider} />
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="L"
             tooltipLeft
             tooltip="More options"
             onClick={e => { e.stopPropagation(); }}

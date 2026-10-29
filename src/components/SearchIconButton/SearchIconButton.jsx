@@ -7,7 +7,6 @@ export function SearchIconButton({ className, title = 'Search', ...props }) {
   return (
     <ActionButton
       icon="solar:magnifer-linear"
-      size="L"
       tooltip={title}
       className={className}
       {...props}

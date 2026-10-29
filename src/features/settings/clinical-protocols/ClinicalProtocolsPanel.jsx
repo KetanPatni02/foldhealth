@@ -127,7 +127,7 @@ export function ClinicalProtocolsPanel() {
         <td className={`${styles.td} ${styles.nowrap}`}>{fmtDay(p.updatedAt)}</td>
         <td className={`${styles.td} ${styles.tdActions}`}>
           <span className={styles.actionCell}>
-            <ActionButton icon={p.status === 'draft' ? 'solar:shield-check-linear' : 'solar:eye-linear'} size="S" tooltip={p.status === 'draft' ? 'Review' : 'Open'} tooltipLeft onClick={() => setReviewId(p.id)} />
+            <ActionButton icon={p.status === 'draft' ? 'solar:shield-check-linear' : 'solar:eye-linear'} size="sm" tooltip={p.status === 'draft' ? 'Review' : 'Open'} tooltipLeft onClick={() => setReviewId(p.id)} />
           </span>
         </td>
       </tr>

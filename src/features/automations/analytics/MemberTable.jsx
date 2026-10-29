@@ -51,7 +51,7 @@ export function MemberRowMenu({ member, patientId, patientName }) {
     <span className={styles.rowActions} onClick={e => e.stopPropagation()}>
       <ActionButton
         icon="solar:menu-dots-linear"
-        size="S"
+        size="sm"
         tooltip="More"
         aria-label={`Actions for ${patientName}`}
         onClick={e => setRect(e.currentTarget.getBoundingClientRect())}

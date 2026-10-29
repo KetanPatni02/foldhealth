@@ -106,10 +106,8 @@ export function SelectAssigneeModal({
           </div>
 
           <div className={styles.footer}>
-            <Button variant="secondary" size="L" fullWidth onClick={close}>Cancel</Button>
+            <Button variant="outline" fullWidth onClick={close}>Cancel</Button>
             <Button
-              variant="primary"
-              size="L"
               fullWidth
               disabled={!selected}
               onClick={() => { if (selected) { onConfirm?.(selected); close(); } }}

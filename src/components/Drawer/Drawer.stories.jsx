@@ -41,10 +41,10 @@ export default {
 // rhythm and any smaller size would fight the close-button height.
 function CtaButtons({ firstCta, secondCta }) {
   const first = firstCta ? (
-    <Button variant="primary" size="L" onClick={() => {}}>Save</Button>
+    <Button onClick={() => {}}>Save</Button>
   ) : null;
   const second = firstCta && secondCta ? (
-    <Button variant="secondary" size="L" onClick={() => {}}>Cancel</Button>
+    <Button variant="outline" onClick={() => {}}>Cancel</Button>
   ) : null;
   return { primaryAction: first, secondaryAction: second };
 }
@@ -61,7 +61,7 @@ function DrawerDemo({ title = "Drawer Title", firstCta, secondCta, children }) {
   const { primaryAction, secondaryAction } = CtaButtons({ firstCta, secondCta });
   return (
     <div style={centerStage}>
-      <Button variant="primary" onClick={() => setOpen(true)}>
+      <Button onClick={() => setOpen(true)}>
         Open Drawer
       </Button>
       {open && (
@@ -144,7 +144,7 @@ function SplitPanesDemo({ firstCta, secondCta }) {
 
   return (
     <div style={centerStage}>
-      <Button variant="primary" onClick={() => setOpen(true)}>
+      <Button onClick={() => setOpen(true)}>
         Open Split Drawer
       </Button>
       {open && (
@@ -206,7 +206,7 @@ function PatientBannerDemo({ firstCta, secondCta }) {
   const { primaryAction, secondaryAction } = CtaButtons({ firstCta, secondCta });
   return (
     <div style={centerStage}>
-      <Button variant="primary" onClick={() => setOpen(true)}>
+      <Button onClick={() => setOpen(true)}>
         Open Drawer
       </Button>
       {open && (

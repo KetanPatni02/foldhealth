@@ -364,7 +364,7 @@ function GradientPicker({ value, onChange, variables, mode, onModeChange }) {
         />
         <ActionButton
           icon="solar:transfer-horizontal-linear"
-          size="S"
+          size="sm"
           tooltip="Reverse stops"
           onClick={reverseStops}
         />
@@ -395,7 +395,7 @@ function GradientPicker({ value, onChange, variables, mode, onModeChange }) {
 
       <div className={styles.stopsHeader}>
         <span className={styles.sectionLabel}>Stops</span>
-        <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add stop" onClick={addStop} />
+        <ActionButton icon="solar:add-circle-linear" size="sm" tooltip="Add stop" onClick={addStop} />
       </div>
 
       <div className={styles.stopsList}>

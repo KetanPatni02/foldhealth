@@ -128,10 +128,10 @@ export function DateTimePicker({ value, onChange, label, required = false, place
             <div className={styles.dtPickerBody}>
               <div className={styles.calendarSection}>
                 <div className={styles.calendarHeader}>
-                  <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous month"
+                  <ActionButton icon="solar:alt-arrow-left-linear" size="sm" tooltip="Previous month"
                     onClick={() => setViewDate(new Date(year, month - 1, 1))} />
                   <span className={styles.calendarTitle}>{MONTH_NAMES[month]} {year}</span>
-                  <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next month"
+                  <ActionButton icon="solar:alt-arrow-right-linear" size="sm" tooltip="Next month"
                     onClick={() => setViewDate(new Date(year, month + 1, 1))} />
                 </div>
                 <div className={styles.calendarGrid}>

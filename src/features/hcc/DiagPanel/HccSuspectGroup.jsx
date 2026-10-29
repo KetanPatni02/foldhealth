@@ -242,8 +242,8 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
                   Accept (primary tinted) / Dismiss (neutral) / more-menu shape. */}
               <Tooltip label={canAct ? 'Missed Opportunity' : (disabledReason || 'Select an ICD and DOS first')}>
                 <Button
-                  variant="alt"
-                  size="S"
+                  variant="outline" tone="primary"
+                  size="sm"
                   iconOnly
                   leadingIcon="solar:flag-linear"
                   aria-label="Missed Opportunity"
@@ -253,8 +253,8 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
               </Tooltip>
               <Tooltip label={canAct ? 'Dismiss' : (disabledReason || 'Select an ICD and DOS first')}>
                 <Button
-                  variant="secondary"
-                  size="S"
+                  variant="outline"
+                  size="sm"
                   iconOnly
                   aria-label="Dismiss"
                   disabled={!canAct}

@@ -187,7 +187,7 @@ export function IcdDosCard({ icd, currentDos = null, focusKey, onFocusRow, selec
           <Tooltip label="Comments">
             <Button
               variant="ghost"
-              size="S"
+              size="sm"
               onClick={(e) => { e.stopPropagation(); openIcdPanel('comments', icd.code); }}
             >
               <IcdCommentIcon unread={hasUnreadComments} />
@@ -198,7 +198,7 @@ export function IcdDosCard({ icd, currentDos = null, focusKey, onFocusRow, selec
           <Tooltip label="History">
             <Button
               variant="ghost"
-              size="S"
+              size="sm"
               leadingIconElement={<Icon name="custom:history" size={14} />}
               onClick={(e) => { e.stopPropagation(); openIcdPanel('history', icd.code); }}
             >
@@ -476,8 +476,8 @@ function DosActionRow({
             <>
               <Tooltip label={canReview ? 'Accept (A)' : (disabledReason || 'Accept')}>
                 <Button
-                  variant="alt"
-                  size="S"
+                  variant="outline" tone="primary"
+                  size="sm"
                   iconOnly
                   aria-label="Accept"
                   disabled={!canReview}
@@ -487,8 +487,8 @@ function DosActionRow({
               </Tooltip>
               <Tooltip label={canReview ? 'Dismiss (X)' : (disabledReason || 'Dismiss')}>
                 <Button
-                  variant="secondary"
-                  size="S"
+                  variant="outline"
+                  size="sm"
                   iconOnly
                   aria-label="Dismiss"
                   disabled={!canReview}

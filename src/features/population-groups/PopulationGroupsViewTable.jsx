@@ -123,17 +123,17 @@ export function PopulationGroupsViewTable({ vm, onImportRule }) {
         <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
 
         {/* ── Create Group — opens the file-upload workflow (error card / all-matched review) ── */}
-        <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={openNewModal}>Create Group</Button>
+        <Button variant="outline" leadingIcon="solar:add-circle-linear" onClick={openNewModal}>Create Group</Button>
 
         <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
 
         {/* Import Rule — opens the templates drawer */}
-        <Button variant="secondary" size="L" onClick={onImportRule}>Import Rule</Button>
+        <Button variant="outline" onClick={onImportRule}>Import Rule</Button>
 
         <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
 
         {/* Bulk actions icon — matches Settings → Content bulk-select icon (neutral-300) */}
-        <ActionButton size="L" tooltip="Bulk actions" style={{ color: 'var(--neutral-300)' }}><BulkSelectIcon /></ActionButton>
+        <ActionButton tooltip="Bulk actions" style={{ color: 'var(--neutral-300)' }}><BulkSelectIcon /></ActionButton>
       </div>
     </div>
   );

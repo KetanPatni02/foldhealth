@@ -248,8 +248,6 @@ export function ApplyTemplatesDrawer({
         </>
       )}
       <Button
-        variant="primary"
-        size="M"
         disabled={selected.size === 0}
         onClick={() => onApply?.([...selected], priorities)}
       >
@@ -322,13 +320,13 @@ export function ApplyTemplatesDrawer({
           {onApplyAgain && appliedSet.has(t.id) && (
             <ActionButton
               icon="solar:restart-linear"
-              size="S"
+              size="sm"
               tooltip="Apply again"
               onClick={() => onApplyAgain(t)}
             />
           )}
           <ActionButton
-            size="S"
+            size="sm"
             active={isFavorite(t.id)}
             tooltip={isFavorite(t.id) ? 'Remove favorite' : 'Add favorite'}
             onClick={() => toggleCarePlanFavorite(t.id)}
@@ -358,7 +356,6 @@ export function ApplyTemplatesDrawer({
           />
           <ActionButton
             icon="custom:filter"
-            size="L"
             tooltip="Filter"
             active={filtersOpen || conditionFilter.length > 0 || scopeFilter.length > 0}
             aria-expanded={filtersOpen}

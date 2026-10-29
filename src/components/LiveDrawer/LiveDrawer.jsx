@@ -68,20 +68,18 @@ export function LiveDrawer() {
       {/* Action buttons */}
       <div className={styles.actions}>
         <Button
-          variant="secondary"
-          size="L"
+          variant="outline"
           leadingIcon="solar:headphones-round-sound-bold"
           className={listenActive ? styles.active : ''}
           onClick={() => setListenActive(v => !v)}
         >
           Live Listen
         </Button>
-        <Button variant="primary" size="L" leadingIcon="solar:phone-calling-bold" onClick={() => showToast('Take Over Call – coming soon')}>
+        <Button leadingIcon="solar:phone-calling-bold" onClick={() => showToast('Take Over Call – coming soon')}>
           Take Over Call
         </Button>
         <Button
-          variant="secondary"
-          size="L"
+          variant="outline"
           leadingIcon="solar:call-medicine-bold"
           className={transferState ? styles.active : ''}
           onClick={() => setTransferState(transferState ? null : 'select-dept')}
@@ -89,8 +87,7 @@ export function LiveDrawer() {
           Transfer
         </Button>
         <Button
-          variant="secondary"
-          size="L"
+          variant="outline"
           leadingIcon="solar:microphone-slash-linear"
           className={muteActive ? styles.active : ''}
           onClick={() => setMuteActive(v => !v)}

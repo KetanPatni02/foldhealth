@@ -102,7 +102,7 @@ function ProgramCard({ program, defaultExpanded, onAction }) {
                 </div>
                 {s.meta && <span className={styles.stepMeta}>{s.meta}</span>}
                 {s.action && (
-                  <Button variant="secondary" size="S" onClick={() => onAction(s.action)}>
+                  <Button variant="outline" size="sm" onClick={() => onAction(s.action)}>
                     <Icon name={s.action === 'Schedule' ? 'solar:calendar-linear' : 'solar:pen-2-linear'} size={13} />
                     {s.action}
                   </Button>
@@ -284,11 +284,11 @@ export function MonitoringTab({ patient }) {
         />
 
         <aside className={styles.rail} style={{ width: railWidth }}>
-          <Button variant="primary" onClick={() => soon('Start touch')}>
+          <Button onClick={() => soon('Start touch')}>
             <Icon name="solar:phone-calling-linear" size={14} />
             Start touch
           </Button>
-          <Button variant="secondary" onClick={openComprehensiveCarePlan}>
+          <Button variant="outline" onClick={openComprehensiveCarePlan}>
             <Icon name="solar:clipboard-list-linear" size={14} />
             Open care plan
           </Button>

@@ -49,9 +49,9 @@ export function ConditionEditorPanel({ rule, onSave, onClose }) {
         <div className={styles.editorHeader}>
           <span className={styles.editorTitle}>{field.label}</span>
           <div className={styles.editorHeaderActions}>
-            <Button variant="primary" size="L" disabled={!canSave} onClick={commit}>Save</Button>
+            <Button disabled={!canSave} onClick={commit}>Save</Button>
             <span className={styles.headerDivider} />
-            <ActionButton icon="solar:close-circle-linear" size="L" tooltip="Close" onClick={onClose} />
+            <ActionButton icon="solar:close-circle-linear" tooltip="Close" onClick={onClose} />
           </div>
         </div>
 
@@ -151,7 +151,7 @@ function CodedTermEditor({ draft, field, onChange, onPatch }) {
           <span className={styles.selectedCodeText}>{draft.display}</span>
           <ActionButton
             icon="solar:close-circle-linear"
-            size="S"
+            size="sm"
             tooltip="Clear"
             onClick={() => onPatch(d => ({ ...d, code: '', display: '', system: '' }))}
           />
@@ -183,7 +183,7 @@ function ObservationEditor({ draft, field, onChange, onPatch }) {
           <span className={styles.selectedCodeText}>{draft.analyte.display}</span>
           <ActionButton
             icon="solar:close-circle-linear"
-            size="S"
+            size="sm"
             tooltip="Clear"
             onClick={() => onPatch(d => ({ ...d, analyte: null }))}
           />
@@ -249,7 +249,7 @@ function EventCountEditor({ draft, field, onChange, onPatch }) {
           <span className={styles.selectedCodeText}>{draft.filter.display}</span>
           <ActionButton
             icon="solar:close-circle-linear"
-            size="S"
+            size="sm"
             tooltip="Clear"
             onClick={() => onPatch(d => ({ ...d, filter: null }))}
           />

@@ -41,10 +41,8 @@ export function CopyPermissionsDialog({ from, roles, onCancel, onConfirm }) {
             </div>
           </div>
           <div className={styles.copyFooter}>
-            <Button variant="secondary" size="L" fullWidth onClick={onCancel} disabled={saving}>Cancel</Button>
+            <Button variant="outline" fullWidth onClick={onCancel} disabled={saving}>Cancel</Button>
             <Button
-              variant="primary"
-              size="L"
               fullWidth
               disabled={!picked.length || saving}
               disabledReason={!picked.length ? 'Pick at least one role' : undefined}

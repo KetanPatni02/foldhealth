@@ -119,10 +119,8 @@ export function SelectMemberModal({ open, members, saving = false, onClose, onSa
           </div>
         </div>
         <div className={styles.modalFooter}>
-          <Button variant="secondary" size="L" fullWidth onClick={close}>Cancel</Button>
+          <Button variant="outline" fullWidth onClick={close}>Cancel</Button>
           <Button
-            variant="primary"
-            size="L"
             fullWidth
             disabled={!member || saving}
             onClick={async () => { if (member && await onSave(member) !== false) setPicked(null); }}
@@ -198,10 +196,8 @@ export function AssignSmsModal({ open, members, saving = false, onClose, onSave 
           </div>
         </div>
         <div className={styles.modalFooter}>
-          <Button variant="secondary" size="L" fullWidth onClick={close}>Cancel</Button>
+          <Button variant="outline" fullWidth onClick={close}>Cancel</Button>
           <Button
-            variant="primary"
-            size="L"
             fullWidth
             disabled={!member || saving}
             onClick={async () => { if (member && await onSave(member, applyTo) !== false) reset(); }}

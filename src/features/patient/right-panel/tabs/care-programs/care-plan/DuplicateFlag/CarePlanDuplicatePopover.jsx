@@ -21,8 +21,8 @@ function Copy({ tag, tone, where, who, when, onKeep, onEdit, slot }) {
       <span className={styles.where}>
         {[where, who, when].filter(Boolean).join(' · ')}
       </span>
-      {onEdit && <Button variant="tertiary" size="S" onClick={onEdit}>Edit</Button>}
-      <Button variant="secondary" size="S" onClick={onKeep} data-slot={slot}>Keep</Button>
+      {onEdit && <Button variant="soft" size="sm" onClick={onEdit}>Edit</Button>}
+      <Button variant="outline" size="sm" onClick={onKeep} data-slot={slot}>Keep</Button>
     </div>
   );
 }

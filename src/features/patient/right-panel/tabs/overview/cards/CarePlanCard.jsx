@@ -91,7 +91,7 @@ export function CarePlanCard({ patientId, actions }) {
           onChange={setKind}
         />
       )}
-      actions={<Button variant="secondary" size="S" trailingIcon="solar:arrow-right-linear" onClick={actions.openCarePlan}>Open Care Plan</Button>}
+      actions={<Button variant="outline" size="sm" trailingIcon="solar:arrow-right-linear" onClick={actions.openCarePlan}>Open Care Plan</Button>}
     >
       <DashboardCardBody className={styles.listBody}>
         {empty ? (

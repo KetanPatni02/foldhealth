@@ -56,8 +56,8 @@ export function FilterNameDialog({
           />
         </label>
         <div className={styles.actions}>
-          <Button variant="secondary" size="M" onClick={onCancel}>Cancel</Button>
-          <Button variant="primary" size="M" disabled={!canSubmit} onClick={submit}>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button disabled={!canSubmit} onClick={submit}>
             {submitLabel}
           </Button>
         </div>

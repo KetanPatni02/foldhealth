@@ -151,7 +151,7 @@ export function CrmTab({ patientId }) {
     <div className={styles.wrapper}>
       <div className={styles.toolbar}>
         <SubTabs tabs={FILTER_TABS} activeKey={channel} onChange={setChannel} />
-        <ActionButton icon="custom:filter" size="S" tooltip="Filter" tooltipLeft />
+        <ActionButton icon="custom:filter" size="sm" tooltip="Filter" tooltipLeft />
       </div>
       {loading
         ? <TimelineSkeleton rows={5} />

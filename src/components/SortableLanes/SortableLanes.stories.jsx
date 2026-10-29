@@ -34,7 +34,7 @@ export const Default = {
           renderActions={item => (
             <ActionButton
               icon={item.disabled ? 'solar:eye-closed-linear' : 'solar:eye-linear'}
-              size="S"
+              size="sm"
               tooltip={item.disabled ? `Show ${item.label}` : `Hide ${item.label}`}
               onClick={() => toggle(item.key)}
             />

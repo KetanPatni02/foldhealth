@@ -109,13 +109,13 @@ export function SelectNewDosPopover({ open, anchorRect, onBack, onSelect, max })
       </div>
 
       <div className={styles.monthNav}>
-        <ActionButton size="S" tooltip="Previous month" onClick={() => stepMonth(-1)}>
+        <ActionButton size="sm" tooltip="Previous month" onClick={() => stepMonth(-1)}>
           <CalendarPrevIcon size={16} />
         </ActionButton>
         <span className={styles.monthLabel}>
           {MONTHS_LONG[viewMonth]} {viewYear}
         </span>
-        <ActionButton size="S" tooltip="Next month" onClick={() => stepMonth(1)}>
+        <ActionButton size="sm" tooltip="Next month" onClick={() => stepMonth(1)}>
           <CalendarNextIcon size={16} />
         </ActionButton>
       </div>

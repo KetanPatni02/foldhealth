@@ -99,6 +99,21 @@ export default defineConfig([globalIgnores([
         selector: "VariableDeclarator[id.name=/.+FilterChip$/][init.callee]",
         message: 'Do not re-implement a filter chip — use the shared src/components/FilterChip so filter badges stay identical app-wide. See CONTRIBUTING.md.',
       },
+      // Variant / tone / size vocabulary (docs/components/library-contract.mdx).
+      // The components still accept the old names at runtime, so these only
+      // stop new code from adding them.
+      {
+        selector: "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value=/^(primary|secondary|tertiary|alt|success|danger|dangerFilled|info|error)$/]",
+        message: 'Button variant names changed: variant is solid | soft | outline | ghost, intent goes in tone (primary | neutral | success | warning | danger | info). E.g. secondary → variant="outline", danger → variant="soft" tone="danger". See docs/components/library-contract.mdx.',
+      },
+      {
+        selector: "JSXOpeningElement[name.name=/^(Button|ActionButton)$/] > JSXAttribute[name.name='size'] > Literal[value=/^(S|M|L|XL|s)$/]",
+        message: 'Sizes are sm | md | lg, and md is the default (S → sm, L → leave it out, XL → lg). See docs/components/library-contract.mdx.',
+      },
+      {
+        selector: "JSXOpeningElement[name.name='ActionButton'] > JSXAttribute[name.name='state']",
+        message: 'ActionButton has no state prop: use disabled, or tone="danger" for the destructive look. See docs/components/library-contract.mdx.',
+      },
       {
         selector: "Property[key.name='fontSize'][value.type='Literal'][value.raw=/^\\d/]",
         message: 'Inline fontSize in px — use a rem-based CSS variable (var(--font-…)) via CSS Modules, not a raw number in style={{}}. See src/tokens/tokens.css.',

@@ -154,14 +154,14 @@ export function FailReasonInline({ onCancel, onConfirm, value, onChange, hideAct
       {!hideActions && (
         <div className={styles.failActions}>
           <Button
-            variant="danger"
-            size="S"
+            variant="soft" tone="danger"
+            size="sm"
             disabled={!canSubmit}
             onClick={() => onConfirm?.({ reasons: FAIL_REASONS.filter(r => reasons.has(r)), note: comment })}
           >
             Confirm
           </Button>
-          <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
         </div>
       )}
     </div>
@@ -212,14 +212,12 @@ export function EditDocInline({ doc, onCancel, onSave }) {
       </div>
       <div className={styles.failActions}>
         <Button
-          variant="primary"
-          size="L"
           disabled={!canSave}
           onClick={() => onSave({ caption: caption.trim(), docType, visitType })}
         >
           Save
         </Button>
-        <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   );
@@ -366,14 +364,14 @@ export function InsufficientDosDialog({ onCancel, onConfirm }) {
         />
         <div className={styles.insufficientActions}>
           <Button
-            variant="danger"
-            size="S"
+            variant="soft" tone="danger"
+            size="sm"
             disabled={!canSubmit}
             onClick={() => onConfirm({ reasons: INSUFFICIENT_REASONS.filter(r => reasons.has(r)), note })}
           >
             Confirm
           </Button>
-          <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
         </div>
       </AlertDialogContent>
     </AlertDialog>

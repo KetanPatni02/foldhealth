@@ -51,7 +51,7 @@ export function DiagPanelViewToolbar(p) {
               <>
                 <ActionButton
                   icon={bulkMode ? 'custom:bulk-select-close' : 'custom:bulk-select'}
-                  size="S"
+                  size="sm"
                   tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
                   className={bulkMode ? styles.toolbarBtnActive : ''}
                   onClick={toggleBulkMode}
@@ -101,7 +101,7 @@ export function DiagPanelViewToolbar(p) {
               )}
               <ActionButton
                 icon="custom:filter"
-                size="S"
+                size="sm"
                 tooltip="Filter"
                 notification={filterCount > 0}
                 count={filterCount > 0 ? String(filterCount) : undefined}
@@ -111,7 +111,7 @@ export function DiagPanelViewToolbar(p) {
               <span className={styles.divider} />
               <ActionButton
                 icon="solar:file-text-linear"
-                size="S"
+                size="sm"
                 tooltip="Documents"
                 notification={docsUnread}
                 count={docsUnread ? String(docsUnreadCount) : undefined}
@@ -124,7 +124,7 @@ export function DiagPanelViewToolbar(p) {
               <span className={[styles.divider, styles.hideBelow460].join(' ')} />
               <ActionButton
                 icon="solar:chat-round-line-linear"
-                size="S"
+                size="sm"
                 tooltip="Comments"
                 notification={commentsUnread}
                 count={commentsUnread ? String(commentsUnreadCount) : undefined}
@@ -137,7 +137,7 @@ export function DiagPanelViewToolbar(p) {
               <span className={[styles.divider, styles.hideBelow540].join(' ')} />
               <ActionButton
                 icon="solar:history-linear"
-                size="S"
+                size="sm"
                 tooltip="Timeline"
                 className={[
                   styles.hideBelow640,
@@ -156,7 +156,7 @@ export function DiagPanelViewToolbar(p) {
               <span className={[styles.toolbarMoreWrap, styles.showToolbarMore].join(' ')} ref={moreWrapRef}>
                 <ActionButton
                   icon="solar:menu-dots-linear"
-                  size="S"
+                  size="sm"
                   tooltip="More"
                   onClick={(e) => { e.stopPropagation(); setMoreOpen(v => !v); }}
                   className={moreOpen ? styles.activeIcon : ''}

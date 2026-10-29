@@ -38,7 +38,7 @@ export const Default = {
           actions={(
             <>
               <FilterChip size="S" singleSelect noClear label="View by" options={['Active', 'All']} selected={['Active']} onChange={() => {}} />
-              <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" />
+              <ActionButton icon="solar:add-circle-linear" size="sm" tooltip="Add" />
             </>
           )}
         >

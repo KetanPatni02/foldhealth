@@ -75,7 +75,7 @@ export const EmailCanvas = forwardRef(function EmailCanvas({ html, editing }, re
       {editing && (
         <div className={styles.toolbar} role="toolbar" aria-label="Formatting">
           {TOOLS.map((t, i) => t
-            ? <ActionButton key={t.cmd} icon={t.icon} size="S" tooltip={t.tip} onClick={() => run(t.cmd)} />
+            ? <ActionButton key={t.cmd} icon={t.icon} size="sm" tooltip={t.tip} onClick={() => run(t.cmd)} />
             : <span key={`d${i}`} className={styles.toolbarDivider} />)}
         </div>
       )}

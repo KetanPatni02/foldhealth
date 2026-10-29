@@ -30,7 +30,7 @@ export function CarePlanSections({
         {onAdd && (
           <>
             <span className={styles.headDivider} aria-hidden="true" />
-            <ActionButton size="S" tooltip={`Add ${label.toLowerCase()}`} onClick={onAdd}>
+            <ActionButton size="sm" tooltip={`Add ${label.toLowerCase()}`} onClick={onAdd}>
               <AddIconMinimalist size={16} color="var(--neutral-300)" />
             </ActionButton>
           </>

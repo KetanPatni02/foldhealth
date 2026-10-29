@@ -43,8 +43,8 @@ function LogoField({ logo, custom, onPick, onReset }) {
       <div className={styles.logoRow}>
         {shown?.dataUrl && <span className={styles.logoThumb}><img src={shown.dataUrl} alt="" /></span>}
         <span className={styles.logoName}>{custom?.name || 'Clinic logo'}</span>
-        {custom && <Button variant="tertiary" size="S" onClick={() => { setError(''); onReset(); }}>Reset</Button>}
-        <Button variant="secondary" size="S" leadingIcon="solar:upload-minimalistic-linear" onClick={() => inputRef.current?.click()}>
+        {custom && <Button variant="soft" size="sm" onClick={() => { setError(''); onReset(); }}>Reset</Button>}
+        <Button variant="outline" size="sm" leadingIcon="solar:upload-minimalistic-linear" onClick={() => inputRef.current?.click()}>
           Change
         </Button>
         <input
@@ -142,8 +142,7 @@ export function CarePlanPrintPersonalize({
           />
           {preset && <Badge size="S" tone={TEMPLATE_SCOPES[preset.scope].tone} icon={TEMPLATE_SCOPES[preset.scope].icon} label={TEMPLATE_SCOPES[preset.scope].badge} />}
           <Button
-            variant="secondary"
-            size="M"
+            variant="outline"
             disabled={!dirty || (preset && !canEditPreset)}
             onClick={() => (preset ? onSavePreset() : setSaveOpen(true))}
           >
@@ -151,7 +150,6 @@ export function CarePlanPrintPersonalize({
           </Button>
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="M"
             tooltip="More preset actions"
             onClick={e => setMenu(e.currentTarget.getBoundingClientRect())}
           />

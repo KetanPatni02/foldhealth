@@ -104,11 +104,11 @@ export function EditLocationDrawer({ location, allLocations = EMPTY_ALL_LOCATION
   // Submit at the canonical size="L" variant pair.
   const drawerProps = step === 1
     ? {
-        primaryAction: <Button variant="primary" size="L" onClick={() => setStep(2)} disabled={!step1Valid}>Next</Button>,
+        primaryAction: <Button onClick={() => setStep(2)} disabled={!step1Valid}>Next</Button>,
       }
     : {
-        secondaryAction: <Button variant="secondary" size="L" onClick={() => setStep(1)}>Previous</Button>,
-        primaryAction:   <Button variant="primary"   size="L" onClick={handleSubmit} disabled={!canSubmit}>Submit</Button>,
+        secondaryAction: <Button variant="outline" onClick={() => setStep(1)}>Previous</Button>,
+        primaryAction:   <Button onClick={handleSubmit} disabled={!canSubmit}>Submit</Button>,
       };
 
   return (
@@ -198,7 +198,7 @@ export function EditLocationDrawer({ location, allLocations = EMPTY_ALL_LOCATION
         ) : (
           <>
             <div className={styles.slotBar}>
-              <Button variant="secondary" size="S" leadingIcon="solar:add-circle-linear" onClick={addSlot}>Add Slots</Button>
+              <Button variant="outline" size="sm" leadingIcon="solar:add-circle-linear" onClick={addSlot}>Add Slots</Button>
             </div>
 
             {form.businessHours.map((slot, idx) => (
@@ -229,7 +229,7 @@ export function EditLocationDrawer({ location, allLocations = EMPTY_ALL_LOCATION
                   </div>
                   <ActionButton
                     icon="solar:trash-bin-minimalistic-linear"
-                    size="S"
+                    size="sm"
                     tooltip="Remove slot"
                     onClick={() => removeSlot(idx)}
                     disabled={form.businessHours.length === 1}

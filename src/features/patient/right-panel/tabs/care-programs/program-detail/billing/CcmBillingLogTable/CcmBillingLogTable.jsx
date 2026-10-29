@@ -156,7 +156,7 @@ function LogTableRow({
           <div className={styles.actions}>
             <ActionButton
               icon="solar:document-text-linear"
-              size="S"
+              size="sm"
               tooltip="Add Note"
               count={noteCount > 0 ? String(noteCount) : undefined}
               active={noteOpen}
@@ -165,7 +165,7 @@ function LogTableRow({
             <span className={styles.actionDivider} aria-hidden />
             <ActionButton
               icon="solar:trash-bin-trash-linear"
-              size="S"
+              size="sm"
               tooltip="Delete"
               onClick={onDelete}
             />
@@ -182,8 +182,8 @@ function LogTableRow({
             placeholder="Add a note for this activity…"
           />
           <div className={styles.noteActions}>
-            <Button variant="primary" size="S" onClick={onSaveNote}>Save</Button>
-            <Button variant="secondary" size="S" onClick={onCancelNote}>Cancel</Button>
+            <Button size="sm" onClick={onSaveNote}>Save</Button>
+            <Button variant="outline" size="sm" onClick={onCancelNote}>Cancel</Button>
           </div>
         </div>
       )}

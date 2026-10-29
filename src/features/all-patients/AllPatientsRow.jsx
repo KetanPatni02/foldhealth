@@ -332,7 +332,6 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
         <div className={rowStyles.actionsCell}>
           <ActionButton
             icon="solar:letter-linear"
-            size="L"
             tooltip="Email"
             onClick={() => showToast(`Email ${row.name} — coming soon`)}
           />
@@ -340,14 +339,12 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
           <ActionButton
             ref={callBtnRef}
             icon="solar:phone-linear"
-            size="L"
             tooltip="Call patient"
             onClick={openCall}
           />
           <span className={rowStyles.actionDivider} />
           <ActionButton
             icon="solar:chat-dots-linear"
-            size="L"
             tooltip="Chat"
             onClick={() => showToast(`Chat with ${row.name} — coming soon`)}
           />
@@ -356,7 +353,6 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
             <ActionButton
               ref={dropBtnRef}
               icon="solar:menu-dots-linear"
-              size="L"
               tooltip="More options"
               onClick={handleDropdownToggle}
             />

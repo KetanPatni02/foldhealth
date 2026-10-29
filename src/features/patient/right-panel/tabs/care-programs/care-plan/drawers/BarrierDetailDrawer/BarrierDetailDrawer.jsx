@@ -334,8 +334,6 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
         noCloseDivider={isTerminal && !barrierDirty}
         headerRight={ro || (isTerminal && !barrierDirty) ? null : (
           <Button
-            variant="primary"
-            size="M"
             disabled={!barrierDirty}
             onClick={handleUpdateBarrier}
           >
@@ -360,7 +358,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
             {!ro && (
               <ActionButton
                 icon="solar:trash-bin-trash-linear"
-                size="S"
+                size="sm"
                 tooltip="Delete barrier"
                 onClick={() => setConfirmDeleteBarrier(true)}
               />
@@ -485,7 +483,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
               {!isTerminal && !ro && (
                 <ActionButton
                   icon="solar:add-linear"
-                  size="S"
+                  size="sm"
                   tooltip="Link goal"
                   aria-haspopup="dialog"
                   aria-expanded={linkDrawerOpen}
@@ -521,7 +519,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                           <span className={styles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                           <ActionButton
                             icon="solar:arrow-right-up-linear"
-                            size="S"
+                            size="sm"
                             tooltip="Open goal"
                             onClick={() => onOpenGoal?.(goal)}
                           />
@@ -530,7 +528,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                               <span className={styles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                               <ActionButton
                                 icon="solar:link-broken-minimalistic-linear"
-                                size="S"
+                                size="sm"
                                 tooltip="Unlink"
                                 onClick={() => setUnlinkConfirm({ goal })}
                               />
@@ -590,7 +588,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                       <div className={styles.linkActions}>
                         <ActionButton
                           icon="solar:arrow-right-up-linear"
-                          size="S"
+                          size="sm"
                           tooltip="Preview template"
                           onClick={() => setPreviewTemplate(t)}
                         />

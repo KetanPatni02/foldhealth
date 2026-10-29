@@ -140,7 +140,7 @@ export function PreferencesDrawer({ onClose, initialTab = 'account' }) {
           {activeTab !== 'account' && activeTab !== 'ooo' && (
             <div className={styles.sectionHeader}>
               <h3 className={styles.contentTitle}>{PREF_TABS.find(t => t.key === activeTab)?.label?.toUpperCase() || ''}</h3>
-              <ActionButton icon="solar:close-linear" size="S" tooltip="Close" onClick={onClose} />
+              <ActionButton icon="solar:close-linear" size="sm" tooltip="Close" onClick={onClose} />
             </div>
           )}
 
@@ -188,8 +188,8 @@ export function PreferencesDrawer({ onClose, initialTab = 'account' }) {
                     <span className={styles.editHeaderEmail}>{form.email}</span>
                   </div>
                   <div className={styles.editHeaderActions}>
-                    <Button variant="ghost" size="S" onClick={onClose}>Discard</Button>
-                    <Button variant="primary" size="S" onClick={handleSave}>Save</Button>
+                    <Button variant="ghost" size="sm" onClick={onClose}>Discard</Button>
+                    <Button size="sm" onClick={handleSave}>Save</Button>
                   </div>
                 </div>
 
@@ -405,7 +405,7 @@ export function PreferencesDrawer({ onClose, initialTab = 'account' }) {
                 <div className={styles.signatureEmpty}>
                   <Icon name="solar:pen-new-square-linear" size={32} color="var(--neutral-150)" />
                   <p>Add and edit your customized signatures that will be added to your mail.</p>
-                  <Button variant="primary" size="L">Add Signature</Button>
+                  <Button>Add Signature</Button>
                 </div>
               </div>
             </div>

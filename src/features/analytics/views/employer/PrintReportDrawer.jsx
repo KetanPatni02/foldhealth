@@ -666,8 +666,6 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
       */}
       <span ref={downloadRef} className={styles.menuAnchor}>
         <Button
-          variant="primary"
-          size="L"
           leadingIcon="solar:download-minimalistic-linear"
           trailingIcon="solar:alt-arrow-down-linear"
           disabled={savingPage}
@@ -702,12 +700,11 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
       <span className={styles.headerDivider} aria-hidden="true" />
       <ActionButton
         icon="solar:printer-minimalistic-linear"
-        size="L"
         tooltip="Print"
         // Below: above the drawer's top edge it would be clipped.
         tooltipBelow
         aria-label="Print report"
-        state={nothingSelected ? 'disabled' : 'active'}
+        disabled={nothingSelected}
         onClick={() => { printBlob(generate().blob); onExport?.('print', `${filename}.pdf`); }}
       />
       <span className={styles.headerDivider} aria-hidden="true" />
@@ -833,7 +830,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                       aria-label={`Note for ${sectionTitle}`}
                       rows={2}
                       className={styles.noteField}
-                      bottomButton={{ label: 'Remove Note', variant: 'secondary', onClick: () => removeNote(section.id) }}
+                      bottomButton={{ label: 'Remove Note', variant: 'outline', onClick: () => removeNote(section.id) }}
                     />
                   )}
                 </div>
@@ -876,19 +873,19 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
             <span className={styles.tabFilter}>
               <ActionButton
                 icon="solar:refresh-linear"
-                size="S"
+                size="sm"
                 tooltip="Reset order"
                 tooltipBelow
                 tooltipLeft
                 aria-label="Reset sections and widgets to the dashboard order"
-                state={orderCustomized ? 'active' : 'disabled'}
+                disabled={!orderCustomized}
                 onClick={resetOrder}
               />
               {filters && (<>
               <span className={styles.headerDivider} aria-hidden="true" />
               <ActionButton
                 icon="custom:filter"
-                size="S"
+                size="sm"
                 tooltip={filtersOpen ? 'Hide filters' : 'Filters'}
                 tooltipBelow
                 tooltipLeft
@@ -937,7 +934,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                   <>
                     <ActionButton
                       icon="solar:text-linear"
-                      size="S"
+                      size="sm"
                       tooltip="Typography"
                       tooltipLeft
                       active={!!typographyAt}

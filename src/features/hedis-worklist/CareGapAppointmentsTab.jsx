@@ -222,11 +222,11 @@ export function CareGapAppointmentsTab({
               onClose={() => { setSearchOpen(false); setSearch(''); }}
             />
           ) : (
-            <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setSearchOpen(true)} />
+            <ActionButton size="sm" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setSearchOpen(true)} />
           )}
           <span className={styles.divider} />
           <ActionButton
-            size="S"
+            size="sm"
             icon="custom:filter"
             tooltip={chipsOpen ? 'Hide filters' : 'Filter'}
             iconColor={chipsOpen || anyFilter ? 'var(--primary-300)' : undefined}
@@ -346,7 +346,7 @@ export function CareGapAppointmentsTab({
                 <td className={[styles.td, styles.actionsTd].join(' ')}>
                   <ActionButton
                     icon="solar:menu-dots-linear"
-                    size="S"
+                    size="sm"
                     tooltip="More actions"
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();

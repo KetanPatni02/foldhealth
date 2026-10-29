@@ -108,7 +108,7 @@ export function AttestationModal({ patients = [], onClose, onSubmit }) {
       title="APCM Billing Attestation"
       onClose={onClose}
       headerRight={
-        <Button variant="primary" size="L" leadingIcon="solar:pen-linear" onClick={handleSubmit}>
+        <Button leadingIcon="solar:pen-linear" onClick={handleSubmit}>
           Submit Attestation
         </Button>
       }

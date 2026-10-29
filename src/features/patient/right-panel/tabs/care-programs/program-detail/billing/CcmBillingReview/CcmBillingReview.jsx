@@ -343,12 +343,12 @@ export function CcmBillingReview({ program, patientId: patientIdProp }) {
                     <td className={styles.historyEhr}>{r.integratedEhr}</td>
                     <td>
                       <div className={styles.historyActions}>
-                        <Button variant="tertiary" size="S" onClick={() => setOpenReport(r)}>
+                        <Button variant="soft" size="sm" onClick={() => setOpenReport(r)}>
                           View
                         </Button>
                         <ActionButton
                           icon="solar:printer-linear"
-                          size="S"
+                          size="sm"
                           tooltip="Print"
                           onClick={() => setOpenReport(r)}
                         />

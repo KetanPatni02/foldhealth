@@ -19,8 +19,8 @@ export function CarePlanInPanelNotice() {
     <div className={styles.stepPlaceholder}>
       <RingEmptyState icon="solar:sidebar-minimalistic-linear" label="Care plan is open in a separate panel">
         <div className={styles.carePlanNoticeActions}>
-          <Button variant="secondary" size="S" onClick={closeCarePlanPanel}>Show Here</Button>
-          <Button size="S" onClick={focusCarePlanPanel}>Go to Panel</Button>
+          <Button variant="outline" size="sm" onClick={closeCarePlanPanel}>Show Here</Button>
+          <Button size="sm" onClick={focusCarePlanPanel}>Go to Panel</Button>
         </div>
       </RingEmptyState>
     </div>

@@ -90,7 +90,7 @@ export function CloneFromUserDrawer({ users, exclude, imported = [], target, onI
       dismissed={!!done}
       onClose={() => (done ? onImport(done) : onClose())}
       primaryAction={(
-        <Button variant="primary" size="L" disabled={!picked.length} onClick={() => setDone(pickedBlocks())}>
+        <Button disabled={!picked.length} onClick={() => setDone(pickedBlocks())}>
           {picked.length ? `Import ${picked.length} slot${picked.length === 1 ? '' : 's'}` : 'Import'}
         </Button>
       )}

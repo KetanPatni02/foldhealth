@@ -25,8 +25,8 @@ function IpaRow({ ipa, patients, onSave, onDelete, canEdit }) {
           <Input label="Also recorded as" value={aliases} onChange={e => setAliases(e.target.value)} placeholder="Comma-separated spellings" />
         </div>
         <div className={styles.ipaActions}>
-          <Button variant="secondary" size="S" onClick={() => setEditing(false)}>Cancel</Button>
-          <Button variant="primary" size="S" disabled={!name.trim()} onClick={async () => { if (await onSave({ ...ipa, name, aliases: splitAliases(aliases) })) setEditing(false); }}>Save</Button>
+          <Button variant="outline" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+          <Button size="sm" disabled={!name.trim()} onClick={async () => { if (await onSave({ ...ipa, name, aliases: splitAliases(aliases) })) setEditing(false); }}>Save</Button>
         </div>
       </li>
     );
@@ -42,8 +42,8 @@ function IpaRow({ ipa, patients, onSave, onDelete, canEdit }) {
       {canEdit && (
         <div className={styles.ipaActions}>
           <Switch checked={ipa.active} onChange={v => onSave({ ...ipa, active: v })} ariaLabel={`${ipa.name} active`} />
-          <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={startEditing} />
-          <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Delete" onClick={() => onDelete(ipa)} />
+          <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={startEditing} />
+          <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Delete" onClick={() => onDelete(ipa)} />
         </div>
       )}
     </li>
@@ -92,7 +92,7 @@ export function IpaRegistryDrawer({ onClose, canEdit }) {
               <Input label="Also recorded as" value={newAliases} onChange={e => setNewAliases(e.target.value)} placeholder="Comma-separated spellings" />
             </div>
             <div>
-              <Button variant="secondary" size="S" disabled={!newName.trim()} onClick={async () => {
+              <Button variant="outline" size="sm" disabled={!newName.trim()} onClick={async () => {
                 if (await saveIpa({ name: newName, aliases: splitAliases(newAliases) })) { setNewName(''); setNewAliases(''); }
               }}>Add IPA</Button>
             </div>
@@ -117,7 +117,7 @@ export function IpaRegistryDrawer({ onClose, canEdit }) {
                         onChange={v => setAliasTarget(t => ({ ...t, [u.value]: v }))}
                         placeholder="Spelling of…"
                       />
-                      <Button variant="secondary" size="S" disabled={!aliasTarget[u.value]} onClick={() => {
+                      <Button variant="outline" size="sm" disabled={!aliasTarget[u.value]} onClick={() => {
                         const ipa = ipas.find(i => i.id === aliasTarget[u.value]);
                         if (ipa) save({ ...ipa, aliases: [...ipa.aliases, u.value] });
                       }}>Add as spelling</Button>

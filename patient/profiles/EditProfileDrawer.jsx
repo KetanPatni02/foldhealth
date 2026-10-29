@@ -69,7 +69,7 @@ export function EditProfileDrawer({ profile, onClose, onSaved }) {
       dismissed={dismissed}
       width={720}
       primaryAction={(
-        <Button variant="primary" size="L" disabled={!dirty || saving} onClick={save}>
+        <Button disabled={!dirty || saving} onClick={save}>
           {saving ? 'Saving…' : 'Save Updates'}
         </Button>
       )}

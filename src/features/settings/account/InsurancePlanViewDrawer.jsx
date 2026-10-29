@@ -37,7 +37,7 @@ export function InsurancePlanViewDrawer({ plan, onClose, onEdit }) {
       onClose={onClose}
       headerRight={
         <>
-          <Button variant="secondary" size="L" leadingIcon="solar:pen-linear" onClick={() => onEdit?.(plan)}>
+          <Button variant="outline" leadingIcon="solar:pen-linear" onClick={() => onEdit?.(plan)}>
             Edit
           </Button>
           <span className={styles.headerDivider} />

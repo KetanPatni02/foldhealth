@@ -51,8 +51,8 @@ export function App() {
               />
             </div>
             <div className={styles.crashActions}>
-              <Button variant="primary" size="L" onClick={() => window.location.reload()}>Reload</Button>
-              <Button variant="secondary" size="L" onClick={() => supabase.auth.signOut().then(() => window.location.reload())}>Sign out</Button>
+              <Button onClick={() => window.location.reload()}>Reload</Button>
+              <Button variant="outline" onClick={() => supabase.auth.signOut().then(() => window.location.reload())}>Sign out</Button>
             </div>
           </main>
         )}

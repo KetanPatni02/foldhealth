@@ -94,7 +94,6 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
               <span className={styles.previewHeaderDivider} aria-hidden />
               <ActionButton
                 icon="solar:printer-linear"
-                size="L"
                 tooltip="Print"
                 onClick={() => {
                   const url = note.pdfDataUrl;
@@ -104,13 +103,11 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
               />
               <ActionButton
                 icon="solar:history-linear"
-                size="L"
                 tooltip="Amend history"
                 onClick={() => setShowHistory(true)}
               />
               <Button
-                variant="tertiary"
-                size="M"
+                variant="soft"
                 leadingIcon="solar:lock-keyhole-minimalistic-linear"
                 onClick={handleEdit}
               >
@@ -125,8 +122,7 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
               </span>
               <span className={styles.previewHeaderDivider} aria-hidden />
               <Button
-                variant="tertiary"
-                size="M"
+                variant="soft"
                 leadingIcon="solar:pen-new-square-linear"
                 onClick={handleEdit}
               >

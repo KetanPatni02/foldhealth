@@ -228,7 +228,7 @@ function RuleNode({ rule, readOnly, combinator, onOpenEditor, onJoin, onRemove, 
           </span>
           <ActionButton
             icon="solar:trash-bin-minimalistic-linear"
-            size="S"
+            size="sm"
             tooltip="Remove condition"
             onClick={onRemove}
           />
@@ -473,13 +473,13 @@ export function PopGroupRuleBuilder() {
                 <span className={styles.bracketActions}>
                   <ActionButton
                     icon="solar:link-broken-minimalistic-linear"
-                    size="S"
+                    size="sm"
                     tooltip="Ungroup — merge conditions into the parent"
                     onClick={() => setQuery(q => ungroupById(q, child.id))}
                   />
                   <ActionButton
                     icon="solar:trash-bin-minimalistic-linear"
-                    size="S"
+                    size="sm"
                     tooltip="Remove group and its conditions"
                     onClick={() => setQuery(q => removeRuleById(q, child.id))}
                   />
@@ -513,7 +513,7 @@ export function PopGroupRuleBuilder() {
   const canvas = (
     <div className={styles.canvas}>
       <div className={styles.ifChip}>
-        <Button variant="secondary" size="S" className={styles.ifButton}>IF</Button>
+        <Button variant="outline" size="sm" className={styles.ifButton}>IF</Button>
         <span className={styles.ifTail} />
       </div>
 
@@ -534,8 +534,8 @@ export function PopGroupRuleBuilder() {
 
       {countLeaves(query) === 0 && !isView && (
         <Button
-          variant="tertiary"
-          size="S"
+          variant="soft"
+          size="sm"
           leadingIcon="solar:add-circle-linear"
           className={styles.addConditionBtn}
           onClick={(e) => setPickerRect(e.currentTarget.getBoundingClientRect())}
@@ -559,13 +559,13 @@ export function PopGroupRuleBuilder() {
             <span className={styles.groupName}>{session.name}</span>
           </div>
           <div className={styles.subBarActions}>
-            <Button variant="secondary" size="L" onClick={handleCancel}>Cancel</Button>
+            <Button variant="outline" onClick={handleCancel}>Cancel</Button>
             {/* Drafts can save with incomplete conditions — the group parks
                 with a Draft badge; Next demands a fully valid rule. */}
-            <Button variant="secondary" size="L" disabled={countLeaves(query) === 0 || saving} onClick={() => handleSave('draft')}>
+            <Button variant="outline" disabled={countLeaves(query) === 0 || saving} onClick={() => handleSave('draft')}>
               Save as Draft
             </Button>
-            <Button variant="primary" size="L" disabled={!canSaveGroup || saving} onClick={() => handleSave('active')}>
+            <Button disabled={!canSaveGroup || saving} onClick={() => handleSave('active')}>
               {saving ? 'Saving…' : (mode === 'edit' ? 'Save' : 'Next')}
             </Button>
           </div>

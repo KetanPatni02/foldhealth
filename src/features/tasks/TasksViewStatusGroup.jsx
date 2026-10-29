@@ -24,7 +24,7 @@ export function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskC
         <div className={styles.groupActions}>
           <ActionButton
             icon="solar:add-circle-linear"
-            size="S"
+            size="sm"
             tooltip="Add task"
             tooltipLeft
             onClick={e => { e.stopPropagation(); onAddTask?.(status); }}
@@ -32,7 +32,7 @@ export function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskC
           <div style={{ width: 0.5, height: 16, background: 'var(--neutral-150)' }} />
           <ActionButton
             icon={collapsed ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-up-linear'}
-            size="S"
+            size="sm"
             tooltip={collapsed ? 'Expand' : 'Collapse'}
             tooltipLeft
             onClick={e => { e.stopPropagation(); setCollapsed(v => !v); }}
@@ -80,7 +80,7 @@ export function StatusGroupRows({ group, colCount, onToggle, onTaskClick, hideAs
             <div className={styles.groupActions}>
               <ActionButton
                 icon="solar:add-circle-linear"
-                size="S"
+                size="sm"
                 tooltip="Add task"
                 tooltipLeft
                 onClick={e => { e.stopPropagation(); onAddTask?.(status); }}
@@ -88,7 +88,7 @@ export function StatusGroupRows({ group, colCount, onToggle, onTaskClick, hideAs
               <div style={{ width: 0.5, height: 16, background: 'var(--neutral-150)' }} />
               <ActionButton
                 icon={collapsed ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-up-linear'}
-                size="S"
+                size="sm"
                 tooltip={collapsed ? 'Expand' : 'Collapse'}
                 tooltipLeft
                 onClick={e => { e.stopPropagation(); setCollapsed(v => !v); }}

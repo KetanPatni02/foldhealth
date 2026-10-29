@@ -161,7 +161,7 @@ function SignalRows({ signals, reviews, onRun, onReview }) {
             </span>
             <span className={styles.signalActions}>
               {review
-                ? <ActionButton icon="solar:restart-linear" size="S" tooltip="Mark not reviewed" onClick={() => onReview(s, false)} />
+                ? <ActionButton icon="solar:restart-linear" size="sm" tooltip="Mark not reviewed" onClick={() => onReview(s, false)} />
                 : <SignalActions signal={s} onRun={onRun} onReview={onReview} />}
             </span>
           </li>
@@ -209,7 +209,7 @@ function AiSummary({ state, sectionKey, sample, onRefresh }) {
           {fromUnity && (
             <span className={styles.aiMeta}>
               {generatedLabel(state.saved.generatedAt)}
-              <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh summary" onClick={onRefresh} />
+              <ActionButton icon="solar:refresh-linear" size="sm" tooltip="Refresh summary" onClick={onRefresh} />
             </span>
           )}
         </span>
@@ -329,7 +329,7 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
     const signalRows = list => <SignalRows signals={list} reviews={reviews} onRun={runAndClose} onReview={review} />;
     const primaryFor = (list) => {
       const lead = list.find(s => s.action && !reviews[s.id]);
-      return lead ? <Button size="S" onClick={() => runAndClose(lead)}>{lead.action.label}</Button> : null;
+      return lead ? <Button size="sm" onClick={() => runAndClose(lead)}>{lead.action.label}</Button> : null;
     };
     const kpiFromRow = (lbl, row, sub) => ({ label: lbl, value: row?.to ?? '0', delta: row?.delta, tone: row?.tone, sub });
     const byWidget = signalsByWidget(openSignals);
@@ -610,8 +610,8 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
       {/* Unity gradient fill until this user has opened the Recap; a gradient
           outline after, until something new comes in. */}
       <Button
-        variant="secondary"
-        size="S"
+        variant="outline"
+        size="sm"
         className={`${styles.pill} ${seen ? styles.pillSeen : styles.pillUnseen}`}
         leadingIconElement={<AiInsightIcon size={16} tint={seen ? undefined : 'var(--neutral-0)'} />}
         aria-label={`Recap${openSignals.length ? `, ${openSignals.length} open items` : ''}${seen ? '' : ', new'}`}
@@ -643,7 +643,7 @@ export function RecapButton({ patient, overview, attention, run, review, onOpenT
         )}
         steps={steps}
         footerStart={(
-          <Button variant="ghost" size="S" leadingIcon="solar:history-linear" onClick={() => { setOpen(false); onOpenTimeline(); }}>
+          <Button variant="ghost" size="sm" leadingIcon="solar:history-linear" onClick={() => { setOpen(false); onOpenTimeline(); }}>
             Open Timeline
           </Button>
         )}

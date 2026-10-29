@@ -895,7 +895,7 @@ function StepPreview({ data, onChange, embedDomains }) {
                 <Icon name="solar:link-round-linear" size={12} color="#D9A50B" />
                 <span style={{ color: 'var(--status-warning)' }}>External Content Provided by Your Org</span>
               </div>
-              <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh preview" onClick={refreshIframe} />
+              <ActionButton icon="solar:refresh-linear" size="sm" tooltip="Refresh preview" onClick={refreshIframe} />
             </div>
           </>
         )}
@@ -1084,7 +1084,7 @@ export function ComponentWizardDrawer() {
 
   const headerRight = (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <Button variant="primary" size="L" disabled={!canNext || saving} onClick={() => {
+      <Button disabled={!canNext || saving} onClick={() => {
         if (step < STEPS.length - 1) setStep(step + 1);
         else handleSave();
       }}>

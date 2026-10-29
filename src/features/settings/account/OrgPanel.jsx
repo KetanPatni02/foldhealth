@@ -207,8 +207,8 @@ export function OrgPanel() {
             <>
               <img src={logo} alt="Organization logo" className={styles.logoImg} />
               <Button
-                variant="secondary"
-                size="S"
+                variant="outline"
+                size="sm"
                 iconOnly
                 leadingIcon="solar:trash-bin-trash-linear"
                 className={styles.removeLogo}
@@ -340,8 +340,6 @@ export function OrgPanel() {
         <Button
           onClick={saveOrgData}
           disabled={saving}
-          variant="primary"
-          size="L"
           className={styles.saveButton}
         >
           {saving ? 'Saving…' : 'Save Changes'}

@@ -308,7 +308,7 @@ function CallContactAction({ contacts, onDial }) {
       <ActionButton
         ref={btnRef}
         icon="solar:phone-linear"
-        size="S"
+        size="sm"
         tooltip={callable.length === 1 ? `Call ${callable[0].name}` : 'Call'}
         tooltipLeft
         onClick={(e) => {

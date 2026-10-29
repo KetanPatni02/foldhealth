@@ -35,7 +35,7 @@ export default {
 
 const EXAMPLES = {
   'edit-form': {
-    trigger: <Button variant="primary">Open Dialog</Button>,
+    trigger: <Button>Open Dialog</Button>,
     title: 'Edit profile',
     description: 'Make changes to your profile here. Click save when done.',
     body: (
@@ -61,34 +61,34 @@ const EXAMPLES = {
     footer: (
       <>
         <DialogClose asChild>
-          <Button variant="secondary">Cancel</Button>
+          <Button variant="outline">Cancel</Button>
         </DialogClose>
-        <Button variant="primary">Save</Button>
+        <Button>Save</Button>
       </>
     ),
   },
   'info': {
-    trigger: <Button variant="secondary">What's new</Button>,
+    trigger: <Button variant="outline">What's new</Button>,
     title: "What's new in Fold",
     description: 'A round-up of the latest changes across the worklist and drawers.',
     body: null,
     footer: (
       <DialogClose asChild>
-        <Button variant="primary">Got it</Button>
+        <Button>Got it</Button>
       </DialogClose>
     ),
   },
   'confirm-destructive': {
-    trigger: <Button variant="danger">Discard changes</Button>,
+    trigger: <Button variant="soft" tone="danger">Discard changes</Button>,
     title: 'Discard unsaved changes?',
     description: 'You have unsaved edits. Closing now will drop them.',
     body: null,
     footer: (
       <>
         <DialogClose asChild>
-          <Button variant="secondary">Keep editing</Button>
+          <Button variant="outline">Keep editing</Button>
         </DialogClose>
-        <Button variant="danger">Discard</Button>
+        <Button variant="soft" tone="danger">Discard</Button>
       </>
     ),
   },

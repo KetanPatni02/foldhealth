@@ -427,7 +427,6 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
           <ActionButton
             ref={callBtnRef}
             icon="solar:phone-linear"
-            size="L"
             tooltip="Call patient"
             onClick={(e) => {
               e.stopPropagation();
@@ -437,14 +436,12 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
           <span className={styles.actionsDivider} />
           <ActionButton
             icon="solar:clipboard-add-linear"
-            size="L"
             tooltip="Add Care Gaps"
             onClick={(e) => { e.stopPropagation(); openAddCareGaps(member); }}
           />
           <span className={styles.actionsDivider} />
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="L"
             tooltip="More"
             onClick={e => { e.stopPropagation(); showToast('More actions — coming soon'); }}
           />

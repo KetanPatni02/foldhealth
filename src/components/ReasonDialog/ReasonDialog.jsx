@@ -23,7 +23,8 @@ import styles from './ReasonDialog.module.css';
  * @param {'pass'|'fail'} props.decision   – Which action triggered the dialog
  * @param {string[]} props.standardReasons – Per-check list of canonical reasons
  * @param {string}   props.confirmLabel     – Overrides the decision's label
- * @param {string}   props.confirmVariant   – Overrides the decision's button variant
+ * @param {'primary'|'danger'} props.confirmTone – Overrides the decision's button tone
+ *   (fail defaults to danger, pass to primary)
  * @param {boolean}  props.confirmDisabled  – A gate the caller owns, on top of
  *   the reason being filled in (e.g. one of `children` is invalid)
  * @param {boolean}  props.notes            – Set false where a canonical reason
@@ -44,7 +45,7 @@ export function ReasonDialog({
   decision = 'fail',
   standardReasons = [],
   confirmLabel,
-  confirmVariant,
+  confirmTone,
   confirmDisabled = false,
   notes = true,
   notesPlaceholder,
@@ -123,11 +124,11 @@ export function ReasonDialog({
           {childrenBelow && children}
 
           <div className={styles.footer}>
-            <Button variant="secondary" size="L" fullWidth onClick={onCancel}>Cancel</Button>
+            <Button variant="outline" fullWidth onClick={onCancel}>Cancel</Button>
             <Button
               fullWidth
-              variant={confirmVariant || (decision === 'fail' ? 'danger' : 'primary')}
-              size="L"
+              variant={(confirmTone || (decision === 'fail' ? 'danger' : 'primary')) === 'danger' ? 'soft' : 'solid'}
+              tone={confirmTone || (decision === 'fail' ? 'danger' : 'primary')}
               disabled={!valid}
               onClick={submit}
             >

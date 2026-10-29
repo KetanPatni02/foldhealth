@@ -88,18 +88,17 @@ function NotesToolbar({ view, onView, onSearch, onNewNote, filtersOpen, onToggle
         onChange={onView}
         leading={(
           <>
-            <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" aria-label="Search notes" onClick={onSearch} />
+            <ActionButton icon="solar:magnifer-linear" tooltip="Search" aria-label="Search notes" onClick={onSearch} />
             <span className={styles.divider} aria-hidden="true" />
           </>
         )}
       />
-      <Button variant="tertiary" size="L" leadingIcon="solar:add-circle-linear" onClick={onNewNote}>
+      <Button variant="soft" leadingIcon="solar:add-circle-linear" onClick={onNewNote}>
         New Note
       </Button>
       <span className={styles.divider} aria-hidden="true" />
       <ActionButton
         icon="custom:filter"
-        size="L"
         tooltip="Filters"
         tooltipLeft
         aria-label="Filters"

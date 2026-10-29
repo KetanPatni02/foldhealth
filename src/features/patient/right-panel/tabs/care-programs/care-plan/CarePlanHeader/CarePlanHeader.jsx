@@ -293,7 +293,6 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
               {/* Same filter glyph and active tint as the worklist toolbar. */}
               <ActionButton
                 icon="custom:filter"
-                size="L"
                 tooltip="Filter"
                 className={carePlanFiltersOpen ? styles.iconActive : ''}
                 onClick={toggleCarePlanFiltersOpen}
@@ -304,8 +303,7 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
               {/* Templates moved to the plan's chip row, next to the
                   applied templates it manages. */}
               <Button
-                variant="secondary"
-                size="L"
+                variant="outline"
                 leadingIcon="solar:eye-linear"
                 aria-pressed={carePlanShareRequest === 'preview'}
                 onClick={() => requestCarePlanShare('preview')}
@@ -314,8 +312,6 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
               </Button>
               <span className={styles.headerDivider} aria-hidden="true" />
               <Button
-                variant="primary"
-                size="M"
                 leadingIcon="solar:pen-2-linear"
                 disabled={!signShareEnabled || !!viewedVersion}
                 onClick={signCarePlanDirect}
@@ -347,7 +343,6 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
               <span className={styles.headerDivider} aria-hidden="true" />
               <ActionButton
                 icon="solar:menu-dots-linear"
-                size="L"
                 tooltip="More"
                 onClick={(e) => setCarePlanMoreMenu({ rect: e.currentTarget.getBoundingClientRect() })}
               />

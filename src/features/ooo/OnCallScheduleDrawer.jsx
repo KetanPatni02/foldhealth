@@ -72,7 +72,7 @@ export function OnCallScheduleDrawer({ preset, oooRecordId, excludeUser, onClose
       noCloseDivider
       headerRight={(
         <>
-          <Button variant="primary" size="L" disabled={!ready || saving} onClick={create}>{saving ? 'Creating…' : 'Create'}</Button>
+          <Button disabled={!ready || saving} onClick={create}>{saving ? 'Creating…' : 'Create'}</Button>
           <span className={styles.headerDivider} aria-hidden="true" />
         </>
       )}
@@ -88,7 +88,7 @@ export function OnCallScheduleDrawer({ preset, oooRecordId, excludeUser, onClose
             {i > 0 && (
               <div className={styles.scheduleBlockHead}>
                 <span className={styles.groupTitle}>Schedule {i + 1}</span>
-                <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Remove Schedule" tooltipLeft onClick={() => setBlocks(bs => bs.filter(x => x.key !== b.key))} />
+                <ActionButton icon="solar:trash-bin-minimalistic-linear" tooltip="Remove Schedule" tooltipLeft onClick={() => setBlocks(bs => bs.filter(x => x.key !== b.key))} />
               </div>
             )}
             <Input label="Schedule Name" placeholder="Enter a Schedule Name" value={b.name} maxLength={80} onChange={(e) => edit(b.key, { name: e.target.value })} />

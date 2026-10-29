@@ -92,7 +92,7 @@ export function SectionTitleBar({
   // button. Pass `rightExtras` for anything more complex (Toggle, menus).
   primaryActionLabel,
   primaryActionIcon = 'solar:add-circle-linear',
-  primaryActionVariant = 'secondary',
+  primaryActionVariant = 'outline',
   primaryActionDisabled = false,
   onPrimaryAction,
 
@@ -162,8 +162,7 @@ export function SectionTitleBar({
         {hasAction('savedFilters') && (
           <>
             <Button
-              variant="secondary"
-              size="L"
+              variant="outline"
               trailingIconElement={<DownChevronIcon />}
               onClick={onSavedFilters}
               className={savedFiltersActive ? styles.savedFiltersActive : ''}
@@ -206,7 +205,6 @@ export function SectionTitleBar({
           <>
             <ActionButton
               icon="custom:filter"
-              size="L"
               tooltip="Filter"
               tooltipBelow
               notification={typeof filterBadgeCount === 'number' && filterBadgeCount > 0}
@@ -222,7 +220,6 @@ export function SectionTitleBar({
           <>
             <ActionButton
               icon="solar:download-minimalistic-linear"
-              size="L"
               tooltip="Download"
               tooltipBelow
               onClick={onDownload}
@@ -234,8 +231,6 @@ export function SectionTitleBar({
         {hasAction('upload') && (
           <>
             <Button
-              variant="primary"
-              size="L"
               leadingIcon="solar:upload-minimalistic-linear"
               trailingIcon={uploadHasDropdown ? 'solar:alt-arrow-down-linear' : undefined}
               onClick={onUpload}
@@ -249,7 +244,6 @@ export function SectionTitleBar({
         {hasAction('history') && (
           <ActionButton
             icon="solar:history-linear"
-            size="L"
             tooltip="History"
             tooltipBelow
             onClick={onHistory}
@@ -259,7 +253,6 @@ export function SectionTitleBar({
         {primaryActionLabel && (
           <Button
             variant={primaryActionVariant}
-            size="L"
             leadingIcon={primaryActionIcon || undefined}
             disabled={primaryActionDisabled}
             onClick={onPrimaryAction}

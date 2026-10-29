@@ -644,8 +644,8 @@ export function CcmTimerWidget({ patient }) {
             This permanently removes <strong>{secondsToTime(elapsed)}</strong> of unlogged time. This can&apos;t be undone.
           </p>
           <div className={styles.confirmActions}>
-            <Button variant="secondary" size="L" onClick={() => setConfirmReset(false)}>Cancel</Button>
-            <Button variant="danger" size="L" onClick={discard}>Discard</Button>
+            <Button variant="outline" onClick={() => setConfirmReset(false)}>Cancel</Button>
+            <Button variant="soft" tone="danger" onClick={discard}>Discard</Button>
           </div>
         </div>
       );
@@ -667,8 +667,8 @@ export function CcmTimerWidget({ patient }) {
             rows={3}
           />
           <div className={styles.formActions}>
-            <Button variant="secondary" size="S" onClick={cancelLog} disabled={saving}>Cancel</Button>
-            <Button variant="primary" size="S" onClick={persist} disabled={saving || elapsed === 0 || !consentGate.allowed}>
+            <Button variant="outline" size="sm" onClick={cancelLog} disabled={saving}>Cancel</Button>
+            <Button size="sm" onClick={persist} disabled={saving || elapsed === 0 || !consentGate.allowed}>
               {saving ? 'Saving…' : 'Save'}
             </Button>
           </div>
@@ -693,23 +693,23 @@ export function CcmTimerWidget({ patient }) {
           )}
         </div>
         <div className={styles.cardActions}>
-          {isIdle && <Button variant="alt" size="L" onClick={start}>Start Timer</Button>}
+          {isIdle && <Button variant="outline" tone="primary" onClick={start}>Start Timer</Button>}
           {isRunning && (
             <>
-              <Button variant="secondary" size="L" onClick={pause}>Pause</Button>
-              <Button variant="danger" size="L" onClick={openLog}>Stop &amp; Log</Button>
+              <Button variant="outline" onClick={pause}>Pause</Button>
+              <Button variant="soft" tone="danger" onClick={openLog}>Stop &amp; Log</Button>
             </>
           )}
           {isPaused && (
             <>
-              <Button variant="success" size="L" onClick={resume}>Resume</Button>
-              <Button variant="danger" size="L" onClick={openLog}>Stop &amp; Log</Button>
+              <Button variant="soft" tone="success" onClick={resume}>Resume</Button>
+              <Button variant="soft" tone="danger" onClick={openLog}>Stop &amp; Log</Button>
             </>
           )}
           {isStopped && (
             <>
-              <Button variant="success" size="L" onClick={resume}>Resume</Button>
-              <Button variant="primary" size="L" onClick={openLog}>Log Time</Button>
+              <Button variant="soft" tone="success" onClick={resume}>Resume</Button>
+              <Button onClick={openLog}>Log Time</Button>
             </>
           )}
         </div>
@@ -728,11 +728,11 @@ export function CcmTimerWidget({ patient }) {
           <span className={styles.cardName}>{name}</span>
           {patient?.memberId != null && <span className={styles.cardId}>{formatFoldId(patient.memberId)}</span>}
         </span>
-        <ActionButton icon="solar:history-linear" size="S" tooltip="Time Log" />
+        <ActionButton icon="solar:history-linear" size="sm" tooltip="Time Log" />
         <span className={styles.headDivider} aria-hidden="true" />
         <ActionButton
           icon="solar:minimize-square-linear"
-          size="S"
+          size="sm"
           tooltip="Collapse"
           tooltipLeft
           onClick={() => { setExpanded(false); setConfirmReset(false); if (isClassifying) cancelLog(); }}

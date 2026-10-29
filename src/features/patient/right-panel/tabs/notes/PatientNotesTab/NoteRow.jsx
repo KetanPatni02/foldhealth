@@ -34,7 +34,7 @@ function LinkedTasksButton({ tasks, onOpenTask }) {
     >
       <ActionButton
         icon="solar:link-linear"
-        size="S"
+        size="sm"
         count={String(tasks.length)}
         aria-label={`Open linked task${tasks.length > 1 ? 's' : ''}`}
         onClick={(e) => { e.stopPropagation(); onOpenTask(tasks[0]); }}
@@ -79,7 +79,7 @@ function NoteActions({ note }) {
         <ActionButton
           ref={menuBtnRef}
           icon="solar:menu-dots-linear"
-          size="S"
+          size="sm"
           tooltip="Note actions"
           tooltipLeft
           onClick={() => setMenuOpen(v => !v)}

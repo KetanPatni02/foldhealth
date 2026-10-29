@@ -74,7 +74,7 @@ export function LinkGoalToBarrierDrawer({ goals, onClose, onLink, title }) {
       noCloseDivider
       headerRight={
         <>
-          <Button variant="primary" size="M" disabled={!canLink} onClick={handleLink}>
+          <Button disabled={!canLink} onClick={handleLink}>
             Link
           </Button>
           <span className={styles.headerDivider} aria-hidden />

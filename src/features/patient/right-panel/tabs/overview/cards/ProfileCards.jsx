@@ -198,7 +198,7 @@ export function MedicationsCard({ patientId }) {
       count={active || null}
       actions={(
         <CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}>
-          <ActionButton size="S" icon="solar:add-linear" tooltip="Add medication" tooltipLeft onClick={() => setDrawer('add')} />
+          <ActionButton size="sm" icon="solar:add-linear" tooltip="Add medication" tooltipLeft onClick={() => setDrawer('add')} />
         </CardHeaderActions>
       )}
     >
@@ -239,7 +239,7 @@ export function MedicationsCard({ patientId }) {
         )}
         {stopped > 0 && (
           <div className={styles.medDiscontinued}>
-            <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-right-linear" onClick={() => setDrawer('stopped')}>
+            <Button variant="ghost" size="sm" trailingIcon="solar:alt-arrow-right-linear" onClick={() => setDrawer('stopped')}>
               Discontinued ({stopped})
             </Button>
           </div>

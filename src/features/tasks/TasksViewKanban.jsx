@@ -208,7 +208,7 @@ function DroppableKanbanColumn({ groupKey, label, tasks, onToggle, onTaskClick }
         <div className={styles.kanbanColumnActions}>
           <span className={styles.kanbanSort}>Due Date</span>
           <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
-          <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add task" />
+          <ActionButton icon="solar:add-circle-linear" size="sm" tooltip="Add task" />
         </div>
       </div>
       <div

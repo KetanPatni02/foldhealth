@@ -316,7 +316,7 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
             <div className={styles.callFoot}>
               <span className={styles.muted}>Saving logs this call as one action across all gaps (counts as 1 outreach).</span>
               {!onLockAction && (
-                <Button variant="primary" size="L" disabled={!allAnswered} onClick={handleLock}>
+                <Button disabled={!allAnswered} onClick={handleLock}>
                   Save
                 </Button>
               )}

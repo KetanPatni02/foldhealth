@@ -190,8 +190,7 @@ export function ReviewItemRow({
                 ))}
               </div>
               <Button
-                variant="primary"
-                size="S"
+                size="sm"
                 disabled={!canSave}
                 onClick={async () => {
                   setSaving(true);

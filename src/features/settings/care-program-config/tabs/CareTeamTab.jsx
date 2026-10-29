@@ -42,8 +42,7 @@ export function CareTeamTab({ draft, patch }) {
           <p className={styles.cardHint}>Map each role to a care team (Settings &gt; Member/Leads &gt; Care Team), a default assignee for new enrollments, and the steps that role owns.</p>
         </div>
         <Button
-          variant="secondary"
-          size="M"
+          variant="outline"
           leadingIcon="solar:add-circle-linear"
           disabled={usedRoles.size >= CARE_TEAM_ROLES.length}
           onClick={() => patch({ careTeam: [...rows, { id: newId('ct'), role: CARE_TEAM_ROLES.find(r => !usedRoles.has(r)), teamId: null, defaultAssigneeId: null, stepIds: [] }] })}
@@ -81,7 +80,7 @@ export function CareTeamTab({ draft, patch }) {
             value={r.stepIds}
             onChange={stepIds => update(r.id, { stepIds })}
           />
-          <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove role" onClick={() => patch({ careTeam: rows.filter(x => x.id !== r.id) })} />
+          <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Remove role" onClick={() => patch({ careTeam: rows.filter(x => x.id !== r.id) })} />
         </div>
       ))}
     </section>

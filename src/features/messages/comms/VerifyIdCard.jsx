@@ -97,8 +97,8 @@ function VerifySettings({ value: v, onChange }) {
 function SettingsActions({ draft, onSave, onDiscard }) {
   return (
     <div className={styles.actions}>
-      <Button variant="secondary" size="S" onClick={onDiscard}>Discard</Button>
-      <Button variant="primary" size="S" disabled={!draft.methods.length} onClick={onSave}>Save</Button>
+      <Button variant="outline" size="sm" onClick={onDiscard}>Discard</Button>
+      <Button size="sm" disabled={!draft.methods.length} onClick={onSave}>Save</Button>
     </div>
   );
 }

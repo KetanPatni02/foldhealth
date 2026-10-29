@@ -20,10 +20,10 @@ export function PriorityField({ name, value, onChange }) {
 export function DraftSubmitActions({ submitLabel, onDraft, onSubmit, saving, draftReason, submitReason }) {
   return (
     <>
-      <Button variant="secondary" size="L" disabled={saving || !!draftReason} disabledReason={draftReason} onClick={onDraft}>
+      <Button variant="outline" disabled={saving || !!draftReason} disabledReason={draftReason} onClick={onDraft}>
         Save as Draft
       </Button>
-      <Button variant="primary" size="L" disabled={saving || !!submitReason} disabledReason={submitReason} onClick={onSubmit}>
+      <Button disabled={saving || !!submitReason} disabledReason={submitReason} onClick={onSubmit}>
         {submitLabel}
       </Button>
       <span className={styles.headerDivider} aria-hidden="true" />

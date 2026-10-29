@@ -56,8 +56,8 @@ export function DismissReasonForm({ initialReason = '', initialNote = '', onCanc
       <div className={styles.noteLabel}>Note</div>
       <Textarea rows={3} placeholder="Add a Note" value={note} onChange={(e) => setNote(e.target.value)} />
       <div className={styles.dismissActions}>
-        <Button variant="primary" size="S" disabled={!reason} onClick={() => onConfirm(reason, note)}>Confirm</Button>
-        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+        <Button size="sm" disabled={!reason} onClick={() => onConfirm(reason, note)}>Confirm</Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   );
