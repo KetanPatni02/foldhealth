@@ -136,6 +136,7 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
   // details at the Notes section, ready to type (the review row's note icon).
   const [tab, setTab] = useState(initialTab === 'notes' ? 'details' : initialTab || 'details');
   const notesRef = useRef(null);
+  const [addingBarrier, setAddingBarrier] = useState(false);
   useEffect(() => {
     if (initialTab !== 'notes' || !notesRef.current) return;
     notesRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -272,8 +273,14 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
       </section>
 
       <section className={styles.detailSection}>
-        <div className={styles.subTitle}>Barriers &amp; Interventions ({med.measure})</div>
-        <DrugBarriers member={member} code={med.measure} medId={med.id} />
+        <div className={styles.subTitleRow}>
+          <span className={styles.subTitle}>Barriers &amp; Interventions ({med.measure})</span>
+          {/* Discontinued drugs are off the record, so nothing to add. */}
+          {med.status !== 'Discontinued' && (
+            <ActionButton icon="solar:add-circle-linear" size="sm" tooltip="Add barrier or intervention" tooltipLeft active={addingBarrier} onClick={() => setAddingBarrier(v => !v)} />
+          )}
+        </div>
+        <DrugBarriers member={member} code={med.measure} medId={med.id} adding={addingBarrier} onAddDone={() => setAddingBarrier(false)} />
       </section>
 
       </>}

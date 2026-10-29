@@ -1,7 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { detachSaved, hydrateListFilters } from '../lib/worklistListFilters';
 import { applyPendingPickup, applyPickup, applyRecentFill, recomputeMeasure, withManualRecentFill } from '../../features/pharmacy-worklist/fillEvents';
-import { planAutoAssignment } from '../../features/pharmacy-worklist/pharmacyRules';
 import { OUTREACH_TONE_COLOR, addDaysMdy, callMatchesLog, enrichPharmacyMember, latestBarrierRecord, measureStatus, medLabel, outreachTone, parseMdy, reconcileMeasure, setPlanTimers, sortMeasures, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
 
 function rowToMember(r) {
@@ -374,24 +373,6 @@ export function createPharmacyWorklistSlice(set, get) {
       update(id, m => ({ ...m, comments: (m.comments || []).filter(c => c.id !== commentId) }), ['comments'], {
         t: 'comment', title: 'Comment deleted',
       });
-    },
-
-    // Patient-level auto-assignment by IPA, then health plan, from the PHARM
-    // care teams (see planAutoAssignment). Returns how many were assigned.
-    autoAssignPharmacy: () => {
-      const members = get().pharmacyWorklistMembers.map(m => enrichPharmacyMember(m));
-      const plan = planAutoAssignment(members, get().hccCareTeams, get().platformUsers);
-      for (const p of plan) {
-        update(p.memberId, m => ({
-          ...m,
-          assigneeId: p.user.id,
-          assigneeName: p.user.name,
-          assigneeInitials: p.user.initials,
-        }), ['assignee_id', 'assignee_name', 'assignee_initials'], {
-          t: 'assignee_change', title: 'Auto-assigned', note: `Unassigned → ${p.user.name} (${p.rule})`,
-        });
-      }
-      return plan.length;
     },
 
     // Medication Review edits (status, SIG, condition, non-adherence reason,
