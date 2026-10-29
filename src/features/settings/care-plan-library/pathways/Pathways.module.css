@@ -1,0 +1,50 @@
+/* Fold Pathway Library: the read-only pathway drawer. */
+
+.headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+
+.body { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.card {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-4); background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.cardTitle { margin: 0; font-size: var(--font-md); font-weight: 500; color: var(--neutral-500); }
+.summary { margin: 0; font-size: var(--font-base); line-height: var(--leading-normal); color: var(--neutral-400); }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.label { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300); }
+.sources { margin: 0; padding-left: var(--space-4); list-style: disc; font-size: var(--font-base); line-height: var(--leading-normal); color: var(--neutral-400); }
+
+.group { display: flex; flex-direction: column; gap: var(--space-2); }
+.groupTitle { margin: 0; font-size: var(--font-md); font-weight: 500; color: var(--neutral-500); }
+.groupHint { margin: 0; font-size: var(--font-sm); line-height: var(--leading-normal); color: var(--neutral-300); }
+
+.section { display: flex; flex-direction: column; border: 0.5px solid var(--neutral-150); border-radius: 8px; overflow: hidden; background: var(--neutral-0); }
+.sectionHead {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4); background: var(--neutral-50); border-bottom: 0.5px solid var(--neutral-150);
+}
+.sectionTitle { flex: 1; min-width: 0; font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.sectionCount { font-weight: 400; color: var(--neutral-300); margin-left: var(--space-1); }
+
+.item {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4); border-bottom: 0.5px solid var(--neutral-100);
+}
+.item:last-child { border-bottom: 0; }
+.itemText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); }
+.itemTitle { font-size: var(--font-base); font-weight: 500; line-height: var(--leading-tight); color: var(--neutral-400); }
+.itemDetail { font-size: var(--font-sm); line-height: var(--leading-normal); color: var(--neutral-300); }
+.itemSource { font-size: var(--font-sm); line-height: var(--leading-tight); color: var(--neutral-200); }
+.itemBadges { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+
+.adaptedList { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.adaptedRow {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-2) 0; border-bottom: 0.5px solid var(--neutral-100);
+}
+.adaptedRow:last-child { border-bottom: 0; }
+.adaptedName {
+  padding: 0; border: 0; background: none; cursor: pointer; text-align: left;
+  font-size: var(--font-base); font-weight: 500; color: var(--primary-300);
+}
