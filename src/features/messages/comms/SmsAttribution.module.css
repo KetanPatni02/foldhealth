@@ -127,6 +127,8 @@
   line-height: 1.2;
 }
 
+.memberArrow { flex-shrink: 0; }
+
 .memberName {
   font-size: var(--font-base);
   color: var(--neutral-400);
@@ -180,7 +182,9 @@
   align-items: flex-start;
   gap: var(--space-1);
   width: 100%;
-  padding: var(--space-1) var(--space-2);
+  min-height: 2rem;
+  /* A single line sits centred in the 32px row; longer ones grow evenly. */
+  padding: 0.4375rem var(--space-2);
   border: 0.5px solid transparent;
   border-radius: 0.25rem;
   background: transparent;

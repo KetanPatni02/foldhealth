@@ -61,6 +61,9 @@ const VARIANT_DEFAULTS = {
  *   answer depends on), shown above the checkbox and buttons. Pairs with
  *   align="start".
  * @param {string}   [props.className] – Extra class on the dialog box.
+ * @param {boolean}  [props.heroIcon=false] – Centred layout only: shows the icon
+ *   large, in a ringed circle, with the close (X) in the top-right corner
+ *   (Figma consent dialogs, 29:7133).
  */
 export function ConfirmDialog({
   variant = 'warning',
@@ -81,6 +84,7 @@ export function ConfirmDialog({
   className,
   onClose,
   children,
+  heroIcon = false,
 }) {
   const preset = VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.warning;
   const resolvedIcon = icon ?? preset.icon;
@@ -92,11 +96,11 @@ export function ConfirmDialog({
   const Description = inline ? 'p' : AlertDialogDescription;
   const start = align === 'start';
   const boxClass = [
-    start ? 'flex flex-col items-stretch gap-6 p-5 max-w-[400px]' : 'flex flex-col items-center gap-4 p-5 max-w-[340px]',
+    start ? 'flex flex-col items-stretch gap-6 p-5 max-w-[400px]' : `flex flex-col items-center gap-4 p-5 ${heroIcon ? 'max-w-[350px]' : 'max-w-[340px]'}`,
     className,
   ].filter(Boolean).join(' ');
 
-  const iconEl = resolvedIcon === false ? null : <Icon name={resolvedIcon} size={24} color={resolvedIconColor} />;
+  const iconEl = resolvedIcon === false ? null : <Icon name={resolvedIcon} size={heroIcon ? 32 : 24} color={resolvedIconColor} />;
   const closeEl = onClose && (
     <button type="button" aria-label="Close" onClick={onClose} className="ml-auto flex p-0.5 border-0 bg-transparent cursor-pointer text-[var(--neutral-300)] hover:text-[var(--neutral-400)]">
       <Icon name="solar:close-linear" size={16} />
@@ -149,7 +153,14 @@ export function ConfirmDialog({
     </>
   ) : (
     <>
-      <div className="flex items-center justify-center w-6 h-6 shrink-0">{iconEl}</div>
+      {heroIcon && onClose && <div className="absolute top-4 right-4">{closeEl}</div>}
+      {heroIcon ? (
+        <div className="flex items-center justify-center w-24 h-24 shrink-0 rounded-full border border-[var(--neutral-100)]">
+          <div className="flex items-center justify-center w-[76px] h-[76px] rounded-full bg-[var(--neutral-50)] border border-[var(--neutral-100)]">{iconEl}</div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center w-6 h-6 shrink-0">{iconEl}</div>
+      )}
       <AlertDialogHeader className="items-center text-center sm:text-center gap-1">
         {titleEl}
         {descriptionEl}

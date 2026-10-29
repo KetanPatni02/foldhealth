@@ -57,26 +57,26 @@ describe('canContact', () => {
     expect(canContact([], prefs, 'call', { value: '279-878-3271', today })).toEqual({ allowed: false, reason: '279-878-3271 is marked invalid' });
   });
 
-  it('needs TCPA consent for texts and autodialed calls', () => {
-    expect(canContact([], prefs, 'sms', { today }).reason).toBe('No consent on file for TCPA');
+  it('needs the channel consent given for texts and autodialed calls', () => {
+    expect(canContact([], prefs, 'sms', { today }).reason).toBe('No consent on file for text messages');
     expect(canContact([], prefs, 'call', { automated: true, today }).allowed).toBe(false);
-    const tcpa = [rec('channel', 'tcpa', 'given', '2026-03-01T00:00:00Z', { method: 'e_sign' })];
-    expect(canContact(tcpa, prefs, 'sms', { today }).allowed).toBe(true);
+    const sms = [rec('channel', 'sms', 'given', '2026-03-01T00:00:00Z')];
+    expect(canContact(sms, prefs, 'sms', { today }).allowed).toBe(true);
   });
 });
 
 describe('validateCapture', () => {
-  it('needs a witness for verbal and an artifact for written or e-signed consent', () => {
-    expect(validateCapture({ scopeType: 'program', scope: 'CCM', status: 'given', method: 'verbal' })).toBe('Verbal consent needs a witness');
-    expect(validateCapture({ scopeType: 'program', scope: 'CCM', status: 'given', method: 'verbal', witness: 'Dana Lee' })).toBeNull();
+  it('needs an artifact for written or e-signed consent, nothing more for verbal', () => {
+    expect(validateCapture({ scopeType: 'program', scope: 'CCM', status: 'given', method: 'verbal' })).toBeNull();
     expect(validateCapture({ scopeType: 'program', scope: 'CCM', status: 'given', method: 'e_sign' })).toBe('Attach the signature or signed document');
     expect(validateCapture({ scopeType: 'program', scope: 'CCM', status: 'given', method: 'e_sign', artifactPath: 'p1/x.png' })).toBeNull();
   });
 
-  it('rejects verbal TCPA consent and unknown scopes; declines need no method', () => {
-    expect(methodsFor('channel', 'tcpa')).toEqual(['written', 'e_sign']);
-    expect(validateCapture({ scopeType: 'channel', scope: 'tcpa', status: 'given', method: 'verbal', witness: 'Dana Lee' })).toBe('This consent needs a written or e-signed record');
+  it('rejects unknown scopes, including TCPA; declines need no method', () => {
+    expect(validateCapture({ scopeType: 'channel', scope: 'tcpa', status: 'given', method: 'e_sign', artifactPath: 'p1/x.png' })).toBe('Unknown consent scope');
     expect(validateCapture({ scopeType: 'program', scope: 'AWV', status: 'given', method: 'verbal' })).toBe('Unknown consent scope');
+    expect(methodsFor('other', 'data_sharing')).toEqual(['e_sign']);
+    expect(validateCapture({ scopeType: 'other', scope: 'data_sharing', status: 'given', method: 'e_sign', artifactPath: 'p1/x.svg' })).toBeNull();
     expect(validateCapture({ scopeType: 'channel', scope: 'sms', status: 'declined' })).toBeNull();
   });
 });
@@ -89,10 +89,19 @@ describe('consent summary', () => {
     { code: 'AWV', status: 'Active' },
   ];
 
-  it('counts only open billable enrollments', () => {
+  it('requires consent only for open billable enrollments', () => {
     expect(requiredConsentScopes(programs)).toEqual(['CCM', 'APCM']);
-    const history = [rec('program', 'CCM', 'given', '2026-02-01T00:00:00Z')];
-    expect(consentSummary(history, programs, today)).toEqual({ given: 1, total: 2, byScope: { CCM: 'given', APCM: 'missing' } });
+  });
+
+  it('counts every program consent, enrolled or not', () => {
+    const history = [
+      rec('program', 'CCM', 'given', '2026-02-01T00:00:00Z'),
+      rec('program', 'BHI', 'withdrawn', '2026-03-01T00:00:00Z'),
+      rec('channel', 'sms', 'given', '2026-03-01T00:00:00Z'),
+    ];
+    expect(consentSummary(history, today)).toEqual({
+      given: 1, total: 4, byScope: { CCM: 'given', APCM: 'missing', RPM: 'missing', BHI: 'withdrawn' },
+    });
   });
 });
 

@@ -49,6 +49,7 @@ function formatBytes(n) {
  * @param {boolean} [props.flush]          – no padding: `children` lay out the bubble's sections themselves
  * @param {'patient'|'provider'} [props.avatarVariant='patient'] – the sender's avatar colour (provider: an outside org)
  * @param {'staff'|'patient'} [props.selfAvatarVariant='staff'] – the avatar colour on 'right' (patient on the patient's own page)
+ * @param {string} [props.avatarIcon] – Solar icon in place of initials on 'left' (e.g. an unknown sender)
  * @param {(bucket: string, path: string, expiresIn: number) => Promise<string>} [props.signUrl]
  *   – signs a private attachment URL; defaults to the signed-in session (see lib/storageUrl.js)
  */
@@ -70,6 +71,7 @@ export function ChatBubble({
   flush = false,
   avatarVariant = 'patient',
   selfAvatarVariant = 'staff',
+  avatarIcon,
   signUrl,
 }) {
   const menuRef = useRef(null);
@@ -192,7 +194,9 @@ export function ChatBubble({
     <div className={[styles.wrap, right ? styles.wrapRight : '', call ? styles.wrapCall : ''].join(' ')}>
       {!right && (
         <span className={styles.avatarCol}>
-          {!compact && <AvatarBase variant={avatarVariant} size="XS" initials={initials} />}
+          {!compact && (avatarIcon
+            ? <AvatarBase variant={avatarVariant} size="XS" type="icon" iconName={avatarIcon} />
+            : <AvatarBase variant={avatarVariant} size="XS" initials={initials} />)}
         </span>
       )}
       <div className={styles.col}>

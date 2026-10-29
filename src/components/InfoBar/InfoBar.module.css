@@ -23,6 +23,11 @@
   color: var(--neutral-400);
 }
 
+.action {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .close {
   display: inline-flex;
   flex-shrink: 0;

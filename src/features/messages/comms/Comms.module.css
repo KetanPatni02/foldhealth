@@ -209,6 +209,7 @@
   flex-direction: column;
   margin: 0 calc(var(--space-2) * -1);
   padding: var(--space-2);
+  border: 1px solid var(--primary-300);
   border-radius: 0.5rem;
   background: var(--primary-50);
 }
@@ -287,10 +288,19 @@
   flex-shrink: 0;
 }
 
-/* Rest-of-today session banners, just above the type box. */
+/* Rest-of-today session banners, full width just above the type box. */
 .sessionBars {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: 0 var(--space-4) var(--space-2);
 }
+
+/* Edge to edge, straight above the type box. */
+.sessionBars .sessionBar {
+  border-radius: 0;
+  padding: var(--space-2) var(--space-4);
+}
+
+/* The thread keeps room for its header actions and sticky note, even with
+   Quick View docked beside it (604px, as laid out with the channels menu
+   folded). */
+.threadPanel { min-width: 37.75rem; }

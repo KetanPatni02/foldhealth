@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { Input } from '../../../components/Input/Input';
+import { QuickViewPanel } from '../../../components/QuickViewDrawer/QuickViewDrawer';
 import { CommsListPanel } from './CommsListPanel';
 import { CommsThread } from './CommsThread';
 import { PatientEmailThread } from './PatientEmailThread';
@@ -37,6 +38,33 @@ export function CommsWorkspace({
   const selected = list.find(c => c.id === selectedId && !!c.archived === !!v.archived) || null;
   const smsInView = SMS_VIA_GATEWAY && (view === 'sms' || view === 'all');
 
+  // A member's profile docked beside the thread (P360 Revamp 1060:273126).
+  // Opening it folds the channels menu to its icons for room; closing puts
+  // the menu back the way it was. A different thread closes it.
+  const [profile, setProfile] = useState(null);
+  const [navWasOpen, setNavWasOpen] = useState(false);
+  const [profileThread, setProfileThread] = useState(selected?.id ?? null);
+  const closeProfile = () => {
+    setProfile(null);
+    if (navWasOpen && navCollapsed) onToggleNav?.();
+    setNavWasOpen(false);
+  };
+  const openProfile = (p) => {
+    if (!profile) setNavWasOpen(!navCollapsed);
+    if (!navCollapsed) onToggleNav?.();
+    setProfile(p);
+  };
+  if ((selected?.id ?? null) !== profileThread) {
+    setProfileThread(selected?.id ?? null);
+    if (profile) { setProfile(null); setNavWasOpen(false); }
+  }
+  // Expanding the channels menu again hands the room back: Quick View closes.
+  const [navWasCollapsed, setNavWasCollapsed] = useState(navCollapsed);
+  if (navCollapsed !== navWasCollapsed) {
+    setNavWasCollapsed(navCollapsed);
+    if (!navCollapsed && profile) { setProfile(null); setNavWasOpen(false); }
+  }
+
   useEffect(() => {
     if (!smsInView) return undefined;
     let stopped = false;
@@ -68,7 +96,7 @@ export function CommsWorkspace({
         selected.channel === 'email' ? (
           <PatientEmailThread key={selected.id} conversation={selected} patient={patientFor(selected, patients)} me={me} onCompose={onCompose} />
         ) : (
-          <CommsThread key={selected.id} conversation={selected} patient={patientFor(selected, patients)} me={me} />
+          <CommsThread key={selected.id} conversation={selected} patient={patientFor(selected, patients)} me={me} onOpenProfile={openProfile} />
         )
       ) : (
         <CommsPanelEmpty
@@ -77,6 +105,7 @@ export function CommsWorkspace({
           onCreate={onCreateType}
         />
       )}
+      {profile && <QuickViewPanel key={profile.id} patient={profile} onClose={closeProfile} />}
     </>
   );
 }

@@ -9258,6 +9258,15 @@ export const useAppStore = create((set, get) => ({
   consentCapture: null,
   openConsentCapture: (patientId, preset = {}) => { if (patientId) set({ consentCapture: { patientId: String(patientId), ...preset } }); },
   closeConsentCapture: () => set({ consentCapture: null }),
+  // Consent History drawer (every consent record, by category), mounted in AppLayout.
+  consentHistoryPatientId: null,
+  openConsentHistory: (patientId) => { if (patientId) set({ consentHistoryPatientId: String(patientId) }); },
+  closeConsentHistory: () => set({ consentHistoryPatientId: null }),
+  // Contact consent dialog (Figma 29:7133 / 29:7206): accept or withdraw one
+  // or more channels in one step. { patientId, scopes: string[], status } | null
+  contactConsent: null,
+  openContactConsent: (patientId, scopes, status) => { if (patientId && scopes?.length) set({ contactConsent: { patientId: String(patientId), scopes, status } }); },
+  closeContactConsent: () => set({ contactConsent: null }),
   // Concurrent callers (the banner, the card, a billing gate) share one
   // request, so a gate never reads the history before it has arrived.
   fetchPatientConsents: (patientId, { force = false } = {}) => {
