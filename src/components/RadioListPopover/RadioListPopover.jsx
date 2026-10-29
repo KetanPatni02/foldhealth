@@ -31,6 +31,7 @@ export function RadioListPopover({
   disabledOptions,
 }) {
   const current = selected[0] ?? null;
+  const disabledSet = new Set(disabledOptions);
 
   if (!anchorRect) return null;
 
@@ -49,7 +50,7 @@ export function RadioListPopover({
       <div className={styles.list}>
         {options.map((opt) => {
           const active = current === opt;
-          const disabled = disabledOptions?.includes(opt);
+          const disabled = disabledSet.has(opt);
           return (
             <button
               key={opt}
