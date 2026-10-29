@@ -158,8 +158,8 @@ export function SlideshowDialog({
             )}
             <div className={`${styles.footer} ${styles.footerEnd}`}>
               <span className={styles.position}>{count ? `${current + 1} of ${count}` : ''}</span>
-              <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" disabled={current === 0} onClick={() => go(current - 1)} />
-              <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next" disabled={current >= count - 1} onClick={() => go(current + 1)} />
+              <ActionButton icon="solar:alt-arrow-left-linear" size="sm" tooltip="Previous" disabled={current === 0} onClick={() => go(current - 1)} />
+              <ActionButton icon="solar:alt-arrow-right-linear" size="sm" tooltip="Next" disabled={current >= count - 1} onClick={() => go(current + 1)} />
               {step?.primary && <span className={styles.primary}>{step.primary}</span>}
             </div>
           </div>

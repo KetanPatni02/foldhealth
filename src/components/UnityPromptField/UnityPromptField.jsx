@@ -75,8 +75,8 @@ export function UnityPromptField({
           </button>
         ) : <span />}
         <Button
-          variant="secondary"
-          size="S"
+          variant="outline"
+          size="sm"
           leadingIconElement={<UnityIcon size={14} color="currentColor" />}
           disabled={!ready}
           onClick={submit}

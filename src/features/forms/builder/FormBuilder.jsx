@@ -505,7 +505,7 @@ function ConsentRow({ item, fieldLinkId, onToggleIncluded, onPatchItem, onRemove
         {item.custom && (
           <ActionButton
             icon="solar:trash-bin-trash-linear"
-            size="S"
+            size="sm"
             tooltip="Remove"
             tooltipLeft
             onClick={() => onRemove(item)}
@@ -513,7 +513,7 @@ function ConsentRow({ item, fieldLinkId, onToggleIncluded, onPatchItem, onRemove
         )}
         <ActionButton
           icon="solar:pen-linear"
-          size="S"
+          size="sm"
           tooltip={editing ? 'Hide description' : 'Edit description'}
           tooltipLeft
           active={editing}
@@ -970,10 +970,10 @@ export function FormBuilder() {
         />
 
         <div className={styles.headerRight}>
-          <ActionButton icon="solar:link-linear" size="L" tooltip="Copy share link" onClick={copyShareLink} />
-          <ActionButton icon="solar:printer-linear" size="L" tooltip="Print" onClick={() => window.print()} />
+          <ActionButton icon="solar:link-linear" tooltip="Copy share link" onClick={copyShareLink} />
+          <ActionButton icon="solar:printer-linear" tooltip="Print" onClick={() => window.print()} />
           <span className={styles.hDivider} />
-          <Button variant="primary" size="L" disabled={saving} onClick={handleSave}>
+          <Button disabled={saving} onClick={handleSave}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
           <span className={styles.hDivider} />

@@ -59,8 +59,8 @@ export function RecentNotesCard({ patientId, actions }) {
       count={unfinished || null}
       actions={(
         <>
-          <Button variant="ghost" size="S" onClick={actions.addNote}>Create note</Button>
-          {list.length > VISIBLE && <Button variant="ghost" size="S" onClick={openNotes}>View all</Button>}
+          <Button variant="ghost" size="sm" onClick={actions.addNote}>Create note</Button>
+          {list.length > VISIBLE && <Button variant="ghost" size="sm" onClick={openNotes}>View all</Button>}
         </>
       )}
     >

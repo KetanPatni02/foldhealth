@@ -87,7 +87,7 @@ export function AuditDetailCard({ header, sections, onOpen, openTooltip = 'Open'
         <div className={styles.actionCol}>
           <ActionButton
             icon="solar:arrow-right-up-linear"
-            size="S"
+            size="sm"
             tooltip={openTooltip}
             onClick={onOpen}
           />

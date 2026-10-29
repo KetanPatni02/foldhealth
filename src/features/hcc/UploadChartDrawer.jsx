@@ -209,7 +209,7 @@ export function UploadChartDrawer() {
       className={`${styles.drawer} ${previewOpen ? styles.drawerWide : ''}`}
       bodyClassName={styles.body}
       headerRight={
-        <Button variant="primary" size="M" disabled={!ok} onClick={handleUpload}>
+        <Button disabled={!ok} onClick={handleUpload}>
           {isEdit ? 'Save' : 'Upload'}
         </Button>
       }

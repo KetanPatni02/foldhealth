@@ -126,7 +126,7 @@ function ConditionList({ conditions, behavior, triggers, fields, onConditions, o
           );
         })}
       </div>
-      <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" onClick={addCond}>Add condition</Button>
+      <Button variant="ghost" size="sm" leadingIcon="solar:add-circle-linear" onClick={addCond}>Add condition</Button>
     </>
   );
 }
@@ -159,7 +159,7 @@ function JumpEditor({ field, fields, triggers, endings, onApply }) {
           />
         </div>
       ))}
-      <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" onClick={add}>Add jump rule</Button>
+      <Button variant="ghost" size="sm" leadingIcon="solar:add-circle-linear" onClick={add}>Add jump rule</Button>
     </div>
   );
 }

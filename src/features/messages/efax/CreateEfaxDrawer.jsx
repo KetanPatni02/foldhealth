@@ -33,7 +33,7 @@ export function CreateEfaxDrawer({ patients, patientOptions, onCreate, onClose }
       noCloseDivider
       headerRight={(
         <>
-          <Button variant="primary" size="L" disabled={!patientId} onClick={create}>Create</Button>
+          <Button disabled={!patientId} onClick={create}>Create</Button>
           <span className={styles.headerDivider} />
         </>
       )}

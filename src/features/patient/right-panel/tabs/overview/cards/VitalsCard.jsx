@@ -241,7 +241,7 @@ export function VitalsCard({ overview, memberId, patientId }) {
         <CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}>
           <span className={styles.headerActions}>
             <ActionButton
-              size="S"
+              size="sm"
               icon="solar:add-linear"
               tooltip="Add or reorder vitals"
               tooltipLeft
@@ -252,8 +252,8 @@ export function VitalsCard({ overview, memberId, patientId }) {
             {vitals.length > 0 && (
               <>
                 <span className={styles.headerDivider} />
-                <ActionButton size="S" icon="solar:alt-arrow-left-linear" tooltip="Previous" disabled={!edges.left} onClick={() => scrollByCard(-1)} />
-                <ActionButton size="S" icon="solar:alt-arrow-right-linear" tooltip="Next" tooltipLeft disabled={!edges.right} onClick={() => scrollByCard(1)} />
+                <ActionButton size="sm" icon="solar:alt-arrow-left-linear" tooltip="Previous" disabled={!edges.left} onClick={() => scrollByCard(-1)} />
+                <ActionButton size="sm" icon="solar:alt-arrow-right-linear" tooltip="Next" tooltipLeft disabled={!edges.right} onClick={() => scrollByCard(1)} />
               </>
             )}
           </span>

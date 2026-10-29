@@ -21,8 +21,8 @@ const preview = text => (
 );
 
 const STEPS = [
-  { key: 'appts', icon: 'solar:calendar-mark-linear', title: 'Appointments', summary: 'Missed Annual Wellness Visit is not rebooked.', description: 'Visits missed or cancelled and not yet rebooked.', preview: preview('Missed Annual Wellness Visit • 04/10/2026'), primary: <Button size="S">Reschedule</Button> },
-  { key: 'vitals', icon: 'solar:heart-pulse-linear', title: 'Vitals & Labs', summary: 'Blood Pressure and HbA1c are above goal.', description: 'Latest readings outside the patient’s goals.', preview: preview('Blood Pressure 142/88 mmHg • Goal 120/80'), primary: <Button size="S">Create Task</Button> },
+  { key: 'appts', icon: 'solar:calendar-mark-linear', title: 'Appointments', summary: 'Missed Annual Wellness Visit is not rebooked.', description: 'Visits missed or cancelled and not yet rebooked.', preview: preview('Missed Annual Wellness Visit • 04/10/2026'), primary: <Button size="sm">Reschedule</Button> },
+  { key: 'vitals', icon: 'solar:heart-pulse-linear', title: 'Vitals & Labs', summary: 'Blood Pressure and HbA1c are above goal.', description: 'Latest readings outside the patient’s goals.', preview: preview('Blood Pressure 142/88 mmHg • Goal 120/80'), primary: <Button size="sm">Create Task</Button> },
   { key: 'tasks', icon: 'solar:checklist-minimalistic-linear', title: 'Tasks', summary: '3 tasks are past due.', description: 'Work on this patient past its due date.', preview: preview('3 overdue tasks') },
 ];
 
@@ -39,7 +39,7 @@ export const Default = {
           title="What's new with Annette Brave"
           subtitle="2 new since the last touch on 10/21/2026."
           steps={STEPS}
-          footerStart={<Button variant="ghost" size="S" leadingIcon="solar:history-linear">Open Timeline</Button>}
+          footerStart={<Button variant="ghost" size="sm" leadingIcon="solar:history-linear">Open Timeline</Button>}
         />
       </>
     );

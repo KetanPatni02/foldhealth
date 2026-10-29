@@ -55,9 +55,9 @@ export function RuleSummaryPanel({ session, query, qualifiedCount, onEdit, onRen
         <div className={styles.railHeaderTop}>
           <Avatar type="icon" variant="patient" iconName="solar:users-group-rounded-linear" size="L" />
           <div className={styles.railHeaderActions}>
-            <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit" onClick={onEdit} />
+            <ActionButton icon="solar:pen-linear" tooltip="Edit" onClick={onEdit} />
             <span className={styles.headerDivider} />
-            <ActionButton icon="custom:history" size="L" tooltip="History" onClick={onHistory} />
+            <ActionButton icon="custom:history" tooltip="History" onClick={onHistory} />
           </div>
         </div>
         {editingName ? (
@@ -92,14 +92,14 @@ export function RuleSummaryPanel({ session, query, qualifiedCount, onEdit, onRen
           <div style={{ display: 'flex', gap: 4 }}>
             <ActionButton
               icon="solar:code-square-linear"
-              size="S"
+              size="sm"
               tooltip="Export as SQL"
               style={exportMode === 'sql' ? { color: 'var(--primary-300)' } : undefined}
               onClick={() => setExportMode(m => m === 'sql' ? null : 'sql')}
             />
             <ActionButton
               icon="solar:programming-linear"
-              size="S"
+              size="sm"
               tooltip="Export as JsonLogic"
               style={exportMode === 'jsonlogic' ? { color: 'var(--primary-300)' } : undefined}
               onClick={() => setExportMode(m => m === 'jsonlogic' ? null : 'jsonlogic')}
@@ -126,8 +126,8 @@ export function RuleSummaryPanel({ session, query, qualifiedCount, onEdit, onRen
                 <span className={styles.unityAlpha}>ALPHA</span>
               </span>
               <span className={styles.criteriaFooterActions}>
-                <ActionButton icon="solar:copy-linear" size="S" tooltip="Copy Text" onClick={copyText} />
-                <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh" onClick={onRefresh} />
+                <ActionButton icon="solar:copy-linear" size="sm" tooltip="Copy Text" onClick={copyText} />
+                <ActionButton icon="solar:refresh-linear" size="sm" tooltip="Refresh" onClick={onRefresh} />
               </span>
             </div>
           </div>

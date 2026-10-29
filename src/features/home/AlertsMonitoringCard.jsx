@@ -216,9 +216,9 @@ export function AlertsMonitoringCard({ dragHandleClassName }) {
             My Worklist
           </div>
           <div className={styles.cardActions}>
-            <ActionButton icon="solar:user-linear" size="S" tooltip="Assigned to me" />
-            <ActionButton icon="solar:hamburger-menu-linear" size="S" tooltip="List view" />
-            <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+            <ActionButton icon="solar:user-linear" size="sm" tooltip="Assigned to me" />
+            <ActionButton icon="solar:hamburger-menu-linear" size="sm" tooltip="List view" />
+            <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
           </div>
         </div>
         <div className={styles.cardBody}>

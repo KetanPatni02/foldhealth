@@ -49,15 +49,14 @@ export function UpdateDashboardDrawer({ layouts, scope, onSubmit, onClose }) {
       headerRight={(
         <>
           <Button
-            variant="secondary"
-            size="L"
+            variant="outline"
             leadingIcon="solar:refresh-linear"
             onClick={() => setDraft(() => defaultLayout(draftScope))}
           >
             Reset
           </Button>
           <span className={styles.headerDivider} aria-hidden="true" />
-          <Button variant="primary" size="L" onClick={() => onSubmit(drafts, draftScope)}>Submit</Button>
+          <Button onClick={() => onSubmit(drafts, draftScope)}>Submit</Button>
           <span className={styles.headerDivider} aria-hidden="true" />
         </>
       )}

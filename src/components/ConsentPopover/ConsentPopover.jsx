@@ -46,7 +46,7 @@ export function ConsentPopover({ pos, onClose, sections = [], history = [], load
         <span className={styles.headerTitle}>{showHistory ? 'Consent Audit Log' : 'Patient Consent'}</span>
         <ActionButton
           icon={showHistory ? 'solar:arrow-left-linear' : 'solar:history-linear'}
-          size="S"
+          size="sm"
           tooltip={showHistory ? 'Back' : onOpenHistory ? 'Consent History' : 'Audit Log'}
           tooltipBelow
           onClick={onOpenHistory && !showHistory ? onOpenHistory : () => setShowHistory(v => !v)}

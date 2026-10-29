@@ -196,8 +196,8 @@ export function HccSftpReviewDrawer() {
   const headerRight = totalDocs > 1 ? (
     <span className={styles.reviewNav}>
       <Button
-        variant="alt"
-        size="S"
+        variant="outline" tone="primary"
+        size="sm"
         leadingIcon="solar:alt-arrow-left-linear"
         disabled={activeIndex <= 0}
         onClick={() => goToDoc(activeIndex - 1)}
@@ -208,8 +208,8 @@ export function HccSftpReviewDrawer() {
         Reviewing: {activeIndex + 1} of {stats.patients} {stats.patients === 1 ? 'Patient' : 'Patients'}
       </span>
       <Button
-        variant="alt"
-        size="S"
+        variant="outline" tone="primary"
+        size="sm"
         trailingIcon="solar:alt-arrow-right-linear"
         disabled={activeIndex >= totalDocs - 1}
         onClick={() => goToDoc(activeIndex + 1)}

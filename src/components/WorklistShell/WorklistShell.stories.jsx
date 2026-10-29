@@ -129,11 +129,11 @@ export const Playground = {
           <td className={styles.td}>{fmtMins(r.mins)}</td>
           <td className={`${styles.td} ${styles.stickyRight}`}>
             <div className={styles.rowActions}>
-              <ActionButton icon="solar:document-text-linear" size="L" tooltip="View" />
+              <ActionButton icon="solar:document-text-linear" tooltip="View" />
               <span className={styles.actionDivider} />
-              <ActionButton icon="solar:phone-linear" size="L" tooltip="Call" />
+              <ActionButton icon="solar:phone-linear" tooltip="Call" />
               <span className={styles.actionDivider} />
-              <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More" />
+              <ActionButton icon="solar:menu-dots-linear" tooltip="More" />
             </div>
           </td>
         </tr>

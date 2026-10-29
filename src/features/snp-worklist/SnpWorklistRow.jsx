@@ -412,7 +412,6 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
         <div className={styles.actionsCell}>
           <ActionButton
             icon="solar:eye-linear"
-            size="L"
             tooltip="View Program"
             onClick={openInCareProgram}
           />
@@ -420,7 +419,6 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
           <ActionButton
             ref={callBtnRef}
             icon="solar:phone-linear"
-            size="L"
             tooltip="Call patient"
             onClick={handleCallClick}
           />
@@ -429,7 +427,6 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
             <ActionButton
               ref={dropBtnRef}
               icon="solar:menu-dots-linear"
-              size="L"
               tooltip="More options"
               onClick={(e) => { e.stopPropagation(); setShowDropdown(v => !v); }}
             />

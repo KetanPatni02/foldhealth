@@ -83,7 +83,6 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
             <ActionButton
               key={a.label || i}
               icon={a.icon}
-              size="L"
               tooltip={a.label}
               onClick={() => a.onClick?.(selectedIds)}
               disabled={a.disabled}
@@ -97,8 +96,9 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
           {actions.map((a, i) => (
             <Button
               key={a.label || i}
-              variant={a.variant || 'secondary'}
-              size={a.size || 'S'}
+              variant={a.variant || 'outline'}
+              tone={a.tone}
+              size={a.size || 'sm'}
               leadingIcon={a.icon}
               disabled={a.disabled}
               onClick={(e) => a.onClick?.(selectedIds, e)}
@@ -114,7 +114,6 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
             <div className={styles.moreWrap} ref={moreRef}>
               <ActionButton
                 icon="solar:menu-dots-linear"
-                size="L"
                 tooltip="More actions"
                 onClick={(e) => { e.stopPropagation(); setShowMore(v => !v); }}
               />
@@ -139,20 +138,19 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
       ) : (
         <>
           <Button
-            variant="secondary"
-            size="S"
+            variant="outline"
+            size="sm"
             leadingIcon="solar:user-check-rounded-linear"
             onClick={() => onChangeAssignee ? onChangeAssignee(selectedIds) : showToast('Change Assignee – coming soon')}
           >
             Change Assignee
           </Button>
-          <Button variant="secondary" size="S" leadingIcon="solar:bolt-linear" onClick={() => showToast('Run Automation – coming soon')}>
+          <Button variant="outline" size="sm" leadingIcon="solar:bolt-linear" onClick={() => showToast('Run Automation – coming soon')}>
             Run Automation
           </Button>
           <div className={styles.moreWrap} ref={moreRef}>
             <ActionButton
               icon="solar:menu-dots-linear"
-              size="L"
               tooltip="More actions"
               onClick={(e) => { e.stopPropagation(); setShowMore(v => !v); }}
             />

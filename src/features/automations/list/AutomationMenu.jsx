@@ -21,7 +21,7 @@ export function AutomationMenu({ hasRuns, onSelect }) {
       <ActionButton
         ref={ref}
         icon="solar:menu-dots-linear"
-        size="S"
+        size="sm"
         tooltip="More actions"
         tooltipLeft
         active={open}
@@ -47,7 +47,7 @@ export function TemplateMenu({ onPreview }) {
   const ref = useRef(null);
   return (
     <span onClick={e => e.stopPropagation()}>
-      <ActionButton ref={ref} icon="solar:menu-dots-linear" size="S" tooltip="More actions" tooltipLeft active={open} onClick={() => setOpen(v => !v)} />
+      <ActionButton ref={ref} icon="solar:menu-dots-linear" size="sm" tooltip="More actions" tooltipLeft active={open} onClick={() => setOpen(v => !v)} />
       {open && (
         <MenuPopover
           anchorRef={ref}

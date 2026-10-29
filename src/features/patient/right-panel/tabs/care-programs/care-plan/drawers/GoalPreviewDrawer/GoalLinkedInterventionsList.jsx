@@ -138,7 +138,7 @@ export function GoalLinkedInterventionsList({
               <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />
               <ActionButton
                 icon="solar:menu-dots-linear"
-                size="S"
+                size="sm"
                 tooltip="More"
                 disabled={!onRowMenu}
                 onClick={(e) => onRowMenu?.({ item: i, rect: e.currentTarget.getBoundingClientRect() })}

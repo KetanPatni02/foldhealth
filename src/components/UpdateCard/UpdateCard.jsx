@@ -52,10 +52,10 @@ export function UpdateCard({
           </ul>
         )}
         <div className={styles.actions}>
-          <Button variant="primary" size="L" fullWidth onClick={onPrimary}>
+          <Button fullWidth onClick={onPrimary}>
             {primaryLabel}
           </Button>
-          <Button variant="ghost" size="L" fullWidth onClick={onSecondary}>
+          <Button variant="ghost" fullWidth onClick={onSecondary}>
             {secondaryLabel}
           </Button>
         </div>

@@ -216,16 +216,16 @@ function CallBanner({ call }) {
         {call.status === 'ended' && (call.error || 'Call ended')}
       </span>
       {call.status === 'incoming' && (<>
-        <Button variant="secondary" size="L" onClick={call.decline}>Decline</Button>
-        <Button variant="success" size="L" leadingIcon="solar:phone-linear" onClick={call.accept}>Answer</Button>
+        <Button variant="outline" onClick={call.decline}>Decline</Button>
+        <Button variant="soft" tone="success" leadingIcon="solar:phone-linear" onClick={call.accept}>Answer</Button>
       </>)}
       {(call.status === 'live' || call.status === 'connecting') && (<>
-        <Button variant="secondary" size="L" leadingIcon={call.muted ? 'solar:microphone-slash-linear' : 'solar:microphone-linear'} onClick={call.toggleMute}>
+        <Button variant="outline" leadingIcon={call.muted ? 'solar:microphone-slash-linear' : 'solar:microphone-linear'} onClick={call.toggleMute}>
           {call.muted ? 'Unmute' : 'Mute'}
         </Button>
-        <Button variant="dangerFilled" size="L" leadingIcon="solar:end-call-rounded-linear" onClick={call.hangup}>End</Button>
+        <Button tone="danger" leadingIcon="solar:end-call-rounded-linear" onClick={call.hangup}>End</Button>
       </>)}
-      {call.status === 'ended' && <Button variant="secondary" size="L" onClick={call.dismiss}>Close</Button>}
+      {call.status === 'ended' && <Button variant="outline" onClick={call.dismiss}>Close</Button>}
     </div>
   );
 }

@@ -86,7 +86,7 @@ export function UtilizationView({ showToast, editing = false, resetTick = 0 }) {
         <div style={{ fontWeight: 500, fontSize: 'var(--font-base)', color: 'var(--status-error)' }}>Live ADT Alert &mdash; Manager View</div>
         <div style={{ fontSize: 'var(--font-sm)', color: 'var(--status-error)', marginTop: 2 }}>James M. (Tier 5) discharged to Valley SNF. 34% readmit risk. TCM: Maria Chen, RN.</div>
       </div>
-      <Button variant="primary" size="S" style={{ fontSize: 'var(--font-sm)' }} onClick={() => showToast?.('Opening ADT detail for James M.')}>View &rarr;</Button>
+      <Button size="sm" style={{ fontSize: 'var(--font-sm)' }} onClick={() => showToast?.('Opening ADT detail for James M.')}>View &rarr;</Button>
     </div>
   );
 
@@ -127,7 +127,7 @@ export function UtilizationView({ showToast, editing = false, resetTick = 0 }) {
       {tcmFallback.map(b => (
         <ProgressBar key={b.label} label={b.label} value={b.value} pct={b.pct} color={b.color} sub={b.sub} />
       ))}
-      <Button variant="primary" size="S" style={{ marginTop: 8, width: '100%', justifyContent: 'center' }} onClick={() => showToast?.('Creating post-discharge TCM cohort for 48 members')}>
+      <Button size="sm" style={{ marginTop: 8, width: '100%', justifyContent: 'center' }} onClick={() => showToast?.('Creating post-discharge TCM cohort for 48 members')}>
         Create Post-Discharge TCM Cohort (48)
       </Button>
     </Card>

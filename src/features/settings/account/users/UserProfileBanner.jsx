@@ -30,21 +30,21 @@ export function UserProfileBanner({ user, onCall, onChat, onMeet, onMore }) {
       </div>
       <div className={styles.actions}>
         <div className={styles.actionItem}>
-          <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" onClick={onCall} />
+          <ActionButton icon="solar:phone-calling-rounded-linear" tooltip="Call" onClick={onCall} />
           <span className={styles.actionLabel}>Call</span>
         </div>
         <span className={styles.divider} />
         <div className={styles.actionItem}>
-          <ActionButton icon="solar:chat-round-line-linear" size="L" tooltip="Chat" onClick={onChat} />
+          <ActionButton icon="solar:chat-round-line-linear" tooltip="Chat" onClick={onChat} />
           <span className={styles.actionLabel}>Chat</span>
         </div>
         <span className={styles.divider} />
         <div className={styles.actionItem}>
-          <ActionButton icon="solar:videocamera-record-linear" size="L" tooltip="Meet" onClick={onMeet} />
+          <ActionButton icon="solar:videocamera-record-linear" tooltip="Meet" onClick={onMeet} />
           <span className={styles.actionLabel}>Meet</span>
         </div>
         <span className={styles.divider} />
-        <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" onClick={onMore} />
+        <ActionButton icon="solar:menu-dots-bold" tooltip="More" onClick={onMore} />
       </div>
     </div>
   );

@@ -98,7 +98,7 @@ export function Documents({ memberId }) {
               </button>
               <ActionButton
                 icon="solar:download-minimalistic-linear"
-                size="S"
+                size="sm"
                 tooltip="Download"
                 tooltipLeft
                 aria-label={`Download ${d.name}`}

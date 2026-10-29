@@ -188,7 +188,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
           })}
         </div>
         <span className={styles.drawerActionDivider} />
-        <ActionButton ref={moreBtnRef} icon="solar:menu-dots-linear" size="L" tooltip="More" onClick={(e) => setMoreMenuRect(e.currentTarget.getBoundingClientRect())} />
+        <ActionButton ref={moreBtnRef} icon="solar:menu-dots-linear" tooltip="More" onClick={(e) => setMoreMenuRect(e.currentTarget.getBoundingClientRect())} />
       </div>
       </div>
 

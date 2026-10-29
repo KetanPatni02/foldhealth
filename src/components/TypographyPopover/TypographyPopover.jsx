@@ -56,7 +56,7 @@ export function TypographyPopover({ anchorRect, anchorEl, rows, families, weight
       >
         <div className={styles.head}>
           <span className={styles.title}>{title}</span>
-          <ActionButton size="S" tooltip="Close" tooltipLeft onClick={onClose}>
+          <ActionButton size="sm" tooltip="Close" tooltipLeft onClick={onClose}>
             <CloseIcon size={16} color="var(--neutral-300)" />
           </ActionButton>
         </div>

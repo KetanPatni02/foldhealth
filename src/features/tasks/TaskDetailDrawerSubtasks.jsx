@@ -22,7 +22,7 @@ export function TaskDetailDrawerSubtasks({
               </h4>
               <Button
                 variant="ghost"
-                size="S"
+                size="sm"
                 leadingIcon="solar:add-circle-linear"
                 onClick={() => setShowAddSubtask(v => !v)}
               >
@@ -49,8 +49,8 @@ export function TaskDetailDrawerSubtasks({
                   onKeyDown={e => { if (e.key === 'Enter') handleAddSubtask(); if (e.key === 'Escape') { setShowAddSubtask(false); setSubtaskName(''); } }}
                   autoFocus
                 />
-                <Button variant="primary" size="S" onClick={handleAddSubtask} disabled={!subtaskName.trim()}>Add</Button>
-                <Button variant="secondary" size="S" onClick={() => { setShowAddSubtask(false); setSubtaskName(''); }}>Cancel</Button>
+                <Button size="sm" onClick={handleAddSubtask} disabled={!subtaskName.trim()}>Add</Button>
+                <Button variant="outline" size="sm" onClick={() => { setShowAddSubtask(false); setSubtaskName(''); }}>Cancel</Button>
               </div>
             )}
             {subtasks.map(sub => (

@@ -72,7 +72,7 @@ export function DocumentList({
               {hasMenu && (
                 <ActionButton
                   icon="solar:menu-dots-linear"
-                  size="S"
+                  size="sm"
                   tooltip="More actions"
                   onClick={(e) => {
                     const r = e.currentTarget.getBoundingClientRect();

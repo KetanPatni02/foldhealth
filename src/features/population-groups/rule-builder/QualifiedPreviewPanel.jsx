@@ -215,8 +215,7 @@ export function QualifiedPreviewPanel({
               style={{ width: '100%', resize: 'none', minHeight: 56 }}
             />
             <Button
-              variant="primary"
-              size="S"
+              size="sm"
               disabled={!draft.trim() || aiLoading}
               onClick={() => sendMessage()}
             >
@@ -233,7 +232,7 @@ export function QualifiedPreviewPanel({
             <div className={styles.previewError}>
               <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
               <span>Failed to load patients</span>
-              <Button variant="tertiary" size="S" onClick={onRetry}>Retry</Button>
+              <Button variant="soft" size="sm" onClick={onRetry}>Retry</Button>
             </div>
           )}
           <div className={styles.previewList}>

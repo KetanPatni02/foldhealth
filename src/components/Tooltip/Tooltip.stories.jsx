@@ -36,7 +36,7 @@ export const Playground = {
   args: { label: 'Delete this row', placement: 'top' },
   render: (args) => (
     <Tooltip {...args}>
-      <Button variant="secondary">Hover me</Button>
+      <Button variant="outline">Hover me</Button>
     </Tooltip>
   ),
 };
@@ -45,7 +45,7 @@ export const Playground = {
 export const RaisedCard = {
   render: () => (
     <Tooltip variant="card" placement="bottom" align="left" raised label={<span>Patient<br />Amy Phillips · amy89@fold.health</span>}>
-      <Button variant="secondary">Hover me</Button>
+      <Button variant="outline">Hover me</Button>
     </Tooltip>
   ),
 };

@@ -30,7 +30,6 @@ export function AssessmentDetail({ row, index, onIndex, patientName, full, onTog
       <div className={styles.header}>
         <ActionButton
           icon={full ? 'solar:double-alt-arrow-right-linear' : 'solar:double-alt-arrow-left-linear'}
-          size="L"
           tooltip={full ? 'Collapse' : 'Expand'}
           tooltipBelow
           aria-label={full ? 'Collapse assessment' : 'Expand assessment'}
@@ -42,14 +41,14 @@ export function AssessmentDetail({ row, index, onIndex, patientName, full, onTog
           <span className={styles.meta}>{meta}</span>
         </div>
         <div className={styles.actions}>
-          <ActionButton icon="solar:alt-arrow-left-linear" size="L" tooltip="Previous response" tooltipBelow aria-label="Previous response" disabled={index === 0} onClick={() => onIndex(index - 1)} />
-          <ActionButton icon="solar:alt-arrow-right-linear" size="L" tooltip="Next response" tooltipBelow aria-label="Next response" disabled={index >= count - 1} onClick={() => onIndex(index + 1)} />
+          <ActionButton icon="solar:alt-arrow-left-linear" tooltip="Previous response" tooltipBelow aria-label="Previous response" disabled={index === 0} onClick={() => onIndex(index - 1)} />
+          <ActionButton icon="solar:alt-arrow-right-linear" tooltip="Next response" tooltipBelow aria-label="Next response" disabled={index >= count - 1} onClick={() => onIndex(index + 1)} />
           <span className={styles.divider} aria-hidden="true" />
-          <ActionButton icon="solar:printer-linear" size="L" tooltip="Print" tooltipBelow aria-label="Print assessment" onClick={() => window.print()} />
+          <ActionButton icon="solar:printer-linear" tooltip="Print" tooltipBelow aria-label="Print assessment" onClick={() => window.print()} />
           <span className={styles.divider} aria-hidden="true" />
-          <Button variant="tertiary" size="S" onClick={onResend}>Resend</Button>
+          <Button variant="soft" size="sm" onClick={onResend}>Resend</Button>
           <span className={styles.divider} aria-hidden="true" />
-          <ActionButton icon="solar:close-linear" size="L" tooltip="Close" tooltipBelow tooltipLeft aria-label="Close assessment" onClick={onClose} />
+          <ActionButton icon="solar:close-linear" tooltip="Close" tooltipBelow tooltipLeft aria-label="Close assessment" onClick={onClose} />
         </div>
       </div>
       {response && <AssessmentScoreStrip {...summary} />}

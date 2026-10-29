@@ -36,7 +36,7 @@ export function PopulationGroupsWidget() {
             onChange={(v) => { setView(v); setExpanded(false); }}
           />
           <PanelSectionDivider />
-          <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add to Population Group" />
+          <ActionButton icon="solar:add-circle-linear" size="sm" tooltip="Add to Population Group" />
         </>
       )}
     >

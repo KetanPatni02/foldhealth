@@ -124,7 +124,7 @@ function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave, onNa
  * linked interventions/barriers/automations. Hovering previews them — the
  * preview is the whole affordance, so the button doesn't open anything.
  */
-export function GbiLinkButton({ data, size = 'S', keepSlot = false }) {
+export function GbiLinkButton({ data, size = 'sm', keepSlot = false }) {
   const total = linkedTotal(data);
   const [rect, setRect] = useState(null);
   const wrapRef = useRef(null);
@@ -164,7 +164,7 @@ export function GbiLinkButton({ data, size = 'S', keepSlot = false }) {
       <ActionButton
         icon="custom:link"
         size={size}
-        state="disabled"
+        disabled
         tooltip="No linked items"
         tooltipBelow
         tooltipLeft

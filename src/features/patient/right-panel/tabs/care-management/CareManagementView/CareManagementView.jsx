@@ -49,12 +49,12 @@ function AddCareNoteDrawer({ onClose, onSave }) {
       title="Add Care Note"
       onClose={onClose}
       primaryAction={(
-        <Button variant="primary" size="L" disabled={!canSave} onClick={() => onSave?.(body.trim())}>
+        <Button disabled={!canSave} onClick={() => onSave?.(body.trim())}>
           Add Note
         </Button>
       )}
       secondaryAction={(
-        <Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
       )}
     >
       <div className={styles.addNoteBody}>
@@ -168,7 +168,6 @@ function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpe
           <div className={styles.ctaCluster}>
             <ActionButton
               icon="solar:notes-linear"
-              size="L"
               tooltip="Add care note"
               tooltipBelow
               tooltipLeft
@@ -177,7 +176,6 @@ function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpe
             <span className={styles.ctaDivider} aria-hidden="true" />
             <ActionButton
               icon="solar:download-minimalistic-linear"
-              size="L"
               tooltip="Download"
               tooltipBelow
               tooltipLeft

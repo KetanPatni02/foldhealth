@@ -65,9 +65,9 @@ export function GoalDetailDrawer() {
   // Simplified header: Edit button + more menu (instead of 3 buttons)
   const headerRight = (
     <div className={s.detailHeaderActions}>
-      <Button variant="secondary" size="S" leadingIcon="solar:pen-linear" onClick={handleEdit}>Edit</Button>
+      <Button variant="outline" size="sm" leadingIcon="solar:pen-linear" onClick={handleEdit}>Edit</Button>
       <div className={s.moreMenuWrap}>
-        <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" onClick={() => setShowMore(!showMore)} />
+        <ActionButton icon="solar:menu-dots-bold" tooltip="More" onClick={() => setShowMore(!showMore)} />
         {showMore && (
           <div className={s.moreMenu}>
             <button className={s.moreMenuItem} onClick={() => { handleDuplicate(); setShowMore(false); }}>

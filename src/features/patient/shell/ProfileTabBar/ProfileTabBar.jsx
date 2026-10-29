@@ -19,7 +19,7 @@ export function ProfileTabBar({ activeTab, onTabChange, leftCollapsed = false, o
       <SidebarCollapseHint enabled={!leftCollapsed}>
         <ActionButton
           icon="solar:sidebar-minimalistic-linear"
-          size="S"
+          size="sm"
           active
           aria-label={leftCollapsed ? 'Expand panel' : 'Collapse panel'}
           className={[leftCollapsed ? styles.sidebarFlipped : '', styles.sidebarToggle].filter(Boolean).join(' ')}

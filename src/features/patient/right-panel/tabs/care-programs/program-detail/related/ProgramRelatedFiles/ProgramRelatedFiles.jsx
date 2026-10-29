@@ -154,7 +154,7 @@ export function ProgramRelatedFiles({ programCode, patientId }) {
           </div>
         ) : (
           <>
-            <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setSearchOpen(true)} />
+            <ActionButton icon="solar:magnifer-linear" size="sm" tooltip="Search" onClick={() => setSearchOpen(true)} />
             <span className={styles.tabDivider} />
             <Toggle size="S" items={SUB_TABS} active={activeTab} onChange={setActiveTab} />
             <div className={styles.spacer} />
@@ -162,15 +162,14 @@ export function ProgramRelatedFiles({ programCode, patientId }) {
         )}
         <Toggle size="S" items={VIEW_ITEMS} active={view} onChange={setView} />
         <Button
-          variant="tertiary"
-          size="L"
+          variant="soft"
           leadingIcon="solar:upload-minimalistic-linear"
           onClick={() => setUploaderOpen(v => !v)}
         >
           Upload File
         </Button>
         <span className={styles.tabDivider} />
-        <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" active={filtersOpen}
+        <ActionButton icon="solar:filter-linear" size="sm" tooltip="Filter" active={filtersOpen}
           iconColor={filtersOpen ? 'var(--primary-300)' : undefined}
           onClick={() => setFiltersOpen(v => !v)} />
       </div>

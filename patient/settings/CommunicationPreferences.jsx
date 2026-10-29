@@ -59,7 +59,7 @@ export function CommunicationPreferences({ memberId }) {
           I give consent to send important communication via Email, SMS, Voice call or any other electronic media
         </label>
       </div>
-      <Button variant="primary" size="L" disabled={saving || !Object.keys(changes).length} onClick={save}>
+      <Button disabled={saving || !Object.keys(changes).length} onClick={save}>
         {saving ? 'Saving…' : 'Save preferences'}
       </Button>
     </div>

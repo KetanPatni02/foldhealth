@@ -311,8 +311,6 @@ export function MessagesView() {
               collapsed={navCollapsed}
               header={
                 <Button
-                  variant="primary"
-                  size="L"
                   leadingIcon="solar:add-circle-bold"
                   fullWidth
                   iconOnly={navCollapsed}

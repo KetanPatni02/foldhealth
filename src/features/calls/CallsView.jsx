@@ -102,8 +102,6 @@ export function CallsView() {
       loading={callsConfigLoading}
       header={
         <Button
-          variant="primary"
-          size="L"
           leadingIcon="solar:add-circle-bold"
           fullWidth
           onClick={() => showToast('New call – coming soon')}

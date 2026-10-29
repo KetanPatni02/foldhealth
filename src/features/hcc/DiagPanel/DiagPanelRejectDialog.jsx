@@ -81,14 +81,14 @@ export function RejectRecordDialog({ onCancel, onConfirm }) {
         />
         <div className={styles.rejectDialogActions}>
           <Button
-            variant="danger"
-            size="S"
+            variant="soft" tone="danger"
+            size="sm"
             disabled={!canSubmit}
             onClick={() => onConfirm({ reasons: REJECT_RECORD_REASONS.filter(r => reasons.has(r)), note: note.trim() })}
           >
             Confirm
           </Button>
-          <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
         </div>
       </AlertDialogContent>
     </AlertDialog>

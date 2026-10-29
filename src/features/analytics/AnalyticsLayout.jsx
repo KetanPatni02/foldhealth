@@ -300,8 +300,7 @@ export function AnalyticsLayout() {
               />
               )}
               <Button
-                variant="secondary"
-                size="L"
+                variant="outline"
                 leadingIcon="solar:download-minimalistic-linear"
                 onClick={() => showToast('Exporting report...')}
               >
@@ -309,8 +308,7 @@ export function AnalyticsLayout() {
               </Button>
               {isEditableView && editing && (
                 <Button
-                  variant="secondary"
-                  size="L"
+                  variant="outline"
                   leadingIcon="solar:refresh-linear"
                   onClick={() => setResetTick(t => t + 1)}
                 >
@@ -319,8 +317,7 @@ export function AnalyticsLayout() {
               )}
               {isEditableView && (
                 <Button
-                  variant={editing ? 'tertiary' : 'secondary'}
-                  size="L"
+                  variant={editing ? 'soft' : 'outline'}
                   leadingIcon={editing ? 'solar:check-circle-linear' : 'solar:pen-linear'}
                   onClick={() => setEditingDashboard(v => !v)}
                 >

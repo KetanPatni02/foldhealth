@@ -276,8 +276,8 @@ export function Pagination({
 
         <Button
           ref={perPageBtnRef}
-          variant="secondary"
-          size="S"
+          variant="outline"
+          size="sm"
           trailingIcon="solar:alt-arrow-down-linear"
           aria-haspopup="menu"
           aria-expanded={!!perPageMenuRect}

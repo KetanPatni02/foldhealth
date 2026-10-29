@@ -15,7 +15,7 @@ export function TemplatePreviewModal({ template: t, onClose }) {
       meta={<span>{categoryLabel(t.category)}</span>}
       description={t.description}
       actions={(
-        <Button variant="primary" leadingIcon="solar:copy-linear" onClick={() => startFromTemplate(openNewAutomation, t)}>Use Template</Button>
+        <Button leadingIcon="solar:copy-linear" onClick={() => startFromTemplate(openNewAutomation, t)}>Use Template</Button>
       )}
       stats={(
         <PreviewStats

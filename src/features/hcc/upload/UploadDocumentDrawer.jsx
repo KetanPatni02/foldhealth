@@ -419,8 +419,7 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   const headerRight = session.phase === 'picker' ? null
   : session.phase === 'single' ? (
     <Button
-      variant="primary"
-      size="S"
+      size="sm"
       disabled={!singleSave.canSave}
       onClick={singleSave.save}
     >
@@ -444,8 +443,8 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
       {/* Upload-more — append a second PDF's encounters into the current
           review session without losing edits. */}
       <Button
-        variant="alt"
-        size="S"
+        variant="outline" tone="primary"
+        size="sm"
         leadingIcon={appending ? undefined : 'solar:add-circle-linear'}
         disabled={appending}
         onClick={() => appendInputRef.current?.click()}
@@ -461,8 +460,7 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
       />
       <span className={styles.headerDivider} />
       <Button
-        variant="primary"
-        size="S"
+        size="sm"
         disabled={!canConfirm}
         onClick={handleConfirm}
       >
@@ -690,8 +688,8 @@ function SftpPhase({ showToast }) {
         </p>
         <div className={styles.sftpDemoActions}>
           <Button
-            variant="alt"
-            size="S"
+            variant="outline" tone="primary"
+            size="sm"
             leadingIcon="solar:cloud-upload-linear"
             onClick={async () => {
               cancel?.();  // close this drawer so the user goes back to the worklist

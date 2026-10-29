@@ -257,17 +257,17 @@ export function OutreachTabForm({
         <div className={styles.actionsRow}>
           <span className={styles.actionsLabel}>Actions:</span>
           <span className={styles.actionsDivider} />
-          <ActionButton size="S" tooltip="Add Task" onClick={onAddTask}>
+          <ActionButton size="sm" tooltip="Add Task" onClick={onAddTask}>
             <AddTaskIcon size={16} color="var(--neutral-300)" />
           </ActionButton>
-          <ActionButton size="S" icon="solar:calendar-add-linear" tooltip="Schedule Appointment" onClick={onSchedule} />
-          <ActionButton size="S" icon="solar:alarm-linear" tooltip="Set Reminder" />
+          <ActionButton size="sm" icon="solar:calendar-add-linear" tooltip="Schedule Appointment" onClick={onSchedule} />
+          <ActionButton size="sm" icon="solar:alarm-linear" tooltip="Set Reminder" />
         </div>
 
         {!hideFooter && (
           <div className={styles.formFooter}>
-            <Button variant="primary" size="L" disabled={!canSave} onClick={handleSave}>Save</Button>
-            <Button variant="ghost" size="L" onClick={handleDiscard}>Discard</Button>
+            <Button disabled={!canSave} onClick={handleSave}>Save</Button>
+            <Button variant="ghost" onClick={handleDiscard}>Discard</Button>
           </div>
         )}
       </div>

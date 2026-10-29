@@ -173,8 +173,8 @@ export function AutomationsList() {
       return (
         <RingEmptyState icon="solar:bolt-linear" label="No automations yet. Start from a template or build your own.">
           <div className={styles.emptyActions}>
-            <Button variant="secondary" onClick={() => switchTab('templates')}>Browse templates</Button>
-            <Button variant="primary" leadingIcon="solar:add-circle-linear" onClick={() => openNewAutomation(null)}>Create an automation</Button>
+            <Button variant="outline" onClick={() => switchTab('templates')}>Browse templates</Button>
+            <Button leadingIcon="solar:add-circle-linear" onClick={() => openNewAutomation(null)}>Create an automation</Button>
           </div>
         </RingEmptyState>
       );
@@ -182,7 +182,7 @@ export function AutomationsList() {
     if (search || filterCount) {
       return (
         <RingEmptyState icon="solar:magnifer-linear" label={search ? `No automations match “${search.trim()}”` : 'No automations match these filters'}>
-          <Button variant="secondary" onClick={clearAll}>Clear search and filters</Button>
+          <Button variant="outline" onClick={clearAll}>Clear search and filters</Button>
         </RingEmptyState>
       );
     }
@@ -192,7 +192,7 @@ export function AutomationsList() {
   const templatesEmpty = () => (search
     ? (
       <RingEmptyState icon="solar:magnifer-linear" label={`No templates match “${search.trim()}”`}>
-        <Button variant="secondary" onClick={() => setSearch('')}>Clear search</Button>
+        <Button variant="outline" onClick={() => setSearch('')}>Clear search</Button>
       </RingEmptyState>
     )
     : <RingEmptyState icon="solar:documents-linear" label="No templates in this category yet" />);
@@ -233,7 +233,7 @@ export function AutomationsList() {
 
   const searchToggle = (
     <>
-      <ActionButton icon="solar:magnifer-linear" tooltip="Search" size="S" onClick={() => searchRef.current?.focus()} />
+      <ActionButton icon="solar:magnifer-linear" tooltip="Search" size="sm" onClick={() => searchRef.current?.focus()} />
     </>
   );
 

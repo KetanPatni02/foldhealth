@@ -11,11 +11,11 @@ import { Button } from '../Button/Button';
 import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
 
 const VARIANT_DEFAULTS = {
-  warning: { icon: 'solar:danger-triangle-linear', iconColor: 'var(--status-error)', button: 'danger' },
-  destructive: { icon: 'solar:danger-circle-bold', iconColor: 'var(--status-error)', button: 'danger' },
-  primary: { icon: 'solar:info-circle-linear', iconColor: 'var(--primary-300)', button: 'primary' },
+  warning: { icon: 'solar:danger-triangle-linear', iconColor: 'var(--status-error)', button: { variant: 'soft', tone: 'danger' } },
+  destructive: { icon: 'solar:danger-circle-bold', iconColor: 'var(--status-error)', button: { variant: 'soft', tone: 'danger' } },
+  primary: { icon: 'solar:info-circle-linear', iconColor: 'var(--primary-300)', button: { variant: 'solid', tone: 'primary' } },
   // `error` retained as an alias for existing callers — same look as `warning`.
-  error: { icon: 'solar:danger-triangle-linear', iconColor: 'var(--status-error)', button: 'danger' },
+  error: { icon: 'solar:danger-triangle-linear', iconColor: 'var(--status-error)', button: { variant: 'soft', tone: 'danger' } },
 };
 
 /**
@@ -52,7 +52,7 @@ const VARIANT_DEFAULTS = {
  * @param {'center'|'start'} [props.align='center'] – 'start' lays it out
  *   left-aligned: the icon inline with the title, the description under them,
  *   then the checkbox and the buttons (Figma Dialog Box 2, 2810:68907).
- * @param {'S'|'L'|'XL'} [props.buttonSize='L']
+ * @param {'sm'|'md'|'lg'} [props.buttonSize='md']
  * @param {function} [props.onClose] – Adds a close (X) beside the title. When
  *   set, the X, Escape and the overlay call it instead of onCancel, so the
  *   cancel button can be a real second choice (e.g. "Save as Draft").
@@ -80,7 +80,7 @@ export function ConfirmDialog({
   inline = false,
   checkbox,
   align = 'center',
-  buttonSize = 'L',
+  buttonSize = 'md',
   className,
   onClose,
   children,
@@ -125,11 +125,11 @@ export function ConfirmDialog({
   const footerEl = (
     <AlertDialogFooter className="flex-row justify-center w-full gap-2 mt-0">
       {cancelLabel != null && (
-        <Button variant="secondary" size={buttonSize} onClick={onCancel} disabled={loading} className="flex-1">
+        <Button variant="outline" size={buttonSize} onClick={onCancel} disabled={loading} className="flex-1">
           {cancelLabel}
         </Button>
       )}
-      <Button variant={preset.button} size={buttonSize} onClick={onConfirm} disabled={loading} className="flex-1">
+      <Button variant={preset.button.variant} tone={preset.button.tone} size={buttonSize} onClick={onConfirm} disabled={loading} className="flex-1">
         {loading ? 'Processing…' : confirmLabel}
       </Button>
     </AlertDialogFooter>

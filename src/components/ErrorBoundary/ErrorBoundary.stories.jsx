@@ -11,7 +11,7 @@ function Demo() {
   const [explode, setExplode] = useState(false);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 420 }}>
-      <Button variant="secondary" size="L" onClick={() => setExplode((e) => !e)}>
+      <Button variant="outline" onClick={() => setExplode((e) => !e)}>
         {explode ? 'Stop throwing' : 'Throw an error'}
       </Button>
       <ErrorBoundary resetKeys={[explode]}>

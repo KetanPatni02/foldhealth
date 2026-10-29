@@ -55,7 +55,7 @@ export function ReviewNoteCard({ note, canEdit, onSave }) {
         </span>
         {canEdit && !editing && (
           <span className={styles.noteEdit}>
-            <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit note" tooltipLeft onClick={() => { setText(note.detail || ''); setEditing(true); }} />
+            <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit note" tooltipLeft onClick={() => { setText(note.detail || ''); setEditing(true); }} />
           </span>
         )}
       </div>
@@ -68,10 +68,9 @@ export function ReviewNoteCard({ note, canEdit, onSave }) {
             rows={3}
           />
           <div className={styles.completeActions}>
-            <Button variant="secondary" size="S" onClick={() => setEditing(false)} disabled={saving}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => setEditing(false)} disabled={saving}>Cancel</Button>
             <Button
-              variant="primary"
-              size="S"
+              size="sm"
               disabled={saving || !plain || text === note.detail}
               onClick={async () => {
                 setSaving(true);

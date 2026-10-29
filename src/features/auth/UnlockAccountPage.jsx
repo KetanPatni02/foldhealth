@@ -90,7 +90,7 @@ export function UnlockAccountPage({ token, onDone }) {
                 <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
                 {linkError}
               </div>
-              <Button variant="secondary" size="L" fullWidth onClick={() => onDone?.({})}>Back to Login</Button>
+              <Button variant="outline" fullWidth onClick={() => onDone?.({})}>Back to Login</Button>
             </div>
           ) : (
             <form className={styles.form} onSubmit={submit}>
@@ -130,7 +130,7 @@ export function UnlockAccountPage({ token, onDone }) {
                   {error}
                 </div>
               )}
-              <Button variant="primary" size="L" fullWidth type="submit" disabled={saving}>
+              <Button fullWidth type="submit" disabled={saving}>
                 {saving ? 'Saving...' : 'Set Password and Sign In'}
               </Button>
             </form>

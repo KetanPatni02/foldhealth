@@ -47,8 +47,7 @@ function EmptyDocuments({ narrowed, category, categoryLabel, onUpload, onClearFi
       <div className={styles.emptyWrap}>
         <RingEmptyState icon="solar:filter-linear" label="No matching documents">
           <Button
-            variant="secondary"
-            size="L"
+            variant="outline"
             leadingIcon="solar:close-circle-linear"
             onClick={onClearFilters}
           >
@@ -63,8 +62,6 @@ function EmptyDocuments({ narrowed, category, categoryLabel, onUpload, onClearFi
     <div className={styles.emptyWrap}>
       <RingEmptyState icon="solar:folder-with-files-linear" label={`No ${label} present`}>
         <Button
-          variant="primary"
-          size="L"
           leadingIcon="solar:upload-minimalistic-linear"
           onClick={onUpload}
         >
@@ -291,11 +288,10 @@ export function DocumentsTab({ patient }) {
           <div className={styles.header}>
             <span className={styles.title}>{categoryLabel}</span>
             <div className={styles.headerActions}>
-              <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" onClick={() => setSearchOpen(true)} />
+              <ActionButton icon="solar:magnifer-linear" tooltip="Search" onClick={() => setSearchOpen(true)} />
               <span className={styles.divider} aria-hidden="true" />
               <Button
-                variant="secondary"
-                size="L"
+                variant="outline"
                 leadingIcon="solar:upload-minimalistic-linear"
                 onClick={() => setUploadCategory(category === ALL_CATEGORY ? '' : category)}
               >
@@ -304,7 +300,6 @@ export function DocumentsTab({ patient }) {
               <span className={styles.divider} aria-hidden="true" />
               <ActionButton
                 icon="custom:filter"
-                size="L"
                 tooltip="Filters"
                 tooltipLeft
                 active={filtersOpen}

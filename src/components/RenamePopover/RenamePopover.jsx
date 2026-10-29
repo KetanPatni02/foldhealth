@@ -50,8 +50,8 @@ export function RenamePopover({ anchorRef, label, value = '', placeholder, maxLe
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); save(); } }}
       />
       <div className={styles.actions}>
-        <Button variant="secondary" onClick={onClose}>Cancel</Button>
-        <Button variant="primary" disabled={saving} onClick={save}>Save</Button>
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button disabled={saving} onClick={save}>Save</Button>
       </div>
     </Popover>
   );

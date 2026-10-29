@@ -33,9 +33,9 @@ export function ReportLogoField({ src, name, custom, onPick, onReset, uploadLabe
         {shown && <span className={styles.logoThumb}><img src={shown} alt="" /></span>}
         <span className={styles.pickedName}>{custom?.name || name || 'No logo'}</span>
         {custom && (
-          <Button variant="tertiary" size="S" onClick={() => { setError(''); onReset(); }}>Reset</Button>
+          <Button variant="soft" size="sm" onClick={() => { setError(''); onReset(); }}>Reset</Button>
         )}
-        <Button variant="secondary" size="S" leadingIcon="solar:upload-minimalistic-linear" onClick={() => inputRef.current?.click()}>
+        <Button variant="outline" size="sm" leadingIcon="solar:upload-minimalistic-linear" onClick={() => inputRef.current?.click()}>
           Change
         </Button>
         <input

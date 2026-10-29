@@ -203,11 +203,11 @@ export function RichTextNote({ value, onChange, placeholder = 'Add Additional No
         suppressContentEditableWarning
       />
       <div className={styles.noteToolbar}>
-        <ActionButton icon="solar:text-bold-linear" size="S" tooltip="Bold"
+        <ActionButton icon="solar:text-bold-linear" size="sm" tooltip="Bold"
           onMouseDown={e => { e.preventDefault(); applyFormat('bold'); }} />
-        <ActionButton icon="solar:text-italic-linear" size="S" tooltip="Italic"
+        <ActionButton icon="solar:text-italic-linear" size="sm" tooltip="Italic"
           onMouseDown={e => { e.preventDefault(); applyFormat('italic'); }} />
-        <ActionButton icon="solar:text-underline-linear" size="S" tooltip="Underline"
+        <ActionButton icon="solar:text-underline-linear" size="sm" tooltip="Underline"
           onMouseDown={e => { e.preventDefault(); applyFormat('underline'); }} />
         <span className={styles.noteCount}>{charCount}/{maxLength}</span>
       </div>

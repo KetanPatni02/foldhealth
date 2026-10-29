@@ -111,7 +111,7 @@ function ThreadLinkDrawer({ conversation, forName, onInsert, onClose, load, item
       title={sms ? `${title} via SMS` : title}
       onClose={onClose}
       dismissed={closing}
-      primaryAction={<Button variant="primary" size="L" onClick={add} disabled={!canAdd} disabledReason={blockedReason}>{cta}</Button>}
+      primaryAction={<Button onClick={add} disabled={!canAdd} disabledReason={blockedReason}>{cta}</Button>}
     >
       <div className={styles.form}>
         {/* The thread's member, shown for context; it can't be changed here. */}

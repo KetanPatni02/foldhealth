@@ -31,7 +31,6 @@ export function ShortcutsHelpButton() {
     <div ref={ref} style={{ position: 'relative' }}>
       <ActionButton
         icon="solar:question-circle-linear"
-        size="L"
         tooltip="Keyboard shortcuts"
         onClick={() => setOpen(o => !o)}
       />

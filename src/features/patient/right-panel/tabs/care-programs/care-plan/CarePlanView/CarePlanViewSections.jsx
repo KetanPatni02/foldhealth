@@ -45,8 +45,7 @@ export function SectionEmptyState({ icon, label, onAdd }) {
       <RingEmptyState icon={icon} label={label} iconSize={31} />
       <div className={styles.sectionEmptyActions}>
         <Button
-          variant="tertiary"
-          size="L"
+          variant="soft"
           leadingIconElement={<AddIconMinimalist size={16} />}
           onClick={onAdd}
         >

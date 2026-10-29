@@ -16,14 +16,64 @@ const tintIconElement = (el) =>
     ? cloneElement(el, { color: 'currentColor' })
     : el;
 
+// Emphasis and intent are separate axes (docs/components/library-contract.mdx).
+// Tone defaults follow the variant: filled looks are primary, outlined and
+// ghost looks are neutral, so the common cases need one prop.
+const DEFAULT_TONE = { solid: 'primary', soft: 'primary', outline: 'neutral', ghost: 'neutral' };
+const SIZE_CLASS = { sm: 'sizeS', md: 'sizeL', lg: 'sizeXL' };
+const ICON_SIZE = { sm: 14, md: 16, lg: 24 };
+
+// The names before the variant/tone split, still accepted (with a one-time
+// warning in development) so data-driven values keep working.
+const LEGACY_VARIANT = {
+  primary: ['solid', 'primary'],
+  secondary: ['outline', 'neutral'],
+  tertiary: ['soft', 'primary'],
+  alt: ['outline', 'primary'],
+  success: ['soft', 'success'],
+  danger: ['soft', 'danger'],
+  error: ['soft', 'danger'],
+  dangerFilled: ['solid', 'danger'],
+  info: ['solid', 'info'],
+};
+const LEGACY_SIZE = { S: 'sm', s: 'sm', M: 'md', L: 'md', XL: 'lg' };
+
+const warned = new Set();
+function warnLegacy(prop, value, next) {
+  if (!import.meta.env?.DEV || warned.has(`${prop}=${value}`)) return;
+  warned.add(`${prop}=${value}`);
+  console.warn(`Button: ${prop}="${value}" is deprecated; use ${next}. See docs/components/library-contract.mdx.`);
+}
+
+/** Resolve variant, tone and size, translating the legacy names. */
+function resolveButtonLook(variant = 'solid', tone, size = 'md') {
+  let v = variant;
+  let t = tone;
+  if (LEGACY_VARIANT[variant]) {
+    [v, t] = [LEGACY_VARIANT[variant][0], tone ?? LEGACY_VARIANT[variant][1]];
+    warnLegacy('variant', variant, `variant="${v}"${t === DEFAULT_TONE[v] ? '' : ` tone="${t}"`}`);
+  }
+  let z = size;
+  if (LEGACY_SIZE[size]) {
+    z = LEGACY_SIZE[size];
+    warnLegacy('size', size, `size="${z}"`);
+  }
+  if (!DEFAULT_TONE[v]) v = 'solid';
+  return { variant: v, tone: t ?? DEFAULT_TONE[v], size: SIZE_CLASS[z] ? z : 'md' };
+}
+
 /**
  * Fold Health Button — single source-of-truth button control.
  *
  * Matches Figma Fold-Pixel-1.0 node 25:155 exactly.
  *
  * @param {object}   props
- * @param {'primary'|'secondary'|'tertiary'|'ghost'|'alt'|'success'|'danger'|'dangerFilled'|'info'} [props.variant='primary']
- * @param {'S'|'L'|'XL'}  [props.size='L']         – S=24px, L=32px, XL=52px (mobile)
+ * @param {'solid'|'soft'|'outline'|'ghost'} [props.variant='solid'] – Emphasis: filled, tinted,
+ *                                                    bordered, or bare until hover.
+ * @param {'primary'|'neutral'|'success'|'warning'|'danger'|'info'} [props.tone] – Intent.
+ *                                                    Defaults to primary for solid and soft,
+ *                                                    neutral for outline and ghost.
+ * @param {'sm'|'md'|'lg'} [props.size='md']        – sm=24px, md=32px, lg=52px (mobile)
  * @param {string}   [props.leadingIcon]             – Solar icon name for leading icon
  * @param {React.ReactNode} [props.leadingIconElement] – Custom React node for leading icon (overrides leadingIcon)
  * @param {string}   [props.trailingIcon]            – Solar icon name for trailing icon
@@ -48,8 +98,9 @@ const tintIconElement = (el) =>
  */
 export const Button = forwardRef(function Button(
   {
-    variant = 'primary',
-    size = 'L',
+    variant: variantProp,
+    tone: toneProp,
+    size: sizeProp,
     leadingIcon,
     leadingIconElement,
     trailingIcon,
@@ -70,6 +121,8 @@ export const Button = forwardRef(function Button(
   },
   ref
 ) {
+  const { variant, tone, size } = resolveButtonLook(variantProp, toneProp, sizeProp);
+
   // Split-button rendering (main + divider + chevron + menu) when the caller
   // supplies `menuItems`. Delegates both halves to the base render below so
   // every variant / size / hover / disabled state carries over unchanged.
@@ -78,6 +131,7 @@ export const Button = forwardRef(function Button(
       <SplitButtonBody
         ref={ref}
         variant={variant}
+        tone={tone}
         size={size}
         leadingIcon={leadingIcon}
         leadingIconElement={leadingIconElement}
@@ -99,8 +153,8 @@ export const Button = forwardRef(function Button(
     );
   }
 
-  const sizeClass = size === 'S' ? styles.sizeS : size === 'XL' ? styles.sizeXL : styles.sizeL;
-  const iconSize = size === 'S' ? 14 : size === 'XL' ? 24 : 16;
+  const sizeClass = styles[SIZE_CLASS[size]];
+  const iconSize = ICON_SIZE[size];
 
   // Icon color follows the button's text color via `currentColor` — so
   // hover states (tertiary purple→white, success green→white, danger
@@ -111,7 +165,8 @@ export const Button = forwardRef(function Button(
   const cls = [
     styles.btn,
     sizeClass,
-    styles[variant] || styles.primary,
+    styles.toned,
+    styles[variant],
     iconOnly ? styles.iconOnly : '',
     fullWidth ? styles.fullWidth : '',
     className || '',
@@ -120,7 +175,7 @@ export const Button = forwardRef(function Button(
     .join(' ');
 
   const button = (
-    <button ref={ref} type={type} className={cls} disabled={disabled} {...rest}>
+    <button ref={ref} type={type} className={cls} data-tone={tone} disabled={disabled} {...rest}>
       {leadingIconElement && tintIconElement(leadingIconElement)}
       {!leadingIconElement && leadingIcon && (
         <Icon name={leadingIcon} size={iconSize} color={iconColor} className={styles.icon} />
@@ -155,6 +210,7 @@ export const Button = forwardRef(function Button(
 const SplitButtonBody = forwardRef(function SplitButtonBody(
   {
     variant,
+    tone,
     size,
     leadingIcon,
     leadingIconElement,
@@ -177,13 +233,12 @@ const SplitButtonBody = forwardRef(function SplitButtonBody(
   const [menuOpen, setMenuOpen] = useState(false);
   const chevronRef = useRef(null);
 
-  const sizeClass = size === 'S' ? styles.sizeS : size === 'XL' ? styles.sizeXL : styles.sizeL;
-  const iconSize = size === 'S' ? 14 : size === 'XL' ? 24 : 16;
-  // Chevron glyph: 14px on S, 18px on L, 24px on XL — sits slightly larger
+  const sizeClass = styles[SIZE_CLASS[size]];
+  const iconSize = ICON_SIZE[size];
+  // Chevron glyph: 14px on sm, 18px on md, 24px on lg — sits slightly larger
   // than the leading icon so the affordance still reads as the dominant hit
   // target on the right half.
-  const chevronSize = size === 'S' ? 14 : size === 'XL' ? 24 : 18;
-  const variantClass = styles[variant] || styles.primary;
+  const chevronSize = { sm: 14, md: 18, lg: 24 }[size];
   const iconColor = 'currentColor';
 
   // Wrapper carries only variant chrome — size lives on the inner halves.
@@ -191,7 +246,8 @@ const SplitButtonBody = forwardRef(function SplitButtonBody(
   // throws off the icon/label alignment; wrapper radius adapts via :has().
   const wrapperCls = [
     styles.splitWrapper,
-    variantClass,
+    styles.toned,
+    styles[variant],
     fullWidth ? styles.fullWidth : '',
     className || '',
   ].filter(Boolean).join(' ');
@@ -212,7 +268,7 @@ const SplitButtonBody = forwardRef(function SplitButtonBody(
   const handleMainClick = onClick || (() => setMenuOpen((v) => !v));
 
   return (
-    <span className={wrapperCls}>
+    <span className={wrapperCls} data-tone={tone}>
       <button
         ref={ref}
         type={type}

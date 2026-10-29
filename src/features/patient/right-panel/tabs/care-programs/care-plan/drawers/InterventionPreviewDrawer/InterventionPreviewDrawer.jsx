@@ -80,7 +80,7 @@ function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit }) {
         <span className={styles.accTitle}>{title}</span>
       </button>
       {canEdit && onAdd && (
-        <ActionButton icon="solar:add-linear" size="S" tooltip={addTooltip} onClick={onAdd} />
+        <ActionButton icon="solar:add-linear" size="sm" tooltip={addTooltip} onClick={onAdd} />
       )}
     </div>
   );
@@ -323,7 +323,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
               <>
                 <ActionButton
                   icon="solar:pen-linear"
-                  size="L"
                   tooltip="Edit Intervention"
                   disabled={!canEdit}
                   onClick={() => {
@@ -338,7 +337,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 <ActionButton
                   ref={moreBtnRef}
                   icon="solar:menu-dots-linear"
-                  size="L"
                   tooltip="More"
                   disabled={!canEdit}
                   onClick={(e) => setMoreMenu(e.currentTarget.getBoundingClientRect())}
@@ -533,7 +531,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
             {canEdit && !ro && (
               <ActionButton
                 icon="solar:add-linear"
-                size="S"
+                size="sm"
                 tooltip="Link goal"
                 onClick={() => setLinkGoalOpen(true)}
               />
@@ -564,7 +562,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                       <span className={barrierStyles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                       <ActionButton
                         icon="solar:arrow-right-up-linear"
-                        size="S"
+                        size="sm"
                         tooltip="Open goal"
                         onClick={() => onOpenGoal?.(g)}
                       />
@@ -573,7 +571,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                           <span className={barrierStyles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                           <ActionButton
                             icon="solar:link-broken-minimalistic-linear"
-                            size="S"
+                            size="sm"
                             tooltip="Unlink"
                             onClick={() => savePatientCarePlanIntervention(patientId, program, { ...live, goalId: null }, live.id)}
                           />
@@ -610,7 +608,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
             {canEdit && !!live.goalId && !ro && (
               <ActionButton
                 icon="solar:add-linear"
-                size="S"
+                size="sm"
                 tooltip="Add automation"
                 onClick={() => expandAnd('automations', () => setAddingAutomation(v => !v))}
               />
@@ -627,7 +625,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                     onKeyDown={e => { if (e.key === 'Enter') submitAutomation(); }}
                     aria-label="Automation title"
                   />
-                  <Button variant="primary" size="S" onClick={submitAutomation} disabled={!automationTitle.trim()}>Save</Button>
+                  <Button size="sm" onClick={submitAutomation} disabled={!automationTitle.trim()}>Save</Button>
                 </div>
               )}
               {automations.length === 0 ? (
@@ -646,7 +644,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                         <div className={barrierStyles.linkActions}>
                           <ActionButton
                             icon="solar:link-broken-minimalistic-linear"
-                            size="S"
+                            size="sm"
                             tooltip="Remove automation"
                             onClick={() => deleteCarePlanAutomation(patientId, program.id, a.id)}
                           />

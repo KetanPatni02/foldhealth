@@ -285,15 +285,15 @@ function AgentRow({ agent, isFirst, bulkMode = false, selected = false, onToggle
         onClick={(e) => e.stopPropagation()}
         {...(isFirst ? { 'data-tour': 'agent-actions' } : {})}
       >
-        <ActionButton size="L" tooltip="Call Queue" onClick={() => setShowCallQueue(true)} {...(isFirst ? { 'data-tour': 'call-queue-btn' } : {})}>
+        <ActionButton tooltip="Call Queue" onClick={() => setShowCallQueue(true)} {...(isFirst ? { 'data-tour': 'call-queue-btn' } : {})}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M14.13 4.19V5.87L15.18 6.92M11.75 13.22L12.13 12.823C12.65 12.27 13.47 12.16 14.144 12.54L15.74 13.46C16.76 14.05 16.98 15.49 16.18 16.332L15 17.58C14.7 17.9 14.33 18.13 13.9 18.17C12.539 18.3 9.22 18.16 5.68 14.43C2.34 10.92 1.74 7.9 1.67 6.5C1.64 5.96 1.88 5.46 2.24 5.08L3.55 3.71C4.28 2.94 5.51 3.06 6.14 3.96L7.2 5.44C7.71 6.17 7.65 7.17 7.06 7.79L6.83 8.04C6.83 8.04 5.92 8.99 8.39 11.58C10.85 14.17 11.75 13.22 11.75 13.22ZM18.33 5.87C18.33 8.19 16.45 10.07 14.13 10.07C11.81 10.07 9.93 8.19 9.93 5.87C9.93 3.55 11.81 1.67 14.13 1.67C16.45 1.67 18.33 3.55 18.33 5.87Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </ActionButton>
         <span className={rowStyles.actionDivider} />
-        <ActionButton icon="solar:chart-linear" size="L" tooltip="Call Analytics" onClick={() => { setCallQueueInitTab('analytics'); setShowCallQueue(true); }} {...(isFirst ? { 'data-tour': 'call-analytics-btn' } : {})} />
+        <ActionButton icon="solar:chart-linear" tooltip="Call Analytics" onClick={() => { setCallQueueInitTab('analytics'); setShowCallQueue(true); }} {...(isFirst ? { 'data-tour': 'call-analytics-btn' } : {})} />
         <span className={rowStyles.actionDivider} />
-        <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" ref={moreBtnRef} onClick={handleMoreClick} {...(isFirst ? { 'data-tour': 'more-options-btn' } : {})} />
+        <ActionButton icon="solar:menu-dots-bold" tooltip="More Options" ref={moreBtnRef} onClick={handleMoreClick} {...(isFirst ? { 'data-tour': 'more-options-btn' } : {})} />
         {showMenu && (
           <MenuPopover
             anchorRef={moreBtnRef}

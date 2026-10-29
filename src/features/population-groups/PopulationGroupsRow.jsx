@@ -62,13 +62,12 @@ export function PopulationGroupsRow({ group, columns, hiddenSet, selected, onTog
       {/* Actions — sticky-right, L-size buttons with dividers */}
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.actionsCell}>
-          <ActionButton icon="solar:bolt-linear" size="L" tooltip="Run Automation" />
+          <ActionButton icon="solar:bolt-linear" tooltip="Run Automation" />
           <span className={styles.actionDivider} />
-          <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit Group" onClick={onEdit} />
+          <ActionButton icon="solar:pen-linear" tooltip="Edit Group" onClick={onEdit} />
           <span className={styles.actionDivider} />
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="L"
             tooltip="More Options"
             onClick={(e) => setMoreAnchor(e.currentTarget)}
           />

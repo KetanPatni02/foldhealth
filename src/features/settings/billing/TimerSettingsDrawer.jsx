@@ -312,7 +312,7 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
                 : (
                   <ActionButton
                     icon="solar:trash-bin-trash-linear"
-                    size="S"
+                    size="sm"
                     tooltip="Remove"
                     className={styles.optionRemove}
                     onClick={() => remove(o)}
@@ -331,7 +331,7 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
     ...(value !== 'all' && !hasTeam ? { disabled: true, disabledReason: noTeamReason } : {}),
   }));
 
-  const saveButton = <Button variant="primary" size="L" disabled={!!blocker} onClick={handleSave}>Save</Button>;
+  const saveButton = <Button disabled={!!blocker} onClick={handleSave}>Save</Button>;
 
   return (
     <Drawer

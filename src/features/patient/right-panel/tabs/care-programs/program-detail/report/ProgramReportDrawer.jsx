@@ -240,8 +240,6 @@ export function ProgramReportDrawer({ program, stepList, stepCtx, progress, acti
   const headerRight = (
     <>
       <Button
-        variant="primary"
-        size="L"
         leadingIcon="solar:download-minimalistic-linear"
         disabled={nothingSelected}
         onClick={() => { downloadBlob(generate().blob, `${filename}.pdf`); onExport?.('pdf'); }}
@@ -251,11 +249,10 @@ export function ProgramReportDrawer({ program, stepList, stepCtx, progress, acti
       <span className={styles.headerDivider} aria-hidden="true" />
       <ActionButton
         icon="solar:printer-minimalistic-linear"
-        size="L"
         tooltip="Print"
         tooltipBelow
         aria-label="Print report"
-        state={nothingSelected ? 'disabled' : 'active'}
+        disabled={nothingSelected}
         onClick={() => { printBlob(generate().blob); onExport?.('print'); }}
       />
       <span className={styles.headerDivider} aria-hidden="true" />

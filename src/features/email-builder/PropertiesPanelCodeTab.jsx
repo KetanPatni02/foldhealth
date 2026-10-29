@@ -36,10 +36,10 @@ export function CodeTab({ doc }) {
           onChange={switchMode}
         />
         <div className={styles.codeToolbarRight}>
-          <Button variant="secondary" size="S" leadingIcon="solar:magic-stick-3-linear" onClick={reformat} aria-label="Format">
+          <Button variant="outline" size="sm" leadingIcon="solar:magic-stick-3-linear" onClick={reformat} aria-label="Format">
             Format
           </Button>
-          <Button variant="secondary" size="S" leadingIcon="solar:copy-linear" onClick={copy} aria-label="Copy">
+          <Button variant="outline" size="sm" leadingIcon="solar:copy-linear" onClick={copy} aria-label="Copy">
             Copy
           </Button>
         </div>

@@ -1149,11 +1149,11 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
           onClose={() => { setActivitySearchOpen(false); setActivitySearch(''); }}
         />
       ) : (
-        <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setActivitySearchOpen(true)} />
+        <ActionButton size="sm" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setActivitySearchOpen(true)} />
       )}
       <span className={styles.activityToolbarDivider} />
       <ActionButton
-        size="S"
+        size="sm"
         icon="custom:filter"
         tooltip={activityChipsOpen ? 'Hide filters' : 'Filter'}
         tooltipLeft
@@ -1450,8 +1450,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
         bodyClassName={inSplit ? `${styles.drawerBody} ${styles.drawerBodySplit}` : styles.drawerBody}
         headerRight={
           <div className={styles.headerNav}>
-            <ActionButton icon="solar:alt-arrow-left-linear" size="L" tooltip="Previous gap" state={canPrev ? 'active' : 'disabled'} onClick={goPrev} />
-            <ActionButton icon="solar:alt-arrow-right-linear" size="L" tooltip="Next gap" state={canNext ? 'active' : 'disabled'} onClick={goNext} />
+            <ActionButton icon="solar:alt-arrow-left-linear" tooltip="Previous gap" disabled={!canPrev} onClick={goPrev} />
+            <ActionButton icon="solar:alt-arrow-right-linear" tooltip="Next gap" disabled={!canNext} onClick={goNext} />
             <span className={styles.headerDivider} />
           </div>
         }
@@ -1583,22 +1583,21 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
               })()}
               <div className={styles.paneHeaderRight}>
                 {leftWorkspace === 'schedule' ? (
-                  <Button variant="primary" size="M" disabled={!scheduleDrawer.canSchedule} onClick={scheduleDrawer.handleSchedule}>
+                  <Button disabled={!scheduleDrawer.canSchedule} onClick={scheduleDrawer.handleSchedule}>
                     Schedule
                   </Button>
                 ) : leftWorkspace === 'outreach' ? (
-                  <Button variant="primary" size="M" disabled={!outreach.canSave} onClick={handleSaveOutreach}>
+                  <Button disabled={!outreach.canSave} onClick={handleSaveOutreach}>
                     Save
                   </Button>
                 ) : leftWorkspace === 'document' ? (
-                  <Button variant="primary" size="M" disabled={!docUpload.canSave} onClick={handleUploadDocument}>
+                  <Button disabled={!docUpload.canSave} onClick={handleUploadDocument}>
                     {docUpload.editingId ? 'Save' : 'Upload'}
                   </Button>
                 ) : leftWorkspace === 'document-preview' ? (
                   previewDoc?.fileUrl ? (
                     <ActionButton
                       icon="solar:square-top-down-linear"
-                      size="L"
                       tooltip="Open in new tab"
                       onClick={() => openSafeUrl(previewDoc.fileUrl, 'noopener')}
                     />
@@ -1645,8 +1644,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                       </span>
                       <span className={styles.headerDivider} />
                       <Button
-                        variant="tertiary"
-                        size="M"
+                        variant="soft"
                         leadingIcon="solar:pen-new-square-linear"
                         onClick={() => {
                           const note = selectedNoteId ? memberNotes.find(n => n.id === selectedNoteId) : memberNotes.find(n => (n.gapCodes || []).includes(currentCode));
@@ -1666,7 +1664,6 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                       <span className={styles.headerDivider} />
                       <ActionButton
                         icon="solar:printer-linear"
-                        size="L"
                         tooltip="Print"
                         onClick={() => {
                           const url = memberNotes.find(n => n.id === selectedNoteId)?.pdfDataUrl || memberNotes.find(n => (n.gapCodes || []).includes(currentCode))?.pdfDataUrl;
@@ -1676,8 +1673,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                       />
                       {canAmendNotes && (
                         <Button
-                          variant="tertiary"
-                          size="M"
+                          variant="soft"
                           leadingIcon="solar:lock-keyhole-minimalistic-linear"
                           onClick={() => {
                             const note = selectedNoteId ? memberNotes.find(n => n.id === selectedNoteId) : memberNotes.find(n => (n.gapCodes || []).includes(currentCode));
@@ -1710,16 +1706,16 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   })()
                 ) : leftWorkspace === 'lab-order' ? (
                   <>
-                    <Button variant="secondary" size="M" onClick={closeLeftWorkspace}>Cancel</Button>
-                    <Button variant="primary" size="M" disabled={!canPlaceLabOrder} onClick={placeLabOrder}>Place Lab Order</Button>
+                    <Button variant="outline" onClick={closeLeftWorkspace}>Cancel</Button>
+                    <Button disabled={!canPlaceLabOrder} onClick={placeLabOrder}>Place Lab Order</Button>
                   </>
                 ) : leftWorkspace === 'lab-order-detail' ? (
                   labOrder && CANCELLABLE_STATUSES.includes(labOrder.status)
-                    ? <Button variant="secondary" size="M" onClick={() => setLabOrderToCancel(labOrder)}>Cancel Order</Button>
+                    ? <Button variant="outline" onClick={() => setLabOrderToCancel(labOrder)}>Cancel Order</Button>
                     : null
                 ) : leftWorkspace === 'lab-result' ? (
                   labResult && !labResult.reviewedAt ? (
-                    <Button variant="primary" size="M" onClick={() => { labs.reviewResult(labResult, { closeGap: labCloseGap }); setLabResultId(null); setLeftWorkspace(null); }}>
+                    <Button onClick={() => { labs.reviewResult(labResult, { closeGap: labCloseGap }); setLabResultId(null); setLeftWorkspace(null); }}>
                       Mark as Reviewed
                     </Button>
                   ) : null
@@ -1729,25 +1725,25 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   null
                 ) : leftWorkspace === 'referral' ? (
                   <>
-                    <Button variant="secondary" size="M" disabled={!canSaveReferralDraft} onClick={() => saveReferral(REFERRAL_STATUS.draft)}>
+                    <Button variant="outline" disabled={!canSaveReferralDraft} onClick={() => saveReferral(REFERRAL_STATUS.draft)}>
                       Save as Draft
                     </Button>
-                    <Button variant="primary" size="M" disabled={!canSendReferral} onClick={() => saveReferral(REFERRAL_STATUS.referred)}>
+                    <Button disabled={!canSendReferral} onClick={() => saveReferral(REFERRAL_STATUS.referred)}>
                       Sign &amp; Refer
                     </Button>
                   </>
                 ) : leftWorkspace === 'reminder' ? (
-                  <Button variant="primary" size="M" disabled={!reminderForm.canSave} onClick={handleSaveReminder}>
+                  <Button disabled={!reminderForm.canSave} onClick={handleSaveReminder}>
                     Save
                   </Button>
                 ) : leftWorkspace === 'cis-appointment' ? (
                   <>
                     {cisApptForm.editing && (
-                      <Button variant="secondary" size="M" onClick={cancelCisAppointmentPane}>
+                      <Button variant="outline" onClick={cancelCisAppointmentPane}>
                         Cancel Appointment
                       </Button>
                     )}
-                    <Button variant="primary" size="M" disabled={!cisApptForm.canSave} onClick={saveCisAppointmentPane}>
+                    <Button disabled={!cisApptForm.canSave} onClick={saveCisAppointmentPane}>
                       {cisApptForm.editing ? 'Save' : 'Schedule'}
                     </Button>
                   </>
@@ -1761,7 +1757,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   // CTA next to the close button.
                   null
                 ) : (
-                  <Button variant="primary" size="M" disabled={!addTask.canSave} onClick={addTask.handleSave}>
+                  <Button disabled={!addTask.canSave} onClick={addTask.handleSave}>
                     Save Task
                   </Button>
                 )}

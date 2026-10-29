@@ -53,8 +53,8 @@ export function ApcmBillingFilterBar({
       {bulkTarget && bulkTarget.actionable > 0 && (
         <div className={styles.bulkFilterAction}>
           <Button
-            variant="secondary"
-            size="S"
+            variant="outline"
+            size="sm"
             leadingIcon="solar:check-circle-linear"
             onClick={onBulkMarkChronic}
           >

@@ -197,7 +197,7 @@ export function WorklistShell({
   const onClearSelection = bulkSelect ? bulk.clearSelection : onClearSelectionProp;
   const bulkActions = bulkSelect
     ? [
-        { label: 'Delete', icon: 'solar:trash-bin-trash-linear', variant: 'secondary', onClick: () => setBulkDeleteOpen(true) },
+        { label: 'Delete', icon: 'solar:trash-bin-trash-linear', variant: 'outline', onClick: () => setBulkDeleteOpen(true) },
         ...(bulkSelect.extraActions || []),
       ]
     : bulkActionsProp;
@@ -349,7 +349,6 @@ export function WorklistShell({
                 <span className={styles.iconDivider} />
                 <ActionButton
                   icon="custom:filter"
-                  size="L"
                   tooltip="Filter"
                   className={showFilters ? styles.iconActive : ''}
                   onClick={() => onToggleFilters(!showFilters)}
@@ -359,13 +358,13 @@ export function WorklistShell({
             {onHistory && (
               <>
                 <span className={styles.iconDivider} />
-                <ActionButton icon="solar:history-linear" size="L" tooltip="History" onClick={onHistory} />
+                <ActionButton icon="solar:history-linear" tooltip="History" onClick={onHistory} />
               </>
             )}
             {onExport && (
               <>
                 <span className={styles.iconDivider} />
-                <ActionButton icon="solar:upload-minimalistic-linear" size="L" tooltip="Export" onClick={onExport} />
+                <ActionButton icon="solar:upload-minimalistic-linear" tooltip="Export" onClick={onExport} />
               </>
             )}
           </div>

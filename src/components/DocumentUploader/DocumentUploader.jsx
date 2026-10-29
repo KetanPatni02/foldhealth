@@ -196,10 +196,10 @@ export function DocumentUploader({
       {error && <div className={styles.error}>{error}</div>}
 
       <div className={styles.actions}>
-        <Button variant="primary" size="S" disabled={!canSubmit} onClick={handleSubmit}>
+        <Button size="sm" disabled={!canSubmit} onClick={handleSubmit}>
           Upload
         </Button>
-        <Button variant="secondary" size="S" onClick={handleCancel}>Cancel</Button>
+        <Button variant="outline" size="sm" onClick={handleCancel}>Cancel</Button>
       </div>
     </div>
   );

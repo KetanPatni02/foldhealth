@@ -99,7 +99,7 @@ function DiagnosisGapRow({ item }) {
           </div>
         </div>
         <div className={styles.moreBtn}>
-          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+          <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" />
         </div>
       </div>
       {item.icds.length > 0 && (

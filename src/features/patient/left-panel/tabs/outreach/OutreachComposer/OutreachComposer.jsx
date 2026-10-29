@@ -267,8 +267,7 @@ export function OutreachComposer({
       {!expanded && (
         <div className={styles.idleCard}>
           <Button
-            variant="alt"
-            size="L"
+            variant="outline" tone="primary"
             leadingIconElement={<OutreachIcon size={16} color="var(--primary-300)" />}
             onClick={() => setExpanded(true)}
           >
@@ -281,7 +280,7 @@ export function OutreachComposer({
       {showDatetime && expanded && (
         <div className={styles.datetimeRow}>
           <DateTimePicker value={datetime} onChange={setDatetime} />
-          <Button variant="ghost" size="S" onClick={() => setShowDatetime(false)}>Done</Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowDatetime(false)}>Done</Button>
         </div>
       )}
 
@@ -431,7 +430,7 @@ export function OutreachComposer({
           <div className={styles.trayLeft}>
             <ActionButton
               icon="solar:checklist-minimalistic-linear"
-              size="S"
+              size="sm"
               tooltip="Add Task"
               iconColor="var(--neutral-300)"
               onClick={onAddTask}
@@ -439,7 +438,7 @@ export function OutreachComposer({
             <span className={styles.trayDivider} aria-hidden />
             <ActionButton
               icon="solar:calendar-add-linear"
-              size="S"
+              size="sm"
               tooltip="Schedule Appointment"
               iconColor="var(--neutral-300)"
               onClick={onSchedule}
@@ -447,7 +446,7 @@ export function OutreachComposer({
             <span className={styles.trayDivider} aria-hidden />
             <ActionButton
               icon="solar:alarm-linear"
-              size="S"
+              size="sm"
               tooltip="Set Reminder"
               iconColor="var(--neutral-300)"
             />
@@ -510,11 +509,10 @@ export function OutreachComposer({
               <Icon name="solar:check-circle-bold" size={12} color="currentColor" />
               Saved
             </span>
-            <Button variant="ghost" size="S" onClick={handleDiscard}>Discard</Button>
+            <Button variant="ghost" size="sm" onClick={handleDiscard}>Discard</Button>
             <span className={styles.trayGroupDivider} aria-hidden />
             <Button
-              variant="primary"
-              size="S"
+              size="sm"
               trailingIconElement={<span className={styles.kbdHint}>⌘⏎</span>}
               disabled={!canSave}
               onClick={onSaveClick}

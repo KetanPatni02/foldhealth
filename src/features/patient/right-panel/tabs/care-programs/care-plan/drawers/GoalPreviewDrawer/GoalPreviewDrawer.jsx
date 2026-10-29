@@ -231,7 +231,7 @@ const AccordionHead = function AccordionHead({
               <ActionButton
                 ref={linkRef}
                 icon="solar:link-round-linear"
-                size="S"
+                size="sm"
                 tooltip={linkTooltip || 'Link existing'}
                 onClick={onLinkExisting}
                 aria-haspopup="dialog"
@@ -243,7 +243,7 @@ const AccordionHead = function AccordionHead({
           <ActionButton
             ref={addRef}
             icon="solar:add-linear"
-            size="S"
+            size="sm"
             tooltip={addTooltip}
             onClick={onAdd}
             aria-haspopup={addAriaHasPopup}
@@ -313,8 +313,8 @@ function IntvDeleteScopePicker({ name, kindLabel = 'intervention', onCancel, onC
           ))}
         </div>
         <div className={dialogStyles.actions}>
-          <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
-          <Button variant="danger" size="L" onClick={() => onConfirm(scope)}>Delete</Button>
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button variant="soft" tone="danger" onClick={() => onConfirm(scope)}>Delete</Button>
         </div>
       </AlertDialogContent>
     </AlertDialog>
@@ -863,7 +863,6 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             <div className={styles.statusActions}>
               <ActionButton
                 icon="solar:pen-linear"
-                size="L"
                 tooltip="Edit Goal"
                 disabled={!canEdit}
                 onClick={() => setEditGoalOpen(true)}
@@ -872,7 +871,6 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               <ActionButton
                 ref={moreBtnRef}
                 icon="solar:menu-dots-linear"
-                size="L"
                 tooltip="More"
                 disabled={!canEdit}
                 onClick={(e) => setMoreMenu(e.currentTarget.getBoundingClientRect())}
@@ -1182,7 +1180,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                       onKeyDown={e => { if (e.key === 'Enter') submitBarrier(); }}
                       aria-label="Barrier title"
                     />
-                    <Button variant="primary" size="S" onClick={submitBarrier} disabled={!barrierTitle.trim()}>Save</Button>
+                    <Button size="sm" onClick={submitBarrier} disabled={!barrierTitle.trim()}>Save</Button>
                   </div>
                 )}
                 {barriers.length === 0 ? (
@@ -1222,7 +1220,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                       onKeyDown={e => { if (e.key === 'Enter') submitAutomation(); }}
                       aria-label="Automation title"
                     />
-                    <Button variant="primary" size="S" onClick={submitAutomation} disabled={!automationTitle.trim()}>Save</Button>
+                    <Button size="sm" onClick={submitAutomation} disabled={!automationTitle.trim()}>Save</Button>
                   </div>
                 )}
                 {automations.length === 0 ? (
@@ -1272,7 +1270,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             <ActionButton
               ref={filterBtnRef}
               icon="custom:filter"
-              size="S"
+              size="sm"
               tooltip="Filter activity"
               active={filtersOpen || activityFilter !== 'all'}
               onClick={() => setFiltersOpen(v => !v)}

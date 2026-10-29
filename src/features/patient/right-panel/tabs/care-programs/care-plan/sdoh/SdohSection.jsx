@@ -85,7 +85,7 @@ export function SdohSection({
               <span className={styles.domainLabel}>{domain.label}</span>
               {needs.length > 0 && <Badge tone="grey" size="XS" label={String(needs.length)} />}
               {onAddNeed && (
-                <ActionButton size="S" tooltip={`Add ${domain.label.toLowerCase()} need`} onClick={e => open('add', e, { domain })}>
+                <ActionButton size="sm" tooltip={`Add ${domain.label.toLowerCase()} need`} onClick={e => open('add', e, { domain })}>
                   <AddIconMinimalist size={16} color="var(--neutral-300)" />
                 </ActionButton>
               )}
@@ -119,7 +119,7 @@ export function SdohSection({
                           );
                         })}
                         {onRefer && (
-                          <ActionButton size="S" icon="solar:share-circle-linear" tooltip={mode === 'template' ? 'Suggest a referral' : 'Refer to a community partner'} onClick={e => open('refer', e, { barrier: b })} />
+                          <ActionButton size="sm" icon="solar:share-circle-linear" tooltip={mode === 'template' ? 'Suggest a referral' : 'Refer to a community partner'} onClick={e => open('refer', e, { barrier: b })} />
                         )}
                         {mode === 'plan' && (
                           <GbiStatusButton
@@ -129,7 +129,7 @@ export function SdohSection({
                           />
                         )}
                         {onRemoveNeed && (
-                          <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Remove need" onClick={() => onRemoveNeed(b)} />
+                          <ActionButton size="sm" icon="solar:trash-bin-trash-linear" tooltip="Remove need" onClick={() => onRemoveNeed(b)} />
                         )}
                       </span>
                     </li>

@@ -135,7 +135,7 @@ export function AutomationAnalytics({ id }) {
     return (
       <div className={`${styles.page} ${styles.centered}`}>
         <RingEmptyState icon="solar:bolt-linear" label="This automation was not found. It may have been deleted.">
-          <Button variant="secondary" size="L" leadingIcon="solar:arrow-left-linear" onClick={() => openAutomationsList()}>Back to automations</Button>
+          <Button variant="outline" leadingIcon="solar:arrow-left-linear" onClick={() => openAutomationsList()}>Back to automations</Button>
         </RingEmptyState>
       </div>
     );
@@ -150,13 +150,13 @@ export function AutomationAnalytics({ id }) {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.titleRow}>
-          <ActionButton icon="solar:arrow-left-linear" size="L" tooltip="Back to automations" aria-label="Back to automations" onClick={() => openAutomationsList()} />
+          <ActionButton icon="solar:arrow-left-linear" tooltip="Back to automations" aria-label="Back to automations" onClick={() => openAutomationsList()} />
           <h1 className={styles.title}>{automation.name}</h1>
           <Badge tone={status.tone} size="S" label={status.label} />
           <div className={styles.headerActions}>
             <Toggle items={VIEW_ITEMS} active={tab} onChange={k => openAutomationAnalytics(id, k)} />
             <span className={styles.headerDivider} aria-hidden />
-            <Button variant="secondary" size="L" leadingIcon="solar:pen-linear" onClick={() => openAutomationBuilder(id)}>Edit automation</Button>
+            <Button variant="outline" leadingIcon="solar:pen-linear" onClick={() => openAutomationBuilder(id)}>Edit automation</Button>
           </div>
         </div>
         <p className={styles.meta}>

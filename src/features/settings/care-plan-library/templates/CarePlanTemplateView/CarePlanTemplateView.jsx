@@ -282,8 +282,6 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
       <div className={styles.planPane}>
         <div className={styles.toolbar}>
           <Button
-            variant="primary"
-            size="L"
             disabled={!name.trim()}
             onClick={() => onSave?.({
               name: name.trim(),

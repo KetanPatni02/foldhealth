@@ -90,9 +90,9 @@ export function CalendarToolbar({
 
       <div className={styles.toolbarCenter}>
         <button className={styles.todayBtn} onClick={onToday}>Today</button>
-        <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" onClick={onPrev} />
+        <ActionButton icon="solar:alt-arrow-left-linear" size="sm" tooltip="Previous" onClick={onPrev} />
         <h2 className={styles.monthTitle}>{calendarTitle}</h2>
-        <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next" onClick={onNext} />
+        <ActionButton icon="solar:alt-arrow-right-linear" size="sm" tooltip="Next" onClick={onNext} />
       </div>
 
       <div className={styles.toolbarRight}>
@@ -138,7 +138,7 @@ export function CalendarToolbar({
         />
         {/* Figma Eventus 17596:117364: the whole button opens the menu. */}
         <Button
-          variant="secondary"
+          variant="outline"
           menuItems={SCHEDULE_MENU}
           onMenuSelect={onScheduleSelect}
           menuAriaLabel="Schedule"
@@ -148,13 +148,13 @@ export function CalendarToolbar({
         </Button>
         <span className={styles.actionDivider} aria-hidden="true" />
         {/* Everyone's Out of Office records, and the holidays, in drawers. */}
-        <ActionButton icon={OOO_ICON} size="L" tooltip="Out of Office Records" onClick={onOpenOoo} />
+        <ActionButton icon={OOO_ICON} tooltip="Out of Office Records" onClick={onOpenOoo} />
         <span className={styles.actionDivider} aria-hidden="true" />
-        <ActionButton size="L" tooltip="Holidays" onClick={onOpenHolidays}><HolidayIcon size={20} color="var(--neutral-300)" /></ActionButton>
+        <ActionButton tooltip="Holidays" onClick={onOpenHolidays}><HolidayIcon size={20} color="var(--neutral-300)" /></ActionButton>
         <span className={styles.actionDivider} aria-hidden="true" />
-        <ActionButton icon="solar:tuning-2-linear" size="L" tooltip="Settings" />
+        <ActionButton icon="solar:tuning-2-linear" tooltip="Settings" />
         <span className={styles.actionDivider} aria-hidden="true" />
-        <ActionButton icon="solar:info-circle-linear" size="L" tooltip="Help" />
+        <ActionButton icon="solar:info-circle-linear" tooltip="Help" />
       </div>
     </div>
   );

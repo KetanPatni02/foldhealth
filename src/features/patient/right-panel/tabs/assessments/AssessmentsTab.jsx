@@ -101,14 +101,14 @@ export function AssessmentsTab({ patient }) {
               onChange={setView}
               leading={(
                 <>
-                  <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" aria-label="Search assessments" onClick={() => setSearchOpen(true)} />
+                  <ActionButton icon="solar:magnifer-linear" tooltip="Search" aria-label="Search assessments" onClick={() => setSearchOpen(true)} />
                   <span className={styles.divider} aria-hidden="true" />
                 </>
               )}
             />
             {!detail && (
               <>
-                <Button variant="tertiary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => sendAssessment()}>
+                <Button variant="soft" leadingIcon="solar:add-circle-linear" onClick={() => sendAssessment()}>
                   Send Assessment
                 </Button>
                 <span className={styles.divider} aria-hidden="true" />
@@ -116,7 +116,6 @@ export function AssessmentsTab({ patient }) {
             )}
             <ActionButton
               icon="custom:filter"
-              size="L"
               tooltip="Filters"
               tooltipLeft
               aria-label="Filters"

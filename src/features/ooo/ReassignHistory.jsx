@@ -140,7 +140,7 @@ export function useReassignHistory() {
         <SearchIconButton tooltipBelow onClick={() => setSearchOpen(true)} />
       )}
       <span className={styles.toolDivider} aria-hidden="true" />
-      <ActionButton size="L" tooltip="Filters" tooltipBelow tooltipLeft count={filterCount || undefined} active={filtersOpen}
+      <ActionButton tooltip="Filters" tooltipBelow tooltipLeft count={filterCount || undefined} active={filtersOpen}
         className={filtersOpen ? styles.toolOn : undefined} onClick={() => setFiltersOpen(o => !o)}>
         <FilterIcon size={20} color="var(--neutral-300)" />
       </ActionButton>

@@ -56,7 +56,6 @@ export function ConsentHistoryDrawer({ patientId, onClose }) {
           <span className={styles.divider} />
           <ActionButton
             icon="custom:filter"
-            size="L"
             tooltip="Filter"
             tooltipLeft
             active={showFilters}

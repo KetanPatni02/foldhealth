@@ -83,8 +83,7 @@ export function EmailPreviewDrawer({ campaign, onClose, onEdit }) {
   const headerRight = onEdit ? (
     <>
       <Button
-        variant="primary"
-        size="S"
+        size="sm"
         leadingIcon="solar:pen-linear"
         onClick={onEdit}
       >

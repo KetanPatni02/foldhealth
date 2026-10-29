@@ -187,7 +187,6 @@ export function CareGapDetailDrawerHeader({
                 <span className={styles.headerDivider} />
                 <ActionButton
                   icon="solar:book-2-linear"
-                  size="L"
                   tooltip="Measure Tutorial"
                   tooltipBelow
                   tooltipLeft
@@ -196,7 +195,7 @@ export function CareGapDetailDrawerHeader({
               </>
             )}
             <span className={styles.headerDivider} />
-            <ActionButton ref={moreBtnRef} icon="solar:menu-dots-linear" size="L" tooltip="More" tooltipBelow tooltipLeft
+            <ActionButton ref={moreBtnRef} icon="solar:menu-dots-linear" tooltip="More" tooltipBelow tooltipLeft
               onClick={moreMenuRect ? closeMoreMenu : openMoreMenu} />
           </div>
         </div>
@@ -257,7 +256,7 @@ export function CareGapDetailDrawerHeader({
               { key: 'Task', label: 'Add Task', onClick: () => onAddTask?.() },
             ].filter(a => a && gap.workflows.includes(a.key));
             return actions.map((a, i) => (
-              <Button key={a.key} variant={i === 0 ? 'primary' : 'tertiary'} size="L" onClick={a.onClick}>{a.label}</Button>
+              <Button key={a.key} variant={i === 0 ? 'solid' : 'soft'} onClick={a.onClick}>{a.label}</Button>
             ));
           })() : (
           <>
@@ -267,21 +266,21 @@ export function CareGapDetailDrawerHeader({
             // also sets the follow-up reminder. Nothing to book once every
             // dose is given.
             <>
-              <Button variant="primary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>
-              <Button variant="tertiary" size="L" disabled={!onScheduleVaccine} onClick={() => onScheduleVaccine?.()}>Schedule Vaccine Reminder</Button>
+              <Button onClick={() => onAddOutreach?.()}>Add Outreach</Button>
+              <Button variant="soft" disabled={!onScheduleVaccine} onClick={() => onScheduleVaccine?.()}>Schedule Vaccine Reminder</Button>
             </>
           ) : (
             <>
-              <Button variant="primary" size="L" onClick={() => onScheduleAppointment?.()}>Schedule with Specialist</Button>
+              <Button onClick={() => onScheduleAppointment?.()}>Schedule with Specialist</Button>
               {/* Hide Add Note once the note has moved past the "start" state:
                   Submitted (pending review), Completed (signed), or any Closed
                   status. The Add Note suggested action is for kicking off the
                   flow; after review it would just create a duplicate. */}
               {!(status === 'Submitted' || status === 'Completed' || (status || '').startsWith('Closed')) && (
-                <Button variant="tertiary" size="L" onClick={() => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true))}>Add Note</Button>
+                <Button variant="soft" onClick={() => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true))}>Add Note</Button>
               )}
-              <Button variant="tertiary" size="L" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
-              <Button variant="secondary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>
+              <Button variant="soft" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
+              <Button variant="outline" onClick={() => onAddOutreach?.()}>Add Outreach</Button>
             </>
           )}
           </>

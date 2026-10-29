@@ -51,8 +51,6 @@ export function ImportRuleDrawer({ onClose, onImport }) {
       onClose={onClose}
       primaryAction={
         <Button
-          variant="primary"
-          size="L"
           disabled={!selected}
           onClick={() => { if (selected) onImport(selected); }}
         >

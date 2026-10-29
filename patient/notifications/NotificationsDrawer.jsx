@@ -51,10 +51,10 @@ export function NotificationsDrawer({ memberId, onClose }) {
                   {n.kind === 'message' && <span className={styles.time}>{listTime(n.at)}</span>}
                 </div>
                 {n.kind === 'message' && (
-                  <Button variant="ghost" size="S" onClick={() => open(`messages?c=${n.conversation_id}`)}>Reply</Button>
+                  <Button variant="ghost" size="sm" onClick={() => open(`messages?c=${n.conversation_id}`)}>Reply</Button>
                 )}
                 {n.kind === 'appointment' && (
-                  <Button variant="ghost" size="S" onClick={() => open('home')}>View</Button>
+                  <Button variant="ghost" size="sm" onClick={() => open('home')}>View</Button>
                 )}
               </li>
             ))}

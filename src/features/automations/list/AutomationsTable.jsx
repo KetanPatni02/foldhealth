@@ -97,19 +97,19 @@ export function AutomationsTable({ automations, runsOf, actions, emptyState }) {
           <div className={styles.actionCell}>
             {a.status === 'active' && (
               <>
-                <Button variant="secondary" size="S" leadingIcon="solar:play-linear" onClick={() => actions.run(a)}>Run</Button>
+                <Button variant="outline" size="sm" leadingIcon="solar:play-linear" onClick={() => actions.run(a)}>Run</Button>
                 <span className={styles.vDivider} />
               </>
             )}
             {a.status === 'draft' && (
               <>
-                <Button variant="secondary" size="S" leadingIcon="solar:pen-linear" onClick={() => actions.edit(a)}>Edit</Button>
+                <Button variant="outline" size="sm" leadingIcon="solar:pen-linear" onClick={() => actions.edit(a)}>Edit</Button>
                 <span className={styles.vDivider} />
               </>
             )}
             <ActionButton
               icon="solar:chart-2-linear"
-              size="S"
+              size="sm"
               tooltip={runs.length ? 'Analytics' : 'Analytics appear after the first run'}
               disabled={!runs.length}
               onClick={() => actions.menu('analytics', a)}
@@ -135,8 +135,8 @@ export function AutomationsTable({ automations, runsOf, actions, emptyState }) {
       onSelectAll={(checked) => setSelected(checked ? automations.map(a => a.id) : [])}
       onClearSelection={() => setSelected([])}
       bulkActions={[
-        { label: 'Turn on', icon: 'solar:play-linear', variant: 'secondary', onClick: bulk(list => list.filter(a => a.status === 'inactive').forEach(a => actions.toggle(a, true))) },
-        { label: 'Turn off', icon: 'solar:pause-linear', variant: 'secondary', onClick: bulk(list => list.filter(a => a.status === 'active').forEach(a => actions.toggle(a, false))) },
+        { label: 'Turn on', icon: 'solar:play-linear', variant: 'outline', onClick: bulk(list => list.filter(a => a.status === 'inactive').forEach(a => actions.toggle(a, true))) },
+        { label: 'Turn off', icon: 'solar:pause-linear', variant: 'outline', onClick: bulk(list => list.filter(a => a.status === 'active').forEach(a => actions.toggle(a, false))) },
       ]}
       emptyState={emptyState}
       minTableWidth={1190}
@@ -184,7 +184,7 @@ export function TemplatesTable({ templates, avgOf, onPreview, onUse, emptyState 
         <td className={`${styles.td} ${styles.num}`}>{(t.usedCount || 0).toLocaleString('en-US')}</td>
         <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
           <div className={styles.actionCell}>
-            <Button variant="secondary" size="S" leadingIcon="solar:copy-linear" onClick={() => onUse(t)}>Use Template</Button>
+            <Button variant="outline" size="sm" leadingIcon="solar:copy-linear" onClick={() => onUse(t)}>Use Template</Button>
             <span className={styles.vDivider} />
             <TemplateMenu onPreview={() => onPreview(t)} />
           </div>

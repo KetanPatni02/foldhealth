@@ -64,17 +64,17 @@ export function ProgramDetailViewLetters({
             </div>
           ) : (
             <>
-              <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setLetterSearchOpen(true)} />
+              <ActionButton icon="solar:magnifer-linear" size="sm" tooltip="Search" onClick={() => setLetterSearchOpen(true)} />
               <span className={styles.tabDivider} />
               <Toggle size="S" items={LETTER_SUB_TABS} active={activeLetterTab} onChange={setActiveLetterTab} />
               <div style={{ flex: 1 }} />
             </>
           )}
-          <ActionButton size="S" tooltip="Add" onClick={() => setAddLetterOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
-          <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" active={letterFiltersOpen}
+          <ActionButton size="sm" tooltip="Add" onClick={() => setAddLetterOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
+          <ActionButton icon="solar:filter-linear" size="sm" tooltip="Filter" active={letterFiltersOpen}
             iconColor={letterFiltersOpen ? 'var(--primary-300)' : undefined}
             onClick={() => setLetterFiltersOpen(v => !v)} />
-          <ActionButton icon="solar:history-linear" size="S" tooltip="History" onClick={() => setHistoryOpen(true)} />
+          <ActionButton icon="solar:history-linear" size="sm" tooltip="History" onClick={() => setHistoryOpen(true)} />
         </div>
 
         {letterFiltersOpen && (
@@ -123,9 +123,9 @@ export function ProgramDetailViewLetters({
               <td className={`${styles.letterCell} ${styles.rowActionsCell}`}>
                 {selectedLetters.size === 0 && (
                   <div className={styles.rowActions}>
-                    <ActionButton icon="solar:plain-linear" size="S" tooltip="Send letter"
+                    <ActionButton icon="solar:plain-linear" size="sm" tooltip="Send letter"
                       onClick={() => setSendTarget({ letterName: letter.fileName, clearOnSent: false })} />
-                    <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More actions"
+                    <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More actions"
                       onClick={(e) => setRowMenu({ id: letter.id, rect: e.currentTarget.getBoundingClientRect() })} />
                   </div>
                 )}
@@ -143,10 +143,10 @@ export function ProgramDetailViewLetters({
             <span className={styles.bulkCount}>{selectedLetters.size} Selected</span>
           </div>
           <span className={styles.bulkDivider} />
-          <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={downloadSelectedLetters}>
+          <Button variant="outline" leadingIcon="solar:download-minimalistic-linear" onClick={downloadSelectedLetters}>
             Download Files
           </Button>
-          <Button variant="primary" size="L" leadingIcon="solar:plain-linear"
+          <Button leadingIcon="solar:plain-linear"
             onClick={() => setSendTarget({
               letterName: selectedLetters.size === 1
                 ? letters.find(l => selectedLetters.has(l.id))?.fileName || 'Letter'
@@ -156,7 +156,7 @@ export function ProgramDetailViewLetters({
             Send Files
           </Button>
           <span className={styles.bulkDivider} />
-          <ActionButton icon="solar:close-square-linear" size="S" tooltip="Clear selection"
+          <ActionButton icon="solar:close-square-linear" size="sm" tooltip="Clear selection"
             onClick={() => setSelectedLetters(new Set())} />
         </div>
       )}

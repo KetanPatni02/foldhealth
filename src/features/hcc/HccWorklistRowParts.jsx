@@ -122,7 +122,7 @@ export function HccEvidenceCell({ charts, onClick, onMouseEnter, onMouseLeave, o
     return (
       <Button
         variant="ghost"
-        size="S"
+        size="sm"
         leadingIcon="solar:upload-linear"
         onClick={(e) => { e.stopPropagation(); onUpload?.(); }}
       >

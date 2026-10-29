@@ -122,14 +122,13 @@ export function OrdersReferralsTab({ patient }) {
             onChange={switchView}
             leading={(
               <>
-                <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" aria-label={`Search ${noun}`} onClick={() => setSearchOpen(true)} />
+                <ActionButton icon="solar:magnifer-linear" tooltip="Search" aria-label={`Search ${noun}`} onClick={() => setSearchOpen(true)} />
                 <span className={styles.divider} aria-hidden="true" />
               </>
             )}
           />
           <Button
-            variant="alt"
-            size="L"
+            variant="outline" tone="primary"
             leadingIcon="solar:add-square-linear"
             menuItems={NEW_ORDER_ITEMS}
             onMenuSelect={startOrder}
@@ -141,7 +140,6 @@ export function OrdersReferralsTab({ patient }) {
           <span className={styles.divider} aria-hidden="true" />
           <ActionButton
             icon="custom:filter"
-            size="L"
             tooltip="Filters"
             tooltipLeft
             aria-label="Filters"

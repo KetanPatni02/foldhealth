@@ -85,7 +85,7 @@ export function PasswordResetFlow({ initialEmail = '', onDone, onBack }) {
             <Input id={`${uid}-email`} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@fold.health" autoComplete="email" />
           </div>
           {error && <div className={styles.error}><Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />{error}</div>}
-          <Button variant="primary" size="L" fullWidth type="submit" disabled={loading}>
+          <Button fullWidth type="submit" disabled={loading}>
             {loading ? 'Sending code...' : 'Send Code'}
           </Button>
         </form>
@@ -135,7 +135,7 @@ export function PasswordResetFlow({ initialEmail = '', onDone, onBack }) {
             <Input id={`${uid}-confirm`} type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Re-enter your new password" autoComplete="new-password" />
           </div>
           {error && <div className={styles.error}><Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />{error}</div>}
-          <Button variant="primary" size="L" fullWidth type="submit" disabled={loading}>
+          <Button fullWidth type="submit" disabled={loading}>
             {loading ? 'Saving...' : 'Set New Password'}
           </Button>
         </form>

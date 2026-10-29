@@ -59,8 +59,8 @@ export function FeatureReviewForm({ parentId: initialParentId = null, onClose, o
       closeOnOverlayClick={false}
       headerRight={(
         <>
-          <Button variant="secondary" size="S" onClick={() => onDone(null)} disabled={saving}>Cancel</Button>
-          <Button variant="primary" size="S" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+          <Button variant="outline" size="sm" onClick={() => onDone(null)} disabled={saving}>Cancel</Button>
+          <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
           <span className={styles.headerDivider} />
         </>
       )}

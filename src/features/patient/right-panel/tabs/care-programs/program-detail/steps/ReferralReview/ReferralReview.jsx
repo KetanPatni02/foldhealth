@@ -42,15 +42,15 @@ export function ReferralReview() {
     <div className={styles.container}>
       {/* Toolbar */}
       <div className={styles.toolbar}>
-        <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
+        <ActionButton icon="solar:magnifer-linear" size="sm" tooltip="Search" />
         <span className={styles.tabDivider} />
         <Toggle size="S" items={SUB_TABS} active={activeTab} onChange={setActiveTab} />
         <div className={styles.spacer} />
-        <Button variant="tertiary" size="S" leadingIconElement={<AddIconMinimalist size={14} />} trailingIconElement={<DownChevronIcon size={14} />}>
+        <Button variant="soft" size="sm" leadingIconElement={<AddIconMinimalist size={14} />} trailingIconElement={<DownChevronIcon size={14} />}>
           New Order
         </Button>
         <span className={styles.tabDivider} />
-        <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
+        <ActionButton icon="solar:filter-linear" size="sm" tooltip="Filter" />
       </div>
 
       {/* Table */}

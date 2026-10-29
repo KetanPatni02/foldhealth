@@ -57,12 +57,12 @@ export function PatientPortalAccess({ patient, defaultEmail }) {
                 </span>
               </div>
               <Badge size="S" tone={a.lastSignInAt ? 'success' : 'grey'} label={a.lastSignInAt ? 'Active' : 'Invite sent'} />
-              <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove access" onClick={() => setRemoving(a)} />
+              <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Remove access" onClick={() => setRemoving(a)} />
             </li>
           ))}
         </ul>
       )}
-      <Button variant="secondary" size="S" leadingIcon="solar:user-plus-linear" onClick={() => setInviting(true)}>
+      <Button variant="outline" size="sm" leadingIcon="solar:user-plus-linear" onClick={() => setInviting(true)}>
         Give portal access
       </Button>
 

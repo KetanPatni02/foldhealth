@@ -568,12 +568,10 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
 
   const headerRight = (
     <>
-      <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={handleDownload} disabled={nothingSelected}>
+      <Button variant="outline" leadingIcon="solar:download-minimalistic-linear" onClick={handleDownload} disabled={nothingSelected}>
         Download PDF
       </Button>
       <Button
-        variant="primary"
-        size="L"
         leadingIcon="solar:share-linear"
         onClick={() => handleShare('EHR')}
         disabled={nothingSelected || sharing || !canShare}

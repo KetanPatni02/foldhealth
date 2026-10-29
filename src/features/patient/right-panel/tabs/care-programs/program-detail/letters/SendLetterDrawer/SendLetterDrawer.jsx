@@ -52,7 +52,7 @@ export function SendLetterDrawer({ letterName = 'Letter', memberName, memberId, 
 
   const headerRight = (
     <>
-      <Button variant="primary" size="L" onClick={handleSend}>Send</Button>
+      <Button onClick={handleSend}>Send</Button>
       <span className={styles.headerDivider} />
     </>
   );

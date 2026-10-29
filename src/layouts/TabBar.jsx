@@ -35,10 +35,10 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
           {message}
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button variant="secondary" size="L" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button variant="primary" size="L" onClick={onConfirm}>
+          <Button onClick={onConfirm}>
             Open Agent Builder
           </Button>
         </div>
@@ -152,16 +152,14 @@ export function TabBar() {
             {onQueueTab && (
               <>
                 <Button
-                  variant="secondary"
-                  size="L"
+                  variant="outline"
                   leadingIcon="solar:pen-new-square-linear"
                   onClick={handleEditConfiguration}
                 >
                   Edit Configuration
                 </Button>
                 <Button
-                  variant="danger"
-                  size="L"
+                  variant="soft" tone="danger"
                   leadingIcon="solar:close-circle-bold"
                   onClick={handleAbort}
                   disabled={!hasActiveAgents}

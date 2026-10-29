@@ -100,7 +100,7 @@ export function PatientContextDrawer({ suggestions = NONE, patients = NONE, curr
       noCloseDivider
       headerRight={(
         <>
-          <Button variant="primary" size="L" disabled={!pickedId || unchanged} onClick={() => onSave(pickedId, viaOcr, { linkReferral })}>Save</Button>
+          <Button disabled={!pickedId || unchanged} onClick={() => onSave(pickedId, viaOcr, { linkReferral })}>Save</Button>
           <span className={styles.headerDivider} />
         </>
       )}

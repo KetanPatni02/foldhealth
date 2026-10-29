@@ -22,7 +22,7 @@ export function InviteUserFormStep({ onClose, form, set, showAdditional, setShow
 
   return (
     <Drawer title="Invite User" onClose={onClose} bodyClassName={styles.inviteDrawerBody} headerRight={
-      <Button variant="primary" size="L" onClick={onSendInvite} disabled={sending}>{sending ? 'Sending...' : 'Send Invite'}</Button>
+      <Button onClick={onSendInvite} disabled={sending}>{sending ? 'Sending...' : 'Send Invite'}</Button>
     }>
       <div className={styles.inviteFormScroll}>
         <h4 className={styles.formSectionTitle} style={{ borderTop: 'none', paddingTop: 0, marginTop: 0 }}>Basic Info</h4>

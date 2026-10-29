@@ -22,7 +22,7 @@ function LogRowMenu({ log, onEdit, onDelete }) {
       <ActionButton
         ref={btnRef}
         icon="solar:menu-dots-linear"
-        size="S"
+        size="sm"
         tooltip="More actions"
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
       />

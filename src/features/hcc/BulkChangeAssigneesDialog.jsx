@@ -273,12 +273,10 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
         </div>
 
         <div className={styles.footer}>
-          <Button variant="secondary" size="M" onClick={onClose}>
+          <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button
-            variant="primary"
-            size="M"
             disabled={!pickedId || pickedId === '__unassigned'}
             onClick={handleApply}
           >

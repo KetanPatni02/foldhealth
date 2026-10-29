@@ -88,7 +88,7 @@ export function ProgramReportPersonalize({
               <>
                 <ActionButton
                   icon="solar:text-linear"
-                  size="S"
+                  size="sm"
                   tooltip="Typography"
                   tooltipLeft
                   active={!!typographyAt}

@@ -66,7 +66,7 @@ export function SuggestedActionsCard({ memberId, patientId, overview, actions })
                   wrapTitle
                   trailing={(
                     <span className={`${styles.trail} ${styles.suggestTrail} ${styles.aboveStretch}`}>
-                      <Button variant="secondary" size="S" className={`${styles.ctaButton} ${styles.suggestCta}`} onClick={() => run(a)}>{a.cta}</Button>
+                      <Button variant="outline" size="sm" className={`${styles.ctaButton} ${styles.suggestCta}`} onClick={() => run(a)}>{a.cta}</Button>
                       <button type="button" className={styles.suggestClose} aria-label="Dismiss" onClick={() => dismiss(a)}>
                         <Icon name="solar:close-linear" size={12} />
                       </button>

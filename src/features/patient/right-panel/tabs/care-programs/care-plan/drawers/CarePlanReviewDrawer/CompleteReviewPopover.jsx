@@ -64,12 +64,11 @@ export function CompleteReviewPopover({ elapsedMs, discussed, note, onNoteChange
           rows={3}
         />
         <div className={styles.completeActions}>
-          <Button variant="secondary" size="S" leadingIcon="solar:play-linear" onClick={onResume} disabled={saving}>
+          <Button variant="outline" size="sm" leadingIcon="solar:play-linear" onClick={onResume} disabled={saving}>
             Resume
           </Button>
           <Button
-            variant="primary"
-            size="S"
+            size="sm"
             leadingIcon="solar:check-circle-linear"
             disabled={saving}
             onClick={async () => {

@@ -288,12 +288,11 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
 
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
-          <ActionButton icon="solar:document-text-linear" size="L" tooltip="Open CCM care program" onClick={openInCarePlan} />
+          <ActionButton icon="solar:document-text-linear" tooltip="Open CCM care program" onClick={openInCarePlan} />
           <span className={styles.actionDivider} />
           <ActionButton
             ref={callBtnRef}
             icon="solar:phone-linear"
-            size="L"
             tooltip="Call patient"
             onClick={(e) => {
               e.stopPropagation();
@@ -304,7 +303,6 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
           <ActionButton
             ref={menuBtnRef}
             icon="solar:menu-dots-linear"
-            size="L"
             tooltip="More options"
             onClick={toggleMenu}
           />
