@@ -77,7 +77,7 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
     [member?.dob, immunizations, measurementYear, seriesDoses],
   );
   const [statusFilter, setStatusFilter] = useState([]);
-  const [view, setView] = useState('table');
+  const [view, setView] = useState('timeline');
   // Table rows grouped by vaccine, or by the routine age the dose starts at.
   const [viewBy, setViewBy] = useState('vaccine');
   const [confirmRemove, setConfirmRemove] = useState(null);
@@ -188,7 +188,7 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
             <span className={styles.toolbarStart}>
               <Toggle
                 size="S"
-                items={[{ key: 'table', label: 'Table' }, { key: 'timeline', label: 'Timeline' }]}
+                items={[{ key: 'timeline', label: 'Timeline' }, { key: 'table', label: 'Table' }]}
                 active={view}
                 onChange={setView}
               />

@@ -75,3 +75,6 @@
 .footer {
   padding: 0 var(--space-3) var(--space-3);
 }
+.dateInput {
+  width: 160px;
+}
