@@ -141,7 +141,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
     if (next === (conversation.thread_name || '')) return;
     try {
       await renameThread(conversation, next);
-      toast.success(next ? 'Thread renamed' : 'Thread name removed');
+      toast.success(next ? 'Thread Renamed Successfully' : 'Thread Name Removed Successfully');
     } catch (err) {
       toast.error(err.message || 'Could not rename this thread.');
     }
@@ -193,7 +193,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
         await setSmsSession(conversation, null);
       }
       setAssignFor(null);
-      toast.success(list.length > 1 ? `${list.length} messages assigned to ${member.name}` : `SMS assigned to ${member.name}`);
+      toast.success('SMS Logged For Member Successfully');
       return true;
     } catch (err) {
       toast.error(err.message || 'Could not assign this SMS.');
@@ -238,7 +238,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
     if (key === 'unread') {
       unreadAt.current = messages.length;
       updateConversation(conversation.id, { unread_count: Math.max(1, conversation.unread_count || 0) });
-      toast.success('Marked as unread');
+      toast.success('Marked As Unread Successfully');
     }
     // A received SMS gets "Assign SMS to Member" (with Apply to); a sent one
     // just changes who it's logged for.
@@ -615,7 +615,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
                   onClick={async () => {
                     await setSmsSession(conversation, null);
                     setSentFor(null);
-                    toast.success('Auto-assigning stopped successfully');
+                    toast.success('Auto-Assigning Stopped Successfully');
                   }}
                 >
                   Stop auto-assigning
@@ -690,7 +690,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
             setDeleting(true);
             try {
               await deleteConversation(conversation.id);
-              toast.success('Conversation deleted');
+              toast.success('Conversation Deleted Successfully');
             } catch (err) {
               toast.error(err.message || 'Could not delete this conversation.');
               setDeleting(false);
