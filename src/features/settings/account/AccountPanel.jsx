@@ -797,7 +797,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
           </div>
 
           {/* Profile */}
-          <Textarea title="Profile" id={`${uid}-bio`} rows={5} value={form.bio} onChange={e => set('bio', e.target.value)} placeholder="Brief bio or description..." />
+          <Textarea title="Profile" id={`${uid}-bio`} rows={5} value={form.bio} onChange={text => set('bio', text)} placeholder="Brief bio or description..." />
 
           {/* Licence State */}
           <Select
