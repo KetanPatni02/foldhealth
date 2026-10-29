@@ -30,7 +30,8 @@ import styles from './SectionTitleBar.module.css';
  * Right-side actions are opt-in via the `actions` array so each page picks
  * the exact icon set it needs (`'search'`, `'filter'`, `'history'`,
  * `'upload'`, `'download'`, `'savedFilters'`). `rightExtras` renders
- * custom content before the icon cluster for page-specific controls.
+ * custom content before the icon cluster for page-specific controls;
+ * `trailingExtras` renders after the primary action (e.g. a help button).
  */
 export function SectionTitleBar({
   variant = 'tabs',
@@ -97,6 +98,8 @@ export function SectionTitleBar({
   onPrimaryAction,
 
   rightExtras,
+  // Rendered after the primary action, e.g. a help button.
+  trailingExtras,
   leftExtras,
   // Rendered at the very start of the left cluster — used by every worklist
   // to inject the shared SubnavToggle so a "collapse sidebar" handle appears
@@ -260,6 +263,7 @@ export function SectionTitleBar({
             {primaryActionLabel}
           </Button>
         )}
+        {trailingExtras}
       </div>
     </div>
   );

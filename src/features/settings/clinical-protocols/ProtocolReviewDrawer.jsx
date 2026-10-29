@@ -151,6 +151,16 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
   const clinicalProtocolFileUrl = useAppStore(s => s.clinicalProtocolFileUrl);
   const showToast = useAppStore(s => s.showToast);
   useEffect(() => { fetchCareProgramTypes?.(); }, [fetchCareProgramTypes]);
+  // Care plan templates drafted from this protocol, any version of it.
+  const carePlanTemplates = useAppStore(s => s.carePlanTemplates);
+  const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
+  const setCarePlanTemplateScreen = useAppStore(s => s.setCarePlanTemplateScreen);
+  useEffect(() => { if (!carePlanTemplates.length) fetchCarePlanLibrary?.(); }, [carePlanTemplates.length, fetchCarePlanLibrary]);
+  const basedOn = useMemo(() => {
+    if (!protocol) return [];
+    const key = p => `${(p?.title || '').trim().toLowerCase()}|${(p?.organization || '').trim().toLowerCase()}`;
+    return carePlanTemplates.filter(t => t.sourceProtocol && (t.sourceProtocol.id === protocol.id || key(t.sourceProtocol) === key(protocol)));
+  }, [carePlanTemplates, protocol]);
 
   const [draft, setDraft] = useState(() => (protocol ? draftFrom(protocol) : null));
   const [menu, setMenu] = useState(null);
@@ -312,6 +322,31 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
                 <ul className={styles.scopeList}>{draft.protocol.scope.exclusions.map(x => <li key={x}>{x}</li>)}</ul>
               </div>
             )}
+          </div>
+        )}
+
+        {basedOn.length > 0 && (
+          <div className={styles.card}>
+            <h3 className={styles.cardTitle}>Care Plan Templates from This Protocol</h3>
+            <div className={styles.templateList}>
+              {basedOn.map(t => (
+                <div key={t.id} className={styles.templateRow}>
+                  <button
+                    type="button"
+                    className={styles.nameLink}
+                    onClick={() => { onClose(); setCarePlanTemplateScreen({ mode: 'edit', template: t }); }}
+                  >
+                    {t.name}
+                  </button>
+                  <span className={styles.chips}>
+                    <Badge tone={t.status === 'draft' ? 'grey' : 'success'} size="S" label={t.status === 'draft' ? 'Draft' : 'Published'} />
+                    {t.sourceProtocol.version && t.sourceProtocol.version !== protocol.version
+                      ? <Badge tone="warning" size="S" label={`From v${t.sourceProtocol.version}, now v${protocol.version || '?'}`} />
+                      : t.sourceProtocol.version && <Badge tone="grey" size="S" label={`v${t.sourceProtocol.version}`} />}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

@@ -7,6 +7,7 @@
   padding: var(--space-2) var(--space-4); border-bottom: 0.5px solid var(--neutral-150);
 }
 .notice { padding: var(--space-3) var(--space-4) 0; }
+.intro { padding: var(--space-3) var(--space-4); }
 .headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
 
 /* ── Library rows ── */
@@ -62,6 +63,12 @@
 .label { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .warnings { margin: 0; padding-left: var(--space-4); }
+.templateList { display: flex; flex-direction: column; }
+.templateRow {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-2) 0; border-top: 0.5px solid var(--neutral-100);
+}
+.templateRow:first-child { border-top: 0; padding-top: 0; }
 
 .section { display: flex; flex-direction: column; border: 0.5px solid var(--neutral-150); border-radius: 8px; overflow: hidden; background: var(--neutral-0); }
 .sectionHead {

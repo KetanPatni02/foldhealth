@@ -187,6 +187,7 @@ function mapCarePlanTemplateRow(row) {
     currentVersionNumber: row.current_version_number ?? null,
     // The Fold pathway it was adapted from: { id, version, name } (care_pathways migration).
     sourcePathway: row.source_pathway || null,
+    sourceProtocol: row.source_protocol || null,
   };
 }
 

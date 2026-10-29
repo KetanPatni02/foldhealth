@@ -9,6 +9,7 @@ import { Alert } from '../../../components/Alert/Alert';
 import { Icon } from '../../../components/Icon/Icon';
 import { TableSkeleton } from '../../../components/TableSkeleton/TableSkeleton';
 import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyState';
+import { IntroCard } from '../../../components/IntroCard/IntroCard';
 import { useAppStore } from '../../../store/useAppStore';
 import { protocolCounts, protocolStatus } from './lib/protocolSchema';
 import { ProtocolUploadDrawer } from './ProtocolUploadDrawer';
@@ -40,6 +41,31 @@ const COLUMNS = [
   { key: 'actions', label: 'Actions', sticky: 'right', width: 72 },
 ];
 
+// Per-user, in user_panel_layouts (savePanelLayout).
+const INTRO_KEY = 'clinical-protocols-intro';
+const INTRO_ITEMS = [
+  {
+    icon: 'solar:upload-minimalistic-linear',
+    title: 'Upload any format',
+    description: 'PDF, Word or Fold JSON, one file or hundreds. UnityAI extracts thresholds, decision rules, cadence, medication titration and references.',
+  },
+  {
+    icon: 'solar:shield-check-linear',
+    title: 'Review before it’s used',
+    description: 'Every item sits next to the passage it came from. Nothing is used until a supervisor approves it.',
+  },
+  {
+    icon: 'solar:refresh-linear',
+    title: 'Stay current',
+    description: 'Tag by condition, program and effective date. A new version replaces the old one, which is kept for reference.',
+  },
+  {
+    icon: 'solar:clipboard-list-linear',
+    title: 'Build care plans from them',
+    description: 'Start a care plan template from an Active protocol so its goals and interventions follow the client’s guidance.',
+  },
+];
+
 const fmtDay = (iso) => {
   if (!iso) return '—';
   const [y, m, d] = String(iso).slice(0, 10).split('-');
@@ -64,6 +90,11 @@ export function ClinicalProtocolsPanel() {
   const careProgramTypes = useAppStore(s => s.careProgramTypes);
   const fetchCareProgramTypes = useAppStore(s => s.fetchCareProgramTypes);
   useEffect(() => { fetchClinicalProtocols(); fetchCareProgramTypes?.(); }, [fetchClinicalProtocols, fetchCareProgramTypes]);
+  const introDismissed = useAppStore(s => s.panelLayouts[INTRO_KEY]?.dismissed === true);
+  const fetchPanelLayouts = useAppStore(s => s.fetchPanelLayouts);
+  const savePanelLayout = useAppStore(s => s.savePanelLayout);
+  useEffect(() => { fetchPanelLayouts?.(); }, [fetchPanelLayouts]);
+  const setIntroDismissed = dismissed => savePanelLayout(INTRO_KEY, { dismissed });
 
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
@@ -152,7 +183,27 @@ export function ClinicalProtocolsPanel() {
         primaryActionIcon="solar:upload-minimalistic-linear"
         primaryActionDisabled={isSample}
         onPrimaryAction={() => setUploadOpen(true)}
+        trailingExtras={(
+          <ActionButton
+            icon="solar:question-circle-linear"
+            tooltip="What are clinical protocols?"
+            tooltipBelow
+            active={!introDismissed}
+            onClick={() => setIntroDismissed(false)}
+          />
+        )}
       />
+      {!introDismissed && (
+        <div className={styles.intro}>
+          <IntroCard
+            icon="solar:document-medicine-linear"
+            title="What are clinical protocols?"
+            description="Your clients’ clinical practice guidance (BP ranges, medication titration, lab recheck cadence, check-in schedules) turned into structured rules your care team can find, trust and build on."
+            items={INTRO_ITEMS}
+            onDismiss={() => setIntroDismissed(true)}
+          />
+        </div>
+      )}
       {filtersOpen && (
         <div className={styles.filterBar}>
           <FilterChip label="Condition" options={conditionOptions} selected={conditionFilter} onChange={fromFirstPage(setConditionFilter)} searchable />

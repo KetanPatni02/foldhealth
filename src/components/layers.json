@@ -106,6 +106,7 @@
     "HistoryTimeline",
     "ImagePreviewOverlay",
     "ImageTileGallery",
+    "IntroCard",
     "LazyRecharts",
     "LinkageTree",
     "MessageComposer",

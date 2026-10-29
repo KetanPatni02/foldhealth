@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '../../../../../components/Input/Input';
+import { Select } from '../../../../../components/Select/Select';
 import { Textarea } from '../../../../../components/Textarea/Textarea';
 import { Button } from '../../../../../components/Button/Button';
 import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
@@ -28,6 +29,7 @@ import { isSdohBarrier } from '../../../../patient/right-panel/tabs/care-program
 import { UnityPromptField } from '../../../../../components/UnityPromptField/UnityPromptField';
 import { UnityIcon } from '../../../../../components/UnityIcon/UnityIcon';
 import { TableSkeleton } from '../../../../../components/TableSkeleton/TableSkeleton';
+import { protocolGuidanceText } from '../../../clinical-protocols/lib/protocolSchema';
 import { buildTemplateCatalog, TEMPLATE_DESCRIPTION_MAX } from '../../lib/aiTemplateDraft';
 import {
   requestTemplateDraft,
@@ -80,6 +82,23 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const interventionLibrary = useAppStore(s => s.carePlanInterventionTemplates);
   const saveCarePlanGoal = useAppStore(s => s.saveCarePlanGoal);
   const barrierLibrary = useAppStore(s => s.carePlanBarriers);
+
+  // An Active clinical protocol (Settings > Clinical Protocols) the draft
+  // follows; the saved template records it as its source.
+  const clinicalProtocols = useAppStore(s => s.clinicalProtocols);
+  const fetchClinicalProtocols = useAppStore(s => s.fetchClinicalProtocols);
+  useEffect(() => { fetchClinicalProtocols?.(); }, [fetchClinicalProtocols]);
+  const activeProtocols = useMemo(() => clinicalProtocols.filter(p => p.status === 'active'), [clinicalProtocols]);
+  const [protocolId, setProtocolId] = useState('');
+  const sourceProtocol = activeProtocols.find(p => p.id === protocolId) || null;
+  const pickProtocol = (id) => {
+    setProtocolId(id);
+    const picked = activeProtocols.find(p => p.id === id);
+    if (picked && !draftText.trim()) {
+      const conditionsText = picked.conditions.length ? ` for ${picked.conditions.join(', ')}` : '';
+      setDraftText(`A care plan following ${picked.title}${conditionsText}.`);
+    }
+  };
 
   // UnityAI drafting: a plain-English description becomes goals,
   // interventions and barriers (library items where possible) that land in
@@ -201,7 +220,13 @@ export function CarePlanCreateView({ onClose, onSave }) {
     setDraftError('');
     try {
       const catalog = buildTemplateCatalog({ goals: libraryGoals, interventions: interventionLibrary, barriers: barrierLibrary });
-      const draft = await requestTemplateDraft(text, catalog);
+      const protocol = sourceProtocol && {
+        title: sourceProtocol.title,
+        version: sourceProtocol.version,
+        organization: sourceProtocol.organization,
+        guidance: protocolGuidanceText(sourceProtocol.protocol),
+      };
+      const draft = await requestTemplateDraft(text, catalog, protocol);
       const lists = templateDraftToEditor(draft, { libraryGoals, interventionLibrary, barrierLibrary });
       setGoals(prev => mergeDraft(prev, lists.goals));
       setInterventions(prev => mergeDraft(prev, lists.interventions));
@@ -247,6 +272,9 @@ export function CarePlanCreateView({ onClose, onSave }) {
     barriers: withoutDraftMarks(barriers),
     scope,
     renewal,
+    sourceProtocol: sourceProtocol
+      ? { id: sourceProtocol.id, title: sourceProtocol.title, version: sourceProtocol.version, organization: sourceProtocol.organization }
+      : null,
   });
 
   // Goals UnityAI suggested that the library doesn't have are created there
@@ -272,6 +300,26 @@ export function CarePlanCreateView({ onClose, onSave }) {
         </div>
 
         <div className={styles.formBody}>
+          {activeProtocols.length > 0 && (
+            <Select
+              label="Clinical protocol"
+              portal
+              searchable
+              placeholder="None: draft from the description only"
+              options={[
+                { value: '', label: 'None: draft from the description only' },
+                ...activeProtocols.map(p => ({
+                  value: p.id,
+                  label: [p.title, p.version && `v${p.version}`, p.organization].filter(Boolean).join(' · '),
+                })),
+              ]}
+              value={protocolId}
+              onChange={pickProtocol}
+              helperText={sourceProtocol
+                ? 'UnityAI follows its thresholds, cadence and titration, and the template is saved as based on it.'
+                : 'Optional. Start from an approved protocol in Settings > Clinical Protocols.'}
+            />
+          )}
           <UnityPromptField
             label="Describe this template in plain English"
             value={draftText}

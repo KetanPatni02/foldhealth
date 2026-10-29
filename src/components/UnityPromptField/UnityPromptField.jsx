@@ -53,7 +53,7 @@ export function UnityPromptField({
           </span>
         )}
         value={value}
-        onChange={e => onChange?.(e.target.value.slice(0, maxLength))}
+        onChange={text => onChange?.(text.slice(0, maxLength))}
         placeholder={placeholder}
         rows={rows}
         maxLength={maxLength}
