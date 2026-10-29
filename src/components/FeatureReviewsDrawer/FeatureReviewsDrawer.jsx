@@ -633,12 +633,30 @@ function ReviewerAvatars({ item, editable, onEdit }) {
   );
 }
 
+const RECENT_REVIEWERS = 5;
+
 function ReviewerPicker({ item, anchorRect, onClose }) {
   const setFeatureReviewers = useAppStore(s => s.setFeatureReviewers);
   const { options, byEmail } = useReviewerOptions();
   const users = useMemo(() => options.map(o => ({ id: o.value, name: o.label, role: o.value })), [options]);
-  const selected = item.reviewers.map(r => r.email.toLowerCase());
+  const selected = useMemo(() => item.reviewers.map(r => r.email.toLowerCase()), [item.reviewers]);
   const signed = new Set(item.reviewers.filter(r => r.signedAt).map(r => r.email.toLowerCase()));
+  // Who's on the item comes first; an unassigned item offers the people
+  // assigned most recently anywhere instead, since they're the likely picks.
+  const reviews = useAppStore(s => s.featureReviews);
+  const pinned = useMemo(() => {
+    if (selected.length) return { label: 'Assigned', keys: selected };
+    const latest = new Map();
+    for (const f of reviews) {
+      for (const r of f.reviewers) {
+        const email = r.email?.toLowerCase();
+        const at = new Date(r.assignedAt || 0).getTime();
+        if (email && at > (latest.get(email) ?? -1)) latest.set(email, at);
+      }
+    }
+    const keys = [...latest.entries()].sort((a, b) => b[1] - a[1]).slice(0, RECENT_REVIEWERS).map(([email]) => email);
+    return keys.length ? { label: 'Recently Assigned', keys } : null;
+  }, [selected, reviews]);
 
   const onSelect = (emails) => {
     const next = emails.map(String);
@@ -665,6 +683,7 @@ function ReviewerPicker({ item, anchorRect, onClose }) {
       onClose={onClose}
       title="Reviewers"
       multiple
+      pinned={pinned}
     />
   );
 }

@@ -49,3 +49,13 @@
 }
 .clearAll:hover:not(:disabled) { text-decoration: underline; }
 .clearAll:disabled { color: var(--neutral-150); cursor: default; }
+/* Pinned group (assigned or recently assigned users), then everyone else:
+   section headers styled like the filter popover's (CheckboxListPopover). */
+.groupLabel {
+  display: block;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--font-xs); font-weight: 500;
+  color: var(--neutral-200);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.groupNext { margin-top: var(--space-1); padding-top: var(--space-1); border-top: 0.5px solid var(--neutral-100); }
