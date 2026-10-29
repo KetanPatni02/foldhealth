@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { consentHistory, consentSections, consentStateLabel, consentStateStyle, formatConsentMeta } from './consentDisplay';
+import { consentHistory, consentSections, consentStateLabel, consentStateStyle, consentTimelineEntries, formatConsentMeta } from './consentDisplay';
 
 describe('consent display', () => {
   it('labels states and treats unknown ones as missing', () => {
@@ -34,5 +34,23 @@ describe('consentSections', () => {
 
   it('lists every record newest first for the audit log', () => {
     expect(consentHistory(consents).map(h => [h.label, h.status])).toEqual([['SMS Consent', 'Consent Declined'], ['APCM Consent', 'Consent Given']]);
+  });
+});
+
+describe('consentTimelineEntries', () => {
+  it('lists records newest first with outcome, tone, category and reason', () => {
+    const entries = consentTimelineEntries([
+      { id: 'a', scopeType: 'program', scope: 'CCM', status: 'given', capturedAt: '2026-01-10T09:05:00', capturedBy: 'Dana Lee' },
+      { id: 'b', scopeType: 'program', scope: 'CCM', status: 'withdrawn', capturedAt: '2026-01-17T13:15:00', capturedBy: 'Dr. Aldo Richman', note: 'Not interested' },
+      { id: 'c', scopeType: 'other', scope: 'data_sharing', status: 'declined', capturedAt: '2025-12-17T13:15:00' },
+    ]);
+    expect(entries.map(e => e.id)).toEqual(['b', 'a', 'c']);
+    expect(entries[0]).toMatchObject({
+      t: 'consent', when: '2026-01-17T13:15:00', actor: 'Dr. Aldo Richman',
+      outcome: 'CCM Consent Withdrawn', tone: 'error', group: 'program', reason: 'Reason: Not interested',
+    });
+    expect(entries[0].searchText).toContain('01/17/2026');
+    expect(entries[1]).toMatchObject({ outcome: 'CCM Consent Accepted', tone: 'success', reason: '' });
+    expect(entries[2]).toMatchObject({ outcome: 'Data Sharing Consent Declined', group: 'other', actor: 'System' });
   });
 });

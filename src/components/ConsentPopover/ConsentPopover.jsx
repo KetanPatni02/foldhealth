@@ -11,14 +11,18 @@ import styles from './ConsentPopover.module.css';
  *
  * @param {{top:number,left:number}} props.pos
  * @param {function} props.onClose
- * @param {Array<{id:string,title:string,items:Array<{id:string,label:string,
- *   status:string,icon:string,color:string,checked:boolean,onToggle?:function}>}>} props.sections
+ * @param {Array<{id:string,title:string,toggle?:{checked:boolean,onToggle:function},
+ *   items:Array<{id:string,label:string,status:string,icon:string,color:string,
+ *   checked:boolean,onToggle?:function}>}>} props.sections
+ *   A section's `toggle` puts one switch on its header for every row at once.
  *   `onToggle(nextChecked)` runs when a row's switch is flipped; the switch
  *   follows `checked`, so the caller decides whether the change happens.
  * @param {Array<{id:string,label:string,status:string,meta:string}>} [props.history] newest first
  * @param {boolean}  [props.loading]
+ * @param {function} [props.onOpenHistory] When set, the history icon calls it
+ *   (e.g. to open a full history drawer) instead of the inline audit view.
  */
-export function ConsentPopover({ pos, onClose, sections = [], history = [], loading = false }) {
+export function ConsentPopover({ pos, onClose, sections = [], history = [], loading = false, onOpenHistory }) {
   const ref = useRef(null);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -43,9 +47,9 @@ export function ConsentPopover({ pos, onClose, sections = [], history = [], load
         <ActionButton
           icon={showHistory ? 'solar:arrow-left-linear' : 'solar:history-linear'}
           size="S"
-          tooltip={showHistory ? 'Back' : 'Audit Log'}
+          tooltip={showHistory ? 'Back' : onOpenHistory ? 'Consent History' : 'Audit Log'}
           tooltipBelow
-          onClick={() => setShowHistory(v => !v)}
+          onClick={onOpenHistory && !showHistory ? onOpenHistory : () => setShowHistory(v => !v)}
         />
       </div>
 
@@ -66,11 +70,14 @@ export function ConsentPopover({ pos, onClose, sections = [], history = [], load
             <div key={section.id} className={styles.section}>
               <div className={styles.sectionHeader}>
                 <span className={styles.sectionTitle}>{section.title}</span>
+                {section.toggle && (
+                  <Switch checked={!!section.toggle.checked} onChange={() => section.toggle.onToggle(!section.toggle.checked)} ariaLabel={`All ${section.title}`} />
+                )}
               </div>
               {section.items.map(item => (
                 <div key={item.id} className={styles.row}>
                   <div className={styles.rowCheck}>
-                    <Icon name={item.icon} size={16} color={item.color} />
+                    <Icon name={item.icon} size={12} color={item.color} />
                   </div>
                   <div className={styles.rowText}>
                     <span className={styles.rowLabel}>{item.label}</span>

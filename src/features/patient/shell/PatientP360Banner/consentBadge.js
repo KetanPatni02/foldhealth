@@ -1,6 +1,6 @@
-const POPOVER_WIDTH = 320;
+const POPOVER_WIDTH = 350;
 
-/** "1/2" for the banner, or "N/A" when no open program needs consent. */
+/** "1/4" for the banner: program consents given out of all program consents. */
 export const consentSummaryLabel = (summary) => (summary?.total ? `${summary.given}/${summary.total}` : 'N/A');
 
 /** Below the anchor, kept 8px inside the viewport's right edge. */
