@@ -89,7 +89,7 @@ function migrateFile(file, src) {
     while (s > 0 && /\s/.test(src[s - 1])) s--;
     edits.push({ start: s, end: a.end, text: '' });
   };
-  const replace = (a, t) => edits.push({ start: a.start, end: a.end, text: t });
+  const replace = (a, t) => { if (src.slice(a.start, a.end) !== t) edits.push({ start: a.start, end: a.end, text: t }); };
   const negate = (test) => {
     if (test.type === 'UnaryExpression' && test.operator === '!') return text(test.argument);
     const simple = ['Identifier', 'MemberExpression', 'OptionalMemberExpression', 'CallExpression', 'OptionalCallExpression'].includes(test.type);

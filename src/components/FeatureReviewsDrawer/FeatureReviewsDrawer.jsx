@@ -90,7 +90,7 @@ function matches(tab, item, subItems, myEmail) {
  * add features and change reviewers. Everyone else sees only kept items
  * assigned to them. The database enforces all of it.
  */
-export function FeatureReviewsDrawer({ onClose }) {
+export function FeatureReviewsDrawer({ onClose, focusId = null }) {
   const reviews = useAppStore(s => s.featureReviews);
   const managers = useAppStore(s => s.featureReviewManagers);
   const loading = useAppStore(s => s.featureReviewsLoading);
@@ -140,7 +140,8 @@ export function FeatureReviewsDrawer({ onClose }) {
     all: approved.length + (isManager ? suggested.length : 0), suggested: suggested.length,
   };
 
-  const [tab, setTab] = useState(null);
+  // Opened on one item (from the review box): show it under All.
+  const [tab, setTab] = useState(focusId ? 'all' : null);
   // Managers land on everything; reviewers on what's waiting for them.
   const activeTab = tab || (isManager || counts.mine === 0 ? 'all' : 'mine');
   const [newestFirst, setNewestFirst] = useState(true);
@@ -158,7 +159,7 @@ export function FeatureReviewsDrawer({ onClose }) {
     return byDay;
   }, [filtered, activeTab, newestFirst]);
 
-  const [expanded, setExpanded] = useState(null);
+  const [expanded, setExpanded] = useState(focusId);
   const [form, setForm] = useState(null);
   // Review: go to the item's section and open the floating review box there.
   const startFeatureReview = useAppStore(s => s.startFeatureReview);
@@ -172,7 +173,18 @@ export function FeatureReviewsDrawer({ onClose }) {
   );
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
-  const [flashId, setFlashId] = useState(null);
+  const [flashId, setFlashId] = useState(focusId);
+  // Bring the focused item into view once it has loaded, then let the flash
+  // fade. Keyed on "loaded" (flips once), so refetches don't restart it.
+  const focusLoaded = !!focusId && reviews.some(r => r.id === focusId);
+  useEffect(() => {
+    if (!focusLoaded) return undefined;
+    const frame = requestAnimationFrame(() => {
+      document.querySelector(`[data-review-id="${focusId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+    const fade = setTimeout(() => setFlashId(v => (v === focusId ? null : v)), 1800);
+    return () => { cancelAnimationFrame(frame); clearTimeout(fade); };
+  }, [focusId, focusLoaded]);
   const dragItem = dragId ? reviews.find(r => r.id === dragId) : null;
   const drop = dropVerdict(dragItem, overId, reviews);
 
