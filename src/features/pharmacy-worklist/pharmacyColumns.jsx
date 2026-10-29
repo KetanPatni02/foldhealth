@@ -6,13 +6,12 @@ import { PriorityIcon } from '../../components/PriorityIcon/PriorityIcon';
 import { GAP_STATUS_TONE, MANUAL_GAP_STATUSES, MEASURE_NAMES, PRIORITY_LEVELS, isActiveGap, daysFromToday } from './pharmacyWorklist.utils';
 import { fillsToStayCompliant } from './fillEvents';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
-import { ClaimReconCell, Dash, DateWithDays, DrugsCount, FailDateValue, NextFillDueValue, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SavabilityBadge, SubStatus } from './PharmacyCells';
+import { ClaimReconCell, Dash, DateWithDays, DaysToSaveValue, DrugsCount, FailDateValue, NextFillDueValue, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SavabilityBadge, SubStatus } from './PharmacyCells';
 import styles from './PharmacyWorklistRow.module.css';
 
 
 const isOverdue = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
 const PRIOR_YEAR = new Date().getFullYear() - 1;
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const numberOrDash = (n, suffix = '') => (n == null ? <Dash /> : <span className={styles.cellText}>{n}{suffix}</span>);
 
 // Gap-level columns stack one item per visible pharmacy gap, HEDIS style
@@ -108,6 +107,12 @@ export const PHARMACY_MIDDLE_COLUMNS = [
     key: 'failDate', label: 'Fail Date (Absolute)', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
     renderCell: perGap((g) => <FailDateValue gap={g} />),
   },
+  // A gap with no days left to save is not worth working: the column says how
+  // many are left, or that the gap is already Safe or Not savable.
+  {
+    key: 'daysToSave', label: 'Days to Save', sortKey: 'daysToSaveSort', sortType: 'number', getTdClassName: gapTd(false),
+    renderCell: perGap((g) => <DaysToSaveValue gap={g} />),
+  },
   {
     key: 'nextFillDue', label: 'Next Fill Due', sortKey: 'nextFillDueSort', sortType: 'date', getTdClassName: gapTd(false),
     renderCell: perGap((g) => <NextFillDueValue gap={g} />),
@@ -134,14 +139,6 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   {
     key: 'savability', label: 'Savability', optional: true, getTdClassName: gapTd(false),
     renderCell: perGap((g) => <SavabilityBadge value={g.savability} />),
-  },
-  {
-    key: 'allowableGapDays', label: 'Allowable Gap Days Remaining', optional: true, getTdClassName: gapTd(false),
-    renderCell: perGap((g) => (g.allowableGapDays == null ? <Dash /> : (
-      <Tooltip label="Days the member can still go without medication and reach 80% PDC" placement="bottom">
-        <span className={`${styles.cellText} ${g.allowableGapDays <= 0 ? styles.toneError : ''}`}>{plural(g.allowableGapDays, 'day')}</span>
-      </Tooltip>
-    ))),
   },
   {
     key: 'daysMissed', label: 'Days Missed', optional: true, getTdClassName: gapTd(false),

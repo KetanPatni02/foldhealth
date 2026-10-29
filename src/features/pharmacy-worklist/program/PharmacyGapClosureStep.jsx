@@ -71,7 +71,7 @@ export function PharmacyGapClosureStep() {
     return (
       <div className={styles.empty}>
         <Icon name="solar:pills-linear" size={40} color="var(--neutral-200)" />
-        <p>No MAD, MAH or MAC measures on file for this member.</p>
+        <p>No MAC, MAD or MAH measures on file for this member.</p>
       </div>
     );
   }

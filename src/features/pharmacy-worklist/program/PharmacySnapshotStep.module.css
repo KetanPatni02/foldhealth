@@ -144,17 +144,8 @@
 .medName { font-weight: 500; }
 
 .muted { font-size: var(--font-md); color: var(--neutral-300); }
-.field { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
-.fieldLabel { font-size: var(--font-sm); color: var(--neutral-300); }
-.fieldValue { font-size: var(--font-md); color: var(--neutral-400); overflow-wrap: anywhere; }
 
-.contactHead { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
 .contactName { font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); }
-.contactGrid {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(110px, 1fr) minmax(180px, 2fr);
-  gap: var(--space-3);
-}
 .address { display: block; margin-top: 0.125rem; font-size: var(--font-sm); color: var(--neutral-300); }
 
 .table { width: 100%; border-collapse: collapse; font-size: var(--font-md); color: var(--neutral-400); }
@@ -172,6 +163,14 @@
 .table th:first-child, .table td:first-child { padding-left: var(--space-4); }
 .table th:last-child, .table td:last-child { padding-right: var(--space-4); }
 .table tbody tr:last-child td { border-bottom: none; }
+/* Contacts: the same four columns in both cards, so they line up. */
+.contactTable { table-layout: fixed; }
+.contactTable th:nth-child(1) { width: 42%; }
+.contactTable th:nth-child(2) { width: 21%; }
+.contactTable th:nth-child(3) { width: 17%; }
+.contactTable td { vertical-align: middle; }
+.contactTable td:not(:first-child) { white-space: nowrap; }
+.lastUsed { margin-left: var(--space-2); vertical-align: middle; }
 
 .toneError { color: var(--status-error); }
 

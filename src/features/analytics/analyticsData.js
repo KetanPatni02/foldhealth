@@ -40,7 +40,7 @@ export const VIEW_TITLES = {
   utilization:  { title: 'Utilization Management', sub: 'Admissions, readmissions, ED & SNF' },
   care:         { title: 'Care Management', sub: 'Program ROI, productivity & team metrics' },
   network:      { title: 'Network Analytics', sub: 'Provider scorecards & referral leakage' },
-  pharmacy:     { title: 'Pharmacy Adherence', sub: 'MAD, MAH & MAC outcomes, productivity & claim data quality' },
+  pharmacy:     { title: 'Pharmacy Adherence', sub: 'MAC, MAD & MAH outcomes, productivity & claim data quality' },
   shared:       { title: 'Shared Savings', sub: 'MSSP benchmark & trajectory' },
   roi:          { title: 'ROI & Simulators', sub: 'What-if modeling & scenario planning' },
   tools:        { title: 'Tool Usage', sub: 'Sidecar adoption & automation performance' },

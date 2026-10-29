@@ -2,7 +2,7 @@ import { supabase } from '../../lib/supabase';
 import { detachSaved, hydrateListFilters } from '../lib/worklistListFilters';
 import { applyPendingPickup, applyPickup, applyRecentFill, recomputeMeasure, withManualRecentFill } from '../../features/pharmacy-worklist/fillEvents';
 import { planAutoAssignment } from '../../features/pharmacy-worklist/pharmacyRules';
-import { OUTREACH_TONE_COLOR, addDaysMdy, callMatchesLog, enrichPharmacyMember, latestBarrierRecord, measureStatus, medLabel, outreachTone, parseMdy, reconcileMeasure, setPlanTimers, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
+import { OUTREACH_TONE_COLOR, addDaysMdy, callMatchesLog, enrichPharmacyMember, latestBarrierRecord, measureStatus, medLabel, outreachTone, parseMdy, reconcileMeasure, setPlanTimers, sortMeasures, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
 
 function rowToMember(r) {
   return {
@@ -32,7 +32,7 @@ function rowToMember(r) {
     callHistory: r.call_history || [],
     interventionLog: r.intervention_log || [],
     activityLog: r.activity_log || [],
-    measures: r.measures || [],
+    measures: sortMeasures(r.measures),
     patientId: r.patient_id,
     sourcePriority: r.source_priority ?? null,
     comments: r.comments || [],
@@ -216,7 +216,7 @@ export function createPharmacyWorklistSlice(set, get) {
       if (!data?.length) {
         if (import.meta.env.DEV && !get().pharmacyWorklistMembers.length) {
           const { PHARMACY_WORKLIST_MEMBERS } = await import('../../features/pharmacy-worklist/data/mock');
-          set({ pharmacyWorklistMembers: PHARMACY_WORKLIST_MEMBERS, pharmacyWorklistLoading: false, pharmacyWorklistIsMock: true });
+          set({ pharmacyWorklistMembers: PHARMACY_WORKLIST_MEMBERS.map(m => ({ ...m, measures: sortMeasures(m.measures) })), pharmacyWorklistLoading: false, pharmacyWorklistIsMock: true });
           get().fetchPharmacyPickups();
           return;
         }
@@ -515,6 +515,7 @@ export function createPharmacyWorklistSlice(set, get) {
         return { ...m, status: status || m.status, measures, followUpDue, callHistory: [entry, ...(m.callHistory || [])], _changes: changes };
       }, ['status', 'call_history', 'measures', 'follow_up_due'], (changes) => ({
         t: 'call', title: `Pharmacy verification · ${entry.contact} (locked)`,
+        verificationId: entry.id,
         outcome: entry.outcome, outcomeColor: entry.result === 'failed' ? 'var(--status-warning)' : 'var(--status-success)',
         // What was answered for each drug, then the call note and what changed.
         note: [

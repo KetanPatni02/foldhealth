@@ -3,7 +3,7 @@ import { useAppStore } from '../../../store/useAppStore';
 import { ActivityLog } from '../../../components/ActivityLog/ActivityLog';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
-import { DashboardCard, DashboardCardShell } from '../../../components/DashboardCard/DashboardCard';
+import { DashboardCardShell } from '../../../components/DashboardCard/DashboardCard';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../../components/Icon/Icon';
 import { Input } from '../../../components/Input/Input';
@@ -48,27 +48,27 @@ function stepsFor(med, a) {
   return steps;
 }
 
-function YesNo({ value, onChange, labels = ['Yes', 'No'], name }) {
+function YesNo({ value, onChange, labels = ['Yes', 'No'], name, disabled }) {
   return (
     <div className={styles.radios} role="radiogroup" aria-label={name}>
       {['Yes', 'No'].map((v, i) => (
-        <RadioButton key={v} checked={value === v} onChange={() => onChange(v)} label={labels[i]} />
+        <RadioButton key={v} checked={value === v} onChange={() => onChange(v)} label={labels[i]} disabled={disabled} />
       ))}
     </div>
   );
 }
 
 // Questions down the left; a question with `when` shows only once it applies
-// to at least one gap.
+// to at least one gap. `required` ones (red dot) must be answered to save.
 const QUESTIONS = [
-  { key: 'lastFillConfirmed', label: 'Last fill confirmed?' },
-  { key: 'refilled', label: 'Has it been refilled?' },
-  { key: 'refillsRemaining', label: 'Refills remaining' },
+  { key: 'lastFillConfirmed', label: 'Last fill confirmed?', required: true },
+  { key: 'refilled', label: 'Has it been refilled?', required: true },
+  { key: 'refillsRemaining', label: 'Refills remaining', required: true },
   { key: 'refillRequestSent', label: 'Refill request sent to prescriber', when: (a) => a.refillsRemaining !== '' && Number(a.refillsRemaining) === 0 },
-  { key: 'pickedUp', label: 'Has it been picked up?', when: (a) => a.refilled === 'Yes' },
+  { key: 'pickedUp', label: 'Has it been picked up?', required: true, when: (a) => a.refilled === 'Yes' },
 ];
 
-function AnswerCell({ q, gap, answer, onChange }) {
+function AnswerCell({ q, gap, answer, onChange, disabled }) {
   const set = (patch) => onChange({ ...answer, ...patch });
   if (q.when && !q.when(answer)) return <span className={styles.na}>—</span>;
   switch (q.key) {
@@ -77,16 +77,16 @@ function AnswerCell({ q, gap, answer, onChange }) {
         <div className={styles.cellStack}>
           {/* Each gap's own last fill (the question no longer names one). */}
           <span className={styles.cellHint}>{gap.med.lastFill || 'No fill on file'}</span>
-          <YesNo name={`${gap.code} last fill confirmed`} value={answer.lastFillConfirmed ? 'Yes' : 'No'} onChange={v => set({ lastFillConfirmed: v === 'Yes' })} />
+          <YesNo name={`${gap.code} last fill confirmed`} value={answer.lastFillConfirmed ? 'Yes' : 'No'} onChange={v => set({ lastFillConfirmed: v === 'Yes' })} disabled={disabled} />
           {!answer.lastFillConfirmed && (
-            <Input className={styles.dateInput} placeholder="MM/DD/YYYY" value={answer.actualLastFill} onChange={e => set({ actualLastFill: e.target.value })} aria-label={`${gap.code} actual last fill date`} />
+            <Input className={styles.dateInput} placeholder="MM/DD/YYYY" value={answer.actualLastFill} onChange={e => set({ actualLastFill: e.target.value })} aria-label={`${gap.code} actual last fill date`} disabled={disabled} />
           )}
         </div>
       );
     case 'refilled':
-      return <YesNo name={`${gap.code} refilled`} value={answer.refilled} onChange={v => set({ refilled: v, pickedUp: v === 'No' ? null : answer.pickedUp })} />;
+      return <YesNo name={`${gap.code} refilled`} value={answer.refilled} onChange={v => set({ refilled: v, pickedUp: v === 'No' ? null : answer.pickedUp })} disabled={disabled} />;
     case 'pickedUp':
-      return <YesNo name={`${gap.code} picked up`} value={answer.pickedUp} labels={['Yes', 'No, on shelf']} onChange={v => set({ pickedUp: v })} />;
+      return <YesNo name={`${gap.code} picked up`} value={answer.pickedUp} labels={['Yes', 'No, on shelf']} onChange={v => set({ pickedUp: v })} disabled={disabled} />;
     case 'refillsRemaining':
       return (
         <Input
@@ -96,10 +96,11 @@ function AnswerCell({ q, gap, answer, onChange }) {
           value={answer.refillsRemaining}
           onChange={e => set({ refillsRemaining: e.target.value === '' ? '' : String(Math.max(0, Number(e.target.value))) })}
           aria-label={`${gap.code} refills remaining`}
+          disabled={disabled}
         />
       );
     case 'refillRequestSent':
-      return <Checkbox checked={answer.refillRequestSent} onCheckedChange={v => set({ refillRequestSent: !!v })} aria-label={`${gap.code} refill request sent`} />;
+      return <Checkbox checked={answer.refillRequestSent} onCheckedChange={v => set({ refillRequestSent: !!v })} aria-label={`${gap.code} refill request sent`} disabled={disabled} />;
     default:
       return null;
   }
@@ -110,10 +111,12 @@ function AnswerCell({ q, gap, answer, onChange }) {
 // answer for all" copies an answer across every column; each column stays
 // editable. Each question is labelled with its category (fill history,
 // refill, pickup) in the first column.
-// `onLocked`: called once the call is locked (the gap drawer closes its pane).
-// `onLockAction`: the gap drawer shows Lock & Log Call in its pane header, so
-// the form hands it `{ canLock, lock }` instead of rendering its own button.
-export function PharmacyVerificationStep({ program, member: memberProp, onLocked, onLockAction }) {
+// `onLocked`: called once the call is saved (the gap drawer closes its pane).
+// `onLockAction`: the gap drawer shows Save in its pane header, so the form
+// hands it `{ canLock, lock }` instead of rendering its own button.
+// `record`: a saved call (callHistory entry) to show read-only, with the
+// answers it was saved with.
+export function PharmacyVerificationStep({ program, member: memberProp, onLocked, onLockAction, record }) {
   const fromProfile = usePharmacyProgramMember();
   const member = memberProp || fromProfile;
   const lockVerification = useAppStore(s => s.lockPharmacyVerification);
@@ -126,6 +129,9 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
 
   // One column per gap; its active medications share the answers.
   const gaps = useMemo(() => {
+    if (record) {
+      return (record.measures || []).map(code => ({ code, meds: [], med: { lastFill: record.lastFills?.[code] } }));
+    }
     if (!member) return [];
     const all = (member.measures || [])
       .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code))
@@ -134,12 +140,20 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
       .map(g => ({ ...g, med: g.meds[0] }));
     const open = all.filter(g => isActiveGap(g.status));
     return open.length ? open : all;
-  }, [member]);
+  }, [member, record]);
 
-  const [answers, setAnswers] = useState({});
+  const readOnly = !!record;
+  const [answers, setAnswers] = useState(() => record?.answers || {});
   const [sameForAll, setSameForAll] = useState(false);
-  const [note, setNote] = useState('');
-  const answerFor = (code) => answers[code] || EMPTY_ANSWER;
+  const [note, setNote] = useState(() => record?.note || '');
+  // A new call starts from the refill count the last call recorded, when every
+  // drug in the gap agrees on it; the coordinator confirms or corrects it.
+  const blankFor = useMemo(() => Object.fromEntries(gaps.map(g => {
+    const known = [...new Set(g.meds.map(d => d.refillsRemaining))];
+    const refillsRemaining = !readOnly && known.length === 1 && known[0] != null ? String(known[0]) : '';
+    return [g.code, { ...EMPTY_ANSWER, refillsRemaining }];
+  })), [gaps, readOnly]);
+  const answerFor = (code) => answers[code] || blankFor[code] || EMPTY_ANSWER;
   const allAnswered = gaps.length > 0 && gaps.every(g => isAnswered(answerFor(g.code)));
   const lockRef = useRef(null);
   useEffect(() => {
@@ -172,6 +186,7 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
     for (const it of items) refillsByMed[it.medId] = Number(it.answer.refillsRemaining);
     const by = currentUser?.name || 'You';
     lockVerification(member.id, {
+      id: `ver-${Date.now()}`,
       kind: 'pharmacy-verification',
       locked: true,
       date: today,
@@ -183,6 +198,9 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
       by,
       note,
       measures: gaps.map(g => g.code),
+      // The form as answered, so View details can show it read-only.
+      answers: Object.fromEntries(gaps.map(g => [g.code, answerFor(g.code)])),
+      lastFills: Object.fromEntries(gaps.map(g => [g.code, g.med.lastFill || null])),
       items: items.map(({ medId, measure, drug, steps, answer }) => ({
         medId, measure, drug, steps,
         refilled: answer.refilled === 'Yes',
@@ -224,18 +242,18 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
     setNote('');
     onLocked?.();
     showToast?.(createdCount === followUps.length
-      ? `Verification call locked · ${createdCount} follow-up task${createdCount === 1 ? '' : 's'} created`
-      : `Verification call locked · could not create ${followUps.length - createdCount} follow-up task${followUps.length - createdCount === 1 ? '' : 's'}`);
+      ? `Verification call saved · ${createdCount} follow-up task${createdCount === 1 ? '' : 's'} created`
+      : `Verification call saved · could not create ${followUps.length - createdCount} follow-up task${followUps.length - createdCount === 1 ? '' : 's'}`);
   };
 
   // The header button calls the latest handler, with this render's answers.
   useEffect(() => { lockRef.current = handleLock; });
 
-  if (!member) {
+  if (!member && !record) {
     return (
       <div className={styles.empty}>
         <Icon name="solar:pills-linear" size={40} color="var(--neutral-200)" />
-        <p>No MAD, MAH or MAC medications on file for this member.</p>
+        <p>No MAC, MAD or MAH medications on file for this member.</p>
       </div>
     );
   }
@@ -243,7 +261,7 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
   return (
     <div className={styles.wrap}>
       {/* The pane names the step; only the sync switch sits above the form. */}
-      {gaps.length > 1 && (
+      {gaps.length > 1 && !readOnly && (
         <div className={styles.syncRow}>
           <Switch checked={sameForAll} onChange={toggleSame} label="Same answer for all gaps" />
         </div>
@@ -265,10 +283,15 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
               <tbody>
                 {rows.map(q => (
                   <tr key={q.key}>
-                    <td className={styles.qCol}><span className={styles.qLabel}>{q.label}</span></td>
+                    <td className={styles.qCol}>
+                      <span className={styles.qLabel}>
+                        {q.label}
+                        {q.required && !readOnly && <span className={styles.requiredDot} aria-hidden="true" />}
+                      </span>
+                    </td>
                     {gaps.map(g => (
                       <td key={g.code}>
-                        <AnswerCell q={q} gap={g} answer={answerFor(g.code)} onChange={a => setAnswer(g.code, a)} />
+                        <AnswerCell q={q} gap={g} answer={answerFor(g.code)} onChange={a => setAnswer(g.code, a)} disabled={readOnly} />
                       </td>
                     ))}
                   </tr>
@@ -281,24 +304,34 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
         <div className={styles.callBody}>
           <div className={styles.q}>
             <span className={styles.qLabel}>Call Note</span>
-            <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="One note for the whole call" aria-label="Call note" />
+            <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder={readOnly ? 'No note' : 'One note for the whole call'} aria-label="Call note" disabled={readOnly} />
           </div>
-          <div className={styles.callFoot}>
-            <span className={styles.muted}>Locking logs this call as one action across all gaps (counts as 1 outreach).</span>
-            {!onLockAction && (
-              <Button disabled={!allAnswered} onClick={handleLock}>
-                Lock &amp; Log Call
-              </Button>
-            )}
-          </div>
+          {readOnly ? (
+            <div className={styles.callFoot}>
+              <span className={styles.muted}>
+                Saved {record.date}{record.by ? ` by ${record.by}` : ''} • {record.outcome}
+              </span>
+            </div>
+          ) : (
+            <div className={styles.callFoot}>
+              <span className={styles.muted}>Saving logs this call as one action across all gaps (counts as 1 outreach).</span>
+              {!onLockAction && (
+                <Button disabled={!allAnswered} onClick={handleLock}>
+                  Save
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </DashboardCardShell>
 
-      <DashboardCard size="S" title="Verification History">
-        <div className={styles.history}>
+      {!readOnly && (
+        // No card around it: a titled timeline, like the drawer's Activity tab.
+        <section className={styles.history}>
+          <h3 className={styles.historyTitle}>Verification History</h3>
           <ActivityLog entries={history} relaxed flushTop emptyLabel="No verification calls logged yet." />
-        </div>
-      </DashboardCard>
+        </section>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { parseLocalDate } from '../../lib/localDate';
 import { fillsToStayCompliant } from './fillEvents';
 import {
-  GAP_STATUSES, MEDICATION_STATUSES, RECON_STATUSES, SAVABILITY, SUB_STATUSES, PROGRESS_LEVELS,
+  GAP_STATUSES, MEASURE_ORDER, MEDICATION_STATUSES, RECON_STATUSES, SAVABILITY, SUB_STATUSES, PROGRESS_LEVELS,
   daysFromToday, daysLeftBucket, isActiveGap, medicationStatus, pharmaciesUsed, planTimers, prescribersOf,
 } from './pharmacyWorklist.utils';
 import { escalation, inOutreachQueue } from './pharmacyRules';
@@ -64,7 +64,7 @@ export const MORE_FILTER_ITEMS = [
 
   { k: 'failDate', label: 'Fail Date', group: 'Dates' },
   { k: 'failDateSource', label: 'Fail Date Source', group: 'Dates' },
-  { k: 'allowableGapDays', label: 'Allowable Gap Days Remaining', group: 'Dates' },
+  { k: 'allowableGapDays', label: 'Days to Save', group: 'Dates' },
   { k: 'daysMissed', label: 'Days Missed', group: 'Dates' },
   { k: 'nextFillDue', label: 'Next Fill Due', group: 'Dates' },
   { k: 'daysOverdue', label: 'Days Overdue', group: 'Dates' },
@@ -114,7 +114,7 @@ const SOURCE_OPTS = ['Plan-provided', 'Fold-calculated'];
 
 const DEFS = {
   priority: multi(['P1', 'P2', 'P3']),
-  gap: multi(['MAD', 'MAH', 'MAC']),
+  gap: multi(MEASURE_ORDER),
   gapStatus: multi(GAP_STATUSES),
   progress: multi(PROGRESS_LEVELS),
   daysLeft: multi(['0–7 days', '8–14 days', '15–30 days', 'Over 30 days', 'Past fail date']),
