@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escalation, inOutreachQueue, pickupReminder } from './pharmacyRules.js';
+import { escalation, inOutreachQueue } from './pharmacyRules.js';
 import { addDaysMdy, enrichPharmacyMember, todayMdy } from './pharmacyWorklist.utils.js';
 
 const daysAgo = (n) => addDaysMdy(todayMdy(), -n);
@@ -21,16 +21,6 @@ describe('inOutreachQueue', () => {
     expect(inOutreachQueue(member({ measures: [noClaim({ nextFillDue: inDays(30), failDate: inDays(10) })] }).gaps[0])).toBe(true);
     // A claim covering this cycle closes the gap: nothing to work.
     expect(inOutreachQueue(member({ measures: [measure({ nextFillDue: inDays(30), failDate: inDays(10) })] }).gaps[0])).toBe(false);
-  });
-});
-
-describe('pickupReminder', () => {
-  const shelf = (n) => member({ measures: [measure({ pendingPickupSince: daysAgo(n) })] }).gaps[0];
-
-  it('texts a reminder early and calls as day 14 nears', () => {
-    expect(pickupReminder(shelf(2))).toMatchObject({ action: 'text', days: 2 });
-    expect(pickupReminder(shelf(11))).toMatchObject({ action: 'call', days: 11 });
-    expect(pickupReminder(member().gaps[0])).toBeNull();
   });
 });
 

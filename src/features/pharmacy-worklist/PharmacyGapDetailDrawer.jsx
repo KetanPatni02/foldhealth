@@ -30,7 +30,7 @@ import { PharmacyCommentsTab } from './program/PharmacyCommentsTab';
 import { MeasureCode } from './PharmacyCells';
 import styles from '../hedis-worklist/CareGapDetailDrawer.module.css';
 import local from './PharmacyGapDetailDrawer.module.css';
-import { escalation, pickupReminder } from './pharmacyRules';
+import { escalation } from './pharmacyRules';
 
 const PHARM_PROGRAM = { code: 'PHARM' };
 const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
@@ -147,7 +147,7 @@ function PharmacyGapDrawerBody({ target, row }) {
   };
   const year = (m.gaps.find(g => g.failDate)?.failDate || '').slice(6) || String(new Date().getFullYear());
   // What the outreach rules ask for next on the picked gaps.
-  const prompts = m.gaps.filter(g => selected.has(g.code)).map(g => ({ g, escalate: escalation(g, m), reminder: pickupReminder(g) }));
+  const prompts = m.gaps.filter(g => selected.has(g.code)).map(g => ({ g, escalate: escalation(g, m) }));
   const escalating = prompts.filter(p => p.escalate);
   const inSplit = !!workspace;
   const openMed = workspace?.medId
@@ -355,7 +355,7 @@ function PharmacyGapDrawerBody({ target, row }) {
               </div>
             </>
           )}
-          {prompts.filter(p => p.escalate || p.reminder).map(({ g, escalate, reminder }) => (
+          {prompts.filter(p => p.escalate).map(({ g, escalate }) => (
             <div key={g.code}>
               {escalate && (
                 <div className={local.ruleHint}>
@@ -364,12 +364,6 @@ function PharmacyGapDrawerBody({ target, row }) {
                     <b>{g.code}: escalate to {escalate.prescriber?.name || 'the prescriber'}</b>
                     {escalate.prescriber?.phone ? ` (${escalate.prescriber.phone})` : ''}: {escalate.reason}. Outreach goes to the prescriber of the drug, not the PCP.
                   </span>
-                </div>
-              )}
-              {reminder && (
-                <div className={local.ruleHint}>
-                  <Icon name={reminder.action === 'call' ? 'solar:phone-linear' : 'solar:chat-round-line-linear'} size={14} color="var(--neutral-300)" />
-                  <span><b>{g.code}: {reminder.label}</b>: {reminder.detail}.</span>
                 </div>
               )}
             </div>

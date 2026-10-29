@@ -10,12 +10,6 @@ import { cycleStart, daysFromToday, isActiveGap, parseMdy, prescribersOf } from 
 // 14 days (onboarding call). The PDC spec says 7 days to supply end; to confirm.
 export const QUEUE_WINDOW_DAYS = 14;
 
-// Pickup reminders (Session 4): text every two to three days once a fill is
-// ready; call as the shelf time nears day 14, when the pharmacy returns it.
-export const PICKUP_TEXT_EVERY_DAYS = 3;
-export const PICKUP_CALL_FROM_DAY = 10;
-export const RETURN_TO_STOCK_DAY = 14;
-
 // Escalation (Session 4): after two failed attempts a borderline PDC goes to
 // the prescriber; a comfortable PDC waits for a third. "Borderline" is below
 // 85% here (the examples were 72% and 89.5%); to confirm.
@@ -28,16 +22,6 @@ export function inOutreachQueue(gap) {
   if (!isActiveGap(gap.status)) return false;
   const near = (mdy) => { const d = daysFromToday(mdy); return d != null && d <= QUEUE_WINDOW_DAYS; };
   return near(gap.nextFillDue) || near(gap.failDate);
-}
-
-// Where a fill on the pharmacy shelf stands, or null when none is waiting.
-export function pickupReminder(gap) {
-  if (!gap.pendingPickupSince || !isActiveGap(gap.status)) return null;
-  const days = Math.max(0, -daysFromToday(gap.pendingPickupSince));
-  if (days >= PICKUP_CALL_FROM_DAY) {
-    return { action: 'call', days, label: 'Call the member', detail: `On the shelf ${days} days: the pharmacy returns it to stock around day ${RETURN_TO_STOCK_DAY}` };
-  }
-  return { action: 'text', days, label: 'Text a pickup reminder', detail: `On the shelf ${days} day${days === 1 ? '' : 's'}: remind the member every ${PICKUP_TEXT_EVERY_DAYS} days` };
 }
 
 // Failed attempts to reach the member on this gap since the last success this
