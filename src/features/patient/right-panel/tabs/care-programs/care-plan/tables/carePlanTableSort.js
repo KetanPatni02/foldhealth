@@ -22,6 +22,13 @@ export function enrichGoalRows(rows) {
   }));
 }
 
+export function enrichBarrierRows(rows) {
+  return (rows || []).map(b => ({
+    ...b,
+    _sortPriority: GBI_PRIORITY_RANK[String(b.priority || '').toLowerCase()] ?? 99,
+  }));
+}
+
 export function enrichInterventionRows(rows) {
   return (rows || []).map((i) => {
     // Due date sort key = createdAt + parsed duration (ISO string).
