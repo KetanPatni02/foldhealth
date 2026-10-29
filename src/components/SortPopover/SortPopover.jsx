@@ -51,6 +51,7 @@ export function SortPopover({
       anchor={anchorRect}
       onOpenChange={() => onClose?.()}
       placement="bottom-end"
+      listNavigation
       width={width}
       role="group"
       aria-label="Sort by"

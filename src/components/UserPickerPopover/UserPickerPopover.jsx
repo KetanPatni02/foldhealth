@@ -68,6 +68,7 @@ export function UserPickerPopover({ anchorRect, users = NO_USERS, selected, onSe
       onOpenChange={() => onClose()}
       placement={align === 'right' ? 'bottom-end' : 'bottom-start'}
       width={280}
+      listNavigation
       role="menu"
       aria-label={title}
       className={styles.menu}

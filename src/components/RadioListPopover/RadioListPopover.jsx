@@ -40,6 +40,7 @@ export function RadioListPopover({
       anchor={anchorRect}
       onOpenChange={() => onClose?.()}
       offset={6}
+      listNavigation
       width={width}
       maxHeight={320}
       role="group"

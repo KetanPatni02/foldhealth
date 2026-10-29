@@ -38,6 +38,10 @@ import styles from './Popover.module.css';
  * @param {boolean}  [props.initialFocus=true] Move focus into the panel on open.
  * @param {boolean}  [props.unstyled=false] Drop the surface chrome (background, border,
  *                                          radius, shadow) when the content draws its own.
+ * @param {boolean}  [props.listNavigation=false] Arrow Up/Down move focus between the
+ *                                          panel's controls (wrapping), Home/End jump to the
+ *                                          ends. For menus and pick lists, not for content
+ *                                          that uses arrows itself (sliders, calendars).
  * @param {string}   [props.role='dialog']  'dialog', 'menu', 'listbox' or 'group'.
  */
 export const Popover = forwardRef(function Popover({
@@ -53,6 +57,7 @@ export const Popover = forwardRef(function Popover({
   centered = false,
   initialFocus = true,
   unstyled = false,
+  listNavigation = false,
   role = 'dialog',
   className,
   style,
@@ -60,6 +65,7 @@ export const Popover = forwardRef(function Popover({
   onClick,
   onMouseDown,
   onPointerDown,
+  onKeyDown,
   ...rest
 }, forwardedRef) {
   const reference = useAnchorReference(anchor);
@@ -137,6 +143,7 @@ export const Popover = forwardRef(function Popover({
         onClick={stop(onClick)}
         onMouseDown={stop(onMouseDown)}
         onPointerDown={stop(onPointerDown)}
+        onKeyDown={(e) => { onKeyDown?.(e); if (listNavigation && !e.defaultPrevented) moveFocus(e); }}
         {...rest}
       >
         {children}
@@ -145,6 +152,25 @@ export const Popover = forwardRef(function Popover({
     document.body,
   );
 });
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function moveFocus(e) {
+  const steps = { ArrowDown: 1, ArrowUp: -1, Home: 'first', End: 'last' };
+  const step = steps[e.key];
+  if (step === undefined || e.altKey || e.ctrlKey || e.metaKey) return;
+  // A text field keeps Home/End for its caret; a multi-line one keeps every arrow.
+  if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && typeof step === 'string')) return;
+  const items = [...e.currentTarget.querySelectorAll(FOCUSABLE)].filter(el => el.getClientRects().length);
+  if (!items.length) return;
+  e.preventDefault();
+  const at = items.indexOf(document.activeElement);
+  const next = step === 'first' ? 0
+    : step === 'last' ? items.length - 1
+    : at === -1 ? (step > 0 ? 0 : items.length - 1)
+    : (at + step + items.length) % items.length;
+  items[next].focus();
+}
 
 // A DOMRect is a snapshot, so wrap it as a Floating UI virtual element and
 // keep its identity stable while the numbers don't change.

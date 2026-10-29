@@ -25,6 +25,22 @@ function trapTab(e) {
   else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
 }
 
+// Open drawers in mount order; only the top one answers Escape.
+const drawerStack = [];
+
+// Did anything else respond to this Escape? An inline dropdown closing, an
+// edit being cancelled or a tooltip hiding all add, remove or toggle
+// elements; a handler may also move focus or call preventDefault. Only when
+// nothing did does the key fall through to the drawer, so the dozens of
+// existing Escape handlers inside drawers keep working without changes.
+const ESCAPE_WATCH = { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'aria-expanded', 'hidden', 'open', 'data-state'] };
+function escapeWasHandled(event, records, focusBefore) {
+  if (event.defaultPrevented || document.activeElement !== focusBefore) return true;
+  return records.some(r => (r.type === 'childList'
+    ? [...r.addedNodes, ...r.removedNodes].some(n => n.nodeType === Node.ELEMENT_NODE)
+    : r.target !== document.body && r.target !== document.documentElement));
+}
+
 function readDrawerDurationMs(node) {
   if (!node) return FALLBACK_CLOSE_MS;
   const raw = getComputedStyle(node).getPropertyValue('--drawer-duration').trim();
@@ -41,7 +57,7 @@ function readDrawerDurationMs(node) {
  *
  * Props:
  *  - title           (ReactNode)  Header title text / element
- *  - onClose         (function)   Called when overlay or close button is clicked
+ *  - onClose         (function)   Called when the overlay, the close button or Escape closes it
  *  - primaryAction   (ReactNode)  Optional CTA rendered just before the close button
  *                                  (e.g. `<Button variant="primary" size="L">Save</Button>`).
  *                                  The shell paints the vertical divider between the
@@ -112,6 +128,8 @@ export function Drawer({
   // False makes a click on the overlay do nothing (close with ✕ or Escape),
   // for drawers holding edits a stray click outside shouldn't threaten.
   closeOnOverlayClick = true,
+  // False keeps Escape from closing it (✕ and the overlay still do).
+  closeOnEscape = true,
 }) {
   // Stacking depth for nested drawers. When a second Drawer mounts on top
   // of an already-open one (e.g. TaskDetailDrawer over CareGapDetailDrawer
@@ -158,6 +176,38 @@ export function Drawer({
   }, [dismissed]);
   const shut = closing || dismissed;
   const titleId = useId();
+
+  const requestCloseRef = useRef(requestClose);
+  useEffect(() => { requestCloseRef.current = requestClose; });
+  useEffect(() => {
+    if (!closeOnEscape) return undefined;
+    const entry = {};
+    drawerStack.push(entry);
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || e.isComposing || drawerStack[drawerStack.length - 1] !== entry) return;
+      const panel = panelRef.current;
+      const focusBefore = document.activeElement;
+      // Focus in something outside the panel (a portaled menu, a dialog on
+      // top) belongs to that layer.
+      if (focusBefore && focusBefore !== document.body && !panel?.contains(focusBefore)) return;
+      // Records arrive in the callback (a microtask, before the timeout), so
+      // collect them there; takeRecords() only has what's still queued.
+      const records = [];
+      const observer = new MutationObserver(list => { records.push(...list); });
+      observer.observe(document.body, ESCAPE_WATCH);
+      setTimeout(() => {
+        records.push(...observer.takeRecords());
+        observer.disconnect();
+        if (!escapeWasHandled(e, records, focusBefore)) requestCloseRef.current();
+      }, 0);
+    };
+    // Capture phase, so the check is set up before any handler can stop the key.
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      drawerStack.splice(drawerStack.indexOf(entry), 1);
+    };
+  }, [closeOnEscape]);
 
   // Focus moves into the drawer when it opens (unless something inside
   // already took it) and goes back to where it was when it closes.

@@ -157,6 +157,7 @@ that were reimplemented in every picker:
 | Stacking | One layer (z-index 10000) for every popover; the one opened last sits on top, so a menu opened inside a picker is never hidden behind it |
 | Dismissal | Escape closes only the top popover and stops there, so a drawer or dialog underneath stays open. An outside click closes it; with `overlay` (default) the click is absorbed, with `overlay={false}` it also reaches what was clicked (right for form pickers) |
 | Focus | Moves into the panel on open unless content already took it (`autoFocus`), returns to the trigger on close. Pass `initialFocus={false}` when the trigger is a text field the user keeps typing in |
+| Keyboard | `listNavigation`: Arrow Up/Down move between the panel's controls (wrapping), Home/End jump to the ends. On for menus and pick lists; off for content that uses arrows itself (sliders, calendars, drag handles) |
 | Events | Clicks inside don't bubble to rows or parent popovers |
 | Surface | One background, 0.5px border, 8px radius and `--shadow-popover`; `unstyled` drops it |
 
@@ -176,6 +177,11 @@ that were reimplemented in every picker:
 
 `Drawer` is a modal dialog: `role="dialog"`, `aria-modal`, labelled by its
 title, focus moves in on open and back on close, and Tab wraps inside it.
+Escape closes the top drawer (through `beforeClose`, so unsaved-changes
+guards still ask first) unless something else answered the key first: an
+inline dropdown closing, an edit being cancelled, a popover or dialog on top,
+or a handler calling `preventDefault`. Pass `closeOnEscape={false}` to opt
+out.
 
 ## Definition of done for a library component
 
@@ -222,11 +228,6 @@ Still positioning themselves:
 | primitives | `Select`, `Tooltip`, `HoverCard`, `TimePicker`, `DateTimePicker`, `Coachmark`, `Textarea` (mention menu), `TabStrip` (overflow menu) |
 | patterns | `SectionTitleBar`, `CommentComposer` (mention menu), `AssigneeChange` |
 | app, domain | `CreateNewPopover`, `HelpPopover`, `NotificationsPopover`, `ConsentPopover`, `OutreachPopover`, `VoicePreviewPopover`, `CallPopover`, `PatientHoverCard`, `IcdSearch`, the `ScheduleDrawer` pickers |
-
-`Drawer` does not close on Escape yet. Several drawers close their own inline
-dropdowns on Escape with document listeners, so a drawer-level handler would
-close the whole drawer with them. It can turn on once those dropdowns are on
-`Popover`, which stops the key itself.
 
 ### Prop names that diverge from the vocabulary
 

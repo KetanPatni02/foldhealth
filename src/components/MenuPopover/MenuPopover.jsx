@@ -88,7 +88,7 @@ export function MenuPopover({
       role="menu"
       aria-label={ariaLabel}
       className={styles.menu}
-      onKeyDown={moveFocus}
+      listNavigation
     >
       {searchable && (
         <div className={styles.searchRow}>
@@ -147,21 +147,4 @@ export function MenuPopover({
       })}
     </Popover>
   );
-}
-
-// Arrow keys, Home and End move between the enabled items, as a menu should.
-function moveFocus(e) {
-  const keys = { ArrowDown: 1, ArrowUp: -1, Home: 'first', End: 'last' };
-  if (!(e.key in keys)) return;
-  if (e.target.tagName === 'INPUT' && typeof keys[e.key] === 'string') return;
-  const items = [...e.currentTarget.querySelectorAll('[role="menuitem"]:not(:disabled)')];
-  if (!items.length) return;
-  e.preventDefault();
-  const at = items.indexOf(document.activeElement);
-  const step = keys[e.key];
-  const next = step === 'first' ? 0
-    : step === 'last' ? items.length - 1
-    : at === -1 ? (step > 0 ? 0 : items.length - 1)
-    : (at + step + items.length) % items.length;
-  items[next].focus();
 }

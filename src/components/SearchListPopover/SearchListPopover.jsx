@@ -49,6 +49,7 @@ export function SearchListPopover({
       placement={align === 'right' ? 'bottom-end' : 'bottom-start'}
       width={width}
       maxHeight={250}
+      listNavigation
       role="group"
       aria-label="Search"
       className={styles.popover}
