@@ -294,7 +294,7 @@ export function PreferencesDrawer({ onClose, initialTab = 'account' }) {
                     id={`${uid}-bio`}
                     rows={3}
                     value={form.bio}
-                    onChange={e => set('bio', e.target.value)}
+                    onChange={text => set('bio', text)}
                     placeholder="Brief bio..."
                     maxLength={PROFILE_FIELD_TYPES.bio.maxLength}
                     variant={fieldErrors.bio ? 'error' : 'default'}

@@ -203,7 +203,7 @@ function CarePlanOutcomePanel({ title, bullets, outreachNotes, onOutreachNotesCh
         <Textarea
           title="Outreach Notes"
           value={outreachNotes || ''}
-          onChange={(e) => onOutreachNotesChange(e.target.value)}
+          onChange={(text) => onOutreachNotesChange(text)}
           placeholder="Optional notes from the encounter..."
           rows={3}
         />

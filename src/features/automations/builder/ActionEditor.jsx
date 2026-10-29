@@ -30,7 +30,7 @@ function MessageField({ label, value, onChange, error, max }) {
   return (
     <PanelRow label={label} required error={error}>
       <div className={styles.ruleColumn}>
-        <Textarea value={value || ''} onChange={e => onChange(e.target.value)} rows={4} maxLength={max} variant={error ? 'error' : 'default'} />
+        <Textarea value={value || ''} onChange={text => onChange(text)} rows={4} maxLength={max} variant={error ? 'error' : 'default'} />
         <Select
           options={TOKEN_OPTIONS}
           value=""
