@@ -133,6 +133,15 @@ export function DrugsCount({ meds }) {
   );
 }
 
+// A count of named things ("6 medications"); hover lists the names.
+export function NamesCount({ names, label }) {
+  return (
+    <CountWithList count={names.length} label={label}>
+      {names.map(n => <span key={n} className={styles.hoverItem}>{n}</span>)}
+    </CountWithList>
+  );
+}
+
 // Count of the member's open non-pharmacy care gaps. The hover card lists
 // them in the Open ICDs popup's layout (header band, code and name, a status
 // chip below); a click keeps it open. Each opens its Care Gap Details when
@@ -286,6 +295,21 @@ const SAVABILITY_HINT = {
   Savable: 'Allowable gap days remain: the gap can still reach 80%',
   'Not savable': 'No allowable gap days left: 80% can no longer be reached this year',
 };
+// Days to Save: a gap still being worked shows the gap days it has left
+// (none left reads 0, in red; two weeks or less in amber); a gap that is
+// already safe or lost shows that instead, since there is nothing to save.
+export function DaysToSaveValue({ gap }) {
+  if (gap.savability !== 'Savable') return <SavabilityBadge value={gap.savability} />;
+  if (gap.allowableGapDays == null) return <Dash />;
+  const days = Math.max(0, gap.allowableGapDays);
+  const tone = days === 0 ? styles.daysToSaveOut : days <= 14 ? styles.daysToSaveSoon : '';
+  return (
+    <Tooltip label="Days the member can still go without medication and reach 80% PDC this year" placement="bottom">
+      <span className={`${styles.daysToSave} ${tone}`}>{days} day{days === 1 ? '' : 's'}</span>
+    </Tooltip>
+  );
+}
+
 export function SavabilityBadge({ value }) {
   if (!value) return <Dash />;
   return (

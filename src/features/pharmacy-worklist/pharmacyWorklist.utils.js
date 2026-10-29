@@ -2,14 +2,20 @@ import { claimsPdcNoRefill, daysMissed, gapMpr } from './fillEvents';
 
 const DAY_MS = 86_400_000;
 
-// SUPD is out of scope for this worklist.
-export const MEASURE_ORDER = ['MAD', 'MAH', 'MAC'];
+// SUPD is out of scope for this worklist. Gaps read in this order (by code)
+// everywhere they are listed.
+export const MEASURE_ORDER = ['MAC', 'MAD', 'MAH'];
 
 export const MEASURE_NAMES = {
+  MAC: 'Medication Adherence for Cholesterol (Statins)',
   MAD: 'Medication Adherence for Diabetes',
   MAH: 'Medication Adherence for Hypertension (RAS antagonists)',
-  MAC: 'Medication Adherence for Cholesterol (Statins)',
 };
+
+// A member's measures in MEASURE_ORDER, so lists that render them as stored
+// (worklist rows, drawer, tabs) all read the same way.
+export const sortMeasures = (measures) => (measures || [])
+  .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code));
 
 // PDC to act on: projected with a recent fill once one is confirmed,
 // otherwise the plan's, otherwise ours from claims.
@@ -729,6 +735,12 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
     failDateSort: parseMdy(effectiveFailDate(urgent)),
     nextFillDue: urgent?.nextFillDue ?? null,
     nextFillDueSort: parseMdy(urgent?.nextFillDue),
+    // Days to Save: the fewest gap days left on a gap that can still be saved,
+    // so sorting puts the closest-to-failing work first.
+    daysToSaveSort: (() => {
+      const left = gaps.filter(g => g.savability === 'Savable' && g.allowableGapDays != null).map(g => g.allowableGapDays);
+      return left.length ? Math.min(...left) : null;
+    })(),
     priorYearNonCompliant: (m.measures || []).some(x => x.priorYearNonCompliant),
     recon,
     reconStatuses: [...new Set(shown.map(x => reconcileMeasure(x, m.healthPlan)?.status).filter(Boolean))],
@@ -781,4 +793,14 @@ export function pharmaciesUsed(member) {
     }
   }
   return [...used.values()].toSorted((a, b) => parseMdy(b.lastFill) - parseMdy(a.lastFill));
+}
+
+const claimKey = (c) => `${c.claimId}|${c.claimSeq ?? 1}|${c.date}`;
+
+// A drug's fills: claims that count, and fills confirmed in Fold. Reversals,
+// voided and other-coverage lines are claims, not fills (Claim History keeps
+// them). The count is how many times the drug was filled (Refill History).
+export function medFills(med) {
+  const counted = new Set(annotateClaims(med?.refills).filter(c => c.counts).map(claimKey));
+  return (med?.refills || []).filter(r => r.source || counted.has(claimKey(r)));
 }

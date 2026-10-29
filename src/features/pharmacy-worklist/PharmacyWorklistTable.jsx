@@ -292,7 +292,7 @@ export function PharmacyWorklistTable() {
           <div className={styles.emptySearch}>
             <Icon name="solar:pill-linear" size={40} color="var(--neutral-200)" />
             <p className={styles.emptyTitle}>No members on this worklist yet</p>
-            <p className={styles.emptyText}>Members with open MAD, MAH or MAC gaps appear here once the plan file is loaded.</p>
+            <p className={styles.emptyText}>Members with open MAC, MAD or MAH gaps appear here once the plan file is loaded.</p>
           </div>
         )}
         {!loading && members.length > 0 && filtered.length === 0 && (

@@ -56,6 +56,10 @@
 .stack > * { align-self: flex-start; }
 .cellText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 .subText { font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
+/* Days to Save: amber at two weeks or less, red once none are left. */
+.daysToSave { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
+.daysToSave.daysToSaveSoon { color: var(--status-warning-dark); }
+.daysToSave.daysToSaveOut { color: var(--status-error); }
 .subText.toneError, .subStatus.toneError { color: var(--status-error); }
 .dateText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 /* A due date's status under it (Next Fill Due), as in the HEDIS worklist. */
@@ -201,3 +205,21 @@
 .chevron { flex-shrink: 0; transition: transform 0.15s ease; }
 .chevronRight { transform: rotate(-90deg); }
 .chevronUp { transform: rotate(180deg); }
+
+/* Call menu: who to call, with their number (and drugs / last fill) below. */
+.callOption {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.callName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.callMeta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}

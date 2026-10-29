@@ -1,5 +1,6 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Badge } from '../../../components/Badge/Badge';
 import { Icon } from '../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
@@ -15,7 +16,7 @@ import { MedicationClaims } from './MedicationClaims';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { DatePickerPopover } from '../../../components/DatePicker/DatePickerPopover';
-import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, medicationStatus, pdcTone, todayMdy, gapActiveBarriers } from '../pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, medicationStatus, pdcTone, medFills, todayMdy, gapActiveBarriers } from '../pharmacyWorklist.utils';
 import { MeasureCode, Sep, SubStatus } from '../PharmacyCells';
 import { BARRIERS, BARRIER_ICON } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -62,7 +63,6 @@ function ContactCard({ title, person }) {
   );
 }
 
-const claimKey = (c) => `${c.claimId}|${c.claimSeq ?? 1}|${c.date}`;
 
 // The drug's latest fill confirmed in Fold and its claim match, if any.
 const fillMatchOf = (d, plan) => {
@@ -132,18 +132,22 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
   const memberMeds = useMemo(() => (member?.measures || []).flatMap(x => x.medications.map(d => ({ ...d, measure: x.code }))), [member]);
   const update = useAppStore(s => s.updatePharmacyMedication);
   const save = (patch) => update(memberRowId, med.id, patch);
-  // Claims tab (as in HCC), or the medication's details.
-  const [tab, setTab] = useState(initialTab || 'details');
+  // Claims tab (as in HCC), or the medication's details. 'notes' opens the
+  // details at the Notes section, ready to type (the review row's note icon).
+  const [tab, setTab] = useState(initialTab === 'notes' ? 'details' : initialTab || 'details');
+  const notesRef = useRef(null);
+  useEffect(() => {
+    if (initialTab !== 'notes' || !notesRef.current) return;
+    notesRef.current.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    notesRef.current.querySelectorAll('textarea')[1]?.focus({ preventScroll: true });
+  }, [initialTab]);
   // An open claim replaces the tabs; its back arrow returns to Claim History.
   const [claimId, setClaimId] = useState(null);
   const claims = annotateClaims(med.refills);
   // Another drug opened in the same panel has none of this claim id.
   const openClaimId = tab === 'claims' && claims.some(c => c.claimId === claimId) ? claimId : null;
-  const countedClaims = new Set(claims.filter(c => c.counts).map(claimKey));
   const claimCount = (med.refills || []).length;
-  // Fills only: claims that count, and fills confirmed in Fold. Reversals,
-  // voided and other-coverage lines stay in Claim History.
-  const fills = (med.refills || []).filter(r => r.source || countedClaims.has(claimKey(r)));
+  const fills = medFills(med);
   const conditions = conditionsOf(med);
   const toggleCondition = (c) => save({
     conditions: conditions.includes(c) ? conditions.filter(x => x !== c) : [...conditions, c],
@@ -215,6 +219,12 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
           </div>
         </div>
         <div className={styles.detailRow}>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Times Refilled</span>
+            <span className={styles.fieldValue}>{fills.length}</span>
+          </div>
+        </div>
+        <div className={styles.detailRow}>
           <RadioOptionGroup
             className={styles.medStatus}
             label="Med Status"
@@ -253,7 +263,7 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
         </div>
       </section>
 
-      <section className={styles.detailSection}>
+      <section ref={notesRef} className={styles.detailSection}>
         <div className={styles.subTitle}>Notes</div>
         <div className={styles.detailRow}>
           <DraftTextarea key={`md-${med.id}`} title="Notes to MD" value={med.notesToMd} onCommit={notesToMd => save({ notesToMd })} placeholder="Note for the prescriber" />
@@ -430,13 +440,17 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
             </div>
             {classGroups(x).flatMap(g => g.meds.map(d => ({ ...d, cls: g.cls }))).map(d => {
               const dc = d.status === 'Discontinued';
-              const note = [d.internalNotes, d.notesToMd && `To MD: ${d.notesToMd}`].filter(Boolean).join(' · ');
+              const notes = [d.internalNotes && `Internal: ${d.internalNotes}`, d.notesToMd && `To MD: ${d.notesToMd}`].filter(Boolean);
+              const note = notes.join(' · ');
+              const noteCount = notes.length;
               const match = dc ? null : fillMatchOf(d, member.healthPlan);
               const supply = [
                 dc && 'Discontinued',
                 d.qty != null && `Qty ${d.qty}`,
                 d.daysSupply != null && `${d.daysSupply} days supply`,
               ].filter(Boolean);
+              const fillCount = medFills(d).length;
+              const refills = `Refilled ${fillCount} time${fillCount === 1 ? '' : 's'}`;
               const source = [
                 d.prescriber?.name && ['Prescriber', d.prescriber.name],
                 d.pharmacy?.name && ['Pharmacy', d.pharmacy.name],
@@ -452,8 +466,8 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                     <span className={styles.cRx}>{d.name} {d.strength} {d.unit}</span>
                     <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
                       {supply.length > 0 && <span className={styles.cMetaLine}>{supply.map((t, i) => <Fragment key={t}>{i > 0 && <Sep />}{t}</Fragment>)}</span>}
-                      {(source.length > 0 || d.nonAdherenceReason) && (
-                        <span className={styles.cLinks}>
+                      {/* Info • Barrier • how many times it was filled. */}
+                      <span className={styles.cLinks}>
                           {source.length > 0 && (
                             <Tooltip
                               placement="bottom"
@@ -470,8 +484,9 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                               <button type="button" className={`${styles.cInfoLink} ${styles.cBarrierText}`} aria-label={`Barrier: ${d.nonAdherenceReason}`}>1 Barrier</button>
                             </Tooltip>
                           )}
+                          {(source.length > 0 || d.nonAdherenceReason) && <Sep />}
+                          <span className={styles.cRefills}>{refills}</span>
                         </span>
-                      )}
                     </span>
                   </span>
                   <span className={styles.cValue}>{d.lastFill || '—'}</span>
@@ -492,11 +507,16 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                   <span className={`${styles.cValue} ${riskClass(d.measure, fillDueTone(d.nextFill))}`}>{d.nextFill || '—'}</span>
                   <span className={`${styles.cValue} ${riskClass(d.measure, pdcTone(d.pdc))}`}>{d.pdc == null ? '—' : `${d.pdc}%`}</span>
                   <span className={styles.cActions} onClick={e => e.stopPropagation()}>
-                    {note && (
-                      <Tooltip label={note} placement="bottom" maxWidth={260}>
-                        <span className={styles.cNote} aria-label="Has a note"><Icon name="solar:notes-linear" size={16} color="var(--neutral-300)" /></span>
-                      </Tooltip>
-                    )}
+                    {/* Always there: opens the drug at its Notes; the count and the
+                        tooltip say what is already written. */}
+                    <ActionButton
+                      icon="solar:notes-linear"
+                      size="S"
+                      count={noteCount ? String(noteCount) : undefined}
+                      tooltip={note || 'Add a note'}
+                      tooltipLeft
+                      onClick={() => openDrug(d.id, 'notes')}
+                    />
                   </span>
                 </div>
               );
@@ -511,7 +531,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
     return (
       <div className={styles.empty}>
         <Icon name="solar:pill-linear" size={40} color="var(--neutral-200)" />
-        <p>No MAD, MAH or MAC medications on file for this member.</p>
+        <p>No MAC, MAD or MAH medications on file for this member.</p>
       </div>
     );
   }

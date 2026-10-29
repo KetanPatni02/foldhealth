@@ -14,7 +14,8 @@ import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
-import { MEASURE_ORDER, PROGRESS_TONE, enrichPharmacyMember, medLabel, needsVerification } from './pharmacyWorklist.utils';
+import { MEASURE_ORDER, PROGRESS_TONE, enrichPharmacyMember, medLabel, needsVerification, pharmaciesUsed, prescribersOf } from './pharmacyWorklist.utils';
+import { BARRIER_ICON } from './adherencePicklists';
 import { PharmacyContacts, PharmacyGapsCard } from './program/PharmacySnapshotStep';
 import { MedicationDetail, PharmacyMedicationReview } from './program/PharmacyMedicationReview';
 import { usePharmacyOutreachTab } from './program/usePharmacyOutreachTab';
@@ -38,10 +39,10 @@ const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
 const TABS = [
   { key: 'activity', label: 'Activity' },
   { key: 'medication', label: 'Medication Review' },
+  { key: 'contacts', label: 'Contacts' },
   { key: 'comments', label: 'Comments' },
   { key: 'outreach', label: 'Outreaches' },
   { key: 'barriers', label: 'Barriers & Interventions' },
-  { key: 'contacts', label: 'Contacts' },
 ];
 
 const WORKSPACE_TITLE = {
@@ -105,6 +106,13 @@ function PharmacyGapDrawerBody({ target, row }) {
   // empty form).
   const workspace = openWorkspace === 'verify' && !toVerify.measures.length ? null : openWorkspace;
   const [moreRect, setMoreRect] = useState(null);
+  // The More menu's call actions: the pharmacy the member last filled at and
+  // the prescribers of their drugs, through the same call popover as Contacts.
+  const openNumberCallPopover = useAppStore(st => st.openNumberCallPopover);
+  const logPharmacyDial = useAppStore(st => st.logPharmacyDial);
+  const pharmacyContact = useMemo(() => pharmaciesUsed(row).find(p => p.phone) || null, [row]);
+  const prescriberContacts = useMemo(() => prescribersOf(row).filter(p => p.phone), [row]);
+  const callContact = (c) => openNumberCallPopover({ number: c.phone, label: c.name, onDial: () => logPharmacyDial?.(row.id, c.name, c.phone) }, moreBtnRef);
   const moreBtnRef = useRef(null);
 
   // One outreach state backs the side-workspace form and the Outreach tab
@@ -204,6 +212,8 @@ function PharmacyGapDrawerBody({ target, row }) {
                 {`${medLabel(openMed)} (${openMed.generic})`}
                 <MeasureCode code={openMed.measure} />
               </span>
+            ) : workspace?.verification ? (
+              <span className={styles.paneTitle}>{`Pharmacy Verification · ${workspace.verification.date}`}</span>
             ) : (
               <span className={styles.paneTitle}>
                 {`${WORKSPACE_TITLE[workspace]}${scope === 'all' ? '' : ` · ${scopeLabel}`}`}
@@ -224,11 +234,11 @@ function PharmacyGapDrawerBody({ target, row }) {
               )}
               {workspace === 'verify' && (
                 <>
-                  <Button variant="primary" size="M" disabled={!verifyAction?.canLock} onClick={() => verifyAction?.lock()}>Lock &amp; Log Call</Button>
+                  <Button variant="primary" size="M" disabled={!verifyAction?.canLock} onClick={() => verifyAction?.lock()}>Save</Button>
                   <span className={styles.headerDivider} />
                 </>
               )}
-              <CloseButton size={18} onClick={closeWorkspace} label={`Close ${openMed ? 'medication' : WORKSPACE_TITLE[workspace]}`} />
+              <CloseButton size={18} onClick={closeWorkspace} label={`Close ${openMed ? 'medication' : WORKSPACE_TITLE[workspace] || 'Pharmacy Verification'}`} />
             </div>
           </div>
           <div className={styles.leftPaneBody}>
@@ -237,7 +247,9 @@ function PharmacyGapDrawerBody({ target, row }) {
             )}
             {workspace === 'verify' && <PharmacyVerificationStep member={toVerify} program={PHARM_PROGRAM} onLocked={() => setWorkspace(null)} onLockAction={setVerifyAction} />}
             {workspace === 'barriers' && <PharmacyBarrierStep member={scoped} form={barrierForm} />}
-            {openMed && <MedicationDetail key={openMed.id} med={openMed} memberRowId={m.id} plan={m.healthPlan} initialTab={workspace.tab} flushTabs showMeasure={false} />}
+            {workspace?.verification && <PharmacyVerificationStep key={workspace.verification.id} record={workspace.verification} program={PHARM_PROGRAM} />}
+            {/* A note click remounts the pane so it scrolls to Notes again, even on the drug already open. */}
+            {openMed && <MedicationDetail key={workspace.tab === 'notes' ? `${openMed.id}|notes|${workspace.at}` : openMed.id} med={openMed} memberRowId={m.id} plan={m.healthPlan} initialTab={workspace.tab} flushTabs showMeasure={false} />}
           </div>
         </div>
       )}
@@ -256,7 +268,7 @@ function PharmacyGapDrawerBody({ target, row }) {
                 singleSelect
                 noClear
                 size="S"
-                info={`PDC for MAD, MAH and MAC is measured over calendar year ${year}.`}
+                info={`PDC for MAC, MAD and MAH is measured over calendar year ${year}.`}
               />
             </div>
             <div className={styles.gapToolbarRight}>
@@ -289,11 +301,20 @@ function PharmacyGapDrawerBody({ target, row }) {
                 <MenuPopover
                   anchorRect={moreRect}
                   items={[
-                    { key: 'activity', label: 'Activity log', icon: 'solar:history-linear' },
+                    { key: 'verify', label: 'Verify Pharmacy', icon: 'solar:clipboard-check-linear', disabled: !toVerify.measures.length, hint: toVerify.measures.length ? undefined : 'Nothing left to verify' },
+                    { key: 'callPharmacy', label: 'Call Pharmacist', icon: 'solar:phone-linear', disabled: !pharmacyContact, hint: pharmacyContact ? pharmacyContact.name : 'No pharmacy phone on file' },
+                    { key: 'callPrescriber', label: 'Call Prescriber', icon: 'solar:phone-linear', disabled: !prescriberContacts.length, hint: prescriberContacts.length === 1 ? prescriberContacts[0].name : prescriberContacts.length ? `${prescriberContacts.length} prescribers` : 'No prescriber phone on file' },
+                    { key: 'outreach', label: 'Log Outreach', icon: 'solar:phone-calling-linear', disabled: !picked.length },
+                    { key: 'barriers', label: 'Add Barrier', icon: BARRIER_ICON },
                   ]}
                   onSelect={(key) => {
                     setMoreRect(null);
-                    if (key === 'activity') setTab('activity');
+                    if (key === 'verify') setWorkspace('verify');
+                    else if (key === 'callPharmacy') callContact(pharmacyContact);
+                    // Several prescribers: Contacts has the card that asks which one.
+                    else if (key === 'callPrescriber') (prescriberContacts.length === 1 ? callContact(prescriberContacts[0]) : setTab('contacts'));
+                    else if (key === 'outreach') openOutreach();
+                    else if (key === 'barriers') setWorkspace('barriers');
                   }}
                   onClose={() => setMoreRect(null)}
                   width={220}
@@ -368,14 +389,14 @@ function PharmacyGapDrawerBody({ target, row }) {
         <div className={`${styles.tabContentWrap} ${tab === 'outreach' || tab === 'comments' ? styles.tabContentWrapFlush : ''}`}>
           {picked.length > 0 && (
             <>
-              {tab === 'medication' && <PharmacyMedicationReview compact member={scoped} activeMedId={workspace?.medId ?? null} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab })} />}
+              {tab === 'medication' && <PharmacyMedicationReview compact member={scoped} activeMedId={workspace?.medId ?? null} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab, at: Date.now() })} />}
               {tab === 'outreach' && (
                 <OutreachTabView tab={scopedOutreach} hideLogForRow hideForm={workspace === 'outreach'} taskMember={m.name} onLogNew={openOutreach} />
               )}
               {tab === 'barriers' && <PharmacyBarrierLog member={scoped} onEdit={() => setWorkspace('barriers')} />}
             </>
           )}
-          {tab === 'activity' && <PharmacyActivityLog member={row} />}
+          {tab === 'activity' && <PharmacyActivityLog member={row} onViewVerification={(call) => setWorkspace({ verification: call })} />}
           {tab === 'comments' && <PharmacyCommentsTab member={row} />}
           {tab === 'contacts' && <div className={local.contacts}><PharmacyContacts member={row} /></div>}
         </div>

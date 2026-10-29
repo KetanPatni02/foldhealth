@@ -1,4 +1,4 @@
-// Barrier / intervention / result picklists for Med Adherence (MAD/MAH/MAC).
+// Barrier / intervention / result picklists for Med Adherence (MAC/MAD/MAH).
 // Seeded from Arine's "Steps Performed" checklist, split into the three kinds
 // the team asked to keep apart (barrier ≠ what was done ≠ result). The final
 // Fold lists are still pending Monique's outreach-log document.
