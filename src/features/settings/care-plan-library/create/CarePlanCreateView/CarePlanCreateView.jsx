@@ -121,6 +121,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const barrierRows = useMemo(() => plainBarriers.map((entry, i) => ({
     id: entry.id || `barrier-${i}`,
     title: entry.title,
+    priority: entry.priority || 'medium',
     status: 'Not Started',
   })), [plainBarriers]);
 
@@ -429,6 +430,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
               onRowMenuGoal={(m) => setRowMenu({ list: 'goals', item: m.item, rect: m.rect })}
               onRowMenuIntervention={(m) => setRowMenu({ list: 'interventions', item: m.item, rect: m.rect })}
               onRowMenuBarrier={(m) => setRowMenu({ list: 'barriers', item: m.item, rect: m.rect })}
+              onChangeBarrierPriority={(row, priority) => setBarriers(prev => prev.map(b => (b.id === row.id ? { ...b, priority } : b)))}
             />
             </>
           )}

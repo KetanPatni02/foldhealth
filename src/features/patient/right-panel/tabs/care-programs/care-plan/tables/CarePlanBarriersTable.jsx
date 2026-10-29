@@ -13,6 +13,7 @@ import {
   CompletedRowsGroup,
 } from './carePlanTableShared';
 import { COMPACT_BARRIER_COLUMNS } from './carePlanTableColumns';
+import { enrichBarrierRows } from './carePlanTableSort';
 import { isCompletedStatus } from './carePlanTableModel';
 import { AiSuggestionBadge } from '../ai/AiSuggestionBadge';
 import styles from './carePlanTables.module.css';
@@ -52,26 +53,22 @@ function BarrierRow({
           disabled={!canEdit}
         />
       )}
-      {/* Library barriers carry no priority; a patient's barrier does, set
-          here the same way as a goal's. */}
-      {template ? (
-        <td className={styles.priorityTd} aria-hidden="true" />
-      ) : (
-        <td className={styles.priorityTd} onClick={e => e.stopPropagation()}>
-          {canEdit && onPriorityMenu ? (
-            <button
-              type="button"
-              className={styles.priorityBtn}
-              onClick={(e) => onPriorityMenu({ kind: 'barrier', item: b, rect: e.currentTarget.getBoundingClientRect() })}
-              aria-label="Change priority"
-            >
-              <PriorityIcon priority={b.priority} size={16} />
-            </button>
-          ) : (
+      {/* Set here the same way as a goal's: on a patient's plan when it can
+          be edited, and on a template whenever the caller offers the menu. */}
+      <td className={styles.priorityTd} onClick={e => e.stopPropagation()}>
+        {(canEdit || template) && onPriorityMenu ? (
+          <button
+            type="button"
+            className={styles.priorityBtn}
+            onClick={(e) => onPriorityMenu({ kind: 'barrier', item: b, rect: e.currentTarget.getBoundingClientRect() })}
+            aria-label="Change priority"
+          >
             <PriorityIcon priority={b.priority} size={16} />
-          )}
-        </td>
-      )}
+          </button>
+        ) : (
+          <PriorityIcon priority={b.priority} size={16} />
+        )}
+      </td>
       <td className={styles.titleTd}>
         {/* Library templates keep the description + inline link button; the
             patient plan reads as a single line with links in Actions. */}
@@ -171,7 +168,8 @@ export function CarePlanBarriersTable({
     }
     return Array.from(groups.values());
   }, [rows]);
-  const { sorted, sortKey, sortDir, requestSort } = useTableSort(consolidatedRows, 'title', 'asc');
+  const sortableRows = useMemo(() => enrichBarrierRows(consolidatedRows), [consolidatedRows]);
+  const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortableRows, 'title', 'asc');
   // A template row has no status, but it still gets its row menu when the
   // caller can act on one.
   const showActions = !template || Boolean(onRowMenu);
