@@ -27,6 +27,9 @@ import { ReassignmentSummaryHost } from '../features/ooo/ReassignmentSummaryHost
 import { useProgramPanelSplitActive, useDiagPanelInSplit } from '../features/patient/hooks/useProgramPanelSplitActive';
 import { supabase } from '../lib/supabase';
 import styles from './AppLayout.module.css';
+import { CaptureConsentDrawerHost } from '../features/patient/shared/CaptureConsentDrawer/CaptureConsentDrawerHost';
+import { ConsentHistoryDrawer } from '../features/patient/shared/ConsentHistoryDrawer/ConsentHistoryDrawer';
+import { ContactConsentDialog } from '../features/patient/shared/ContactConsentDialog/ContactConsentDialog';
 
 // Lazy-loaded features. These pull in heavy deps (recharts, @xyflow, @schedule-x,
 // @usewaypoint/email-builder, react-grid-layout) and are not used on the default
@@ -86,7 +89,6 @@ const AddCareGapsDrawer    = lz(() => import('../features/hedis-worklist/AddCare
 const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 const EditPatientDrawer    = lz(() => import('../features/patient/left-panel/tabs/profile/EditPatientDrawer/EditPatientDrawer'), 'EditPatientDrawer');
-const CaptureConsentDrawer = lz(() => import('../features/patient/shared/CaptureConsentDrawer/CaptureConsentDrawer'), 'CaptureConsentDrawer');
 const AssessmentDrawer     = lz(() => import('../features/toc/queue/AssessmentDrawer'),                    'AssessmentDrawer');
 const OutreachStatusDrawer = lz(() => import('../features/toc/queue/OutreachStatusDrawer'),                'OutreachStatusDrawer');
 const AiTasksDrawer        = lz(() => import('../features/toc/AiTasksDrawer'),                             'AiTasksDrawer');
@@ -514,6 +516,10 @@ export function AppLayout() {
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
   const consentCapture = useAppStore(s => s.consentCapture);
   const closeConsentCapture = useAppStore(s => s.closeConsentCapture);
+  const consentHistoryPatientId = useAppStore(s => s.consentHistoryPatientId);
+  const closeConsentHistory = useAppStore(s => s.closeConsentHistory);
+  const contactConsent = useAppStore(s => s.contactConsent);
+  const closeContactConsent = useAppStore(s => s.closeContactConsent);
   const assessmentDrawerPatientId = useAppStore(s => s.assessmentDrawerPatientId);
   const outreachStatusDrawerPatientId = useAppStore(s => s.outreachStatusDrawerPatientId);
   const aiTasksDrawerPatientId = useAppStore(s => s.aiTasksDrawerPatientId);
@@ -670,12 +676,16 @@ export function AppLayout() {
         )}
         {quickViewPatient && <QuickViewDrawer />}
         {consentCapture && (
-          <CaptureConsentDrawer
+          <CaptureConsentDrawerHost
             key={`${consentCapture.patientId}:${consentCapture.scopeType || ''}:${consentCapture.scope || ''}`}
             {...consentCapture}
             onClose={closeConsentCapture}
           />
         )}
+        {consentHistoryPatientId && (
+          <ConsentHistoryDrawer key={consentHistoryPatientId} patientId={consentHistoryPatientId} onClose={closeConsentHistory} />
+        )}
+        {contactConsent && <ContactConsentDialog {...contactConsent} onClose={closeContactConsent} />}
         {assessmentDrawerPatientId && <AssessmentDrawer />}
         {outreachStatusDrawerPatientId && <OutreachStatusDrawer />}
         {aiTasksDrawerPatientId && <AiTasksDrawer />}

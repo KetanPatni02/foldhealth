@@ -15,13 +15,16 @@ export const CONSENT_PROGRAMS = [
   { scope: 'BHI', label: 'Behavioral Health Integration' },
 ];
 
-// TCPA covers autodialed or prerecorded calls and texts, so it needs a
-// written or e-signed record; verbal is not enough.
 export const CONSENT_CHANNELS = [
   { scope: 'call', label: 'Phone calls', methods: ['verbal', 'written', 'e_sign'] },
   { scope: 'sms', label: 'Text messages', methods: ['verbal', 'written', 'e_sign'] },
   { scope: 'email', label: 'Email', methods: ['verbal', 'written', 'e_sign'] },
-  { scope: 'tcpa', label: 'Autodialed calls and texts (TCPA)', methods: ['written', 'e_sign'] },
+];
+
+// Consents that are neither a program nor a contact channel. Data sharing
+// is accepted by signing on screen.
+export const CONSENT_OTHER = [
+  { scope: 'data_sharing', label: 'Data sharing', methods: ['e_sign'] },
 ];
 
 export const CONSENT_METHODS = [
@@ -32,23 +35,24 @@ export const CONSENT_METHODS = [
 
 const PROGRAM_SCOPES = new Set(CONSENT_PROGRAMS.map(p => p.scope));
 const CHANNEL_SCOPES = new Set(CONSENT_CHANNELS.map(c => c.scope));
+const OTHER_SCOPES = new Set(CONSENT_OTHER.map(c => c.scope));
 
 export const requiresConsent = (programCode) => PROGRAM_SCOPES.has(programCode);
 
 /** Allowed capture methods for a scope (programs accept any). */
 export function methodsFor(scopeType, scope) {
   if (scopeType === 'channel') return CONSENT_CHANNELS.find(c => c.scope === scope)?.methods || [];
+  if (scopeType === 'other') return CONSENT_OTHER.find(c => c.scope === scope)?.methods || [];
   return CONSENT_METHODS.map(m => m.value);
 }
 
 /** Problem with a capture before it's saved, or null when it's valid. */
 export function validateCapture(c) {
-  const known = c?.scopeType === 'program' ? PROGRAM_SCOPES : c?.scopeType === 'channel' ? CHANNEL_SCOPES : null;
+  const known = { program: PROGRAM_SCOPES, channel: CHANNEL_SCOPES, other: OTHER_SCOPES }[c?.scopeType] || null;
   if (!known || !known.has(c.scope)) return 'Unknown consent scope';
   if (!['given', 'declined', 'withdrawn'].includes(c.status)) return 'Unknown consent status';
   if (c.status !== 'given') return null;
   if (!methodsFor(c.scopeType, c.scope).includes(c.method)) return 'This consent needs a written or e-signed record';
-  if (c.method === 'verbal' && !c.witness?.trim()) return 'Verbal consent needs a witness';
   if (c.method !== 'verbal' && !c.artifactPath) return 'Attach the signature or signed document';
   return null;
 }
@@ -106,8 +110,8 @@ export function contactPoint(preferences, value) {
 /**
  * Whether the patient may be contacted on `channel` at `value`. A declined
  * or withdrawn channel blocks it, an invalid contact point blocks it, and
- * texts and autodialed calls (`automated`) also need TCPA consent.
- * A channel with no record allows manual contact (treatment communication).
+ * texts and autodialed calls (`automated`) need the channel's consent given.
+ * A manual call or email with no record is allowed (treatment communication).
  */
 export function canContact(consents, preferences, channel, { value, automated = false, today = new Date() } = {}) {
   const { state } = consentState(consents, 'channel', channel, today);
@@ -115,10 +119,7 @@ export function canContact(consents, preferences, channel, { value, automated = 
   if (state === 'declined' || state === 'withdrawn') return { allowed: false, reason: `${BLOCK_REASON[state]} for ${channelName}` };
   const point = value ? contactPoint(preferences, value) : null;
   if (point?.status === 'invalid') return { allowed: false, reason: `${value} is marked invalid` };
-  if (channel === 'sms' || automated) {
-    const tcpa = consentState(consents, 'channel', 'tcpa', today).state;
-    if (tcpa !== 'given') return { allowed: false, reason: `${BLOCK_REASON[tcpa]} for TCPA` };
-  }
+  if ((channel === 'sms' || automated) && state !== 'given') return { allowed: false, reason: `${BLOCK_REASON[state]} for ${channelName}` };
   return { allowed: true, reason: null };
 }
 
@@ -129,9 +130,12 @@ export function requiredConsentScopes(programs) {
   return [...codes];
 }
 
-/** "2/3" for the banner: required program consents given vs required. */
-export function consentSummary(consents, programs, today = new Date()) {
-  const scopes = requiredConsentScopes(programs);
+/**
+ * "1/4" for the banner: program consents given out of every program that
+ * needs one, whether or not the patient is enrolled in it yet.
+ */
+export function consentSummary(consents, today = new Date()) {
+  const scopes = CONSENT_PROGRAMS.map(p => p.scope);
   const byScope = Object.fromEntries(scopes.map(s => [s, consentState(consents, 'program', s, today).state]));
   return { given: scopes.filter(s => byScope[s] === 'given').length, total: scopes.length, byScope };
 }

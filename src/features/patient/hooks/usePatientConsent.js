@@ -5,9 +5,9 @@ import { consentSummary } from '../data/consentRules';
 const EMPTY = [];
 
 /**
- * A patient's consent history (newest first), preferences, and the "given /
- * total" summary over their open billable enrollments. `loaded` is false
- * until the first fetch returns.
+ * A patient's consent history (newest first), preferences, their care
+ * programs, and the "given / total" summary over the program consents.
+ * `loaded` is false until the first fetch returns.
  */
 export function usePatientConsent(patientId) {
   const consents = useAppStore(s => s.patientConsents[patientId]);
@@ -22,6 +22,6 @@ export function usePatientConsent(patientId) {
     fetchCareProgramsForPatient(patientId);
   }, [patientId, fetchPatientConsents, fetchCareProgramsForPatient]);
 
-  const summary = useMemo(() => consentSummary(consents || EMPTY, programs || EMPTY), [consents, programs]);
+  const summary = useMemo(() => consentSummary(consents || EMPTY), [consents]);
   return { consents: consents || EMPTY, preferences, programs: programs || EMPTY, summary, loaded: consents !== undefined };
 }
