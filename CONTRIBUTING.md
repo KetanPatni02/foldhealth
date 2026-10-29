@@ -33,6 +33,11 @@ held against you, but new/modified code must comply.
 | **Components** | Reuse primitives from `src/components/*` (Button, Input, Select, Drawer, Badge, Checkbox, …) | Raw `<button>/<input>/<select>/<textarea>` in feature code |
 | **Filter badges** | Use the shared `src/components/FilterChip` for every filter — same look + behaviour everywhere (`Label ⌄` → `Label : Value ✕`) | Re-implementing a `*FilterChip`, or using a plain `Select`/`<select>` as a filter |
 | **Drawers** | Actions in `headerRight`; add `headerDivider` + pass `noCloseDivider` | A close button that draws its own border |
+| **Component layers** | Add every new `src/components` folder to `src/components/layers.json`; primitives and patterns take data as props | A primitive or pattern importing `store/`, `features/`, `layouts/` or an app/domain component |
+
+The layers, import boundaries and the shared prop vocabulary (`variant`,
+`tone`, `size`, `value` / `defaultValue` / `onValueChange`, …) are in
+[`docs/components/library-contract.mdx`](docs/components/library-contract.mdx).
 
 ### How enforcement works
 

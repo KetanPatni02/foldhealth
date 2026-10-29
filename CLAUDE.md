@@ -57,6 +57,12 @@ keep entries short and specific. Newest at the top.
 - **No Co-Authored-By trailer in commits.** Do not add
   `Co-Authored-By: Claude …` or any similar attribution line to commit
   messages.
+- **Component library contract.** Every `src/components` folder is listed in
+  `src/components/layers.json` (primitives, patterns, app, domain). Primitives
+  and patterns never import the store, features or layouts, and use the shared
+  prop names (`variant` for emphasis, `tone` for intent, `size`
+  `xs`/`sm`/`md`/`lg`, `value`/`defaultValue`/`onValueChange`). See
+  `docs/components/library-contract.mdx`. The guardrails block violations.
 - **Always use reusable components from `src/components/`.** Drawer,
   Button, Toggle, Badge, Select, Slider, Switch, ConfirmDialog, etc.
   Search the components folder before writing a new one. New components

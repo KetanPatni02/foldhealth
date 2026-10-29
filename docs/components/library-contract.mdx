@@ -1,0 +1,188 @@
+---
+title: Component Library Contract
+description: Layers, import boundaries and the prop vocabulary every component in src/components follows.
+---
+
+`src/components` is on its way to becoming a standalone library that other
+projects can install. This page is the contract that gets it there. New
+components follow it from day one; existing ones are migrated in phases (see
+[Migration status](#migration-status)).
+
+## Layers
+
+Every folder in `src/components` belongs to exactly one layer, recorded in
+[`src/components/layers.json`](https://github.com/designedbyalok/foldhealth/blob/main/src/components/layers.json).
+
+| Layer | What belongs here | May import | Examples |
+|---|---|---|---|
+| **primitives** | A single control or display element with no product vocabulary. Works in any React app. | Other primitives, `react`, `src/lib` utilities, `src/tokens` | `Button`, `Input`, `Select`, `Badge`, `Drawer`, `Tooltip`, `TabStrip` |
+| **patterns** | A generic composition of primitives. Still product-agnostic, but opinionated about layout. | Primitives and other patterns | `WorklistShell`, `FilterBar`, `PanelSection`, `SectionTitleBar`, `ActivityLog` |
+| **app** | Fold app chrome and app-wide singletons. Free to read the store. | Anything | `Sidebar`, `TopBar`, `ThemePicker`, `NotificationsPopover` |
+| **domain** | Healthcare or Fold product concepts. Free to read the store. | Anything | `PatientBanner`, `ScheduleDrawer`, `Outreach*`, `CallPopover`, `Unity*` |
+
+Primitives and patterns together form **the library**. App and domain
+components stay with the Fold app and will move into `src/features` over time.
+
+### Picking a layer for a new component
+
+Ask in order, and stop at the first yes:
+
+1. Does it read `useAppStore`, Supabase or a feature module, or render app chrome? **app**
+2. Does its name, props or copy mention a patient, program, outreach, call, care plan, HCC or any other Fold concept? **domain**
+3. Is it a composition of several primitives with a fixed layout (a toolbar, a table shell, a section header)? **patterns**
+4. Otherwise: **primitives**
+
+If the honest answer is "domain, but it would be generic if one prop were a
+slot", make it generic and put it in the library. That is the outcome we want.
+
+## Import boundaries
+
+Enforced by `no-restricted-imports` in `eslint.config.js`, generated from
+`layers.json`:
+
+- Library components must not import `store/`, `features/`, `layouts/`,
+  `lib/supabase` or `lib/apiFetch`. Take data as props and put the connected
+  wrapper next to the feature that owns the data.
+- A primitive must not import a pattern, app or domain component.
+- A pattern must not import an app or domain component.
+- Stories (`*.stories.jsx`) are exempt, so a story may show a primitive inside
+  a domain context.
+
+`scripts/ds-guardrails.mjs` promotes these to blocking on the lines a change
+touches (pre-commit and the **Design System Guardrails** CI check), the same
+way it treats hardcoded colors. It also fails if a folder in
+`src/components` is missing from `layers.json`.
+
+When the store or a feature is genuinely needed, invert the dependency:
+
+```jsx
+// Before: the primitive looks the record up in the store
+export function Avatar({ userName, userId, ooo, ...props }) {
+  const found = useAppStore(s => activeOooFor(s.oooRecords, { id: userId, name: userName }));
+  ...
+}
+
+// After: the primitive only takes the record
+export function Avatar({ ooo, ...props }) { ... }
+
+// src/features/ooo/StaffAvatar.jsx: the feature connects it
+export function StaffAvatar({ userName, userId, ...props }) {
+  const ooo = useAppStore(s => activeOooFor(s.oooRecords, { id: userId, name: userName }));
+  return <Avatar ooo={ooo} userName={userName} {...props} />;
+}
+```
+
+## Prop vocabulary
+
+Every library component uses the same names for the same idea. If a
+component needs one of these concepts, it uses exactly this prop.
+
+### Appearance
+
+| Prop | Meaning | Values |
+|---|---|---|
+| `variant` | Visual emphasis only. Never encodes color or meaning. | `solid`, `soft`, `outline`, `ghost`, `link` (a component supports the subset that makes sense) |
+| `tone` | Semantic intent: what the color *means*. | `neutral`, `primary`, `success`, `warning`, `danger`, `info` |
+| `size` | One shared scale. Pixel values are per component family and listed in its story. | `xs`, `sm`, `md`, `lg`. Default `md`. |
+
+`variant` and `tone` are independent axes, so `<Button variant="soft" tone="danger">`
+and `<Badge variant="outline" tone="success">` both work without a new class
+per combination.
+
+Feature-specific looks are **not** variants of a primitive. A status like
+"AWV due" or "Outreach attempted" lives in a domain component that maps the
+status to a `tone`:
+
+```jsx
+// domain layer
+const TONE = { due: 'warning', done: 'success', missed: 'danger' };
+export const AwvStatusBadge = ({ status }) => (
+  <Badge tone={TONE[status]} variant="soft">{LABEL[status]}</Badge>
+);
+```
+
+### State
+
+| Prop | Meaning |
+|---|---|
+| `disabled` | Not interactive. Also sets `aria-disabled` or the native attribute. |
+| `loading` | Busy. Keeps its size, shows a spinner, blocks repeat clicks. |
+| `invalid` | Fails validation. Sets `aria-invalid`. Pair with an `error` message prop on form fields. |
+| `readOnly` | Shows a value that cannot be edited. |
+
+State is also exposed as `data-*` attributes on the root (`data-disabled`,
+`data-invalid`, `data-state="open|closed"`, `data-active`) so CSS can style
+it without extra class names.
+
+### Values and open state
+
+Every stateful component works both controlled and uncontrolled, the same way
+Radix and Base UI do:
+
+| Concern | Controlled | Uncontrolled | Change callback |
+|---|---|---|---|
+| A value (input, select, tabs, toggle, slider) | `value` | `defaultValue` | `onValueChange(value)` |
+| A checked state (checkbox, switch) | `checked` | `defaultChecked` | `onCheckedChange(checked)` |
+| Open state (popover, drawer, dialog, menu, collapsible) | `open` | `defaultOpen` | `onOpenChange(open)` |
+
+The callback always receives the **value**, never a DOM event. Text inputs may
+keep a native `onChange(event)` in addition, because consumers expect it there.
+
+### Plumbing every component provides
+
+- **`ref`** reaches the root DOM element (`forwardRef` until we drop React 18 support, then a plain `ref` prop).
+- **`className`** is merged onto the root, never replacing the component's own classes.
+- **`...rest`** is spread onto the root, so `id`, `aria-*`, `data-*` and event handlers pass through.
+- **Slots over booleans**: prefer `leading`, `trailing`, `icon`, `actions` that accept a node over a growing list of `showX` / `hideY` flags.
+
+### Naming
+
+- Name a component for its role, not its implementation: `Checkbox`, `Dialog`,
+  `Slider`, not `ShadcnCheckbox`.
+- Name variants for the look, not the screen that first used them: `soft`,
+  not `outreachChip`.
+- Popovers that pick a value are named for the value (`DatePicker`,
+  `UserPicker`); the floating surface itself is just `Popover`.
+
+## Definition of done for a library component
+
+- [ ] Listed under `primitives` or `patterns` in `layers.json`
+- [ ] Uses only the prop vocabulary above, with defaults stated in JSDoc
+- [ ] Forwards `ref`, merges `className`, spreads `...rest`
+- [ ] Keyboard operable with a visible focus ring; overlays trap focus and close on Escape
+- [ ] Colors, spacing, radius and type come from `src/tokens/tokens.css`
+- [ ] Folder has `Name.jsx`, `Name.module.css` and `Name.stories.jsx`
+- [ ] Story uses `tags: ['autodocs']`, declares `argTypes` for every `variant`, `tone` and `size`, and has a story that renders the full variant matrix
+
+## Migration status
+
+The boundary rule is enforced now for new and changed lines. The items below
+are existing debt, fixed in later phases rather than blocking anyone today.
+
+### Library components that still import the app
+
+| Component | Layer | Imports | Fix |
+|---|---|---|---|
+| `Avatar` | primitive | store, `features/ooo` | Already takes `ooo`; move the `userId` lookup into a `StaffAvatar` wrapper in `features/ooo` |
+| `Pagination` | primitive | store (about 20 fields) | Take `page`, `pageSize`, `total`, `onPageChange`; worklists pass them |
+| `HoverCard` | primitive | the hover-intent hook from `PatientHoverCard` | Move the generic hook into `HoverCard`; `PatientHoverCard` imports it from there |
+| `ActivityLog` | pattern | store (tasks, clinical notes, referrals, current user) | Keep the timeline generic with a `renderEntry` slot; task, note and referral entries move to features |
+| `BulkBar` | pattern | store | Take selection and actions as props |
+| `CommentComposer` | pattern | store, `features/hcc` | Take the mention list and current user as props |
+| `EmailComposer` | pattern | `UnityAIBar` (domain) | Accept an `assistant` slot |
+| `FilterBar` | pattern | store, `features/hcc` | Take active filters, saved views and their dialogs as props or slots (it already accepts most as overrides) |
+| `ProductTour` | pattern | `lib/supabase` | Take `onComplete` to persist progress |
+| `WorklistColumns` | pattern | store | Take `hidden` and `onHiddenChange` |
+
+### Prop names that diverge from the vocabulary
+
+| Component | Today | Target |
+|---|---|---|
+| `Button` | `variant` mixes emphasis and intent (`primary`, `secondary`, `tertiary`, `ghost`, `alt`, `success`, `danger`, `dangerFilled`, `info`); `size` `S`/`L`/`XL` | `variant` + `tone`; `size` `sm`/`md`/`lg` (same 24/32/52px) |
+| `ActionButton` | `state` `active`/`disabled`/`error`; `size` `S`/`L`/`XL` | `data-active`, `disabled`, `tone="danger"`; `sm`/`md`/`lg` |
+| `Badge` | `tone` plus a legacy `variant` with about 30 feature looks (`status*`, `outreach*`, `awv*`, `toc*`, `compliance*`); `size` `XS`/`S`/`M`/`L` | `variant` + `tone` only; feature looks move to domain badges; `xs`/`sm`/`md`/`lg` |
+| `InfoBar`, `Alert` | Both carry `tone`; `InfoBar` adds a `variant` | One `Banner` with `tone` and `variant` |
+| `Toggle`, `SubTabs` | `size="M"`; `onChange(key)` | `size="md"`; `value`/`defaultValue`/`onValueChange` |
+| `Textarea` | `onChange` is an event in plain mode and `(value, event)` in rich mode | Native `onChange(event)` plus `onValueChange(value)` |
+| `CheckboxTick`, `Switch` | Numeric `size` / `labelGap` | `size` scale; spacing from tokens |
+| `ShadcnCheckbox`, `ShadcnDialog`, `ShadcnSlider` | Implementation in the name | `Checkbox`, `Dialog`, `Slider` |

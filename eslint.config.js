@@ -6,6 +6,29 @@ import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import { readFileSync } from 'node:fs'
+
+// Component layers (src/components/layers.json). A primitive may only import
+// other primitives; a pattern may import primitives and patterns. Neither may
+// reach into the app (store, features, layouts), so the library can be lifted
+// into its own package. See docs/components/library-contract.mdx.
+const LAYERS = JSON.parse(readFileSync(new URL('./src/components/layers.json', import.meta.url), 'utf8'))
+const APP_CODE = {
+  regex: '(^|/)(store|features|layouts)/|(^|/)lib/(supabase|apiFetch)$',
+  message: 'Library components (primitives, patterns) must not import the store, features, layouts or the network. Take the data as props; put the connected wrapper in the feature. See docs/components/library-contract.mdx.',
+}
+const layerImports = (owner, banned) => ({
+  files: LAYERS[owner].map(d => `src/components/${d}/**/*.{js,jsx}`),
+  ignores: ['**/*.stories.jsx'],
+  rules: {
+    'no-restricted-imports': ['warn', {
+      patterns: [APP_CODE, {
+        regex: `^(\\.\\./)+(${banned.flatMap(l => LAYERS[l]).join('|')})/`,
+        message: `A ${owner === 'primitives' ? 'primitive' : 'pattern'} must not import ${banned.join(' or ')} components (src/components/layers.json). Pass it in as a prop or slot instead.`,
+      }],
+    }],
+  },
+})
 
 export default defineConfig([globalIgnores([
   'dist', 'storybook-static', 'coverage',
@@ -103,4 +126,7 @@ export default defineConfig([globalIgnores([
       }],
     }],
   },
-}, ...storybook.configs["flat/recommended"]])
+},
+  layerImports('primitives', ['patterns', 'app', 'domain']),
+  layerImports('patterns', ['app', 'domain']),
+  ...storybook.configs["flat/recommended"]])
