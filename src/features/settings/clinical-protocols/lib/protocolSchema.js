@@ -406,6 +406,41 @@ export function formatCadence(c) {
   return c.every === 1 ? `${count} ${PER_UNIT[c.unit]}` : `${count} every ${span}`;
 }
 
+/** Characters of protocol guidance a care plan draft request carries. */
+export const PROTOCOL_GUIDANCE_MAX = 8000;
+
+/**
+ * A protocol as plain guidance lines for the care plan template drafter:
+ * scope, thresholds, decision rules, cadence and titration, most useful
+ * first, clipped to `max` characters on a line boundary.
+ */
+export function protocolGuidanceText(protocol, { max = PROTOCOL_GUIDANCE_MAX } = {}) {
+  const p = protocol || {};
+  const lines = [];
+  if (p.summary) lines.push(`Summary: ${p.summary}`);
+  const scope = p.scope || {};
+  const conditions = list(scope.conditions).map(c => (c.code ? `${c.name} (${c.code})` : c.name));
+  if (conditions.length) lines.push(`Conditions: ${conditions.join('; ')}`);
+  if (scope.population) lines.push(`Population: ${scope.population}`);
+  if (list(scope.exclusions).length) lines.push(`Exclusions: ${scope.exclusions.join('; ')}`);
+  const section = (title, items, fmt) => {
+    if (!list(items).length) return;
+    lines.push('', `${title}:`);
+    for (const x of items) lines.push(`- ${fmt(x)}`);
+  };
+  section('Thresholds', p.thresholds, t => [formatThreshold(t), t.label, t.action].filter(Boolean).join(' | '));
+  section('Decision rules', p.decisionRules, r => `When ${r.when}, then ${r.then}`);
+  section('Cadence', p.cadence, c => [`${formatCadence(c)}: ${c.activity}`, c.appliesWhen].filter(Boolean).join(' | '));
+  section('Medication titration', [...list(p.titration)].sort((a, b) => a.step - b.step),
+    m => [`Step ${m.step} ${m.action} ${m.medication}`, m.dose, m.criteria].filter(Boolean).join(' | '));
+  let out = '';
+  for (const line of lines) {
+    if (out.length + line.length + 1 > max) break;
+    out += `${out ? '\n' : ''}${line}`;
+  }
+  return out;
+}
+
 /** Item counts per section, for list rows and review badges. */
 export function protocolCounts(protocol) {
   const p = protocol || {};

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { InfoBar } from '../../../../../components/InfoBar/InfoBar';
 import { Input } from '../../../../../components/Input/Input';
 import { Textarea } from '../../../../../components/Textarea/Textarea';
 import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
@@ -221,6 +222,15 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
           <span className={styles.formTitle}>Edit Care Plan</span>
         </div>
         <div className={styles.formBody}>
+          {template.sourceProtocol && (
+            <InfoBar variant="inline" icon="solar:document-medicine-linear">
+              Based on clinical protocol: {[
+                template.sourceProtocol.title,
+                template.sourceProtocol.version && `v${template.sourceProtocol.version}`,
+                template.sourceProtocol.organization,
+              ].filter(Boolean).join(' · ')}
+            </InfoBar>
+          )}
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Care Plan Name</span>
             <Input

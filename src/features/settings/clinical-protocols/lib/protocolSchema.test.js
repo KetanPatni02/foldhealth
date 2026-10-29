@@ -7,6 +7,7 @@ import {
   isoDateOrNull,
   normalizeProtocol,
   protocolCounts,
+  protocolGuidanceText,
 } from './protocolSchema';
 
 describe('normalizeProtocol', () => {
@@ -71,5 +72,24 @@ describe('formatting', () => {
     expect(formatCadence({ times: 1, every: 1, unit: 'month' })).toBe('Every month');
     expect(formatCadence({ times: 2, every: 1, unit: 'day' })).toBe('Twice daily');
     expect(formatCadence({ times: 3, every: 2, unit: 'week' })).toBe('3 times every 2 weeks');
+  });
+});
+
+describe('protocolGuidanceText', () => {
+  it('lists scope, thresholds, rules, cadence and titration as plain lines', () => {
+    const { protocol } = normalizeProtocol(foldProtocolJsonTemplate());
+    const text = protocolGuidanceText(protocol);
+    expect(text).toMatch(/^Summary: /);
+    expect(text).toContain('Conditions: Essential hypertension (I10)');
+    expect(text).toContain('- Systolic BP ≥ 180 mmHg | Hypertensive urgency | Same-day provider review');
+    expect(text).toContain('- Twice daily: Home BP reading | 7 days before each provider visit');
+    expect(text).toContain('- Step 1 start Lisinopril | 10 mg daily | BP above goal');
+  });
+
+  it('stops at the character limit on a whole line', () => {
+    const { protocol } = normalizeProtocol(foldProtocolJsonTemplate());
+    const text = protocolGuidanceText(protocol, { max: 120 });
+    expect(text.length).toBeLessThanOrEqual(120);
+    expect(text.split('\n').every(l => !l.endsWith('…'))).toBe(true);
   });
 });

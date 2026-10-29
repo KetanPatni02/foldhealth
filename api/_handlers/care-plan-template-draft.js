@@ -43,6 +43,11 @@ export default async function handler(req, res) {
   if (description.length > TEMPLATE_DESCRIPTION_MAX) {
     return res.status(400).json({ error: { message: `Keep the description under ${TEMPLATE_DESCRIPTION_MAX} characters.` } });
   }
+  // An Active clinical protocol the draft must follow, as plain guidance lines.
+  const p = body.protocol && typeof body.protocol === 'object' ? body.protocol : null;
+  const protocol = p && typeof p.guidance === 'string' && p.guidance.trim()
+    ? { title: String(p.title || ''), version: String(p.version || ''), organization: String(p.organization || ''), guidance: p.guidance }
+    : null;
   const catalog = {
     goals: asList(body.catalog?.goals),
     interventions: asList(body.catalog?.interventions),
@@ -51,7 +56,7 @@ export default async function handler(req, res) {
 
   try {
     const ai = await generateJson({
-      prompt: buildTemplateDraftPrompt(description, catalog),
+      prompt: buildTemplateDraftPrompt(description, catalog, protocol),
       schema: TEMPLATE_DRAFT_SCHEMA,
       name: 'care_plan_template',
       temperature: 0.3,
