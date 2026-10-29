@@ -3,6 +3,8 @@ import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Button } from '../../components/Button/Button';
+import { BulkBar } from '../../components/BulkBar/BulkBar';
+import { SelectAssigneeModal } from '../../components/SelectAssigneeModal/SelectAssigneeModal';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { Pagination } from '../../components/Pagination/Pagination';
@@ -16,8 +18,6 @@ import { PharmacyGapDetailDrawer } from './PharmacyGapDetailDrawer';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
 import { FilterChipBar } from '../hcc/FilterChipBar';
 import { FilterNameDialog } from '../hcc/FilterNameDialog';
-import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
-import { planAutoAssignment } from './pharmacyRules';
 import { CareGapDetailDrawer } from '../hedis-worklist/CareGapDetailDrawer';
 import { PHARMACY_MIDDLE_COLUMNS, PHARMACY_HIDDEN_BY_DEFAULT } from './pharmacyColumns';
 import { enrichPharmacyMember, measureDrugs, normMemberId } from './pharmacyWorklist.utils';
@@ -56,15 +56,12 @@ export function PharmacyWorklistTable() {
   const hedisMembers = useAppStore(s => s.hedisMembers);
   const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const showToast = useAppStore(s => s.showToast);
+  const setPharmacyAssignee = useAppStore(s => s.setPharmacyAssignee);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const filters = useAppStore(s => s.pharmacyFilters);
   const clearFilters = useAppStore(s => s.clearPharmacyFilters);
   const saveSavedFilter = useAppStore(s => s.saveSavedFilter);
   const authUserId = useAppStore(s => s.authUserId);
-  const careTeams = useAppStore(s => s.hccCareTeams);
-  const fetchCareTeams = useAppStore(s => s.fetchHccCareTeams);
-  const autoAssign = useAppStore(s => s.autoAssignPharmacy);
-  const platformUsers = useAppStore(s => s.platformUsers);
-  const [autoAssignOpen, setAutoAssignOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,11 +101,6 @@ export function PharmacyWorklistTable() {
   );
 
   const filterCtx = useMemo(() => ({ authUserId }), [authUserId]);
-  // Who auto-assignment would pick, shown before it runs.
-  const autoAssignPlan = useMemo(
-    () => (autoAssignOpen ? planAutoAssignment(enriched, careTeams, platformUsers) : []),
-    [autoAssignOpen, enriched, careTeams, platformUsers],
-  );
   const dynamicOpts = useMemo(() => dynamicFilterOptions(enriched, filterCtx), [enriched, filterCtx]);
 
   const filtered = useMemo(() => {
@@ -174,9 +166,6 @@ export function PharmacyWorklistTable() {
         onHistory={() => showToast('History – coming soon')}
         rightExtras={
           <>
-            <Button variant="outline" size="sm" leadingIcon="solar:users-group-rounded-linear" onClick={() => { fetchCareTeams(); setAutoAssignOpen(true); }}>
-              Auto-assign
-            </Button>
             <SavedFiltersChip list="Pharmacy" />
             <span className={styles.titleDivider} />
           </>
@@ -193,31 +182,33 @@ export function PharmacyWorklistTable() {
           onSaveFilter={() => setSaveDialogOpen(true)}
         />
       )}
-      {autoAssignOpen && (
-        <ConfirmDialog
-          variant="primary"
-          icon="solar:users-group-rounded-linear"
-          title="Auto-assign members"
-          description={autoAssignPlan.length
-            ? `${autoAssignPlan.length} unassigned member${autoAssignPlan.length === 1 ? '' : 's'} will be assigned by IPA, then health plan, using the PHARM care team in Settings > Care Teams. Members whose gaps are all Not savable are skipped.`
-            : 'No unassigned member matches a PHARM care team rule. Set up routing by IPA or health plan in Settings > Care Teams. Members whose gaps are all Not savable are never assigned.'}
-          confirmLabel={autoAssignPlan.length ? `Assign ${autoAssignPlan.length}` : 'OK'}
-          onCancel={() => setAutoAssignOpen(false)}
-          onConfirm={() => {
-            if (autoAssignPlan.length) {
-              const n = autoAssign();
-              showToast(`${n} member${n === 1 ? '' : 's'} auto-assigned`);
-            }
-            setAutoAssignOpen(false);
-          }}
-        />
-      )}
       <FilterNameDialog
         open={saveDialogOpen}
         title="Save Filter"
         submitLabel="Save"
         onSubmit={(name) => { saveSavedFilter('Pharmacy', name); setSaveDialogOpen(false); }}
         onCancel={() => setSaveDialogOpen(false)}
+      />
+      {/* Selected rows get the shared floating bar; Change Assignee sets one
+          coordinator on every selected member (each logs its own change). */}
+      <BulkBar
+        selectedIds={[...selectedIds]}
+        onClear={() => setSelectedIds(new Set())}
+        onChangeAssignee={() => setBulkAssignOpen(true)}
+        noun={selectedIds.size === 1 ? 'Member' : 'Members'}
+        className={styles.bulkBar}
+      />
+      <SelectAssigneeModal
+        open={bulkAssignOpen}
+        title={`Assign ${selectedIds.size} member${selectedIds.size === 1 ? '' : 's'}`}
+        confirmLabel="Assign"
+        onClose={() => setBulkAssignOpen(false)}
+        onConfirm={(user) => {
+          for (const id of selectedIds) setPharmacyAssignee(id, user);
+          showToast(`${selectedIds.size} member${selectedIds.size === 1 ? '' : 's'} assigned to ${user.name}`);
+          setBulkAssignOpen(false);
+          setSelectedIds(new Set());
+        }}
       />
 
       <div className={styles.tableScroll}>

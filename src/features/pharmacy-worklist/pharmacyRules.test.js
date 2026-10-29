@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escalation, inOutreachQueue, pickupReminder, planAutoAssignment } from './pharmacyRules.js';
+import { escalation, inOutreachQueue, pickupReminder } from './pharmacyRules.js';
 import { addDaysMdy, enrichPharmacyMember, todayMdy } from './pharmacyWorklist.utils.js';
 
 const daysAgo = (n) => addDaysMdy(todayMdy(), -n);
@@ -63,50 +63,5 @@ describe('escalation', () => {
     expect(escalation(reached.gaps[0], reached)).toBeNull();
     const escalated = member({ callHistory: [call(1, { contact: 'Prescriber' }), call(2), call(3)] });
     expect(escalation(escalated.gaps[0], escalated)).toBeNull();
-  });
-});
-
-describe('planAutoAssignment', () => {
-  const coordinator = (name, rules) => ({ userId: name, name, initials: name[0], capacityPct: 100, assignTo: rules });
-  const team = (...members) => [{ kind: 'care-program', teamType: 'PHARM', members }];
-  const rows = (list) => list.map(([id, o]) => member({ id, memberId: id, name: id, ...o }));
-
-  it('routes by IPA first, then health plan', () => {
-    const teams = team(
-      coordinator('Priya', [{ dim: 'IPA', value: 'Astrana IPA', pct: 60 }]),
-      coordinator('Marcus', [{ dim: 'Health Plan', value: 'SCAN Classic', pct: 40 }]),
-    );
-    const plan = planAutoAssignment(rows([['a', { ipa: 'Astrana IPA', healthPlan: 'SCAN Classic' }], ['b', { ipa: 'Other', healthPlan: 'SCAN Classic' }], ['c', { healthPlan: 'Elsewhere' }]]), teams, []);
-    expect(plan.map(p => [p.memberId, p.user.name])).toEqual([['a', 'Priya'], ['b', 'Marcus']]);
-  });
-
-  it('spreads members by each coordinator share, counting who they already own', () => {
-    const teams = team(
-      coordinator('Priya', [{ dim: 'Health Plan', value: 'SCAN Classic', pct: 50 }]),
-      coordinator('Marcus', [{ dim: 'Health Plan', value: 'SCAN Classic', pct: 50 }]),
-    );
-    const plan = planAutoAssignment(rows([
-      ['owned', { healthPlan: 'SCAN Classic', assigneeName: 'Priya' }],
-      ['a', { healthPlan: 'SCAN Classic' }], ['b', { healthPlan: 'SCAN Classic' }], ['c', { healthPlan: 'SCAN Classic' }],
-    ]), teams, []);
-    expect(plan.map(p => p.user.name)).toEqual(['Marcus', 'Marcus', 'Priya']);
-  });
-
-  it('never assigns a member with no savable gap, and links platform users by name', () => {
-    const teams = team(coordinator('Priya Natarajan', [{ dim: 'Health Plan', value: 'SCAN Classic', pct: 100 }]));
-    const failed = member({ id: 'f', memberId: 'f', healthPlan: 'SCAN Classic', measures: [measure({ failDate: daysAgo(1), pdc: 60 })] });
-    const ok = member({ id: 'ok', memberId: 'ok', healthPlan: 'SCAN Classic' });
-    const plan = planAutoAssignment([failed, ok], teams, [{ id: 'uuid-1', name: 'Priya Natarajan', initials: 'PN' }]);
-    expect(plan).toEqual([{ memberId: 'ok', user: { id: 'uuid-1', name: 'Priya Natarajan', initials: 'PN' }, rule: 'Health Plan: SCAN Classic' }]);
-  });
-
-  it('leaves the id empty when no platform user matches the coordinator', () => {
-    const teams = team(coordinator('Priya Natarajan', [{ dim: 'Health Plan', value: 'SCAN Classic', pct: 100 }]));
-    const plan = planAutoAssignment([member({ healthPlan: 'SCAN Classic' })], teams, [{ id: 'u2', name: 'Someone Else', initials: 'SE' }]);
-    expect(plan[0].user).toEqual({ id: null, name: 'Priya Natarajan', initials: 'P' });
-  });
-
-  it('does nothing without a PHARM team', () => {
-    expect(planAutoAssignment(rows([['a', { healthPlan: 'SCAN Classic' }]]), [], [])).toEqual([]);
   });
 });
