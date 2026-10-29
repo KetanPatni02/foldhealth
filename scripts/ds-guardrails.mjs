@@ -21,15 +21,17 @@
  */
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const MODE = process.argv.includes('--staged') ? 'staged' : 'base';
 const baseIdx = process.argv.indexOf('--base');
 const BASE_REF = baseIdx !== -1 ? process.argv[baseIdx + 1] : null;
 
 // ESLint ruleIds that represent design-system violations. Our DS JSX checks
-// are all implemented via `no-restricted-syntax`, so that single id is the
-// design-system gate. Everything else ESLint reports is informational here.
-const DS_ESLINT_RULES = new Set(['no-restricted-syntax']);
+// are implemented via `no-restricted-syntax`; `no-restricted-imports` carries
+// the component-layer boundaries (src/components/layers.json). Everything
+// else ESLint reports is informational here.
+const DS_ESLINT_RULES = new Set(['no-restricted-syntax', 'no-restricted-imports']);
 
 const JS_EXT = new Set(['.js', '.jsx']);
 const CSS_EXT = new Set(['.css']);
@@ -124,10 +126,28 @@ function runStylelint(files) {
   return out;
 }
 
+// Every src/components folder must be classified in layers.json, or the
+// layer boundaries silently stop covering it.
+function unclassifiedComponents() {
+  const root = 'src/components';
+  const layers = JSON.parse(readFileSync(path.join(root, 'layers.json'), 'utf8'));
+  const known = new Set(Object.entries(layers).filter(([k]) => !k.startsWith('$')).flatMap(([, v]) => v));
+  return readdirSync(root, { withFileTypes: true })
+    .filter(d => d.isDirectory() && !known.has(d.name))
+    .map(d => d.name);
+}
+
 function main() {
   if (MODE === 'base' && !BASE_REF) {
     console.error('ds-guardrails: --base <ref> is required (or use --staged)');
     process.exit(2);
+  }
+
+  const unclassified = unclassifiedComponents();
+  if (unclassified.length) {
+    console.error(`\n✖ Add these to a layer in src/components/layers.json: ${unclassified.join(', ')}`);
+    console.error('  See docs/components/library-contract.mdx for how to pick one.\n');
+    process.exit(1);
   }
 
   const changed = changedLines();

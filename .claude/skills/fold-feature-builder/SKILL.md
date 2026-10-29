@@ -24,6 +24,9 @@ step — this is how all contributors keep the app consistent and data-backed.
 - Search `src/components/` before creating anything. If a primitive exists,
   use it. If you must build something new, build it as a **reusable primitive
   in `src/components/`**, not a one-off inside a feature.
+- A new `src/components` folder must be added to a layer in
+  `src/components/layers.json` and follow `docs/components/library-contract.mdx`
+  (primitives and patterns take data as props, never read the store).
 
 ## 1. Build the layout from design-system components
 
