@@ -23,7 +23,7 @@ import { CisDoseProgress } from './CisDoseProgress';
 import { DoseAppointmentChip } from './DoseAppointmentChip';
 import { appointmentForDose, apptDate } from './cisAppointments';
 import { CisMoreMenu } from './CisMoreMenu';
-import { CisSaveRecordButton } from './CisSaveRecordButton';
+import { CisSyncEhrButton } from './CisSyncEhrButton';
 import { SeriesDosesPicker } from './SeriesDosesPicker';
 import styles from './CisImmunizationsTab.module.css';
 
@@ -134,7 +134,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
   // Right side of the list bar: search, calendar, download, expand/collapse.
   const listToolbar = (
     <span className={styles.listToolbar}>
-      <CisSaveRecordButton member={member} result={result} notes={savedNotes} onSaveEvidence={onSaveEvidence} />
+      <CisSyncEhrButton member={member} result={result} notes={savedNotes} onSaveEvidence={onSaveEvidence} />
       <span className={styles.toolbarDivider} aria-hidden="true" />
       {searchOpen ? (
         <SearchBar
@@ -156,6 +156,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
         member={member}
         result={result}
         notes={savedNotes}
+        onSaveEvidence={onSaveEvidence}
       />
     </span>
   );
