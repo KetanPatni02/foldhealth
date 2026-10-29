@@ -109,7 +109,7 @@ export function IcdCardBody({
                       {d.t && <span className={styles.evidenceType}> ({d.t})</span>}
                     </span>
                     <ActionButton
-                      size="S"
+                      size="sm"
                       icon="solar:eye-linear"
                       tooltip="Preview"
                       onClick={() => {}}
@@ -170,16 +170,15 @@ export function IcdCardBody({
           {onSave && (
             <div className={styles.cardFooter}>
               <Button
-                variant="primary"
-                size="S"
+                size="sm"
                 disabled={saveDisabled}
                 onClick={onSave}
               >
                 Save
               </Button>
               <Button
-                variant="secondary"
-                size="S"
+                variant="outline"
+                size="sm"
                 onClick={onRemove}
               >
                 Cancel

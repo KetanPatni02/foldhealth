@@ -153,10 +153,8 @@ export function BulkChangeHedisAssigneeDialog({ open, selectedIds, onClose, onAp
         </div>
 
         <div className={styles.footer}>
-          <Button variant="secondary" size="M" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
-            variant="primary"
-            size="M"
             disabled={!pickedId}
             onClick={handleApply}
           >

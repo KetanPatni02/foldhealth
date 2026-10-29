@@ -38,8 +38,6 @@ export function EfaxNumberDrawer({ efax, users = [], existing = [], onSave, onCl
       headerRight={(
         <div className={styles.headerRight}>
           <Button
-            variant="primary"
-            size="M"
             disabled={!canSave}
             onClick={() => onSave({ name: name.trim(), number: formatEfaxNumber(number), linkedUserIds })}
           >

@@ -98,7 +98,7 @@ function CareTeam({ rows, showAddRole }) {
               </span>
             </td>
             <td className={styles.careActionCol}>
-              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+              <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" />
             </td>
           </tr>
         )}

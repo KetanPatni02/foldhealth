@@ -202,8 +202,8 @@ export function IcdCreationScreen() {
             <div className={styles.colHeader}>
               <h3 className={styles.colTitle}>Upload &amp; Review Document</h3>
               <Button
-                variant="alt"
-                size="S"
+                variant="outline" tone="primary"
+                size="sm"
                 leadingIcon="solar:refresh-linear"
                 disabled={syncing}
                 onClick={handleSftpSync}
@@ -340,15 +340,13 @@ function UploadPhase({ queue, extracting, onRemoveQueued, onStart, onDiscard, wh
       {queue.length > 0 && (
         <div className={styles.queueFooter}>
           <Button
-            variant="primary"
-            size="M"
             leadingIcon="custom:ai-mono"
             disabled={extracting}
             onClick={onStart}
           >
             {extracting ? 'Extracting…' : 'Start Extraction'}
           </Button>
-          <Button variant="secondary" size="M" disabled={extracting} onClick={onDiscard}>
+          <Button variant="outline" disabled={extracting} onClick={onDiscard}>
             Discard
           </Button>
         </div>
@@ -486,13 +484,12 @@ function TierDocRow({ doc, tier, onReview }) {
         </div>
       </div>
       {tier === 'unreadable' ? (
-        <Button variant="secondary" size="S" leadingIcon="solar:refresh-linear">
+        <Button variant="outline" size="sm" leadingIcon="solar:refresh-linear">
           Retry
         </Button>
       ) : (
         <Button
-          variant="primary"
-          size="S"
+          size="sm"
           leadingIcon="custom:ai-mono"
           onClick={() => onReview(doc.id)}
         >
@@ -527,7 +524,7 @@ function RightColumn({ inResults, sessionEncounters, onAdd, onAddManually }) {
           <div className={styles.emptyMsg}>
             Records that have been successfully added to the worklist will appear here.
           </div>
-          <Button variant="primary" size="M" leadingIcon="solar:pen-linear" onClick={onAddManually}>
+          <Button leadingIcon="solar:pen-linear" onClick={onAddManually}>
             Add Manually
           </Button>
         </div>
@@ -583,7 +580,7 @@ function TabbedRecords({ encounters, onAdd, onAddManually }) {
           Deleted<span className={styles.tabCount}>({deletedEncs.length})</span>
         </button>
         <span className={styles.tabSpacer} />
-        <Button variant="secondary" size="S" leadingIcon="solar:pen-linear" onClick={onAddManually}>
+        <Button variant="outline" size="sm" leadingIcon="solar:pen-linear" onClick={onAddManually}>
           Add New Record
         </Button>
       </div>
@@ -704,7 +701,7 @@ function RecordsList({ encounters, onAdd, onAddManually }) {
           <div className={styles.recordsTitle}>Records</div>
           <div className={styles.recordsSubtitle}>{encounters.length} extracted</div>
         </div>
-        <Button variant="secondary" size="S" leadingIcon="solar:pen-linear" onClick={onAddManually}>
+        <Button variant="outline" size="sm" leadingIcon="solar:pen-linear" onClick={onAddManually}>
           Add Manually
         </Button>
       </header>
@@ -733,7 +730,7 @@ function RecordsList({ encounters, onAdd, onAddManually }) {
               </div>
             </div>
             <div className={styles.recordActions}>
-              <Button variant="primary" size="S" onClick={() => onAdd(enc)}>
+              <Button size="sm" onClick={() => onAdd(enc)}>
                 Add to Worklist
               </Button>
             </div>

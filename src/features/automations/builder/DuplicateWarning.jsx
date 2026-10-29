@@ -20,9 +20,9 @@ export function DuplicateWarning({ first, second, onEdit, onAddDelay, onDelete }
         </span>
       </p>
       <div className={styles.dupActions}>
-        <Button variant="secondary" size="S" leadingIcon="solar:pen-linear" onClick={onEdit}>Edit Content</Button>
-        <Button variant="secondary" size="S" leadingIcon="solar:clock-circle-linear" onClick={onAddDelay}>Add Delay</Button>
-        <Button variant="secondary" size="S" leadingIcon="solar:trash-bin-trash-linear" onClick={onDelete}>Delete</Button>
+        <Button variant="outline" size="sm" leadingIcon="solar:pen-linear" onClick={onEdit}>Edit Content</Button>
+        <Button variant="outline" size="sm" leadingIcon="solar:clock-circle-linear" onClick={onAddDelay}>Add Delay</Button>
+        <Button variant="outline" size="sm" leadingIcon="solar:trash-bin-trash-linear" onClick={onDelete}>Delete</Button>
       </div>
     </div>
   );

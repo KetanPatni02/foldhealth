@@ -67,9 +67,9 @@ export function ProgramDetailViewContentHeader({
       ? <Link variant="secondary" onClick={() => onMarkStep?.(null)}>Undo Skip</Link>
       : !reviewed && <Link variant="secondary" onClick={() => onMarkStep?.('skipped')}>Skip</Link>
   );
-  const reviewedButton = (size = 'L') => (
+  const reviewedButton = (size = 'md') => (
     <Button
-      variant={reviewed ? 'success' : 'tertiary'}
+      variant="soft" tone={reviewed ? 'success' : 'primary'}
       size={size}
       leadingIcon="solar:check-circle-linear"
       disabled={lockedByRecords}
@@ -204,11 +204,10 @@ export function ProgramDetailViewContentHeader({
               {skipLink}
               <span className={styles.headerDivider} />
               {medReconSignature ? (
-                <Button variant="tertiary" size="L" leadingIcon="solar:check-circle-linear">Reviewed</Button>
+                <Button variant="soft" leadingIcon="solar:check-circle-linear">Reviewed</Button>
               ) : (
                 <Button
-                  variant="alt"
-                  size="L"
+                  variant="outline" tone="primary"
                   menuItems={SIGN_MENU_ITEMS}
                   menuWidth={220}
                   menuAriaLabel="Sign options"
@@ -233,7 +232,7 @@ export function ProgramDetailViewContentHeader({
                 onClose={() => setSignOffOpen(false)}
                 onConfirm={(user) => { setSignOffOpen(false); createSignOffTask(user); }}
               />
-              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+              <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" />
             </>
           ) : isProgramTasksStep ? (
             <>
@@ -242,12 +241,12 @@ export function ProgramDetailViewContentHeader({
                   onChange={e => setTaskSearchText(e.target.value)}
                   onClose={() => { setTaskSearchOpen(false); setTaskSearchText(''); }} />
               ) : (
-                <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setTaskSearchOpen(true)} />
+                <ActionButton icon="solar:magnifer-linear" size="sm" tooltip="Search" onClick={() => setTaskSearchOpen(true)} />
               )}
               <span className={styles.headerDivider} />
-              <Button variant="tertiary" size="L" leadingIconElement={<AddIconMinimalist size={16} />} onClick={() => setAddTaskOpen(true)}>Add Task</Button>
+              <Button variant="soft" leadingIconElement={<AddIconMinimalist size={16} />} onClick={() => setAddTaskOpen(true)}>Add Task</Button>
               <span className={styles.headerDivider} />
-              <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" active={taskFiltersOpen}
+              <ActionButton icon="solar:filter-linear" size="sm" tooltip="Filter" active={taskFiltersOpen}
                 iconColor={taskFiltersOpen ? 'var(--primary-300)' : undefined}
                 onClick={() => setTaskFiltersOpen(v => !v)} />
             </>
@@ -255,7 +254,7 @@ export function ProgramDetailViewContentHeader({
             <>
               {assigneePicker}
               <span className={styles.headerDivider} />
-              <Button variant="tertiary" size="L" onClick={goNextStep} disabled={!nextStep}>Next</Button>
+              <Button variant="soft" onClick={goNextStep} disabled={!nextStep}>Next</Button>
             </>
           ) : isProgramFilesStep ? (
             <>
@@ -265,7 +264,7 @@ export function ProgramDetailViewContentHeader({
             <>
               {assigneePicker}
               {skipLink}
-              <Button variant="tertiary" size="L" onClick={goNextStep} disabled={!nextStep}>Next</Button>
+              <Button variant="soft" onClick={goNextStep} disabled={!nextStep}>Next</Button>
             </>
           ) : isDiagnosisGapsStep ? (
             <>
@@ -280,20 +279,20 @@ export function ProgramDetailViewContentHeader({
               ) : (
                 <ActionButton
                   icon="solar:magnifer-linear"
-                  size="S"
+                  size="sm"
                   tooltip="Search"
                   onClick={() => setDiagGapsSearchOpen(true)}
                 />
               )}
-              {reviewedButton('M')}
-              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+              {reviewedButton('md')}
+              <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" />
             </>
           ) : (
             <>
               {assigneePicker}
               {skipLink}
-              {reviewedButton('L')}
-              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+              {reviewedButton()}
+              <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" />
             </>
           )}
         </div>

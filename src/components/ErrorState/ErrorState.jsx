@@ -21,7 +21,7 @@ export function ErrorState({ title, message, onRetry, icon }) {
           {message || 'An unexpected error occurred. Please try again or contact support if the problem persists.'}
         </div>
         {onRetry && (
-          <Button variant="tertiary" size="L" leadingIcon="solar:refresh-linear" onClick={onRetry} style={{ marginTop: 4 }}>
+          <Button variant="soft" leadingIcon="solar:refresh-linear" onClick={onRetry} style={{ marginTop: 4 }}>
             Try Again
           </Button>
         )}

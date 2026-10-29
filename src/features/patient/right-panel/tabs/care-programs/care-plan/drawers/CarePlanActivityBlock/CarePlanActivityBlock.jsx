@@ -92,7 +92,7 @@ export function CarePlanActivityBlock({ entries, lastVisit, filters = DEFAULT_FI
           <ActionButton
             ref={filterBtnRef}
             icon="custom:filter"
-            size="S"
+            size="sm"
             tooltip="Filter activity"
             active={filtersOpen || filter !== 'all'}
             onClick={() => setFiltersOpen(v => !v)}

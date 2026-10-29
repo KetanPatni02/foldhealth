@@ -27,7 +27,7 @@ const BarrierChips = ({ items, onResolve, context, since }) => (items.length ? (
       <span key={v} className={styles.resolvable}>
         <Badge size="S" tone="error" label={v} />
         <Since date={since?.[v]} />
-        <ActionButton size="S" icon="solar:check-circle-linear" tooltip={`Mark ${v} resolved`} aria-label={`Mark ${v} resolved for ${context}`} onClick={() => onResolve(v)} />
+        <ActionButton size="sm" icon="solar:check-circle-linear" tooltip={`Mark ${v} resolved`} aria-label={`Mark ${v} resolved for ${context}`} onClick={() => onResolve(v)} />
         {/* Holds the place of an intervention's ✕ so every ✓ lines up. */}
         <span className={styles.actionSlot} aria-hidden="true" />
       </span>
@@ -42,8 +42,8 @@ const InterventionChips = ({ items, context, onFinish, since }) => (
       <span key={v} className={styles.resolvable}>
         <Badge size="S" tone="grey" label={v} />
         <Since date={since?.[v]} />
-        <ActionButton size="S" icon="solar:check-circle-linear" tooltip={`Mark ${v} done`} aria-label={`Mark ${v} done for ${context}`} onClick={() => onFinish(v, 'Done')} />
-        <ActionButton size="S" icon="solar:close-circle-linear" tooltip={`${v} didn't work`} aria-label={`Mark ${v} didn't work for ${context}`} onClick={() => onFinish(v, "Didn't work")} />
+        <ActionButton size="sm" icon="solar:check-circle-linear" tooltip={`Mark ${v} done`} aria-label={`Mark ${v} done for ${context}`} onClick={() => onFinish(v, 'Done')} />
+        <ActionButton size="sm" icon="solar:close-circle-linear" tooltip={`${v} didn't work`} aria-label={`Mark ${v} didn't work for ${context}`} onClick={() => onFinish(v, "Didn't work")} />
       </span>
     ))}
   </span>
@@ -154,7 +154,7 @@ export function PharmacyBarrierLog({ member, onEdit }) {
           onChange={setView}
           size="S"
         />
-        {onEdit && view === 'active' && <Button variant="ghost" size="S" leadingIcon="solar:pen-linear" onClick={onEdit}>Edit</Button>}
+        {onEdit && view === 'active' && <Button variant="ghost" size="sm" leadingIcon="solar:pen-linear" onClick={onEdit}>Edit</Button>}
       </div>
 
       {view === 'active' && (active.length === 0 ? (

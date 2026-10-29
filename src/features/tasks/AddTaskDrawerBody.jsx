@@ -234,14 +234,14 @@ export function AddTaskDrawerBody({
           onInput={e => setDescription(e.currentTarget.innerHTML)}
         />
         <div className={styles.descToolbar}>
-          <ActionButton icon="solar:paperclip-linear" size="S" tooltip="Attach" />
+          <ActionButton icon="solar:paperclip-linear" size="sm" tooltip="Attach" />
           <span className={styles.toolbarDivider} />
-          <ActionButton icon="solar:text-bold-linear" size="S" tooltip="Bold" onClick={() => document.execCommand('bold')} />
-          <ActionButton icon="solar:text-italic-linear" size="S" tooltip="Italic" onClick={() => document.execCommand('italic')} />
-          <ActionButton icon="solar:text-underline-linear" size="S" tooltip="Underline" onClick={() => document.execCommand('underline')} />
-          <ActionButton icon="solar:text-cross-linear" size="S" tooltip="Strikethrough" onClick={() => document.execCommand('strikeThrough')} />
+          <ActionButton icon="solar:text-bold-linear" size="sm" tooltip="Bold" onClick={() => document.execCommand('bold')} />
+          <ActionButton icon="solar:text-italic-linear" size="sm" tooltip="Italic" onClick={() => document.execCommand('italic')} />
+          <ActionButton icon="solar:text-underline-linear" size="sm" tooltip="Underline" onClick={() => document.execCommand('underline')} />
+          <ActionButton icon="solar:text-cross-linear" size="sm" tooltip="Strikethrough" onClick={() => document.execCommand('strikeThrough')} />
           <span className={styles.toolbarDivider} />
-          <ActionButton icon="solar:list-linear" size="S" tooltip="List" onClick={() => document.execCommand('insertUnorderedList')} />
+          <ActionButton icon="solar:list-linear" size="sm" tooltip="List" onClick={() => document.execCommand('insertUnorderedList')} />
         </div>
       </div>
     </div>
@@ -261,13 +261,13 @@ export function AddTaskDrawerBody({
             onChange={setStatus}
           />
           <div className={styles.drawerToolbarRight}>
-            <ActionButton icon="solar:paperclip-linear" size="L" tooltip="Attachments" />
+            <ActionButton icon="solar:paperclip-linear" tooltip="Attachments" />
             <span className={styles.iconDivider} />
-            <ActionButton icon="solar:link-minimalistic-linear" size="L" tooltip="Copy link" state="disabled" />
+            <ActionButton icon="solar:link-minimalistic-linear" tooltip="Copy link" disabled />
             <span className={styles.iconDivider} />
-            <ActionButton icon="solar:clipboard-text-linear" size="L" tooltip="Copy ID" state="disabled" />
+            <ActionButton icon="solar:clipboard-text-linear" tooltip="Copy ID" disabled />
             <span className={styles.iconDivider} />
-            <ActionButton icon="solar:trash-bin-trash-linear" size="L" tooltip="Delete" state="disabled" />
+            <ActionButton icon="solar:trash-bin-trash-linear" tooltip="Delete" disabled />
           </div>
         </div>
       )}
@@ -733,7 +733,7 @@ export function AddTaskDrawerBody({
             </button>
             <ActionButton
               icon="solar:add-linear"
-              size="S"
+              size="sm"
               tooltip="Add subtask"
               onClick={() => { setShowAddSubtask(true); setSubtaskName(''); }}
             />
@@ -790,7 +790,7 @@ export function AddTaskDrawerBody({
                     <div className={scheduleStyles.linkActions}>
                       <ActionButton
                         icon="solar:trash-bin-trash-linear"
-                        size="S"
+                        size="sm"
                         tooltip="Delete"
                         onClick={() => removeStagedSubtask(i)}
                       />
@@ -864,8 +864,8 @@ export function AddTaskDrawerBody({
                 onKeyDown={e => { if (e.key === 'Enter') addStagedSubtask(); if (e.key === 'Escape') { setShowAddSubtask(false); setSubtaskName(''); } }}
                 autoFocus
               />
-              <Button variant="primary" size="S" onClick={addStagedSubtask} disabled={!subtaskName.trim()}>Add</Button>
-              <Button variant="secondary" size="S" onClick={() => { setShowAddSubtask(false); setSubtaskName(''); }}>Cancel</Button>
+              <Button size="sm" onClick={addStagedSubtask} disabled={!subtaskName.trim()}>Add</Button>
+              <Button variant="outline" size="sm" onClick={() => { setShowAddSubtask(false); setSubtaskName(''); }}>Cancel</Button>
             </div>
           )}
           {stagedSubtasks.map((sub, i) => (
@@ -876,7 +876,7 @@ export function AddTaskDrawerBody({
                   <span className={styles.subtaskCardName}>{sub?.name ?? ''}</span>
                 </div>
               </div>
-              <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Remove" onClick={() => removeStagedSubtask(i)} />
+              <ActionButton icon="solar:close-circle-linear" size="sm" tooltip="Remove" onClick={() => removeStagedSubtask(i)} />
             </div>
           ))}
           {stagedSubtasks.length === 0 && !showAddSubtask && (
@@ -907,7 +907,7 @@ export function AddTaskDrawerBody({
             </button>
             <ActionButton
               icon="solar:add-linear"
-              size="S"
+              size="sm"
               tooltip="Link goal"
               onClick={() => setLinkGoalPickerOpen(true)}
               disabled={goalsForPicker.length === 0}
@@ -947,14 +947,14 @@ export function AddTaskDrawerBody({
                       <div className={scheduleStyles.linkActions}>
                         <ActionButton
                           icon="solar:arrow-right-up-linear"
-                          size="S"
+                          size="sm"
                           tooltip="Open goal"
                           onClick={() => onOpenGoal?.(g)}
                         />
                         <span className={scheduleStyles.linkActionsDivider} aria-hidden />
                         <ActionButton
                           icon="solar:link-broken-minimalistic-linear"
-                          size="S"
+                          size="sm"
                           tooltip="Unlink"
                           onClick={() => unlinkGoal?.(g.id)}
                         />

@@ -62,7 +62,7 @@ export function useHolidays({ embedded = false } = {}) {
       ) : (
         <SearchIconButton tooltipBelow onClick={() => setSearchOpen(true)} />
       )}
-      <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setForm({})}>New Configuration</Button>
+      <Button variant="outline" leadingIcon="solar:add-circle-linear" onClick={() => setForm({})}>New Configuration</Button>
     </>
   );
 

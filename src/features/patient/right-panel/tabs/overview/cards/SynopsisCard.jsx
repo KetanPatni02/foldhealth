@@ -53,9 +53,9 @@ export function SynopsisCard({ overview, action }) {
       footer={overview?.synopsis ? (
         <>
           <span>Was this helpful?</span>
-          <ActionButton icon="solar:like-linear" size="S" tooltip="Helpful" active={feedback === 'up'} iconColor={feedback === 'up' ? 'var(--primary-300)' : undefined} onClick={() => setFeedback(f => (f === 'up' ? null : 'up'))} />
-          <ActionButton icon="solar:dislike-linear" size="S" tooltip="Not helpful" active={feedback === 'down'} iconColor={feedback === 'down' ? 'var(--primary-300)' : undefined} onClick={() => setFeedback(f => (f === 'down' ? null : 'down'))} />
-          <ActionButton icon="solar:copy-linear" size="S" tooltip="Copy" onClick={copy} />
+          <ActionButton icon="solar:like-linear" size="sm" tooltip="Helpful" active={feedback === 'up'} iconColor={feedback === 'up' ? 'var(--primary-300)' : undefined} onClick={() => setFeedback(f => (f === 'up' ? null : 'up'))} />
+          <ActionButton icon="solar:dislike-linear" size="sm" tooltip="Not helpful" active={feedback === 'down'} iconColor={feedback === 'down' ? 'var(--primary-300)' : undefined} onClick={() => setFeedback(f => (f === 'down' ? null : 'down'))} />
+          <ActionButton icon="solar:copy-linear" size="sm" tooltip="Copy" onClick={copy} />
         </>
       ) : null}
     >

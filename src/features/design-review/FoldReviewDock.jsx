@@ -34,8 +34,8 @@ export function FoldReviewDock({ review }) {
           {count > 0 ? `${count} piece${count === 1 ? '' : 's'} of feedback so far.` : 'Done reviewing? Sign it off in Signoff.'}
         </p>
         <Button
-          variant="secondary"
-          size="S"
+          variant="outline"
+          size="sm"
           leadingIcon="solar:clipboard-check-linear"
           onClick={() => openSignoff(review.featureId)}
         >

@@ -36,7 +36,7 @@ export function AutomationQuickView({ automation: a, onRun, onClose }) {
   };
 
   const runButton = (
-    <Button variant="primary" leadingIcon="solar:bolt-linear" disabled={!isActive} onClick={() => onRun(a)}>Run</Button>
+    <Button leadingIcon="solar:bolt-linear" disabled={!isActive} onClick={() => onRun(a)}>Run</Button>
   );
 
   return (
@@ -56,11 +56,11 @@ export function AutomationQuickView({ automation: a, onRun, onClose }) {
       description={a.description}
       actions={(
         <>
-          <Button variant="secondary" onClick={() => openAutomationBuilder(a.id)}>Edit</Button>
+          <Button variant="outline" onClick={() => openAutomationBuilder(a.id)}>Edit</Button>
           <Tooltip label={hasRuns ? '' : 'Analytics appear after the first run'}>
-            <Button variant="secondary" disabled={!hasRuns} onClick={() => openAutomationAnalytics(a.id)}>Analytics</Button>
+            <Button variant="outline" disabled={!hasRuns} onClick={() => openAutomationAnalytics(a.id)}>Analytics</Button>
           </Tooltip>
-          <Button variant="secondary" disabled={duplicating} onClick={duplicate}>Duplicate</Button>
+          <Button variant="outline" disabled={duplicating} onClick={duplicate}>Duplicate</Button>
           {isActive ? runButton : (
             <Tooltip label={a.status === 'draft' ? 'Publish the automation to run it' : 'Turn the automation on to run it'}>
               {runButton}

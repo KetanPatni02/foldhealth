@@ -25,13 +25,13 @@ export function TaskDetailDrawerHeader({
         />
         <div className={styles.drawerToolbarRight}>
           {task.pool && !task.assigned_to && (
-            <Button variant="primary" size="S" onClick={onClaim}>Claim Task</Button>
+            <Button size="sm" onClick={onClaim}>Claim Task</Button>
           )}
-          <ActionButton icon="solar:paperclip-linear" size="L" tooltip="Attachments" />
+          <ActionButton icon="solar:paperclip-linear" tooltip="Attachments" />
           <span className={styles.iconDivider} />
-          <ActionButton icon="solar:link-minimalistic-linear" size="L" tooltip="Copy link" onClick={onCopyLink} />
+          <ActionButton icon="solar:link-minimalistic-linear" tooltip="Copy link" onClick={onCopyLink} />
           <span className={styles.iconDivider} />
-          <ActionButton icon="solar:trash-bin-trash-linear" size="L" tooltip="Delete" onClick={onDelete} />
+          <ActionButton icon="solar:trash-bin-trash-linear" tooltip="Delete" onClick={onDelete} />
         </div>
       </div>
 

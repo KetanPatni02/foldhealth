@@ -48,8 +48,8 @@ export function ProtocolUploadDrawer({ onClose, onReview }) {
       noCloseDivider
       headerRight={(
         <>
-          <Button variant="secondary" size="L" leadingIcon="solar:file-download-linear" onClick={downloadTemplate}>JSON Template</Button>
-          {finished > 0 && <Button variant="secondary" size="L" onClick={clearFinished}>Clear Finished</Button>}
+          <Button variant="outline" leadingIcon="solar:file-download-linear" onClick={downloadTemplate}>JSON Template</Button>
+          {finished > 0 && <Button variant="outline" onClick={clearFinished}>Clear Finished</Button>}
           <span className={styles.headerDivider} />
         </>
       )}
@@ -87,7 +87,7 @@ export function ProtocolUploadDrawer({ onClose, onReview }) {
                     </span>
                     <Badge tone={status.tone} size="S" label={status.label} />
                     {u.status === 'done' && u.protocolId && (
-                      <Button variant="secondary" size="S" onClick={() => onReview(u.protocolId)}>Review</Button>
+                      <Button variant="outline" size="sm" onClick={() => onReview(u.protocolId)}>Review</Button>
                     )}
                   </div>
                 );

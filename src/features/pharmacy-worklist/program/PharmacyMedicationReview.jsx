@@ -547,8 +547,8 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
         actions={[{
           label: 'Set Recent Fill',
           icon: 'solar:calendar-linear',
-          variant: 'primary',
-          size: 'L',
+          variant: 'solid',
+          size: 'md',
           onClick: (_ids, e) => setBulkRect(e.currentTarget.getBoundingClientRect()),
         }]}
       />

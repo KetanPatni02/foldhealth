@@ -149,17 +149,15 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
         <div className={styles.actionsCell}>
           <ActionButton
             icon="solar:eye-linear"
-            size="L"
             tooltip="View all gaps"
             onClick={(e) => { e.stopPropagation(); openPharmacyGapDrawer(m.id, null); }}
           />
-          <ActionButton ref={callBtnRef} icon="solar:phone-linear" size="L" tooltip="Call patient" onClick={handleCallClick} />
+          <ActionButton ref={callBtnRef} icon="solar:phone-linear" tooltip="Call patient" onClick={handleCallClick} />
           <span className={styles.actionDivider} />
           <div className={styles.relative}>
             <ActionButton
               ref={dropBtnRef}
               icon="solar:menu-dots-linear"
-              size="L"
               tooltip="More options"
               onClick={(e) => { e.stopPropagation(); setShowDropdown(v => !v); }}
             />

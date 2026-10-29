@@ -34,7 +34,7 @@ export function CareGapItem({ item, selected, onSelect, onOpen }) {
       </td>
       <td className={profileCellClass} onClick={e => e.stopPropagation()}>
         <div className={styles.moreBtn}>
-          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+          <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" />
         </div>
       </td>
     </tr>

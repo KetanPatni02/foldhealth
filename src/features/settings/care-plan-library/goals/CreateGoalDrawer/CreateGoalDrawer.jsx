@@ -399,8 +399,6 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const headerRight = (
     <>
       <Button
-        variant="primary"
-        size="L"
         disabled={!canSave}
         onClick={() => onSave?.({ category, measure, conditions, title: title.trim(), priority, comparator, targetValue, targetValue2, initialValue, initialValue2, customUnit, setTarget, duration, durationUnit, frequency, targetDate, heightUnit: isHeight ? heightUnit : undefined, interventions: [...interventions, ...barriers] })}
       >
@@ -788,7 +786,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                       && <Badge tone="grey" size="S" label={String(barriers.length)} />}
                   </span>
                   <ActionButton
-                    size="S"
+                    size="sm"
                     tooltip={sec.addTooltip}
                     onClick={sec.key === 'interventions'
                       ? () => setAddInterventionsOpen(true)
@@ -839,7 +837,6 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                                 the intervention kind. */}
                             <Button
                               variant="ghost"
-                              size="L"
                               leadingIcon={kind.icon}
                               className={styles.interventionKindLabel}
                             >
@@ -950,7 +947,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                           )}
                           <ActionButton
                             icon="solar:trash-bin-minimalistic-linear"
-                            size="S"
+                            size="sm"
                             tooltip="Delete"
                             onClick={() => removeBarrier(i)}
                           />

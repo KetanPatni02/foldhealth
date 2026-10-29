@@ -61,8 +61,8 @@ export function ClaimPreviewDrawer() {
       headerRight={(
         <>
           <Button
-            variant="tertiary"
-            size="S"
+            variant="soft"
+            size="sm"
             leadingIcon="solar:document-medicine-linear"
             onClick={viewGaps}
           >

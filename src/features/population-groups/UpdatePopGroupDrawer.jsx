@@ -166,7 +166,7 @@ export function UpdatePopGroupDrawer({ group, onClose, onSubmit }) {
       onClose={onClose}
       headerRight={(
         <>
-          <Button variant="primary" size="L" disabled={!canSubmit} onClick={() => canSubmit && onSubmit({ name: name.trim(), description: description.trim(), members })}>Submit</Button>
+          <Button disabled={!canSubmit} onClick={() => canSubmit && onSubmit({ name: name.trim(), description: description.trim(), members })}>Submit</Button>
           <span className="pg-header-divider" />
         </>
       )}

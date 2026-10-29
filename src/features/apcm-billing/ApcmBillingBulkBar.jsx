@@ -23,15 +23,14 @@ export function ApcmBillingBulkBar({
       </div>
       <span className={styles.bulkDivider} />
       <Button
-        variant="primary"
-        size="S"
+        size="sm"
         leadingIcon="solar:bill-list-linear"
         onClick={onTriggerBill}
       >
         Trigger Attestation
       </Button>
       <span className={styles.bulkDivider} />
-      <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More options" onClick={() => {}} />
+      <ActionButton icon="solar:menu-dots-linear" tooltip="More options" onClick={() => {}} />
       <span className={styles.bulkDivider} />
       <CloseButton
         size={16}

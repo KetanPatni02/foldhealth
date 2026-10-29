@@ -150,7 +150,7 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
       width={1120}
       headerRight={(
         <>
-          <CisSyncEhrButton size="L" member={member} result={result} notes={savedNotes} onSaveEvidence={onSaveEvidence} />
+          <CisSyncEhrButton member={member} result={result} notes={savedNotes} onSaveEvidence={onSaveEvidence} />
           <span className={styles.headerDivider} aria-hidden="true" />
           <CisMoreMenu
             size="L"

@@ -152,7 +152,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
   const cancelledTag = (ids) => (
     <span className={styles.cancelledTag}>
       <Badge tone="error" size="S" label="Cancelled" />
-      <ActionButton icon="solar:undo-left-linear" size="S" tooltip="Undo Cancellation" tooltipLeft onClick={() => clear(ids)} />
+      <ActionButton icon="solar:undo-left-linear" size="sm" tooltip="Undo Cancellation" tooltipLeft onClick={() => clear(ids)} />
     </span>
   );
   const markLink = (ids, label = 'Mark to Cancel') => (
@@ -178,7 +178,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
         ? (
           <span className={styles.controls}>
             {assigneeFor(ids, deptOf.get(a.id))}
-            <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More Options" tooltipLeft onClick={(e) => openMenu(e, ids, true)} />
+            <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More Options" tooltipLeft onClick={(e) => openMenu(e, ids, true)} />
           </span>
         )
         : markLink(ids);
@@ -193,7 +193,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
         ? (
           <span className={styles.controls}>
             {assigneeFor(ids, g.name)}
-            <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More Options" tooltipLeft onClick={(e) => openMenu(e, ids, true)} />
+            <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More Options" tooltipLeft onClick={(e) => openMenu(e, ids, true)} />
           </span>
         )
         : markLink(ids);
@@ -257,15 +257,15 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
       <div className={styles.plannerHead}>
         <span className={styles.plannerTitle}>Select Reassignment Providers</span>
         <span className={styles.plannerTools}>
-          <ActionButton size="L" tooltip="Filters" count={filterCount || undefined} active={filtersOpen} onClick={() => setFiltersOpen(o => !o)}>
+          <ActionButton tooltip="Filters" count={filterCount || undefined} active={filtersOpen} onClick={() => setFiltersOpen(o => !o)}>
             <FilterIcon size={20} color="var(--neutral-300)" />
           </ActionButton>
           <span className={ooo.actionDivider} aria-hidden="true" />
           <span className={ooo.viewToggle} role="group" aria-label="View">
-            <ActionButton size="L" tooltip="Collapse All" className={view === 'collapsed' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'collapsed'} onClick={() => setView('collapsed')}>
+            <ActionButton tooltip="Collapse All" className={view === 'collapsed' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'collapsed'} onClick={() => setView('collapsed')}>
               <CollapseAllIcon size={20} color="var(--neutral-300)" />
             </ActionButton>
-            <ActionButton size="L" tooltip="Expand All" tooltipLeft className={view === 'expanded' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'expanded'} onClick={() => setView('expanded')}>
+            <ActionButton tooltip="Expand All" tooltipLeft className={view === 'expanded' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'expanded'} onClick={() => setView('expanded')}>
               <ExpandAllIcon size={20} color="var(--neutral-300)" />
             </ActionButton>
           </span>

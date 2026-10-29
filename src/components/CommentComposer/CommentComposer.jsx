@@ -455,10 +455,10 @@ export function CommentComposer({
       )}
       {expanded && !hideActions && (
         <div className={styles.actions}>
-          <Button variant="primary" size="S" disabled={!text.trim()} onClick={submit}>
+          <Button size="sm" disabled={!text.trim()} onClick={submit}>
             {submitLabel || 'Comment'}
           </Button>
-          <Button variant="secondary" size="S" onClick={cancel}>
+          <Button variant="outline" size="sm" onClick={cancel}>
             {cancelLabel || 'Cancel'}
           </Button>
         </div>

@@ -292,9 +292,9 @@ export function TasksTab({
             ))}
           </div>
           <div className={styles.toolbarActions}>
-            <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
-            <ActionButton icon="solar:clipboard-add-linear" size="S" tooltip="Add task" />
-            <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+            <ActionButton icon="solar:magnifer-linear" size="sm" tooltip="Search" />
+            <ActionButton icon="solar:clipboard-add-linear" size="sm" tooltip="Add task" />
+            <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
           </div>
         </div>
       )}

@@ -61,7 +61,7 @@ function PlanRow({ plan }) {
         </ul>
       )}
       {issues.length > 2 && (
-        <Button variant="ghost" size="S" className={styles.more} onClick={() => setOpen(v => !v)}>
+        <Button variant="ghost" size="sm" className={styles.more} onClick={() => setOpen(v => !v)}>
           {open ? 'Show fewer' : `Show all ${issues.length} issues`}
         </Button>
       )}
@@ -115,12 +115,12 @@ export function TemplateImportDrawer({ onClose, onReviewDrafts }) {
   let secondaryAction = null;
   if (result) {
     primaryAction = result.created + result.updated > 0
-      ? <Button variant="primary" size="L" onClick={onReviewDrafts}>Review drafts</Button>
-      : <Button variant="primary" size="L" onClick={() => setResult(null)}>Back to preview</Button>;
+      ? <Button onClick={onReviewDrafts}>Review drafts</Button>
+      : <Button onClick={() => setResult(null)}>Back to preview</Button>;
   } else if (plan) {
-    secondaryAction = <Button variant="secondary" size="L" onClick={reset} disabled={importing}>Choose another file</Button>;
+    secondaryAction = <Button variant="outline" onClick={reset} disabled={importing}>Choose another file</Button>;
     primaryAction = (
-      <Button variant="primary" size="L" onClick={runImport} disabled={!importable.length || importing}>
+      <Button onClick={runImport} disabled={!importable.length || importing}>
         {importing ? 'Importing…' : `Import ${plural(importable.length, 'template')} as drafts`}
       </Button>
     );
@@ -168,8 +168,8 @@ export function TemplateImportDrawer({ onClose, onReviewDrafts }) {
               <li><b>conditions</b>: separate several with |. Goals already in the goals library are reused.</li>
             </ul>
             <div className={styles.samples}>
-              <Button variant="tertiary" size="S" leadingIcon="solar:download-minimalistic-linear" onClick={() => download('care-plan-templates-sample.csv', SAMPLE_CSV, 'text/csv')}>CSV sample</Button>
-              <Button variant="tertiary" size="S" leadingIcon="solar:download-minimalistic-linear" onClick={() => download('care-plan-templates-sample.json', SAMPLE_JSON, 'application/json')}>JSON sample</Button>
+              <Button variant="soft" size="sm" leadingIcon="solar:download-minimalistic-linear" onClick={() => download('care-plan-templates-sample.csv', SAMPLE_CSV, 'text/csv')}>CSV sample</Button>
+              <Button variant="soft" size="sm" leadingIcon="solar:download-minimalistic-linear" onClick={() => download('care-plan-templates-sample.json', SAMPLE_JSON, 'application/json')}>JSON sample</Button>
             </div>
           </section>
         </div>
@@ -177,7 +177,7 @@ export function TemplateImportDrawer({ onClose, onReviewDrafts }) {
         <div className={styles.upload}>
           <p className={styles.fileName}><Icon name="solar:file-text-linear" size={16} /> {file.name}</p>
           {file.parsed.fileErrors.map(e => <Alert key={e} tone="error" message={e} />)}
-          <div><Button variant="secondary" size="S" onClick={reset}>Choose another file</Button></div>
+          <div><Button variant="outline" size="sm" onClick={reset}>Choose another file</Button></div>
         </div>
       ) : (
         <div className={styles.preview}>
@@ -213,7 +213,7 @@ export function TemplateImportDrawer({ onClose, onReviewDrafts }) {
             {visible.slice(0, limit).map(p => <PlanRow key={p.key} plan={p} />)}
           </ul>
           {visible.length > limit && (
-            <Button variant="ghost" size="S" onClick={() => setLimit(l => l + PAGE)}>
+            <Button variant="ghost" size="sm" onClick={() => setLimit(l => l + PAGE)}>
               Show {Math.min(PAGE, visible.length - limit)} more of {visible.length - limit}
             </Button>
           )}

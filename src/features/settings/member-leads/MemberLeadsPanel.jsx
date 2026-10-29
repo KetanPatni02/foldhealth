@@ -107,8 +107,7 @@ export function MemberLeadsPanel() {
             <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
             <div className={styles.createWrap} ref={createBtnRef}>
               <Button
-                variant="secondary"
-                size="L"
+                variant="outline"
                 leadingIcon="solar:add-circle-linear"
                 onClick={() => setCreateOpen(o => !o)}
               >
@@ -359,21 +358,18 @@ function CareTeamTable({ searchVal = '', onEdit }) {
                 <div className={agentStyles.actions}>
                   <ActionButton
                     icon="solar:pen-linear"
-                    size="L"
                     tooltip="Edit"
                     onClick={() => onEdit?.(t._raw)}
                   />
                   <span className={agentStyles.actionDivider} />
                   <ActionButton
                     icon="solar:copy-linear"
-                    size="L"
                     tooltip="Duplicate"
                     onClick={() => duplicateTeam(t._raw)}
                   />
                   <span className={agentStyles.actionDivider} />
                   <ActionButton
                     icon="solar:menu-dots-bold"
-                    size="L"
                     tooltip="More"
                     onClick={(e) => {
                       const r = e.currentTarget.getBoundingClientRect();

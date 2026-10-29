@@ -8,22 +8,28 @@ export default {
     docs: {
       description: {
         component:
-          'The single button primitive used everywhere in the app. Pick a `variant` for meaning (primary for the main action, secondary for the alternative, ghost for low-emphasis controls, success / danger / info for status-flavored actions) and a `size` for context (S for dense toolbars, L for standard use, XL for mobile). Supports leading and trailing Solar icons and can be flipped to an `iconOnly` square variant when the layout is tight.',
+          'The single button primitive used everywhere in the app. Two independent axes: `variant` is emphasis (`solid` for the main action, `soft` for a tinted secondary action, `outline` for the alternative, `ghost` for low-emphasis controls) and `tone` is intent (`primary`, `neutral`, `success`, `warning`, `danger`, `info`). Tone defaults to primary for solid and soft and neutral for outline and ghost, so most buttons need one prop. `size` is `sm` (dense toolbars), `md` (default) or `lg` (mobile). Supports leading and trailing Solar icons, an `iconOnly` square, and a split button via `menuItems`. See the Variant Matrix story for every combination.',
       },
     },
   },
   argTypes: {
     variant: {
       control: 'select',
-      options: ['primary', 'secondary', 'tertiary', 'ghost', 'alt', 'success', 'danger', 'dangerFilled', 'info'],
-      description: 'Visual style of the button',
-      table: { defaultValue: { summary: 'primary' } },
+      options: ['solid', 'soft', 'outline', 'ghost'],
+      description: 'Emphasis: filled, tinted, bordered, or bare until hover',
+      table: { defaultValue: { summary: 'solid' } },
+    },
+    tone: {
+      control: 'select',
+      options: [undefined, 'primary', 'neutral', 'success', 'warning', 'danger', 'info'],
+      description: 'Intent. Defaults to primary for solid and soft, neutral for outline and ghost',
+      table: { defaultValue: { summary: 'by variant' } },
     },
     size: {
       control: 'select',
-      options: ['S', 'L', 'XL'],
-      description: 'S = 24px, L = 32px (default), XL = 52px (mobile)',
-      table: { defaultValue: { summary: 'L' } },
+      options: ['sm', 'md', 'lg'],
+      description: 'sm = 24px, md = 32px (default), lg = 52px (mobile)',
+      table: { defaultValue: { summary: 'md' } },
     },
     children: {
       control: 'text',
@@ -88,8 +94,8 @@ const DROPDOWN_MENU = [
 
 export const Playground = {
   args: {
-    variant: 'primary',
-    size: 'L',
+    variant: 'solid',
+    size: 'md',
     children: 'Button Text',
     showLeadingIcon: false,
     leadingIcon: 'solar:add-circle-linear',
@@ -112,9 +118,48 @@ export const Playground = {
   ),
 };
 
+const VARIANTS = ['solid', 'soft', 'outline', 'ghost'];
+const TONES = ['primary', 'neutral', 'success', 'warning', 'danger', 'info'];
+const cell = { padding: 'var(--space-2)', fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', textAlign: 'left' };
+
+/** Every variant × tone, at each size. Hover a cell to see its hover state. */
+export const VariantMatrix = {
+  parameters: { controls: { disable: true } },
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      {['sm', 'md'].map(size => (
+        <table key={size} style={{ borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={cell}>size="{size}"</th>
+              {TONES.map(t => <th key={t} style={cell}>{t}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {VARIANTS.map(v => (
+              <tr key={v}>
+                <th style={cell}>{v}</th>
+                {TONES.map(t => (
+                  <td key={t} style={cell}>
+                    <Button variant={v} tone={t} size={size}>Button</Button>
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr>
+              <th style={cell}>disabled</th>
+              {TONES.map(t => <td key={t} style={cell}><Button tone={t} size={size} disabled>Button</Button></td>)}
+            </tr>
+          </tbody>
+        </table>
+      ))}
+    </div>
+  ),
+};
+
 /** Disabled with a reason: hovering the greyed-out button says what's missing. */
 export const DisabledWithReason = {
   render: () => (
-    <Button variant="primary" disabled disabledReason="Pick a form">Add Form Link</Button>
+    <Button disabled disabledReason="Pick a form">Add Form Link</Button>
   ),
 };

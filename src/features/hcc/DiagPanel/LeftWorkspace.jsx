@@ -293,7 +293,7 @@ export function LeftWorkspace({
       <div className={styles.tabBar}>
         <ActionButton
           icon="custom:collapse-sidebar"
-          size="S"
+          size="sm"
           tooltip="Collapse"
           onClick={onClose}
           className={styles.collapseBtn}
@@ -1484,7 +1484,7 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
                 <div className={styles.dataTableActions} onClick={(e) => e.stopPropagation()}>
                   <ActionButton
                     icon="solar:menu-dots-linear"
-                    size="S"
+                    size="sm"
                     tooltip="More actions"
                     onClick={(e) => {
                       const r = e.currentTarget.getBoundingClientRect();
@@ -1866,14 +1866,12 @@ function DocumentsUploader() {
 
       <div className={styles.docUploaderActions}>
         <Button
-          variant="primary"
-          size="L"
           disabled={!canSubmit}
           onClick={onSubmit}
         >
           Upload
         </Button>
-        <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   );
@@ -1953,14 +1951,14 @@ function NotesTab({ filters }) {
             <div className={styles.dataTableActions}>
               <ActionButton
                 icon="solar:eye-linear"
-                size="S"
+                size="sm"
                 tooltip="Preview"
                 onClick={() => showToast('Preview — coming soon')}
               />
               <span className={styles.dataTableActionsDivider} />
               <ActionButton
                 icon="solar:menu-dots-linear"
-                size="S"
+                size="sm"
                 tooltip="More"
                 onClick={() => showToast('Note actions — coming soon')}
               />

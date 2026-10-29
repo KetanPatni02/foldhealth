@@ -351,8 +351,8 @@ export function SendContentDrawer({ patient, onClose }) {
     <Drawer
       title="Send Content"
       onClose={onClose}
-      secondaryAction={<Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>}
-      primaryAction={<Button variant="primary" size="L" onClick={send} disabled={busy}>{busy ? 'Sending…' : 'Send'}</Button>}
+      secondaryAction={<Button variant="outline" onClick={onClose}>Cancel</Button>}
+      primaryAction={<Button onClick={send} disabled={busy}>{busy ? 'Sending…' : 'Send'}</Button>}
     >
       <div className={styles.card}>
         <Row label="Member" required>
@@ -408,7 +408,7 @@ export function SendContentDrawer({ patient, onClose }) {
                 <Input value={subject} onChange={e => setSubject(e.target.value)} maxLength={200} errorText={touched && !subject.trim() ? 'Add a subject.' : undefined} />
               </Row>
               <div className={styles.previewHead}>
-                <ActionButton icon={editing ? 'solar:check-circle-linear' : 'solar:pen-linear'} size="L" tooltip={editing ? 'Done editing' : 'Edit email'} onClick={() => setEditing(v => !v)} />
+                <ActionButton icon={editing ? 'solar:check-circle-linear' : 'solar:pen-linear'} tooltip={editing ? 'Done editing' : 'Edit email'} onClick={() => setEditing(v => !v)} />
               </div>
               <div className={styles.preview}>
                 <EmailCanvas ref={canvasRef} html={html} editing={editing} />
@@ -513,8 +513,6 @@ export function SendAssessmentDrawer({ patient, initialFormIds, onClose }) {
       onClose={onClose}
       primaryAction={(
         <Button
-          variant="primary"
-          size="L"
           onClick={send}
           disabled={busy || !picked.length || !reachText.length || blockers.length > 0}
           disabledReason={

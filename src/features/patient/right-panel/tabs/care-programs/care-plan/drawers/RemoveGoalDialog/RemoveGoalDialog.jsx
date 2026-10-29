@@ -37,13 +37,13 @@ export function RemoveGoalDialog({ goalTitle, cascade, onRemoveAll, onRemoveGoal
         <DialogFooter>
           {question ? (
             <>
-              <Button variant="secondary" size="L" onClick={onRemoveAll}>Remove all</Button>
-              <Button variant="danger" size="L" onClick={onRemoveGoalOnly}>Remove goal only</Button>
+              <Button variant="outline" onClick={onRemoveAll}>Remove all</Button>
+              <Button variant="soft" tone="danger" onClick={onRemoveGoalOnly}>Remove goal only</Button>
             </>
           ) : (
             <>
-              <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
-              <Button variant="danger" size="L" onClick={onRemoveAll}>Remove</Button>
+              <Button variant="outline" onClick={onCancel}>Cancel</Button>
+              <Button variant="soft" tone="danger" onClick={onRemoveAll}>Remove</Button>
             </>
           )}
         </DialogFooter>

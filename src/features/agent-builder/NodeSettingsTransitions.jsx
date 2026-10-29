@@ -71,7 +71,7 @@ export function NodeSettingsTransitions({
       <div className={styles.sectionHeader}>
         <span className={styles.sectionLabel}>Transition</span>
         <div className={styles.addBtnWrap} ref={addMenuRef}>
-          <Button variant="secondary" size="S" className={styles.addBtn} onClick={() => setShowAddMenu(v => !v)}>+ Add New</Button>
+          <Button variant="outline" size="sm" className={styles.addBtn} onClick={() => setShowAddMenu(v => !v)}>+ Add New</Button>
           {showAddMenu && (
             <div className={styles.addDropdown}>
               <button className={styles.addDropdownItem} onClick={() => addTransition('prompt')}>

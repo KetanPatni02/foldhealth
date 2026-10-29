@@ -131,7 +131,7 @@ export function PanelSectionMore({ expanded, hiddenCount, onToggle, className })
   return (
     <Button
       variant="ghost"
-      size="S"
+      size="sm"
       trailingIcon={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
       className={[styles.more, className].filter(Boolean).join(' ')}
       onClick={onToggle}

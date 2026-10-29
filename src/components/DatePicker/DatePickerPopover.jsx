@@ -202,10 +202,10 @@ export function DatePickerPopover({
     <div className={styles.rangeHeader}>
       <div className={styles.titleLeft}>
         <div className={styles.navPair}>
-          <ActionButton size="S" tooltip="Previous year" onClick={gotoPrevYear}>
+          <ActionButton size="sm" tooltip="Previous year" onClick={gotoPrevYear}>
             <CalendarPrevYearIcon size={16} />
           </ActionButton>
-          <ActionButton size="S" tooltip="Previous month" onClick={gotoPrev}>
+          <ActionButton size="sm" tooltip="Previous month" onClick={gotoPrev}>
             <CalendarPrevIcon size={16} />
           </ActionButton>
         </div>
@@ -234,10 +234,10 @@ export function DatePickerPopover({
           />
         </div>
         <div className={styles.navPair}>
-          <ActionButton size="S" tooltip="Next month" onClick={gotoNext}>
+          <ActionButton size="sm" tooltip="Next month" onClick={gotoNext}>
             <CalendarNextIcon size={16} />
           </ActionButton>
-          <ActionButton size="S" tooltip="Next year" onClick={gotoNextYear}>
+          <ActionButton size="sm" tooltip="Next year" onClick={gotoNextYear}>
             <CalendarNextYearIcon size={16} />
           </ActionButton>
         </div>
@@ -260,10 +260,10 @@ export function DatePickerPopover({
       </div>
       <div className={styles.titleRight}>
         <div className={styles.navPair}>
-          <ActionButton size="S" tooltip="Previous month" onClick={gotoPrev}>
+          <ActionButton size="sm" tooltip="Previous month" onClick={gotoPrev}>
             <CalendarPrevIcon size={16} />
           </ActionButton>
-          <ActionButton size="S" tooltip="Next month" onClick={gotoNext}>
+          <ActionButton size="sm" tooltip="Next month" onClick={gotoNext}>
             <CalendarNextIcon size={16} />
           </ActionButton>
         </div>
@@ -298,8 +298,8 @@ export function DatePickerPopover({
           </div>
           {footer ? <div className={styles.slot}>{footer}</div> : null}
           <div className={styles.footer}>
-            <Button variant="tertiary" size="S" onClick={handleClear}>Clear</Button>
-            <Button variant="primary" size="S" onClick={handleSave}>Save</Button>
+            <Button variant="soft" size="sm" onClick={handleClear}>Clear</Button>
+            <Button size="sm" onClick={handleSave}>Save</Button>
           </div>
         </>
       ) : (

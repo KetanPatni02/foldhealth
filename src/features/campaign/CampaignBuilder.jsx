@@ -278,8 +278,8 @@ export function CampaignBuilder() {
           />
           <div className={styles.topRight} style={{ position: 'relative' }}>
             <Button
-              variant="secondary"
-              size="S"
+              variant="outline"
+              size="sm"
               leadingIcon="solar:letter-linear"
               onClick={() => setShowTestEmail(v => !v)}
             >
@@ -292,8 +292,7 @@ export function CampaignBuilder() {
               />
             )}
             <Button
-              variant="primary"
-              size="S"
+              size="sm"
               disabled={!isComplete || sending}
               onClick={async () => {
                 setSending(true);

@@ -162,10 +162,10 @@ export function SendTestPopover({ onClose, campaignId }) {
         </div>
       )}
       <div className={styles.testEmailActions}>
-        <Button variant="primary" size="S" onClick={handleSend} disabled={status === 'sending' || !email}>
+        <Button size="sm" onClick={handleSend} disabled={status === 'sending' || !email}>
           {status === 'sending' ? 'Sending…' : 'Send'}
         </Button>
-        <Button variant="secondary" size="S" onClick={onClose}>Cancel</Button>
+        <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
       </div>
       {recents.length > 0 && (
         <>
@@ -178,8 +178,8 @@ export function SendTestPopover({ onClose, campaignId }) {
             {recents.map(addr => (
               <Button
                 key={addr}
-                variant="tertiary"
-                size="S"
+                variant="soft"
+                size="sm"
                 leadingIcon="solar:letter-linear"
                 className={styles.testEmailRecentChip}
                 onClick={() => {

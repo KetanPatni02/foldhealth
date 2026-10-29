@@ -68,8 +68,7 @@ export function OutreachTabView({
       {hideForm ? null : !tab.formOpen && !tab.scopedProgram ? (
         <div className={styles.emptyCard}>
           <Button
-            variant="alt"
-            size="L"
+            variant="outline" tone="primary"
             leadingIconElement={<OutreachIcon size={16} color="var(--primary-300)" />}
             onClick={() => {
               // A host with its own outreach workspace (Care Gap drawer's

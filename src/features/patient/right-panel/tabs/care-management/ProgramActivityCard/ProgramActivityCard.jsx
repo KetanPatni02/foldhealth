@@ -106,7 +106,7 @@ export function ProgramActivityDay({ day, onOpenVersion, versionGlance, onOpenIt
         trailingHover: OPENABLE_ITEMS.has(item.history.entityType) && item.history.entityId != null && onOpenItem ? (
           <ActionButton
             icon="solar:arrow-right-up-linear"
-            size="S"
+            size="sm"
             tooltip={`Open ${item.history.entityType}`}
             tooltipLeft
             onClick={() => onOpenItem(item)}

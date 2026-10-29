@@ -266,8 +266,8 @@ export function ChartDetailDrawerViewRightPane(p) {
                     />
                   </div>
                   <div className={styles.uploadActions}>
-                    <Button variant="primary" size="S" disabled={!canSaveUpload} onClick={saveUpload}>Save</Button>
-                    <Button variant="secondary" size="S" onClick={resetUpload}>Discard</Button>
+                    <Button size="sm" disabled={!canSaveUpload} onClick={saveUpload}>Save</Button>
+                    <Button variant="outline" size="sm" onClick={resetUpload}>Discard</Button>
                   </div>
                 </div>
               )}
@@ -309,7 +309,7 @@ export function ChartDetailDrawerViewRightPane(p) {
                         </div>
                         {canDeleteDos && (
                           <ActionButton
-                            size="S"
+                            size="sm"
                             icon="solar:trash-bin-trash-linear"
                             tooltip="Delete DOS"
                             onClick={() => setDosToDelete(d.date)}

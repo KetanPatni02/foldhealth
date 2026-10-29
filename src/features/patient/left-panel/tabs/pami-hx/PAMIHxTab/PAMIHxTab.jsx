@@ -105,7 +105,7 @@ function RowMenu({ label, onRemove }) {
     <div className={styles.moreBtn}>
       <ActionButton
         icon="solar:menu-dots-linear"
-        size="S"
+        size="sm"
         tooltip="More"
         aria-label={`Actions for ${label}`}
         onClick={(e) => setMenuRect(e.currentTarget.getBoundingClientRect())}
@@ -162,7 +162,7 @@ function AddBtn({ onClick, disabled }) {
   return (
     <ActionButton
       icon="solar:add-linear"
-      size="S"
+      size="sm"
       tooltip="Add"
       className={styles.addBtn}
       onClick={onClick}
@@ -357,9 +357,9 @@ function ReportRow({ item }) {
       </td>
       <td className={profileCellClass}>
         <div className={styles.reportActionsCell}>
-          <ActionButton icon="solar:eye-linear" size="S" tooltip="View" />
+          <ActionButton icon="solar:eye-linear" size="sm" tooltip="View" />
           <span className={styles.reportActionDivider} />
-          <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" />
+          <ActionButton icon="solar:download-minimalistic-linear" size="sm" tooltip="Download" />
         </div>
       </td>
     </tr>
@@ -378,8 +378,8 @@ function reportColumns(nameLabel) {
       align: 'right',
       thLabel: (
         <div className={styles.reportColActions}>
-          <ActionButton icon="solar:sort-linear" size="S" tooltip="Sort" />
-          <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+          <ActionButton icon="solar:sort-linear" size="sm" tooltip="Sort" />
+          <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
         </div>
       ),
     },
@@ -794,8 +794,8 @@ function HistorySection({ patientId, history, loading }) {
           title="Family History"
           actions={
             <>
-              <ActionButton icon="solar:sort-linear" size="S" tooltip="Sort" />
-              <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+              <ActionButton icon="solar:sort-linear" size="sm" tooltip="Sort" />
+              <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
               <AddBtn onClick={() => setFamilyOpen(true)} disabled={!patientId} />
             </>
           }

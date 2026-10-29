@@ -89,6 +89,27 @@ component needs one of these concepts, it uses exactly this prop.
 and `<Badge variant="outline" tone="success">` both work without a new class
 per combination.
 
+A component's default tone may follow its variant. `Button` is the model:
+`solid` and `soft` default to `primary`, `outline` and `ghost` to `neutral`,
+so the common buttons need one prop:
+
+| Old `Button` variant | Now |
+|---|---|
+| `primary` | (default) |
+| `secondary` | `variant="outline"` |
+| `tertiary` | `variant="soft"` |
+| `ghost` | `variant="ghost"` |
+| `alt` | `variant="outline" tone="primary"` |
+| `success` | `variant="soft" tone="success"` |
+| `danger` | `variant="soft" tone="danger"` |
+| `dangerFilled` | `tone="danger"` |
+| `info` | `tone="info"` |
+
+`scripts/codemods/button-variants.mjs` rewrites `Button` and `ActionButton`
+call sites (run it on a branch that predates the change). The old names still
+work at runtime with a one-time warning in development, and the guardrails
+block them on changed lines.
+
 Feature-specific looks are **not** variants of a primitive. A status like
 "AWV due" or "Outreach attempted" lives in a domain component that maps the
 status to a `tone`:
@@ -233,8 +254,6 @@ Still positioning themselves:
 
 | Component | Today | Target |
 |---|---|---|
-| `Button` | `variant` mixes emphasis and intent (`primary`, `secondary`, `tertiary`, `ghost`, `alt`, `success`, `danger`, `dangerFilled`, `info`); `size` `S`/`L`/`XL` | `variant` + `tone`; `size` `sm`/`md`/`lg` (same 24/32/52px) |
-| `ActionButton` | `state` `active`/`disabled`/`error`; `size` `S`/`L`/`XL` | `data-active`, `disabled`, `tone="danger"`; `sm`/`md`/`lg` |
 | `Badge` | `tone` plus a legacy `variant` with about 30 feature looks (`status*`, `outreach*`, `awv*`, `toc*`, `compliance*`); `size` `XS`/`S`/`M`/`L` | `variant` + `tone` only; feature looks move to domain badges; `xs`/`sm`/`md`/`lg` |
 | `InfoBar`, `Alert` | Both carry `tone`; `InfoBar` adds a `variant` | One `Banner` with `tone` and `variant` |
 | `Toggle`, `SubTabs` | `size="M"`; `onChange(key)` | `size="md"`; `value`/`defaultValue`/`onValueChange` |

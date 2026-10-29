@@ -146,9 +146,9 @@ export function TodayCalendarCard({ dragHandleClassName }) {
           {isToday ? 'Today' : viewDate.toLocaleDateString('en-US', { weekday: 'short' })}, {formatDate(viewDate)}
         </div>
         <div className={styles.calNav}>
-          <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous day" onClick={() => setViewDate(d => addDays(d, -1))} />
-          <ActionButton icon="solar:calendar-date-linear" size="S" tooltip="Today" onClick={() => setViewDate(new Date())} />
-          <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next day" onClick={() => setViewDate(d => addDays(d, 1))} />
+          <ActionButton icon="solar:alt-arrow-left-linear" size="sm" tooltip="Previous day" onClick={() => setViewDate(d => addDays(d, -1))} />
+          <ActionButton icon="solar:calendar-date-linear" size="sm" tooltip="Today" onClick={() => setViewDate(new Date())} />
+          <ActionButton icon="solar:alt-arrow-right-linear" size="sm" tooltip="Next day" onClick={() => setViewDate(d => addDays(d, 1))} />
         </div>
       </div>
       <div className={styles.calBody} ref={bodyRef}>

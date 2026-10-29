@@ -26,12 +26,12 @@ export const Default = {
         <UnityRecommendation
           title="Early Intervention"
           description="Prioritize follow-ups for high-risk patients before they become overdue."
-          actions={<Button variant="tertiary" size="S" leadingIcon="solar:bolt-linear">Run Automation</Button>}
+          actions={<Button variant="soft" size="sm" leadingIcon="solar:bolt-linear">Run Automation</Button>}
         />
         <UnityRecommendation
           title="HRA Completion"
           description="Encourage patients to complete HRAs early to detect risks sooner."
-          actions={<Button variant="tertiary" size="S" leadingIcon="solar:document-add-linear">Send Form</Button>}
+          actions={<Button variant="soft" size="sm" leadingIcon="solar:document-add-linear">Send Form</Button>}
         />
       </UnityInsights>
     </div>
@@ -53,7 +53,7 @@ export const Collapsible = {
               <UnityRecommendation
                 title="Missed Annual Wellness Visit"
                 description="04/10/2026 • Never checked in • Not rebooked"
-                actions={<Button variant="tertiary" size="S" leadingIcon="solar:calendar-add-linear">Reschedule</Button>}
+                actions={<Button variant="soft" size="sm" leadingIcon="solar:calendar-add-linear">Reschedule</Button>}
               />
             </>
           )}

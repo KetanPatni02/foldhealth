@@ -534,7 +534,6 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
         <div className={rowStyles.actionsCell}>
           <ActionButton
             icon="solar:document-text-linear"
-            size="L"
             tooltip="View details"
             // Oncall and completed rows keep their own destinations; every
             // other row opens the PHQ-9 review. Quick view stays reachable
@@ -550,7 +549,6 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
             <ActionButton
               ref={callBtnRef}
               icon="solar:phone-linear"
-              size="L"
               tooltip={p.status === 'oncall' && allowLiveDrawer ? 'View live call' : 'Call patient'}
               iconColor={p.status === 'oncall' ? '#059669' : undefined}
               className={p.status === 'oncall' ? rowStyles.oncall : p.status === 'queued' ? rowStyles.queuedCall : ''}
@@ -561,7 +559,6 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
           <span className={rowStyles.actionDivider} />
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="L"
             tooltip="More options"
             onClick={e => { e.stopPropagation(); showToast('More options – coming soon'); }}
           />

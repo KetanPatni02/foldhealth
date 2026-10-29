@@ -310,7 +310,6 @@ export function IcdRow({ icd }) {
 
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="L"
             tooltip="More actions"
             onClick={handleMore}
           />

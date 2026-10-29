@@ -106,7 +106,7 @@ export function BookVisitDrawer({ profile, onClose, onBooked }) {
       dismissed={dismissed}
       width={560}
       primaryAction={(
-        <Button variant="primary" size="L" disabled={!slot || booking} onClick={book}>
+        <Button disabled={!slot || booking} onClick={book}>
           {booking ? 'Booking…' : 'Book visit'}
         </Button>
       )}

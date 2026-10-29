@@ -126,7 +126,7 @@ export function SuggestedPatients({ items, onAdd, title = 'Suggested Members', m
               </span>
               <PatientMeta className={styles.meta} patient={it.patient} />
             </span>
-            <ActionButton icon="custom:add" size="S" tooltip="Add to Patient Context" onClick={() => onAdd(it)} />
+            <ActionButton icon="custom:add" size="sm" tooltip="Add to Patient Context" onClick={() => onAdd(it)} />
           </div>
         ))}
       </Collapse>

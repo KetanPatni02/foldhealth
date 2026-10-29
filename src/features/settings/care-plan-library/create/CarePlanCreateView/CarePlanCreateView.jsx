@@ -351,16 +351,14 @@ export function CarePlanCreateView({ onClose, onSave }) {
       <div className={styles.goalsPane}>
         <div className={styles.toolbar}>
           <Button
-            variant="tertiary"
-            size="L"
+            variant="soft"
             disabled={!canSave}
             onClick={() => save('draft')}
           >
             Save as Draft
           </Button>
           <Button
-            variant="secondary"
-            size="L"
+            variant="outline"
             disabled={!canSave}
             onClick={() => save('published')}
           >
@@ -384,14 +382,13 @@ export function CarePlanCreateView({ onClose, onSave }) {
               <RingEmptyState icon="solar:flag-linear" label="No Goals Added" iconSize={31} />
               <div className={styles.goalsEmptyActions}>
                 <Button
-                  variant="tertiary"
-                  size="L"
+                  variant="soft"
                   leadingIconElement={<AddIconMinimalist size={16} />}
                   onClick={() => setPicker('goals')}
                 >
                   Add New
                 </Button>
-                <Button variant="secondary" size="L" onClick={() => setTemplatesOpen(true)}>
+                <Button variant="outline" onClick={() => setTemplatesOpen(true)}>
                   Use Template
                 </Button>
               </div>
@@ -413,7 +410,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
                     {' '}Review, edit or remove anything, then Save as Template to publish.
                   </span>
                 </div>
-                <Button variant="tertiary" size="S" onClick={discardDraft}>Discard Draft</Button>
+                <Button variant="soft" size="sm" onClick={discardDraft}>Discard Draft</Button>
               </div>
             )}
             <CarePlanSections

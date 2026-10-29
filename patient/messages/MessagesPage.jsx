@@ -151,7 +151,7 @@ function NewMessage({ memberId, careTeam, defaultTo, onStarted, onCancel }) {
       <header className={styles.threadHead}>
         <span className={styles.threadIcon}><Icon name="solar:pen-new-square-linear" size={20} color="currentColor" /></span>
         <div className={styles.threadTitles}><span className={styles.threadTitle}>New message</span></div>
-        <Button variant="ghost" size="S" onClick={onCancel}>Cancel</Button>
+        <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
       </header>
       <div className={styles.newBody}>
         <RadioOptionGroup
@@ -220,7 +220,7 @@ export function MessagesPage() {
       <aside className={styles.list} aria-label="Conversations">
         <div className={styles.listHead}>
           <h2 className={styles.listTitle}>Messages</h2>
-          <Button variant="secondary" size="S" leadingIcon="solar:pen-new-square-linear" onClick={() => pick(() => { setDefaultTo(null); setComposing(true); })}>
+          <Button variant="outline" size="sm" leadingIcon="solar:pen-new-square-linear" onClick={() => pick(() => { setDefaultTo(null); setComposing(true); })}>
             New
           </Button>
         </div>

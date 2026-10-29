@@ -218,17 +218,17 @@ export function TaskDetailDrawerDetails({
                 onInput={e => setDescDraft(e.currentTarget.innerHTML)}
               />
               <div className={styles.descToolbar}>
-                <ActionButton icon="solar:paperclip-linear" size="S" tooltip="Attach" />
+                <ActionButton icon="solar:paperclip-linear" size="sm" tooltip="Attach" />
                 <span className={styles.toolbarDivider} />
-                <ActionButton icon="solar:text-bold-linear" size="S" tooltip="Bold" onClick={() => document.execCommand('bold')} />
-                <ActionButton icon="solar:text-italic-linear" size="S" tooltip="Italic" onClick={() => document.execCommand('italic')} />
-                <ActionButton icon="solar:text-underline-linear" size="S" tooltip="Underline" onClick={() => document.execCommand('underline')} />
-                <ActionButton icon="solar:text-cross-linear" size="S" tooltip="Strikethrough" onClick={() => document.execCommand('strikeThrough')} />
+                <ActionButton icon="solar:text-bold-linear" size="sm" tooltip="Bold" onClick={() => document.execCommand('bold')} />
+                <ActionButton icon="solar:text-italic-linear" size="sm" tooltip="Italic" onClick={() => document.execCommand('italic')} />
+                <ActionButton icon="solar:text-underline-linear" size="sm" tooltip="Underline" onClick={() => document.execCommand('underline')} />
+                <ActionButton icon="solar:text-cross-linear" size="sm" tooltip="Strikethrough" onClick={() => document.execCommand('strikeThrough')} />
                 <span className={styles.toolbarDivider} />
-                <ActionButton icon="solar:list-linear" size="S" tooltip="List" onClick={() => document.execCommand('insertUnorderedList')} />
+                <ActionButton icon="solar:list-linear" size="sm" tooltip="List" onClick={() => document.execCommand('insertUnorderedList')} />
                 <div style={{ flex: 1 }} />
-                <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Discard" onClick={() => setEditingDesc(false)} />
-                <ActionButton icon="solar:check-read-linear" size="S" tooltip="Save" onClick={() => { updateTask(task.id, { description: descDraft }); setEditingDesc(false); showToast('Description saved'); }} />
+                <ActionButton icon="solar:close-circle-linear" size="sm" tooltip="Discard" onClick={() => setEditingDesc(false)} />
+                <ActionButton icon="solar:check-read-linear" size="sm" tooltip="Save" onClick={() => { updateTask(task.id, { description: descDraft }); setEditingDesc(false); showToast('Description saved'); }} />
               </div>
             </div>
           ) : (

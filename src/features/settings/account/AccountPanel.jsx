@@ -189,7 +189,7 @@ export function AccountPanel() {
           actions={[{
             label: 'Delete',
             icon: 'solar:trash-bin-trash-linear',
-            variant: 'secondary',
+            variant: 'outline',
             onClick: () => setBulkDeletePlansOpen(true),
           }]}
         />
@@ -361,7 +361,7 @@ export function ViewUserDrawer({ user, onClose, onEdit, canEdit = true, lock, ca
         activeKey={viewTab}
         onChange={setViewTab}
         fullWidth={false}
-        trailing={canEdit && viewTab !== 'Audit Log' ? <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit Profile" onClick={onEdit} /> : undefined}
+        trailing={canEdit && viewTab !== 'Audit Log' ? <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit Profile" onClick={onEdit} /> : undefined}
       />
 
       {viewTab === 'Audit Log' ? (
@@ -407,7 +407,7 @@ function InsurancePlansTab({
           </div>
         </div>
         <p className={styles.insuranceEmptyText}>No Insurance Plans have been Created.</p>
-        <Button variant="primary" size="L" leadingIcon="solar:add-circle-linear" onClick={onCreateNew}>
+        <Button leadingIcon="solar:add-circle-linear" onClick={onCreateNew}>
           Create New
         </Button>
       </div>
@@ -671,8 +671,8 @@ export function EditUserDrawer({ user, onClose, onSave }) {
         onChange={setDrawerTab}
         fullWidth={false}
         trailing={<>
-          <Button variant="ghost" size="S" onClick={handleDiscard}>Discard</Button>
-          <Button variant="primary" size="S" onClick={handleSave}>Save</Button>
+          <Button variant="ghost" size="sm" onClick={handleDiscard}>Discard</Button>
+          <Button size="sm" onClick={handleSave}>Save</Button>
         </>}
       />
 
@@ -851,9 +851,9 @@ export function EditUserDrawer({ user, onClose, onSave }) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" size="M" onClick={() => setConfirmClose(false)}>Keep editing</Button>
-            <Button variant="secondary" size="M" onClick={discardFromDialog}>Discard</Button>
-            <Button variant="primary" size="M" onClick={saveFromDialog}>Save changes</Button>
+            <Button variant="ghost" onClick={() => setConfirmClose(false)}>Keep editing</Button>
+            <Button variant="outline" onClick={discardFromDialog}>Discard</Button>
+            <Button onClick={saveFromDialog}>Save changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

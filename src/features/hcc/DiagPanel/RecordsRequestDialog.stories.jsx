@@ -41,7 +41,7 @@ function Harness(args) {
   const [lastPayload, setLastPayload] = useState(null);
   return (
     <div style={{ padding: 24, minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--neutral-25)' }}>
-      <Button variant="primary" size="M" onClick={() => setOpen(true)}>Open dialog</Button>
+      <Button onClick={() => setOpen(true)}>Open dialog</Button>
       {lastPayload && (
         <pre
           style={{

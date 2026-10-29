@@ -30,7 +30,7 @@ function LinkToGoalButton({ item, goals, onPick }) {
       <ActionButton
         ref={ref}
         icon="solar:link-linear"
-        size="S"
+        size="sm"
         tooltip={options.length ? 'Link to goal' : 'Linked to every goal'}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -152,7 +152,7 @@ export function CarePlanLinkageSection({
           {groupKey !== UNLINKED && (
             <ActionButton
               icon="solar:link-broken-minimalistic-linear"
-              size="S"
+              size="sm"
               tooltip="Unlink from goal"
               onClick={() => relink(item, groupKey, UNLINKED)}
             />

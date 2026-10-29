@@ -220,8 +220,8 @@ export function DateRangePopover({
       )}
 
       <div className={styles.footer}>
-        <Button variant="secondary" size="S" onClick={clear}>Clear</Button>
-        <Button variant="primary" size="S" disabled={!canApply} onClick={apply}>
+        <Button variant="outline" size="sm" onClick={clear}>Clear</Button>
+        <Button size="sm" disabled={!canApply} onClick={apply}>
           Apply
         </Button>
       </div>

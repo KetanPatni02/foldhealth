@@ -123,7 +123,7 @@ export function RunAutomationDrawer({ automation, onClose }) {
       noCloseDivider
       headerRight={(
         <>
-          <Button variant="primary" disabled={!target || submitting} onClick={submit}>
+          <Button disabled={!target || submitting} onClick={submit}>
             {submitting ? 'Running…' : 'Submit'}
           </Button>
           <span className={styles.headerDivider} aria-hidden />

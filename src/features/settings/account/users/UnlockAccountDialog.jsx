@@ -20,7 +20,7 @@ export function UnlockAccountDialog({ user, onCancel, onConfirm }) {
       decision="pass"
       standardReasons={UNLOCK_REASONS.map(r => r.label)}
       confirmLabel="Unlock Account"
-      confirmVariant="primary"
+      confirmTone="primary"
       confirmDisabled={!identityChecked}
       notesPlaceholder="How you checked their identity, or why you're unlocking (required for Other)"
       reasonInput="radio"

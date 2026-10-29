@@ -35,8 +35,7 @@ export function EmbeddedComponentsSettings() {
         onSearchChange={setSearchVal}
         rightExtras={
           <Button
-            variant="secondary"
-            size="L"
+            variant="outline"
             leadingIcon="solar:add-circle-linear"
             data-tour="embed-register-btn"
             onClick={() => {

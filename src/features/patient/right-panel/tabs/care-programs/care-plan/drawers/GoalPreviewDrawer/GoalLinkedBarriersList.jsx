@@ -69,7 +69,7 @@ export function GoalLinkedBarriersList({
                 <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />
                 <ActionButton
                   icon="solar:arrow-right-up-linear"
-                  size="S"
+                  size="sm"
                   tooltip="Open barrier"
                   onClick={() => onOpen(b)}
                 />
@@ -81,7 +81,7 @@ export function GoalLinkedBarriersList({
             <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />
             <ActionButton
               icon="solar:menu-dots-linear"
-              size="S"
+              size="sm"
               tooltip="More"
               disabled={!onRowMenu}
               onClick={(e) => onRowMenu?.({ item: b, rect: e.currentTarget.getBoundingClientRect() })}

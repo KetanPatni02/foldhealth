@@ -130,7 +130,7 @@ export function TasksCard({ dragHandleClassName }) {
             <span className={styles.countChip}>{homeTasks.length}</span>
           </div>
           <div className={styles.cardActions}>
-            <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+            <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
           </div>
         </div>
         <div className={styles.cardBody}>

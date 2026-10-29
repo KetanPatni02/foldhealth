@@ -31,21 +31,20 @@ export function UserActions({ user, isAdmin, locked = false, onResetPassword, on
     <div className={styles.actions}>
       {user.status === 'Pending' ? (
         <>
-          <ActionButton icon="solar:check-circle-linear" size="L" tooltip="Approve Sign-up" onClick={onApprove} />
+          <ActionButton icon="solar:check-circle-linear" tooltip="Approve Sign-up" onClick={onApprove} />
           <span className={styles.actionDivider} />
-          <ActionButton icon="solar:close-circle-linear" size="L" tooltip="Reject Sign-up" onClick={onReject} />
+          <ActionButton icon="solar:close-circle-linear" tooltip="Reject Sign-up" onClick={onReject} />
         </>
       ) : (
         <>
           {locked ? (
-            <ActionButton icon="solar:lock-keyhole-unlocked-linear" size="L" tooltip="Unlock Account" onClick={onUnlock} />
+            <ActionButton icon="solar:lock-keyhole-unlocked-linear" tooltip="Unlock Account" onClick={onUnlock} />
           ) : (
-            <ActionButton icon="solar:password-linear" size="L" tooltip="Reset Password" onClick={onResetPassword} />
+            <ActionButton icon="solar:password-linear" tooltip="Reset Password" onClick={onResetPassword} />
           )}
           <span className={styles.actionDivider} />
           <ActionButton
             icon={user.status === 'Active' ? 'solar:user-cross-linear' : 'solar:user-check-linear'}
-            size="L"
             tooltip={user.status === 'Active' ? 'Disable User' : 'Enable User'}
             onClick={onToggleStatus}
           />
@@ -53,7 +52,7 @@ export function UserActions({ user, isAdmin, locked = false, onResetPassword, on
       )}
       <span className={styles.actionDivider} />
       <div style={{ position: 'relative' }} ref={menuRef}>
-        <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More Options" onClick={() => setMenuOpen(v => !v)} />
+        <ActionButton icon="solar:menu-dots-linear" tooltip="More Options" onClick={() => setMenuOpen(v => !v)} />
         {menuOpen && createPortal(
           <div className={styles.moreDropdown} style={{
             position: 'fixed',

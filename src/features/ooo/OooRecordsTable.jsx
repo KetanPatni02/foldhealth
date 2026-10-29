@@ -117,11 +117,10 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
             {onReassign && (
               <>
                 <ActionButton
-                  size="L"
                   tooltip={left ? `Reassign ${left} Appointment${left === 1 ? '' : 's'}` : status === 'Past' ? 'Past records can\'t be reassigned' : 'No appointments to reassign'}
                   tooltipLeft
                   tooltipBelow
-                  state={left ? 'active' : 'disabled'}
+                  disabled={!left}
                   dot={!!left}
                   aria-label={left ? `Reassign ${left} appointment${left === 1 ? '' : 's'}` : 'Reassign appointments'}
                   onClick={() => left && onReassign(r)}
@@ -136,11 +135,10 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
                 the column sits at the table's right edge; a disabled action
                 says why. */}
             <ActionButton
-              size="L"
               tooltip={editable ? 'Edit' : 'Past records can\'t be edited'}
               tooltipLeft
               tooltipBelow
-              state={editable ? 'active' : 'disabled'}
+              disabled={!editable}
               aria-label="Edit Out of Office record"
               onClick={() => editable && onEdit(r)}
             >
@@ -148,11 +146,10 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
             </ActionButton>
             <span className={styles.actionDivider} aria-hidden="true" />
             <ActionButton
-              size="L"
               tooltip={deletable ? 'Delete' : status === 'Ongoing' ? 'Ongoing records can\'t be deleted' : 'Past records can\'t be deleted'}
               tooltipLeft
               tooltipBelow
-              state={deletable ? 'active' : 'disabled'}
+              disabled={!deletable}
               aria-label="Delete Out of Office record"
               onClick={() => deletable && onDelete(r)}
             >

@@ -73,7 +73,7 @@ function AddDomainDrawer({ onClose, onSave }) {
       title="Register New Domain"
       onClose={onClose}
       headerRight={
-        <Button variant="primary" size="L" disabled={!canSave} onClick={() => canSave && onSave(form)}>
+        <Button disabled={!canSave} onClick={() => canSave && onSave(form)}>
           Register domain
         </Button>
       }
@@ -132,7 +132,7 @@ function EditDomainDrawer({ domain, onClose, onSave }) {
       title={`Edit — ${domain.domain}`}
       onClose={onClose}
       headerRight={
-        <Button variant="primary" size="L" disabled={!canSave} onClick={() => canSave && onSave(form)}>
+        <Button disabled={!canSave} onClick={() => canSave && onSave(form)}>
           Save changes
         </Button>
       }
@@ -322,11 +322,11 @@ export function DomainRegistryPanel({ searchQuery = '' }) {
                 <td style={tdStyle} {...(isFirst ? { 'data-tour': 'embed-toggle' } : {})}><Switch checked={d.enabled !== false} onChange={() => handleToggle(d.id)} /></td>
                 <td style={tdStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} {...(isFirst ? { 'data-tour': 'embed-actions' } : {})}>
-                    <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit" onClick={() => setEditingDomain(d)} />
+                    <ActionButton icon="solar:pen-linear" tooltip="Edit" onClick={() => setEditingDomain(d)} />
                     <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-                    <ActionButton icon="solar:history-linear" size="L" tooltip="Audit Log" onClick={() => setAuditDrawerEntity({ type: 'Domain', name: d.vendor, domain: d.domain, id: d.id })} />
+                    <ActionButton icon="solar:history-linear" tooltip="Audit Log" onClick={() => setAuditDrawerEntity({ type: 'Domain', name: d.vendor, domain: d.domain, id: d.id })} />
                     <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-                    <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete" onClick={() => setDeleteTarget(d)} />
+                    <ActionButton icon="solar:trash-bin-minimalistic-linear" tooltip="Delete" onClick={() => setDeleteTarget(d)} />
                   </div>
                 </td>
               </tr>

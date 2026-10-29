@@ -142,8 +142,6 @@ export function AddBarriersDrawer({
   const headerRight = (
     <>
       <Button
-        variant="primary"
-        size="L"
         disabled={selectable ? selected.size === 0 : !canCreate}
         onClick={selectable ? handleAddThisPlan : handleCreate}
       >

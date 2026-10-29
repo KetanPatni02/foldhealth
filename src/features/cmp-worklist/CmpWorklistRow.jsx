@@ -119,7 +119,6 @@ export function CmpWorklistRow({ member, columns, hiddenSet, selected, onToggle,
               <div className={styles.actionsCell}>
                 <ActionButton
                   icon="solar:document-text-linear"
-                  size="L"
                   tooltip={multi ? `View ${e.subProgram || 'Program'}` : 'View Program'}
                   onClick={() => onView(e)}
                 />
@@ -129,14 +128,12 @@ export function CmpWorklistRow({ member, columns, hiddenSet, selected, onToggle,
                     <ActionButton
                       ref={callBtnRef}
                       icon="solar:phone-linear"
-                      size="L"
                       tooltip="Call patient"
                       onClick={(ev) => { ev.stopPropagation(); openCallPopover(worklistMemberCallId(member), callBtnRef); }}
                     />
                     <span className={styles.actionDivider} />
                     <ActionButton
                       icon="solar:menu-dots-linear"
-                      size="L"
                       tooltip="More"
                       onClick={() => showToast(`More actions for ${member.name} are coming soon`)}
                     />

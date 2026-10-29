@@ -251,7 +251,6 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
       {onCall && <CallTimer seconds={callSeconds || 0} />}
       <ActionButton
         icon="solar:square-top-down-linear"
-        size="M"
         tooltip="Open care plan"
         tooltipBelow
         tooltipLeft
@@ -259,7 +258,7 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
       />
       <span className={styles.headerDivider} aria-hidden="true" />
       {startedAt == null ? (
-        <Button variant="primary" size="S" leadingIcon="solar:play-linear" onClick={() => { setBaseSeconds(open?.durationSeconds || 0); setStartedAt(Date.now()); }}>
+        <Button size="sm" leadingIcon="solar:play-linear" onClick={() => { setBaseSeconds(open?.durationSeconds || 0); setStartedAt(Date.now()); }}>
           Start review
         </Button>
       ) : (
@@ -300,12 +299,10 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
             <span className={styles.composerHint}>
               {totalDiscussed ? `${plural(totalDiscussed, 'item')} discussed will be attached` : 'Change statuses or mark items discussed as you go'}
             </span>
-            <Button variant="secondary" size="M" onClick={openComplete}>
+            <Button variant="outline" onClick={openComplete}>
               Finish review
             </Button>
             <Button
-              variant="primary"
-              size="M"
               disabled={!callNoteFilled || callNoteValue === (open?.callNote || '')}
               onClick={async () => {
                 const saved = await saveCallNote(patientId, program, callNoteValue, { startedAt, stoppedAt, baseSeconds });
@@ -370,7 +367,6 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
                 )}
                 <ActionButton
                   icon="custom:history"
-                  size="L"
                   tooltip="Activity Log"
                   tooltipLeft
                   onClick={() => { endSelecting(); setHistoryOpen(true); }}
@@ -388,12 +384,12 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
           {(filterRow, content) => (
             <>
               <div className={styles.backRow}>
-                <ActionButton icon="solar:arrow-left-linear" size="S" tooltip="Back to the care plan" onClick={() => setHistoryOpen(false)} />
+                <ActionButton icon="solar:arrow-left-linear" size="sm" tooltip="Back to the care plan" onClick={() => setHistoryOpen(false)} />
                 <span className={styles.backTitle}>Activity Log</span>
                 <span className={styles.backAction}>
                   <ActionButton
                     icon="custom:filter"
-                    size="S"
+                    size="sm"
                     tooltip={historyFilters ? 'Hide filters' : 'Show filters'}
                     tooltipLeft
                     active={historyFilters}
@@ -499,7 +495,7 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
               {
                 label: 'Mark discussed',
                 icon: 'solar:check-read-linear',
-                variant: 'primary',
+                variant: 'solid',
                 onClick: async (ids) => {
                   await markManyDiscussed(patientId, program, listTab.kind, ids);
                   showToast(`${plural(ids.length, listTab.noun)} marked discussed`);

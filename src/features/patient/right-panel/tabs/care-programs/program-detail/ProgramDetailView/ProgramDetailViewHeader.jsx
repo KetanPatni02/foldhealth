@@ -98,7 +98,7 @@ export function ProgramDetailViewHeader({
           <ActionButton
             ref={moreRef}
             icon="solar:menu-dots-linear"
-            size="S"
+            size="sm"
             tooltip="More"
             active={!!moreRect}
             onClick={e => setMoreRect(moreRect ? null : e.currentTarget.getBoundingClientRect())}

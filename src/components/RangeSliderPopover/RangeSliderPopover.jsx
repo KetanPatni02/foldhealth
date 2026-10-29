@@ -92,10 +92,10 @@ export function RangeSliderPopover({
       </div>
 
       <div className={styles.actions}>
-        <Button variant="secondary" size="S" onClick={() => setVals([min, max])}>
+        <Button variant="outline" size="sm" onClick={() => setVals([min, max])}>
           Reset
         </Button>
-        <Button variant="primary" size="S" onClick={() => onApply?.(vals[0], vals[1])}>
+        <Button size="sm" onClick={() => onApply?.(vals[0], vals[1])}>
           Apply
         </Button>
       </div>

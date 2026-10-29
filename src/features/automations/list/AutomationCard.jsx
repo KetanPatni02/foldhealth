@@ -41,7 +41,7 @@ export function AutomationCard({ automation: a, runs, actions }) {
           <>
             <Badge tone="grey" size="S" label="Draft" />
             <span className={styles.footerRight}>
-              <Button variant="secondary" size="S" leadingIcon="solar:pen-linear" onClick={() => actions.edit(a)}>Continue editing</Button>
+              <Button variant="outline" size="sm" leadingIcon="solar:pen-linear" onClick={() => actions.edit(a)}>Continue editing</Button>
               <AutomationMenu hasRuns={runs.length > 0} onSelect={(key) => actions.menu(key, a)} />
             </span>
           </>
@@ -62,7 +62,7 @@ export function AutomationCard({ automation: a, runs, actions }) {
                 </Tooltip>
               )}
               {a.status === 'active' && (
-                <Button variant="secondary" size="S" leadingIcon="solar:play-linear" onClick={() => actions.run(a)}>Run</Button>
+                <Button variant="outline" size="sm" leadingIcon="solar:play-linear" onClick={() => actions.run(a)}>Run</Button>
               )}
               <AutomationMenu hasRuns={runs.length > 0} onSelect={(key) => actions.menu(key, a)} />
             </span>

@@ -184,7 +184,7 @@ export function TimelineTab() {
           onChange={setView}
           leading={(
             <>
-              <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" aria-label="Search timeline" onClick={() => setSearchOpen(true)} />
+              <ActionButton icon="solar:magnifer-linear" tooltip="Search" aria-label="Search timeline" onClick={() => setSearchOpen(true)} />
               <span className={styles.divider} aria-hidden="true" />
             </>
           )}
@@ -192,7 +192,6 @@ export function TimelineTab() {
         <span className={styles.divider} aria-hidden="true" />
         <ActionButton
           icon="custom:filter"
-          size="L"
           tooltip="Filters"
           tooltipLeft
           aria-label="Filters"

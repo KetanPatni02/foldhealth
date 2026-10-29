@@ -14,9 +14,9 @@ import { hasGivenDose, seriesStartDate } from './cisStatusConfig';
  * @param {object}   props.result           – evaluateCis() output
  * @param {object}   [props.notes]          – cis_dose_notes by 'dtap:1'
  * @param {function} [props.onSaveEvidence] – ({ file, caption, sync }) => void
- * @param {'S'|'L'}  [props.size='S']
+ * @param {'sm'|'md'} [props.size='sm']
  */
-export function CisMoreMenu({ member, result, notes, onSaveEvidence, size = 'S' }) {
+export function CisMoreMenu({ member, result, notes, onSaveEvidence, size = 'sm' }) {
   const [rect, setRect] = useState(null);
   const hasDoses = hasGivenDose(result);
   const items = [

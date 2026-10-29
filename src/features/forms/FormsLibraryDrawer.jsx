@@ -60,8 +60,6 @@ export function FormsLibraryDrawer({ title = 'Forms Library', linkedIds = EMPTY,
       headerRight={(
         <>
           <Button
-            variant="primary"
-            size="L"
             disabled={!picked.size}
             onClick={() => onAdd(forms.filter(f => picked.has(String(f.id))))}
           >

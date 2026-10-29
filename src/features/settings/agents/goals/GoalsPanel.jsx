@@ -73,7 +73,7 @@ function GoalCard({ goal, onOpen, onEdit }) {
             </>
           )}
         </div>
-        <Button variant="secondary" size="S" onClick={(e) => { e.stopPropagation(); onEdit(goal.id); }}>Edit</Button>
+        <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(goal.id); }}>Edit</Button>
       </div>
     </div>
   );
@@ -159,13 +159,13 @@ function GoalsTable({ goals, onOpen, onEdit, onDelete }) {
                 </td>
                 <td style={tdStyle} onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit goal"
+                    <ActionButton icon="solar:pen-linear" tooltip="Edit goal"
                       onClick={() => onEdit(g.id)} />
                     <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-                    <ActionButton icon="solar:history-linear" size="L" tooltip="Audit Log"
+                    <ActionButton icon="solar:history-linear" tooltip="Audit Log"
                       onClick={() => setAuditDrawerEntity({ type: 'Goal', name: g.name, id: g.id })} />
                     <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-                    <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete goal"
+                    <ActionButton icon="solar:trash-bin-minimalistic-linear" tooltip="Delete goal"
                       onClick={() => setDeleteTarget(g)} />
                   </div>
                 </td>

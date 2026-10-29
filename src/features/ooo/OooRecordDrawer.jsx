@@ -177,7 +177,7 @@ export function OooRecordDrawer({ record: initialRecord, user, users = [], onClo
 
   const headerRight = (
     <>
-      <Button variant="primary" size="L" disabled={(isEdit && !dirty) || saving || (touched && hasErrors)} onClick={save}>
+      <Button disabled={(isEdit && !dirty) || saving || (touched && hasErrors)} onClick={save}>
         {saving ? 'Saving…' : 'Save'}
       </Button>
       <span className={styles.headerDivider} aria-hidden="true" />
@@ -277,10 +277,10 @@ export function OooRecordDrawer({ record: initialRecord, user, users = [], onClo
             <div className={styles.overlapBody}>
               <p className={styles.overlapText}>Extend that record to cover the rest, or create a new one for the remaining dates.</p>
               <div className={styles.overlapActions}>
-                <Button variant="primary" size="S" disabled={saving || !overlap.extend.length} onClick={editExisting}>Edit Existing</Button>
+                <Button size="sm" disabled={saving || !overlap.extend.length} onClick={editExisting}>Edit Existing</Button>
                 <Button
-                  variant="secondary"
-                  size="S"
+                  variant="outline"
+                  size="sm"
                   disabled={saving || !freeTime}
                   onClick={() => set({ startAt: new Date(freeTime.from).toISOString(), endAt: new Date(freeTime.to).toISOString() })}
                 >

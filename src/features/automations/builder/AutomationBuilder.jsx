@@ -209,7 +209,7 @@ function BuilderScreen({ id }) {
         <div className={styles.banner}>
           <Icon name="solar:info-circle-linear" size={16} />
           <span>You’re editing a working copy saved {new Date(b.automation.updatedAt).toLocaleDateString('en-US')}. The published version keeps running until you save.</span>
-          <Button variant="tertiary" size="S" onClick={b.discardDraftCopy}>Discard working copy</Button>
+          <Button variant="soft" size="sm" onClick={b.discardDraftCopy}>Discard working copy</Button>
         </div>
       )}
       <div className={styles.body}>

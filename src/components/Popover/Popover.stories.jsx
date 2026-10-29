@@ -40,7 +40,7 @@ function Trigger({ label = 'Open popover', children, style }) {
   return (
     <div style={style}>
       <span ref={ref} style={{ display: 'inline-flex' }}>
-        <Button variant="secondary" onClick={() => setOpen(o => !o)}>{label}</Button>
+        <Button variant="outline" onClick={() => setOpen(o => !o)}>{label}</Button>
       </span>
       {children({ anchor: ref, open, setOpen })}
     </div>
@@ -84,7 +84,7 @@ export const Nested = {
             <div style={{ ...body, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
               <span>Parent popover</span>
               <span ref={innerRef} style={{ display: 'inline-flex' }}>
-                <Button variant="secondary" size="S" onClick={() => setMenu(innerRef.current.getBoundingClientRect())}>Open menu</Button>
+                <Button variant="outline" size="sm" onClick={() => setMenu(innerRef.current.getBoundingClientRect())}>Open menu</Button>
               </span>
             </div>
             {menu && (

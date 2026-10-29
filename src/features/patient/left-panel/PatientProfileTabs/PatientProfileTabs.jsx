@@ -176,7 +176,7 @@ export function PatientProfileTabs({
                   <span className={styles.viewBy}>View By: Action</span>
                   <DownChevronIcon size={10} />
                   <span className={styles.filterDivider} />
-                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+                  <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
                 </div>
               )}
             </div>
@@ -221,7 +221,7 @@ export function PatientProfileTabs({
                   <span className={styles.dosValue}>03/04/2025</span>
                   <DownChevronIcon size={10} />
                   <span className={styles.filterDivider} />
-                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+                  <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
                 </div>
               )}
             </div>
@@ -254,7 +254,7 @@ export function PatientProfileTabs({
               </button>
               {!alertsCollapsed && (
                 <div className={styles.sectionActions}>
-                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+                  <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
                 </div>
               )}
             </div>
@@ -302,7 +302,7 @@ export function PatientProfileTabs({
           {!extraActive && (
             <ActionButton
               icon="solar:magnifer-linear"
-              size="S"
+              size="sm"
               tooltip="Search gaps"
               className={styles.searchBtn}
               onClick={() => setSearching(true)}

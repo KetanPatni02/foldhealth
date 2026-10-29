@@ -170,7 +170,7 @@ export const EmailEditor = forwardRef(function EmailEditor({
   const tool = (icon, tooltip, onClick) => (
     // mousedown keeps the selection in the editor while the button is pressed.
     <span onMouseDown={(e) => e.preventDefault()}>
-      <ActionButton icon={icon} size="S" tooltip={tooltip} tooltipBelow onClick={onClick} />
+      <ActionButton icon={icon} size="sm" tooltip={tooltip} tooltipBelow onClick={onClick} />
     </span>
   );
   const divider = <span className={styles.divider} aria-hidden="true" />;
@@ -189,10 +189,10 @@ export const EmailEditor = forwardRef(function EmailEditor({
         {tool('solar:undo-right-round-linear', 'Redo', () => run('redo'))}
         {divider}
         <span onMouseDown={(e) => e.preventDefault()}>
-          <Button variant="secondary" size="S" trailingIcon="solar:alt-arrow-down-linear" className={styles.fontButton} onClick={open('font')}>{font}</Button>
+          <Button variant="outline" size="sm" trailingIcon="solar:alt-arrow-down-linear" className={styles.fontButton} onClick={open('font')}>{font}</Button>
         </span>
         <span onMouseDown={(e) => e.preventDefault()}>
-          <Button variant="secondary" size="S" trailingIcon="solar:alt-arrow-down-linear" onClick={open('size')}>{String(size)}</Button>
+          <Button variant="outline" size="sm" trailingIcon="solar:alt-arrow-down-linear" onClick={open('size')}>{String(size)}</Button>
         </span>
         {divider}
         {tool('solar:text-bold-linear', 'Bold (Ctrl + B)', () => run('bold'))}
@@ -200,15 +200,15 @@ export const EmailEditor = forwardRef(function EmailEditor({
         {tool('solar:text-underline-linear', 'Underline (Ctrl + U)', () => run('underline'))}
         {tool('solar:text-cross-linear', 'Strikethrough', () => run('strikeThrough'))}
         <span onMouseDown={(e) => e.preventDefault()}>
-          <ActionButton icon="solar:text-field-linear" size="S" tooltip="Font Color" tooltipBelow onClick={open('color')} />
+          <ActionButton icon="solar:text-field-linear" size="sm" tooltip="Font Color" tooltipBelow onClick={open('color')} />
         </span>
         {divider}
         <span onMouseDown={(e) => e.preventDefault()}>
-          <ActionButton icon="solar:list-linear" size="S" tooltip="Bullets" tooltipBelow chevron onClick={open('list')} />
+          <ActionButton icon="solar:list-linear" size="sm" tooltip="Bullets" tooltipBelow chevron onClick={open('list')} />
         </span>
         {divider}
         <span onMouseDown={(e) => e.preventDefault()}>
-          <ActionButton icon="solar:align-left-linear" size="S" tooltip="Align" tooltipBelow chevron onClick={open('align')} />
+          <ActionButton icon="solar:align-left-linear" size="sm" tooltip="Align" tooltipBelow chevron onClick={open('align')} />
         </span>
       </div>
 
@@ -235,7 +235,7 @@ export const EmailEditor = forwardRef(function EmailEditor({
             <span key={a.key} className={styles.actionItem}>
               {i > 0 && divider}
               {/* mousedown keeps the editor's text selection for the action. */}
-              <ActionButton icon={a.icon} size="S" tooltip={a.label} disabled={a.disabled} onClick={a.onClick} onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} />
+              <ActionButton icon={a.icon} size="sm" tooltip={a.label} disabled={a.disabled} onClick={a.onClick} onMouseDown={(e) => { e.preventDefault(); saveSelection(); }} />
             </span>
           ))}
         </div>

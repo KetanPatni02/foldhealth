@@ -9,7 +9,7 @@ export function DocumentCategoryRail({ categories, active, counts, onSelect, onA
     <nav className={styles.rail} aria-label="Document categories">
       <div className={styles.railHeader}>
         <span className={styles.title}>Categories</span>
-        <ActionButton icon="solar:add-folder-linear" size="L" tooltip="Add Category" tooltipLeft aria-label="Add category" onClick={onAddCategory} />
+        <ActionButton icon="solar:add-folder-linear" tooltip="Add Category" tooltipLeft aria-label="Add category" onClick={onAddCategory} />
       </div>
       <ul className={styles.categoryList}>
         {categories.map(c => {

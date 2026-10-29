@@ -193,8 +193,6 @@ export function AddGoalsDrawer({
   const headerRight = (
     <>
       <Button
-        variant="primary"
-        size="L"
         disabled={toAdd.length === 0 && toRemove.length === 0}
         onClick={() => onAdd?.(toAdd, toRemove)}
       >

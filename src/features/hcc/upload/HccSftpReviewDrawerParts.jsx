@@ -487,16 +487,13 @@ export function DocReviewCompleted({ total, nextBatch, onPickNext, onBackToWorkl
       </div>
       <div className={styles.docCompletedActions}>
         <Button
-          variant="primary"
-          size="L"
           disabled={!nextBatch}
           onClick={() => nextBatch && onPickNext(nextBatch.id)}
         >
           Review Next Document
         </Button>
         <Button
-          variant="alt"
-          size="L"
+          variant="outline" tone="primary"
           trailingIcon="solar:arrow-right-up-linear"
           onClick={onBackToWorklist}
         >
@@ -553,7 +550,7 @@ export function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWor
           <Badge size="M" variant="status-review" icon="solar:info-circle-bold" label="Missing Field" />
         )}
         <ActionButton
-          size="S"
+          size="sm"
           icon="solar:menu-dots-linear"
           tooltip="More"
           onClick={() => showToast?.('More actions — coming soon')}
@@ -589,12 +586,11 @@ export function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWor
       {/* Bottom action bar — Delete Record on the left, Add to the
           Worklist on the right (disabled until at least one DOS is Ready). */}
       <div className={styles.encCardFooter}>
-        <Button variant="alt" size="S" leadingIcon="solar:trash-bin-trash-linear" onClick={handleDeleteRecord}>
+        <Button variant="outline" tone="primary" size="sm" leadingIcon="solar:trash-bin-trash-linear" onClick={handleDeleteRecord}>
           Delete Record
         </Button>
         <Button
-          variant="primary"
-          size="S"
+          size="sm"
           leadingIcon="solar:add-circle-linear"
           disabled={readyEncs.length === 0}
           onClick={handleAddAll}
@@ -690,7 +686,7 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
           label={statusLabel}
         />
         <span className={styles.dosCardDivider} />
-        <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Remove this DOS" onClick={onDelete} />
+        <ActionButton size="sm" icon="solar:trash-bin-trash-linear" tooltip="Remove this DOS" onClick={onDelete} />
       </div>
 
       {!collapsed && (
@@ -719,7 +715,7 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
               </div>
             </div>
             <ActionButton
-              size="S"
+              size="sm"
               icon="solar:menu-dots-linear"
               tooltip="More"
               onClick={() => showToast?.('Document actions — coming soon')}
@@ -820,7 +816,7 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
                     <ConfPct score={icd.confidence ?? fieldConf('icds')} />
                     <span className={styles.dosIcdDivider} />
                     <ActionButton
-                      size="S"
+                      size="sm"
                       icon="solar:trash-bin-trash-linear"
                       tooltip={`Remove ${icd.code}`}
                       onClick={() => onPatch({ icds: (enc.icds || []).filter(i => i.code !== icd.code) })}

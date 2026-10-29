@@ -207,7 +207,7 @@ export function GbiRowActions({ linked, note, onNotes, onMenu, menuDisabled = fa
       <span className={styles.actionDivider} aria-hidden="true" />
       <ActionButton
         icon="solar:notes-linear"
-        size="S"
+        size="sm"
         tooltip={!hasNote ? 'Add note' : note.isNew ? 'New note' : `View note${note.count > 1 ? 's' : ''}`}
         tooltipBelow
         tooltipLeft
@@ -220,7 +220,7 @@ export function GbiRowActions({ linked, note, onNotes, onMenu, menuDisabled = fa
       <span className={styles.actionDivider} aria-hidden="true" />
       <ActionButton
         icon="solar:menu-dots-linear"
-        size="S"
+        size="sm"
         tooltip="More"
         tooltipBelow
         tooltipLeft

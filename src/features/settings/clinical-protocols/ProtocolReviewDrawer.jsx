@@ -52,8 +52,8 @@ function ItemEditor({ section, item, onSave, onCancel }) {
         );
       })}
       <div className={styles.editorActions}>
-        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" size="S" disabled={!complete} onClick={() => onSave(value)}>Done</Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+        <Button size="sm" disabled={!complete} onClick={() => onSave(value)}>Done</Button>
       </div>
     </div>
   );
@@ -86,8 +86,8 @@ function ProtocolItem({ section, item, editable, onChange, onRemove }) {
         </div>
         {editable && (
           <span className={styles.itemActions}>
-            <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => setEditing(true)} />
-            <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove" onClick={onRemove} />
+            <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={() => setEditing(true)} />
+            <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Remove" onClick={onRemove} />
           </span>
         )}
       </div>
@@ -113,7 +113,7 @@ function ProtocolSection({ section, items, editable, onItemsChange }) {
       <div className={styles.sectionHead}>
         <Icon name={section.icon} size={16} color="var(--neutral-400)" />
         <span className={styles.sectionTitle}>{section.label}<span className={styles.sectionCount}>{items.length}</span></span>
-        {editable && <ActionButton icon="solar:add-circle-linear" size="S" tooltip={`Add to ${section.label}`} onClick={add} />}
+        {editable && <ActionButton icon="solar:add-circle-linear" size="sm" tooltip={`Add to ${section.label}`} onClick={add} />}
       </div>
       {items.length === 0
         ? <div className={styles.sectionEmpty}>Nothing extracted for this section.</div>
@@ -227,15 +227,15 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
           <Badge tone={status.tone} size="S" label={status.label} />
           <span className={styles.headerDivider} />
           {menuItems.length > 0 && (
-            <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More" onClick={e => setMenu(e.currentTarget.getBoundingClientRect())} />
+            <ActionButton icon="solar:menu-dots-linear" tooltip="More" onClick={e => setMenu(e.currentTarget.getBoundingClientRect())} />
           )}
           {editable && protocol.status !== 'draft' && (
-            <Button variant="secondary" size="L" disabled={!dirty || !canSubmit} onClick={save}>Save</Button>
+            <Button variant="outline" disabled={!dirty || !canSubmit} onClick={save}>Save</Button>
           )}
           {editable && protocol.status === 'draft' && (
             <>
-              <Button variant="secondary" size="L" disabled={!dirty || !canSubmit} onClick={save}>Save Draft</Button>
-              <Button variant="primary" size="L" leadingIcon="solar:shield-check-linear" disabled={!canSubmit} onClick={() => setConfirm('approve')}>Approve</Button>
+              <Button variant="outline" disabled={!dirty || !canSubmit} onClick={save}>Save Draft</Button>
+              <Button leadingIcon="solar:shield-check-linear" disabled={!canSubmit} onClick={() => setConfirm('approve')}>Approve</Button>
             </>
           )}
           <span className={styles.headerDivider} />

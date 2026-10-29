@@ -174,7 +174,7 @@ export function IcdCard({
         </div>
         {!onSave && (
           <ActionButton
-            size="S"
+            size="sm"
             icon="solar:trash-bin-2-linear"
             tooltip="Remove"
             onClick={onRemove}

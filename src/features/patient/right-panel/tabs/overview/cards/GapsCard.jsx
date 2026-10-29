@@ -86,7 +86,7 @@ export function GapsCard({ overview, actions, patient }) {
                       <span className={`${styles.trail} ${styles.aboveStretch}`}>
                         <span className={styles.statusSlot}><Badge tone={g.tone || 'grey'} size="S" label={g.status} /></span>
                         {g.cta
-                          ? <Button variant="secondary" size="S" className={styles.ctaButton} onClick={(e) => run(g, e)}>{g.cta}</Button>
+                          ? <Button variant="outline" size="sm" className={styles.ctaButton} onClick={(e) => run(g, e)}>{g.cta}</Button>
                           : <span className={styles.ctaButton} />}
                       </span>
                     )}

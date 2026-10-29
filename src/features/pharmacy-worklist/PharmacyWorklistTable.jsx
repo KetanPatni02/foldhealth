@@ -174,7 +174,7 @@ export function PharmacyWorklistTable() {
         onHistory={() => showToast('History – coming soon')}
         rightExtras={
           <>
-            <Button variant="secondary" size="S" leadingIcon="solar:users-group-rounded-linear" onClick={() => { fetchCareTeams(); setAutoAssignOpen(true); }}>
+            <Button variant="outline" size="sm" leadingIcon="solar:users-group-rounded-linear" onClick={() => { fetchCareTeams(); setAutoAssignOpen(true); }}>
               Auto-assign
             </Button>
             <SavedFiltersChip list="Pharmacy" />
@@ -285,7 +285,7 @@ export function PharmacyWorklistTable() {
             <Icon name="solar:danger-circle-linear" size={40} color="var(--neutral-200)" />
             <p className={styles.emptyTitle}>Couldn't load the pharmacy worklist</p>
             <p className={styles.emptyText}>The member list didn't load. Check your connection and try again.</p>
-            <Button variant="secondary" size="L" leadingIcon="solar:refresh-linear" onClick={() => fetchMembers()}>Retry</Button>
+            <Button variant="outline" leadingIcon="solar:refresh-linear" onClick={() => fetchMembers()}>Retry</Button>
           </div>
         )}
         {!loading && !loadError && members.length === 0 && (
@@ -300,7 +300,7 @@ export function PharmacyWorklistTable() {
             <Icon name="solar:magnifer-linear" size={40} color="var(--neutral-200)" />
             <p className={styles.emptyTitle}>No results found</p>
             <p className={styles.emptyText}>No pharmacy members match your search or filters.</p>
-            <Button variant="secondary" size="L" onClick={() => { clearFilters(); setSearchQuery(''); setPage(1); }}>Clear search and filters</Button>
+            <Button variant="outline" onClick={() => { clearFilters(); setSearchQuery(''); setPage(1); }}>Clear search and filters</Button>
           </div>
         )}
       </div>

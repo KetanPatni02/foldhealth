@@ -246,7 +246,7 @@ export function FeatureReviewsDrawer({ onClose, focusId = null }) {
       noCloseDivider={isManager}
       headerRight={isManager ? (
         <>
-          <Button variant="secondary" size="S" leadingIcon="solar:add-circle-linear" onClick={() => setForm({ parentId: null })}>
+          <Button variant="outline" size="sm" leadingIcon="solar:add-circle-linear" onClick={() => setForm({ parentId: null })}>
             Add Feature
           </Button>
           <span className={styles.headerDivider} />
@@ -276,7 +276,7 @@ export function FeatureReviewsDrawer({ onClose, focusId = null }) {
             ...(isManager ? [{ key: 'suggested', label: 'Suggested', count: counts.suggested }] : []),
           ]}
           trailing={(
-            <Button variant="ghost" size="S" leadingIcon="solar:sort-vertical-linear" onClick={() => setNewestFirst(v => !v)}>
+            <Button variant="ghost" size="sm" leadingIcon="solar:sort-vertical-linear" onClick={() => setNewestFirst(v => !v)}>
               {newestFirst ? 'Newest first' : 'Oldest first'}
             </Button>
           )}
@@ -568,8 +568,8 @@ function ReviewRow({
         <div><ReviewStatus item={item} childItems={childItems} /></div>
         {suggestion && isManager ? (
           <div className={styles.actions}>
-            <ActionButton size="S" icon="solar:trash-bin-minimalistic-linear" tooltip="Remove from the list" tooltipLeft onClick={() => remove(item.id)} />
-            <Button variant="secondary" size="S" leadingIcon="solar:check-read-linear" onClick={handleKeep}>Keep</Button>
+            <ActionButton size="sm" icon="solar:trash-bin-minimalistic-linear" tooltip="Remove from the list" tooltipLeft onClick={() => remove(item.id)} />
+            <Button variant="outline" size="sm" leadingIcon="solar:check-read-linear" onClick={handleKeep}>Keep</Button>
           </div>
         ) : (
           // Fixed slots (Sign off · divider · comment · divider · open) so each control
@@ -577,7 +577,7 @@ function ReviewRow({
           <div className={styles.actionSlots}>
             <span className={styles.signOffSlot}>
               {showSignOff && (
-                <Button variant="tertiary" size="S" leadingIcon="solar:check-circle-linear" onClick={handleSignOff} disabled={signing}>
+                <Button variant="soft" size="sm" leadingIcon="solar:check-circle-linear" onClick={handleSignOff} disabled={signing}>
                   {signing ? 'Signing…' : 'Sign off'}
                 </Button>
               )}
@@ -586,7 +586,7 @@ function ReviewRow({
             <span>
               {mine && (
                 <ActionButton
-                  size="S"
+                  size="sm"
                   icon="solar:chat-line-linear"
                   tooltip={mine.comment ? 'Edit comment' : 'Add comment'}
                   tooltipLeft
@@ -596,7 +596,7 @@ function ReviewRow({
             </span>
             <span>{mine && showOpen && <span className={styles.headerDivider} />}</span>
             <span>
-              {showOpen && <ActionButton size="S" icon="solar:eye-linear" tooltip="Review: open the section with a comment box" tooltipLeft onClick={onReview} />}
+              {showOpen && <ActionButton size="sm" icon="solar:eye-linear" tooltip="Review: open the section with a comment box" tooltipLeft onClick={onReview} />}
             </span>
           </div>
         )}
@@ -637,7 +637,7 @@ function ReviewerAvatars({ item, editable, onEdit }) {
   if (!people.length) {
     return (
       <ActionButton
-        size="S"
+        size="sm"
         icon="solar:user-plus-linear"
         tooltip="Assign reviewers"
         onClick={e => onEdit(e.currentTarget.getBoundingClientRect())}
@@ -808,7 +808,7 @@ function ReviewDetail({ item, child, myEmail, isManager, commenting, onCommentDo
       {isManager && <ManageLink item={item} />}
       {isManager && !child && item.status === 'approved' && (
         <div>
-          <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" onClick={onAddSubItem}>Add Sub-item</Button>
+          <Button variant="ghost" size="sm" leadingIcon="solar:add-circle-linear" onClick={onAddSubItem}>Add Sub-item</Button>
         </div>
       )}
     </div>
@@ -846,8 +846,8 @@ function CommentBox({ signoff, onDone }) {
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) save(); }}
       />
       <div className={styles.commentActions}>
-        <Button variant="secondary" size="S" onClick={onDone} disabled={saving}>Cancel</Button>
-        <Button variant="primary" size="S" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+        <Button variant="outline" size="sm" onClick={onDone} disabled={saving}>Cancel</Button>
+        <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
       </div>
     </div>
   );

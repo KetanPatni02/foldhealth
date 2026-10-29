@@ -148,7 +148,7 @@ export function EmailComposer({
                 {toolbarActions.map((a, i) => (
                   <Fragment key={a.key}>
                     {i > 0 && <span className={styles.toolbarDivider} />}
-                    <ActionButton size="S" icon={a.icon} tooltip={a.tooltip} onClick={a.onClick} />
+                    <ActionButton size="sm" icon={a.icon} tooltip={a.tooltip} onClick={a.onClick} />
                   </Fragment>
                 ))}
               </div>

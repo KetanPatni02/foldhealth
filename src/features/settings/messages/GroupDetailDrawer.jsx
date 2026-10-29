@@ -101,7 +101,7 @@ export function GroupDetailDrawer() {
   const ctaLabel = isNew ? 'Create' : 'Update';
 
   const headerRight = (
-    <Button variant="primary" size="L" onClick={async () => {
+    <Button onClick={async () => {
       if (!groupName.trim()) { showToast('Group name is required'); return; }
       const userNames = [];
       for (const u of selectedUsers) {

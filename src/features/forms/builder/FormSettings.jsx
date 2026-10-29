@@ -46,7 +46,7 @@ function HiddenFields({ s, set }) {
       )}
       <div className={styles.addRow}>
         <Input className={styles.ctl} value={draft} placeholder="e.g. mrn" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
-        <Button variant="secondary" size="S" onClick={add} disabled={!normHidden(draft)}>Add</Button>
+        <Button variant="outline" size="sm" onClick={add} disabled={!normHidden(draft)}>Add</Button>
       </div>
     </div>
   );
@@ -86,7 +86,7 @@ function EndingsEditor({ s, set }) {
               <Textarea className={styles.ctl} rows={2} value={e.description || ''} placeholder="Your response has been recorded." onChange={(ev) => update(i, { description: ev.target.value })} />
             </div>
           ))}
-          <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" onClick={add}>Add ending</Button>
+          <Button variant="ghost" size="sm" leadingIcon="solar:add-circle-linear" onClick={add}>Add ending</Button>
           <p className={styles.settingHint}>Route to a specific ending from the Logic tab (jump rules).</p>
         </>
       )}

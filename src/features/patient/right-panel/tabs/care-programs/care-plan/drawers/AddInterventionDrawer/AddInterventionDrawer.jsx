@@ -23,8 +23,6 @@ export function AddInterventionDrawer({ intervention, onClose, onSave }) {
   const headerRight = (
     <>
       <Button
-        variant="primary"
-        size="L"
         disabled={!canSave}
         onClick={() => onSave({
           title: title.trim(),

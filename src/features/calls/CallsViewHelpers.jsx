@@ -146,11 +146,11 @@ export function CallsTableRow({ row, onClick }) {
       </td>
       <td className={`${styles.td} ${styles.tdStickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
-          <ActionButton icon="solar:play-circle-linear"   size="L" tooltip="Play recording" />
+          <ActionButton icon="solar:play-circle-linear" tooltip="Play recording" />
           <span className={styles.actionDivider} />
-          <ActionButton icon="solar:document-text-linear" size="L" tooltip="Transcript" />
+          <ActionButton icon="solar:document-text-linear" tooltip="Transcript" />
           <span className={styles.actionDivider} />
-          <ActionButton icon="solar:menu-dots-bold"       size="L" tooltip="More" />
+          <ActionButton icon="solar:menu-dots-bold" tooltip="More" />
         </div>
       </td>
     </tr>

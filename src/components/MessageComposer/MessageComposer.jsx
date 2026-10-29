@@ -101,7 +101,7 @@ export function MessageComposer({
         </div>
         <div className={styles.tools}>
           {tools.map(t => (
-            <ActionButton key={t.key} icon={t.icon} size="S" tooltip={t.tooltip} onClick={t.onClick}>{t.iconNode}</ActionButton>
+            <ActionButton key={t.key} icon={t.icon} size="sm" tooltip={t.tooltip} onClick={t.onClick}>{t.iconNode}</ActionButton>
           ))}
         </div>
       </div>
@@ -197,7 +197,7 @@ function PendingAttachment({ file, onRemove }) {
           <span className={styles.attachMeta}>{fileMeta(file)}</span>
         </span>
         {items.length > 0 && (
-          <ActionButton ref={menuRef} icon="solar:menu-dots-bold" size="S" tooltip="More" onClick={() => setMenuOpen(o => !o)} />
+          <ActionButton ref={menuRef} icon="solar:menu-dots-bold" size="sm" tooltip="More" onClick={() => setMenuOpen(o => !o)} />
         )}
         {menuOpen && (
           <MenuPopover

@@ -179,11 +179,11 @@ function ComponentRow({ comp, onToggle, onEdit, onPreview, onAuditLog, onDuplica
       {/* Actions: Edit | Audit Log | More (3-dot) */}
       <td style={tdStyle} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit" onClick={() => onEdit(comp.id)} />
+          <ActionButton icon="solar:pen-linear" tooltip="Edit" onClick={() => onEdit(comp.id)} />
           <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-          <ActionButton icon="solar:eye-linear" size="L" tooltip="Preview" onClick={() => onPreview(comp.id)} />
+          <ActionButton icon="solar:eye-linear" tooltip="Preview" onClick={() => onPreview(comp.id)} />
           <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-          <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" ref={moreBtnRef} onClick={handleMoreClick} />
+          <ActionButton icon="solar:menu-dots-bold" tooltip="More" ref={moreBtnRef} onClick={handleMoreClick} />
         </div>
         {showMenu && createPortal(
           <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}>
@@ -255,7 +255,7 @@ function PreviewDrawer({ comp, onClose }) {
                 <Icon name="solar:link-round-linear" size={12} color="var(--status-warning)" />
                 External Content Provided by Your Org
               </div>
-              <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh preview" onClick={() => setIframeKey(k => k + 1)} />
+              <ActionButton icon="solar:refresh-linear" size="sm" tooltip="Refresh preview" onClick={() => setIframeKey(k => k + 1)} />
             </div>
           </>
         )}

@@ -14,8 +14,9 @@ export default {
   },
   argTypes: {
     icon: { control: 'text', description: 'Solar icon name' },
-    size: { control: 'select', options: ['S', 'L', 'XL'], description: 'S=16px, L=20px, XL=32px icon' },
-    state: { control: 'select', options: ['active', 'disabled', 'error'] },
+    size: { control: 'select', options: ['sm', 'md', 'lg'], description: 'sm=16px, md=20px (default), lg=32px icon' },
+    tone: { control: 'select', options: ['neutral', 'danger'], description: 'danger paints the icon red, for destructive actions' },
+    disabled: { control: 'boolean' },
     tooltip: { control: 'text' },
     notification: { control: 'boolean', description: 'Orange notification badge' },
     count: { control: 'text', description: 'Badge count text' },
@@ -26,5 +27,19 @@ export default {
 };
 
 export const Playground = {
-  args: { icon: 'custom:filter', size: 'L', tooltip: 'Filter', notification: false, dot: false, chevron: false },
+  args: { icon: 'custom:filter', size: 'md', tooltip: 'Filter', notification: false, dot: false, chevron: false },
+};
+
+/** Each size in each tone, plus disabled. */
+export const Matrix = {
+  parameters: { controls: { disable: true } },
+  render: () => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, max-content)', gap: 'var(--space-4)', alignItems: 'center' }}>
+      {['sm', 'md', 'lg'].map(size => [
+        <ActionButton key={`${size}-n`} icon="solar:pen-linear" size={size} tooltip={`${size} neutral`} />,
+        <ActionButton key={`${size}-d`} icon="solar:trash-bin-trash-linear" size={size} tone="danger" tooltip={`${size} danger`} />,
+        <ActionButton key={`${size}-x`} icon="solar:pen-linear" size={size} disabled tooltip={`${size} disabled`} />,
+      ])}
+    </div>
+  ),
 };

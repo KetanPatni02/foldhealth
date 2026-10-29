@@ -52,7 +52,7 @@ export function ScheduleDrawerBookingForm(props) {
   return (
     <Drawer title="Schedule Appointment" onClose={onClose} noCloseDivider headerRight={
       <>
-        <Button variant="primary" size="L" disabled={!canSchedule} onClick={handleSchedule}>Schedule</Button>
+        <Button disabled={!canSchedule} onClick={handleSchedule}>Schedule</Button>
         <span className={styles.headerDivider} />
       </>
     } bodyClassName={styles.drawerBody}>

@@ -45,7 +45,7 @@ function Section({ title, actionIcon = 'solar:pen-linear', onEdit, children }) {
           />
         </button>
         {onEdit && (
-          <ActionButton icon={actionIcon} size="S" tooltip={`Edit ${title.toLowerCase()}`} onClick={onEdit} />
+          <ActionButton icon={actionIcon} size="sm" tooltip={`Edit ${title.toLowerCase()}`} onClick={onEdit} />
         )}
       </div>
       <Collapse open={!collapsed}>
@@ -207,7 +207,7 @@ export function ProfileTab({ patient }) {
         />
         <ActionButton
           icon="solar:pen-linear"
-          size="S"
+          size="sm"
           tooltip={view === 'insurance' ? 'Edit insurance' : view === 'preferences' ? 'Edit preferences' : 'Edit profile'}
           onClick={() => (view === 'preferences' ? setPrefsOpen(true) : openEdit(view === 'insurance' ? 'insurance' : 'basic', patient))}
         />

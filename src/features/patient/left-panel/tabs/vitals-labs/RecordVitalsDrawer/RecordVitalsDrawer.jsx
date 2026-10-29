@@ -91,7 +91,7 @@ export function RecordVitalsDrawer({ patientId, history = {}, onClose }) {
       title="Record New Vitals"
       onClose={onClose}
       dismissed={closing}
-      primaryAction={<Button variant="primary" size="L" disabled={!canRecord} onClick={record}>Record</Button>}
+      primaryAction={<Button disabled={!canRecord} onClick={record}>Record</Button>}
     >
       <div className={styles.body}>
         <div className={styles.onRow}>
