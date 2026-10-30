@@ -45,6 +45,20 @@ const iso = (d) => (d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.get
 const daysAgo = (d, today) => Math.floor((today - d) / 86400000);
 const num = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 10) / 10));
 
+/** Longest care manager description UnityAI plans from. */
+export const DESCRIPTION_MAX = 1000;
+
+/**
+ * The care manager's plain-English description of the patient, added as one
+ * more citable fact (kind 'description'). Used when the record has nothing to
+ * plan from, so the plan rests on what the care manager reported.
+ */
+export function withDescription(facts, description) {
+  const text = clip(description, DESCRIPTION_MAX);
+  if (!text) return facts;
+  return [...facts, { id: `F${facts.length + 1}`, kind: 'description', text, date: null }];
+}
+
 /**
  * The patient's inputs as citable facts: [{ id: 'F1', kind, text, date }].
  *   problems        patient_problems rows { title, status }
@@ -52,8 +66,9 @@ const num = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 10) 
  *   responses       form_responses rows for the patient { form_id, answers, … }
  *   formNames       Map form id → name
  *   barriers        open barriers already on the patient's plans { title, program }
+ *   profileTags     condition tags on the patient profile (p360_profiles.condition_tags)
  */
-export function buildPatientFacts({ problems = [], clinicalEvents = [], responses = [], formNames = new Map(), barriers = [] }, today = new Date()) {
+export function buildPatientFacts({ problems = [], clinicalEvents = [], responses = [], formNames = new Map(), barriers = [], profileTags = [] }, today = new Date()) {
   const facts = [];
   const add = (kind, text, date = null) => {
     if (facts.length < MAX_FACTS && text) facts.push({ id: `F${facts.length + 1}`, kind, text: clip(text, 220), date: iso(date) });
@@ -73,6 +88,14 @@ export function buildPatientFacts({ problems = [], clinicalEvents = [], response
     seen.add(norm(label));
     const d = toDate(e.effective_date);
     add('condition', `${label} (diagnosed${d ? ` ${fmt(d)}` : ''})`, d);
+  }
+
+  // Condition tags on the patient profile ("Chronic Pain", "Needs
+  // Transportation"), unless the record already names them.
+  for (const tag of profileTags) {
+    if (typeof tag !== 'string' || !tag.trim() || seen.has(norm(tag))) continue;
+    seen.add(norm(tag));
+    add('profile', `${tag.trim()} (patient profile)`);
   }
 
   // Lab trends: each lab's series, latest first, with its direction.
@@ -235,6 +258,9 @@ export function buildIndividualizedPrompt({ facts, templates, catalog, programNa
     'Rules:',
     ...pick,
     '- Reuse the LIBRARY: when an item means the same as a library entry, return its id as libraryId and its exact title. Only use libraryId null for something the library lacks.',
+    ...(facts.some(f => f.kind === 'description')
+      ? ['- A fact of kind "description" is the care manager\'s own account of the patient, not yet in the record. Plan from it and cite it, but do not add diagnoses, lab values or dates it does not state.']
+      : []),
     '- Every item must cite at least one fact id from FACTS that shows why this patient needs it, and give a one-sentence rationale that refers to those facts. Never cite a fact that does not support the item. Do not invent data: no dates, lab values, diagnoses or targets that are not in FACTS.',
     '- Link each intervention to the goal it serves by goalTitle (exactly as you titled the goal), and each barrier to the goals it blocks by goalTitles.',
     '- summary: one plain sentence describing the plan\'s focus for this patient.',

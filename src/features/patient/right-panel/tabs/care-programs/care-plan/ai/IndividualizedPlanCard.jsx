@@ -1,25 +1,36 @@
 import { Button } from '../../../../../../../components/Button/Button';
 import { UnityIcon } from '../../../../../../../components/UnityIcon/UnityIcon';
 import { TableSkeleton } from '../../../../../../../components/TableSkeleton/TableSkeleton';
+import { UnityPromptField } from '../../../../../../../components/UnityPromptField/UnityPromptField';
+import { DESCRIPTION_MAX } from '../lib/individualizedPlan';
 import styles from './IndividualizedPlanCard.module.css';
+
+const DESCRIBE_EXAMPLE = '68-year-old with type 2 diabetes and high blood pressure, lives alone, often misses doses and has no transport to appointments.';
 
 /**
  * The recommended care plan surface:
  *   'start'    an empty plan: recommend one (automation-matched templates
  *              merged by UnityAI), or start from a template
+ *   'describe' the record has nothing to plan from: the care manager
+ *              describes the patient and UnityAI drafts from that
  *   'drafting' matching templates and drafting
  *   'review'   recommended items awaiting approval: approve, or discard
  */
-export function IndividualizedPlanCard({ state, pending = 0, templates = [], error, onDraft, onUseTemplate, onReviewAll, onDiscard, busy = false }) {
+export function IndividualizedPlanCard({
+  state, pending = 0, templates = [], error, onDraft, onUseTemplate, onReviewAll, onDiscard, busy = false,
+  description = '', onDescriptionChange, onCancel, fromDescription = false,
+}) {
   if (state === 'drafting') {
     return (
       <div className={styles.card} role="status" aria-live="polite">
         <span className={styles.title}>
           <UnityIcon size={16} color="var(--primary-300)" />
-          Recommending a care plan…
+          {fromDescription ? 'Drafting a care plan from your description…' : 'Recommending a care plan…'}
         </span>
         <span className={styles.text}>
-          Matching this patient to your care plan automations, then merging the matched templates into one plan tailored to their conditions, lab trends, recent events, assessments and barriers.
+          {fromDescription
+            ? 'Turning your description into goals, interventions and barriers, using your care plan library first.'
+            : 'Matching this patient to your care plan automations, then merging the matched templates into one plan tailored to their conditions, lab trends, recent events, assessments and barriers.'}
         </span>
         <TableSkeleton rows={4} />
       </div>
@@ -42,6 +53,36 @@ export function IndividualizedPlanCard({ state, pending = 0, templates = [], err
           <Button variant="outline" size="sm" disabled={busy} onClick={onDiscard}>Discard</Button>
           <Button size="sm" disabled={busy} onClick={onReviewAll}>Approve Plan</Button>
         </div>
+      </div>
+    );
+  }
+  if (state === 'describe') {
+    return (
+      <div className={styles.card}>
+        <span className={styles.title}>Describe this patient</span>
+        <span className={styles.text}>
+          This patient’s profile and record have nothing UnityAI can plan from yet: no conditions, condition tags, labs, events, assessments or barriers. Describe the patient and what the care plan should focus on, and UnityAI drafts it. Every item cites your description and stays flagged until you approve the plan.
+        </span>
+        <UnityPromptField
+          label="Describe the patient"
+          value={description}
+          onChange={onDescriptionChange}
+          onSubmit={onDraft}
+          placeholder="Conditions, recent events, what gets in the way, and what the plan should focus on"
+          example={DESCRIBE_EXAMPLE}
+          actionLabel="Generate Care Plan"
+          error={error}
+          hint="UnityAI uses your care plan library first. Your description is kept as the evidence behind each item."
+          maxLength={DESCRIPTION_MAX}
+          minLength={20}
+          rows={4}
+        />
+        {(onUseTemplate || onCancel) && (
+          <div className={styles.actions}>
+            {onUseTemplate && <Button variant="outline" onClick={onUseTemplate}>Use Template</Button>}
+            {onCancel && <Button variant="ghost" onClick={onCancel}>Cancel</Button>}
+          </div>
+        )}
       </div>
     );
   }
