@@ -1,8 +1,76 @@
-import { useEditor, useEditorState, EditorContent } from '@tiptap/react';
+import { useEffect, useRef, useState } from 'react';
+import { useEditor, useEditorState, EditorContent, Mark, mergeAttributes } from '@tiptap/react';
 // Named import: the default export doesn't survive every CommonJS interop.
 import { StarterKit } from '@tiptap/starter-kit';
 import { Placeholder } from '@tiptap/extensions';
 import { BoldIcon, ItalicIcon, UnderlineIcon, StrikeIcon, BulletListIcon, OrderedListIcon, LinkIcon, CodeIcon } from './icons';
+
+// Inline color mark: a <span style="color: …"> around selected text. Built as
+// its own Mark instead of pulling @tiptap/extension-text-style + extension-color
+// so the kit stays dependency-light.
+const TextColor = Mark.create({
+  name: 'textColor',
+  addOptions: () => ({ HTMLAttributes: {} }),
+  addAttributes() {
+    return {
+      color: {
+        default: null,
+        parseHTML: (el) => el.style.color || null,
+        renderHTML: (attrs) => (attrs.color ? { style: `color: ${attrs.color}` } : {}),
+      },
+    };
+  },
+  parseHTML: () => [{ style: 'color', getAttrs: (v) => (v ? { color: v } : false) }],
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0];
+  },
+  addCommands() {
+    return {
+      setTextColor: (color) => ({ chain }) => chain().setMark(this.name, { color }).run(),
+      unsetTextColor: () => ({ chain }) => chain().unsetMark(this.name).run(),
+    };
+  },
+});
+
+// Palette: readable on both light and dark surfaces, generic enough that no
+// mark reads as a brand lift. "Default" removes the mark entirely.
+const COLOR_SWATCHES = [
+  { key: 'default', label: 'Default', value: null },
+  { key: 'accent', label: 'Accent', value: 'var(--rk-accent)' },
+  { key: 'red', label: 'Red', value: '#e5484d' },
+  { key: 'orange', label: 'Orange', value: '#f76b15' },
+  { key: 'green', label: 'Green', value: '#30a46c' },
+  { key: 'blue', label: 'Blue', value: '#3b82f6' },
+];
+
+function ColorIcon({ swatch, ...rest }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...rest}
+    >
+      <path d="M6 18 L12 5 L18 18" />
+      <path d="M8.3 13.5 L15.7 13.5" />
+      <rect
+        x="4.5"
+        y="20"
+        width="15"
+        height="2.4"
+        rx="1.2"
+        fill={swatch || 'currentColor'}
+        stroke="none"
+      />
+    </svg>
+  );
+}
 
 const imagesIn = (list) => [...(list || [])].filter(f => f.type.startsWith('image/'));
 
@@ -36,6 +104,7 @@ export function RichTextEditor({ placeholder, onChange, onFiles, onSubmit, initi
         link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
       }),
       Placeholder.configure({ placeholder }),
+      TextColor,
     ],
     editorProps: {
       attributes: { class: 'rk-editor-content', 'aria-label': 'Comment' },
@@ -76,8 +145,20 @@ export function RichTextEditor({ placeholder, onChange, onFiles, onSubmit, initi
       orderedList: e.isActive('orderedList'),
       link: e.isActive('link'),
       code: e.isActive('code'),
+      textColor: e.getAttributes('textColor')?.color || null,
     } : {}),
   }) || {};
+
+  const [colorOpen, setColorOpen] = useState(false);
+  const colorRef = useRef(null);
+  useEffect(() => {
+    if (!colorOpen) return undefined;
+    const onDown = (e) => {
+      if (colorRef.current && !colorRef.current.contains(e.target)) setColorOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [colorOpen]);
 
   if (!editor) return null;
 
@@ -103,6 +184,12 @@ export function RichTextEditor({ placeholder, onChange, onFiles, onSubmit, initi
     ['code', f.code, CodeIcon, run(c => c.toggleCode())],
   ];
 
+  const setColor = (value) => () => {
+    if (value == null) editor.chain().focus().unsetTextColor().run();
+    else editor.chain().focus().setTextColor(value).run();
+    setColorOpen(false);
+  };
+
   return (
     <div className={className ? `rk-editor ${className}` : 'rk-editor'}>
       <div className="rk-format-bar" role="toolbar" aria-label="Formatting">
@@ -120,6 +207,36 @@ export function RichTextEditor({ placeholder, onChange, onFiles, onSubmit, initi
             <Glyph />
           </button>
         ))}
+        <div className="rk-color-picker" ref={colorRef}>
+          <button
+            type="button"
+            className={`rk-format-btn${colorOpen ? ' rk-format-btn-on' : ''}`}
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => setColorOpen(v => !v)}
+            aria-label={f.color || 'Text color'}
+            aria-expanded={colorOpen}
+            title={f.color || 'Text color'}
+          >
+            <ColorIcon swatch={active.textColor} />
+          </button>
+          {colorOpen && (
+            <div className="rk-color-pop" role="menu" aria-label={f.color || 'Text color'}>
+              {COLOR_SWATCHES.map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  role="menuitem"
+                  className={`rk-color-swatch${s.value == null ? ' rk-color-swatch--default' : ''}`}
+                  style={s.value ? { color: s.value } : undefined}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={setColor(s.value)}
+                  aria-label={s.label}
+                  title={s.label}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <EditorContent editor={editor} className="rk-editor-scroll" />
     </div>

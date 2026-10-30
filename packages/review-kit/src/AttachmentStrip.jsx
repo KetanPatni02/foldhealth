@@ -3,14 +3,14 @@ import { CloseIcon } from './icons';
 
 // The file's preview URL lives only while its image is mounted, so the blob
 // is freed when the image goes away.
-export function BlobImage({ file, alt, className }) {
+export function BlobImage({ file, alt, className, style }) {
   const img = useRef(null);
   useEffect(() => {
     const url = URL.createObjectURL(file);
     img.current.src = url;
     return () => URL.revokeObjectURL(url);
   }, [file]);
-  return <img ref={img} alt={alt} className={className} />;
+  return <img ref={img} alt={alt} className={className} style={style} />;
 }
 
 /**
@@ -18,7 +18,7 @@ export function BlobImage({ file, alt, className }) {
  * scrolls sideways and a new attachment scrolls into view as it's added.
  * Clicking a thumbnail opens it.
  */
-export function AttachmentStrip({ items, onOpen, onRemove, labelFor, labels, className }) {
+export function AttachmentStrip({ items, onOpen, onRemove, labelFor, labels, className, hiddenId }) {
   const list = useRef(null);
   const count = items.length;
   const lastCount = useRef(count);
@@ -35,7 +35,7 @@ export function AttachmentStrip({ items, onOpen, onRemove, labelFor, labels, cla
     <div className={className ? `rk-strip ${className}` : 'rk-strip'}>
       <ul className="rk-strip-list" ref={list} aria-label={labels.attachments}>
         {items.map(a => (
-          <li key={a.id} className="rk-thumb">
+          <li key={a.id} className="rk-thumb" style={{ viewTransitionName: a.id === hiddenId ? undefined : `rk-att-${a.id}` }}>
             <button type="button" className="rk-thumb-open" onClick={() => onOpen(a.id)} title={labelFor(a)} aria-label={labels.openImage(labelFor(a))}>
               <BlobImage file={a.file} alt="" />
               {a.annotated && <span className="rk-thumb-mark" aria-hidden="true" />}

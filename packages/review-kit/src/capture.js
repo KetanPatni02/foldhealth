@@ -11,71 +11,39 @@ export function captureElement(el) {
   return snapdom.toBlob(el, { format: 'png', exclude: EXCLUDE, dpr: pixelRatio() });
 }
 
-const isVisible = (el) => {
-  if (!(el instanceof HTMLElement) || el.matches(EXCLUDE) || el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return false;
-  const cs = getComputedStyle(el);
-  if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
-  const r = el.getBoundingClientRect();
-  return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < window.innerHeight && r.left < window.innerWidth;
-};
-
-const coversViewport = (el) => {
-  const r = el.getBoundingClientRect();
-  const w = Math.min(r.right, window.innerWidth) - Math.max(r.left, 0);
-  const h = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
-  return w * h >= 0.9 * window.innerWidth * window.innerHeight;
-};
-
-// What's on screen, as layers to draw in order. DOM-to-image renderers lose
-// full-height app shells (a 100vh flex container with overflow hidden comes
-// out with an empty main column), while each pane renders fine on its own.
-// So: walk down from <body> through single-child wrappers to the shell,
-// capture the shell's visible panes, then anything portalled outside it
-// (drawers, modals, toasts) on top.
-function viewportLayers() {
-  const path = [document.body];
-  let shell = document.body;
-  // The first full-screen child at each level is the shell; full-screen
-  // siblings after it (a drawer's backdrop, a modal) are overlays.
-  for (let next; (next = [...shell.children].find(el => isVisible(el) && coversViewport(el)));) {
-    shell = next;
-    path.push(shell);
-  }
-  const panes = shell === document.body ? [] : [...shell.children].filter(isVisible);
-  const paneSet = new Set(panes);
-  const overlays = path.flatMap((node, i) => [...node.children]
-    .filter(child => child !== path[i + 1] && !paneSet.has(child) && isVisible(child)));
-  return { shell, layers: panes.length ? [...panes, ...overlays] : [shell, ...overlays] };
-}
-
 /** PNG of what's on screen right now. */
 export async function captureViewport() {
   const dpr = pixelRatio();
   const width = window.innerWidth;
   const height = window.innerHeight;
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(width * dpr);
-  canvas.height = Math.round(height * dpr);
-  const ctx = canvas.getContext('2d');
 
-  const { shell, layers } = viewportLayers();
-  const bg = [shell, document.body, document.documentElement]
+  // One capture of the whole document, then crop to the viewport. Capturing
+  // panes individually and compositing them (an older workaround for a flex
+  // layout quirk) risks drawing the same subtree twice when snapdom includes
+  // its parent context, so the output doubles up headings and controls.
+  const shot = await snapdom.toCanvas(document.documentElement, { exclude: EXCLUDE, dpr });
+
+  const out = document.createElement('canvas');
+  out.width = Math.round(width * dpr);
+  out.height = Math.round(height * dpr);
+  const ctx = out.getContext('2d');
+
+  const bg = [document.body, document.documentElement]
     .map(el => getComputedStyle(el).backgroundColor)
     .find(c => c && c !== 'transparent' && c !== 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = bg || '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, out.width, out.height);
 
-  // Capture the layers together, then draw them in stacking order.
-  const shots = await Promise.all(layers.map(async (el) => {
-    const r = el.getBoundingClientRect();
-    return { r, canvas: await snapdom.toCanvas(el, { exclude: EXCLUDE, dpr }) };
-  }));
-  for (const { r, canvas: shot } of shots) {
-    ctx.drawImage(shot, r.left * dpr, r.top * dpr, r.width * dpr, r.height * dpr);
-  }
+  // Crop at the current scroll offset so the output matches what the user
+  // sees, not the top of the page.
+  const sx = Math.round(window.scrollX * dpr);
+  const sy = Math.round(window.scrollY * dpr);
+  const sw = Math.round(width * dpr);
+  const sh = Math.round(height * dpr);
+  ctx.drawImage(shot, sx, sy, sw, sh, 0, 0, out.width, out.height);
 
   return new Promise((resolve, reject) => {
-    canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('Screenshot failed'))), 'image/png');
+    out.toBlob(blob => (blob ? resolve(blob) : reject(new Error('Screenshot failed'))), 'image/png');
   });
 }
 

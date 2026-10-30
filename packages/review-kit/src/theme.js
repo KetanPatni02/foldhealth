@@ -77,7 +77,7 @@ export const DEFAULT_LABELS = {
   sent: (n) => (n > 1 ? `Feedback sent (${n} points).` : 'Feedback sent.'),
   point: 'Point',
   pointTitle: (n) => `Point ${n}`,
-  newPointHint: 'Start a new point (for the next screen or section)',
+  newPointHint: 'Add new point',
   deletePoint: (n) => `Delete point ${n}`,
   placeholder: 'Leave a comment. Paste or drop images and GIFs here to attach them.',
   pointPlaceholder: (n) => `Point ${n}: what should change here? Drop images here too.`,
@@ -102,6 +102,8 @@ export const DEFAULT_LABELS = {
   done: 'Done',
   cancel: 'Cancel',
   zoom: 'Zoom',
+  zoomIn: 'Zoom in',
+  zoomOut: 'Zoom out',
   textPlaceholder: 'Type, then press Enter',
   tools: {
     select: 'Select and move', rect: 'Rectangle', highlight: 'Highlight', ellipse: 'Ellipse',
@@ -113,6 +115,7 @@ export const DEFAULT_LABELS = {
   formatting: {
     bold: 'Bold', italic: 'Italic', underline: 'Underline', strike: 'Strikethrough',
     bulletList: 'Bulleted list', orderedList: 'Numbered list', link: 'Link', code: 'Code',
+    color: 'Text color',
   },
 };
 

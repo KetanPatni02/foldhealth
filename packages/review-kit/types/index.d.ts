@@ -153,6 +153,24 @@ export interface ReviewSubmission {
   context: PageContext & { userAgent: string; createdAt: string };
 }
 
+/** Any component that renders an svg glyph at currentColor. The kit's own
+ *  outline icons match this. Host apps can swap any slot by passing their
+ *  own. */
+export type IconComponent = (
+  props: { width?: number | string; height?: number | string; className?: string; [key: string]: unknown },
+) => ReactElement;
+
+export interface ReviewKitIcons {
+  select?: IconComponent;
+  screenshot?: IconComponent;
+  upload?: IconComponent;
+  close?: IconComponent;
+  plus?: IconComponent;
+  collapse?: IconComponent;
+  chevron?: IconComponent;
+  grip?: IconComponent;
+}
+
 export interface ReviewDockProps {
   /** What is being reviewed. */
   title: string;
@@ -166,14 +184,70 @@ export interface ReviewDockProps {
   /** Per-file upload limit in MB. Default 10. */
   maxFileSizeMb?: number;
   theme?: ReviewKitTheme;
+  /** Force a color mode on the kit regardless of what the host does. */
+  colorMode?: 'light' | 'dark' | 'auto';
   labels?: ReviewKitLabelOverrides;
   classNames?: ReviewKitClassNames;
   className?: string;
+  /** Swap any icon slot with your own component. */
+  icons?: ReviewKitIcons;
   /** Extra content under the editor. */
   children?: ReactNode;
 }
 
 export declare function ReviewDock(props: ReviewDockProps): ReactElement | null;
+
+/** A single row in the Feedback drawer. The host owns the shape — these are
+ *  the fields the drawer renders when present. */
+export interface FeedbackItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  /** Short label for the section this review is for (e.g. "Onboarding"). */
+  target?: string | null;
+  /** Which tab the item belongs to. */
+  status: 'needs-review' | 'in-progress' | 'reviewed' | string;
+  requestedBy?: string | null;
+  /** Thumbnail URLs shown as a mini-strip. */
+  previews?: string[];
+  pointCount?: number;
+  attachmentCount?: number;
+}
+
+export interface FeedbackTab {
+  id: string;
+  label: string;
+}
+
+export interface FeedbackDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  items: FeedbackItem[];
+  /** Clicked a card. Host navigates to the item's target and opens ReviewDock. */
+  onOpenItem?: (item: FeedbackItem) => void;
+  /** Clicked the accent "Start a review" pill in the header. Host opens an
+   *  ad-hoc ReviewDock (not tied to any item). */
+  onStartReview?: () => void;
+  title?: string;
+  tabs?: FeedbackTab[];
+  defaultTab?: string;
+  theme?: ReviewKitTheme;
+  colorMode?: 'light' | 'dark' | 'auto';
+  labels?: ReviewKitLabelOverrides;
+  className?: string;
+  classNames?: { root?: string; panel?: string };
+}
+
+export declare function FeedbackDrawer(props: FeedbackDrawerProps): ReactElement | null;
+
+export interface FeedbackTriggerProps {
+  count?: number;
+  onClick?: () => void;
+  label?: string;
+  className?: string;
+}
+
+export declare function FeedbackTrigger(props: FeedbackTriggerProps): ReactElement;
 
 export interface PickElementOptions {
   /** Extra elements to skip. */

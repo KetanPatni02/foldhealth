@@ -1,4 +1,6 @@
-/* Fold theme for review-dock: map the kit's variables onto Fold tokens. */
+/* Fold theme for review-dock: map the kit's type, ink and brand colors onto
+   Fold tokens. Surfaces, radius and shadow stay the kit's own so its glass
+   look comes through. */
 :root {
   --rk-font-xs: var(--font-xs);
   --rk-font-sm: var(--font-sm);
@@ -9,12 +11,6 @@
   --rk-space-3: var(--space-3);
   --rk-space-4: var(--space-4);
 
-  --rk-radius-sm: var(--space-1);
-  --rk-radius: var(--space-3);
-
-  --rk-bg: var(--neutral-0);
-  --rk-bg-subtle: var(--neutral-50);
-  --rk-border: var(--neutral-150);
   --rk-text: var(--neutral-500);
   --rk-text-muted: var(--neutral-300);
   --rk-accent: var(--primary-300);
@@ -24,8 +20,6 @@
   --rk-warning: var(--status-warning);
   --rk-success: var(--status-success);
 
-  /* The strongest shadow token: the box floats over arbitrary screens. */
-  --rk-shadow: var(--shadow-tooltip);
   --rk-overlay: var(--surface-overlay);
 
   /* Just under Fold's drawers (400), so Signoff and other drawers cover the
