@@ -1,4 +1,5 @@
 import { Button } from '../../../../../../../components/Button/Button';
+import { Icon } from '../../../../../../../components/Icon/Icon';
 import { UnityIcon } from '../../../../../../../components/UnityIcon/UnityIcon';
 import { TableSkeleton } from '../../../../../../../components/TableSkeleton/TableSkeleton';
 import styles from './IndividualizedPlanCard.module.css';
@@ -9,8 +10,32 @@ import styles from './IndividualizedPlanCard.module.css';
  *              merged by UnityAI), or start from a template
  *   'drafting' matching templates and drafting
  *   'review'   recommended items awaiting approval: approve, or discard
+ *   'suggested' a completed assessment suggested templates (`suggestions`,
+ *              [{ id, templateName, reason }]): recommend a plan from them,
+ *              or dismiss them
  */
-export function IndividualizedPlanCard({ state, pending = 0, templates = [], error, onDraft, onUseTemplate, onReviewAll, onDiscard, busy = false }) {
+export function IndividualizedPlanCard({ state, pending = 0, templates = [], suggestions = [], error, onDraft, onUseTemplate, onReviewAll, onDiscard, busy = false }) {
+  if (state === 'suggested') {
+    return (
+      <div className={`${styles.card} ${styles.review}`} role="status">
+        <div className={styles.row}>
+          <Icon name="solar:clipboard-check-linear" size={16} color="var(--primary-300)" />
+          <div className={styles.copy}>
+            <span className={styles.title}>Suggested by {suggestions.length === 1 ? 'an assessment' : 'assessments'}</span>
+            <ul className={styles.suggestions}>
+              {suggestions.map(s => (
+                <li key={s.id} className={styles.text}><strong>{s.templateName}</strong>: {s.reason}</li>
+              ))}
+            </ul>
+            <span className={styles.text}>UnityAI merges the suggested templates into this plan as recommended items, flagged until you approve them.</span>
+            {error && <span className={styles.error}>{error}</span>}
+          </div>
+          <Button variant="outline" size="sm" disabled={busy} onClick={onDiscard}>Dismiss</Button>
+          <Button size="sm" disabled={busy} leadingIconElement={<UnityIcon size={16} color="currentColor" />} onClick={onDraft}>Recommend Care Plan</Button>
+        </div>
+      </div>
+    );
+  }
   if (state === 'drafting') {
     return (
       <div className={styles.card} role="status" aria-live="polite">

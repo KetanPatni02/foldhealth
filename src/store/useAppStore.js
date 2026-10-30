@@ -82,7 +82,7 @@ import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 import { buildPatientFacts, buildTemplateChoices, draftCounts } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/individualizedPlan';
-import { pendingRecommendation } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanRecommendation';
+import { assessmentSuggestionsFor, pendingRecommendation } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanRecommendation';
 import { buildTemplateCatalog } from '../features/settings/care-plan-library/lib/aiTemplateDraft';
 import { apiFetch } from '../lib/apiFetch';
 import { sdohSocialRisk } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/sdohReport';
@@ -2382,6 +2382,8 @@ export const useAppStore = create((set, get) => ({
   // (form builder Care Plan tab rules, matched by the database trigger in
   // assessment_care_plan_suggestions_migration.sql). Pending only; a missing
   // table reads as none.
+  // Cached per patient (store id) for the care plan's suggestion card.
+  assessmentCarePlanSuggestions: {},
   fetchAssessmentCarePlanSuggestions: async (patientId) => {
     if (!patientId) return [];
     const id = String(resolvePatientStoreId(get(), patientId));
@@ -2392,7 +2394,7 @@ export const useAppStore = create((set, get) => ({
       if (!['42P01', 'PGRST205'].includes(error.code)) console.warn('fetchAssessmentCarePlanSuggestions:', error.message);
       return [];
     }
-    return (data || []).map(r => ({
+    const list = (data || []).map(r => ({
       id: r.id,
       templateId: String(r.template_id),
       formId: r.form_id,
@@ -2402,16 +2404,32 @@ export const useAppStore = create((set, get) => ({
       reason: r.reason,
       createdAt: r.created_at,
     }));
+    set(s => ({ assessmentCarePlanSuggestions: { ...s.assessmentCarePlanSuggestions, [id]: list } }));
+    return list;
   },
-  // status: 'accepted' (the template was applied) | 'dismissed'.
-  resolveAssessmentCarePlanSuggestions: async (ids, status) => {
-    if (!ids?.length) return true;
+  // Resolve this program's pending suggestions, for the given templates or
+  // all of them: 'accepted' (the template was applied) | 'dismissed'.
+  resolveAssessmentSuggestionsFor: async (patientId, program, status, templateIds = null) => {
+    const id = String(resolvePatientStoreId(get(), patientId));
+    const cached = get().assessmentCarePlanSuggestions[id] || await get().fetchAssessmentCarePlanSuggestions(patientId);
+    const only = templateIds && new Set(templateIds.map(String));
+    const ids = assessmentSuggestionsFor(cached, program.code)
+      .filter(s => !only || only.has(s.templateId)).map(s => s.id);
+    if (!ids.length) return true;
     const resolvedBy = await get()._resolveUpdatedBy();
     const { error } = await supabase.from('assessment_care_plan_suggestions')
       .update({ status, resolved_by: resolvedBy || null, resolved_at: new Date().toISOString() })
       .in('id', ids);
-    if (error) console.warn('resolveAssessmentCarePlanSuggestions:', error.message);
-    return !error;
+    if (error) {
+      console.warn('resolveAssessmentSuggestionsFor:', error.message);
+      return false;
+    }
+    const done = new Set(ids);
+    set(s => ({ assessmentCarePlanSuggestions: {
+      ...s.assessmentCarePlanSuggestions,
+      [id]: (s.assessmentCarePlanSuggestions[id] || []).filter(x => !done.has(x.id)),
+    } }));
+    return true;
   },
 
   // One send record per form (Send Assessment drawer). Best effort: the
@@ -3259,6 +3277,7 @@ export const useAppStore = create((set, get) => ({
     const ids = recommended.map(t => t.id).filter(id => known.has(String(id)));
     const ok = await get().applyPatientCarePlanTemplates(patientId, program, [...prev, ...ids], undefined, {}, { mergeContent: false });
     if (!ok) return false;
+    await get().resolveAssessmentSuggestionsFor(patientId, program, 'accepted', ids);
     await get().setCarePlanRecommendedTemplates(patientId, program, []);
     await get().logCarePlanAudit(patientId, program, {
       entityType: 'plan',
