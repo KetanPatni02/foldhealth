@@ -1,4 +1,4 @@
-/* Settings > Clinical Protocols: library table, upload drawer, review drawer. */
+/* Care Plan Library > Clinical Protocols: library table, upload drawer, review drawer. */
 
 .wrapper { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
 .content { flex: 1; min-height: 0; display: flex; flex-direction: column; }

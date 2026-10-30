@@ -17,7 +17,6 @@ import { isAutomationsTakeover } from '../automations/automationsView';
 import { CarePlanCreateView } from './care-plan-library/create/CarePlanCreateView/CarePlanCreateView';
 import { CarePlanTemplateView } from './care-plan-library/templates';
 import { CareProgramConfigPanel } from './care-program-config/CareProgramConfigPanel';
-import { ClinicalProtocolsPanel } from './clinical-protocols/ClinicalProtocolsPanel';
 import { useAppStore } from '../../store/useAppStore';
 import { useState } from 'react';
 import { PublishVersionDrawer } from './care-plan-library/versions/PublishVersionDrawer';
@@ -47,7 +46,7 @@ function SettingsSubNavSlot({ activeItem, onItemClick }) {
 // queries; a static placeholder costs nothing.
 const IMPLEMENTED = new Set([
   'agents', 'member/leads', 'messages', 'embedded-components',
-  'content', 'care-plan-library', 'care-program-config', 'clinical-protocols', 'billing', 'account', 'calendar', 'automations',
+  'content', 'care-plan-library', 'care-program-config', 'billing', 'account', 'calendar', 'automations',
 ]);
 
 function ComingSoonPanel({ label }) {
@@ -203,8 +202,6 @@ export function SettingsLayout() {
         <AutomationsPanel />
       ) : settingsNavItem === 'care-program-config' ? (
         <CareProgramConfigPanel />
-      ) : settingsNavItem === 'clinical-protocols' ? (
-        <ClinicalProtocolsPanel />
       ) : (
         <AgentsTable />
       )}

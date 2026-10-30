@@ -248,7 +248,6 @@ import { applyOverlay, blockedSignoffs } from '../features/settings/care-plan-li
 import { contentOf as templateContentOf } from '../features/settings/care-plan-library/lib/templateVersions';
 import { effectiveVersion as effectiveTemplateVersion, todayIso as todayIsoDate } from '../features/settings/care-plan-library/lib/templateVersions';
 import { createClinicalProtocolsSlice } from './slices/clinicalProtocolsSlice';
-import { createCarePathwaysSlice } from './slices/carePathwaysSlice';
 
 // patientId → in-flight fetchPatientConsents request.
 const consentFetches = new Map();
@@ -392,7 +391,6 @@ export const useAppStore = create((set, get) => ({
   ...createTemplateVersionsSlice(set, get),
   ...createIpaOverlaysSlice(set, get),
   ...createClinicalProtocolsSlice(set, get),
-  ...createCarePathwaysSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
   // keyed by member id. Falls back to the bundled MONITORING_SEED until
@@ -5480,8 +5478,6 @@ export const useAppStore = create((set, get) => ({
     if (values.renewal) row.renewal = values.renewal;
     // A draft revision of a published template, waiting for approval.
     if (!id && values.replacesTemplateId) row.replaces_template_id = values.replacesTemplateId;
-    // The Fold pathway (and version) a new template was adapted from.
-    if (!id && values.sourcePathway) row.source_pathway = values.sourcePathway;
     // The clinical protocol (and version) a new template was drafted from.
     if (!id && values.sourceProtocol) row.source_protocol = values.sourceProtocol;
     if (!id) {
@@ -5511,10 +5507,6 @@ export const useAppStore = create((set, get) => ({
     if (error && /replaces_template_id/.test(error.message || '') && 'replaces_template_id' in row) {
       const { replaces_template_id: _rt, ...rowWithoutReplaces } = row;
       ({ data, error } = await run(rowWithoutReplaces));
-    }
-    if (error && /source_pathway/.test(error.message || '') && 'source_pathway' in row) {
-      const { source_pathway: _sp, ...rowWithoutPathway } = row;
-      ({ data, error } = await run(rowWithoutPathway));
     }
     if (error && /source_protocol/.test(error.message || '') && 'source_protocol' in row) {
       const { source_protocol: _spr, ...rowWithoutProtocol } = row;

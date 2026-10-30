@@ -12,21 +12,16 @@ import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyStat
 import { IntroCard } from '../../../components/IntroCard/IntroCard';
 import { useAppStore } from '../../../store/useAppStore';
 import { protocolCounts, protocolStatus } from './lib/protocolSchema';
+import { isFoldProtocol } from './lib/foldProtocols';
 import { ProtocolUploadDrawer } from './ProtocolUploadDrawer';
 import { ProtocolReviewDrawer } from './ProtocolReviewDrawer';
 import styles from './ClinicalProtocols.module.css';
 
-const TABS = [
-  { key: 'all', label: 'All Protocols' },
-  { key: 'draft', label: 'Needs Review' },
-  { key: 'active', label: 'Active' },
-  { key: 'archived', label: 'Superseded & Retired' },
-];
-const IN_TAB = {
-  all: () => true,
-  draft: p => p.status === 'draft' || p.status === 'processing' || p.status === 'failed',
-  active: p => p.status === 'active',
-  archived: p => p.status === 'superseded' || p.status === 'retired',
+// FilterChip options are the labels themselves.
+const IN_STATUS = {
+  'Needs Review': p => p.status === 'draft' || p.status === 'processing' || p.status === 'failed',
+  Active: p => p.status === 'active',
+  'Superseded & Retired': p => p.status === 'superseded' || p.status === 'retired',
 };
 
 const COLUMNS = [
@@ -72,16 +67,20 @@ const fmtDay = (iso) => {
   return y && m && d ? `${m}/${d}/${y}` : '—';
 };
 const todayIso = () => new Date().toISOString().slice(0, 10);
-const optionsOf = values => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b)).map(v => ({ value: v, label: v }));
+const STATUS_OPTIONS = Object.keys(IN_STATUS);
+const optionsOf = values => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
 /**
- * Settings > Clinical Protocols: the library of client clinical practice
- * guidance (clinical_protocols). Upload PDFs, Word files or Fold JSON, review
- * each parsed draft, approve it to Active; newer approvals supersede older
- * versions. Built to stay usable with hundreds of protocols: tabs by status,
- * search, condition / program / organization filters, pagination.
+ * Care Plan Library > Clinical Protocols: the library of client clinical
+ * practice guidance (clinical_protocols). Upload PDFs, Word files or Fold
+ * JSON, review each parsed draft, approve it to Active; newer approvals
+ * supersede older versions. Built to stay usable with hundreds of protocols:
+ * search, status / condition / program / organization filters, pagination.
+ *
+ * Rendered as one of the library's tabs, so it draws the library's tab strip
+ * (`tabs`, `activeTab`, `onTabChange`) in its own title bar.
  */
-export function ClinicalProtocolsPanel() {
+export function ClinicalProtocolsPanel({ tabs, activeTab, onTabChange }) {
   const protocols = useAppStore(s => s.clinicalProtocols);
   const loading = useAppStore(s => s.clinicalProtocolsLoading);
   const didFetch = useAppStore(s => s.clinicalProtocolsDidFetch);
@@ -96,7 +95,7 @@ export function ClinicalProtocolsPanel() {
   useEffect(() => { fetchPanelLayouts?.(); }, [fetchPanelLayouts]);
   const setIntroDismissed = dismissed => savePanelLayout(INTRO_KEY, { dismissed });
 
-  const [tab, setTab] = useState('all');
+  const [statusFilter, setStatusFilter] = useState([]);
   const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [conditionFilter, setConditionFilter] = useState([]);
@@ -110,28 +109,28 @@ export function ClinicalProtocolsPanel() {
 
   const programName = useMemo(() => Object.fromEntries((careProgramTypes || []).map(t => [t.code, t.name])), [careProgramTypes]);
   const conditionOptions = useMemo(() => optionsOf(protocols.flatMap(p => p.conditions)), [protocols]);
-  const programOptions = useMemo(() => optionsOf(protocols.flatMap(p => p.programCodes))
-    .map(o => ({ ...o, label: programName[o.value] ? `${programName[o.value]} (${o.value})` : o.value })), [protocols, programName]);
+  const programLabel = useMemo(() => code => (programName[code] ? `${programName[code]} (${code})` : code), [programName]);
+  const programOptions = useMemo(() => optionsOf(protocols.flatMap(p => p.programCodes.map(programLabel))), [protocols, programLabel]);
   const orgOptions = useMemo(() => optionsOf(protocols.map(p => p.organization)), [protocols]);
-  const activeFilters = conditionFilter.length + programFilter.length + orgFilter.length;
+  const activeFilters = statusFilter.length + conditionFilter.length + programFilter.length + orgFilter.length;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const conditions = new Set(conditionFilter);
     const programs = new Set(programFilter);
     const orgs = new Set(orgFilter);
-    const rows = protocols.filter(p => IN_TAB[tab](p)
+    const rows = protocols.filter(p => (!statusFilter.length || statusFilter.some(s => IN_STATUS[s](p)))
       && (!q || `${p.title} ${p.organization} ${p.author} ${p.conditions.join(' ')} ${p.sourceName}`.toLowerCase().includes(q))
       && (!conditions.size || p.conditions.some(c => conditions.has(c)))
-      && (!programs.size || p.programCodes.some(c => programs.has(c)))
+      && (!programs.size || p.programCodes.some(c => programs.has(programLabel(c))))
       && (!orgs.size || orgs.has(p.organization)));
     const dir = sort.dir === 'asc' ? 1 : -1;
     return [...rows].sort((a, b) => String(a[sort.key] || '').localeCompare(String(b[sort.key] || '')) * dir);
-  }, [protocols, tab, search, conditionFilter, programFilter, orgFilter, sort]);
+  }, [protocols, statusFilter, search, conditionFilter, programFilter, programLabel, orgFilter, sort]);
   // Narrowing the list can leave the page past its end.
   const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / perPage)));
   const paged = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
-  // A new tab, search or filter starts from the first page.
+  // A new search or filter starts from the first page.
   const fromFirstPage = setter => (value) => { setter(value); setPage(1); };
 
   const onSort = key => setSort(cur => ({ key, dir: cur.key === key && cur.dir === 'asc' ? 'desc' : 'asc' }));
@@ -146,7 +145,7 @@ export function ClinicalProtocolsPanel() {
         <td className={`${styles.td} ${styles.tdName}`}>
           <span className={styles.nameCell}>
             <button type="button" className={styles.nameLink} onClick={() => setReviewId(p.id)}>{p.title}</button>
-            <span className={styles.nameSub}>{[p.organization, p.version && `v${p.version}`, p.sourceName].filter(Boolean).join(' · ')}</span>
+            <span className={styles.nameSub}>{[p.organization, p.version && `v${p.version}`, !isFoldProtocol(p) && p.sourceName].filter(Boolean).join(' · ')}</span>
           </span>
         </td>
         <td className={styles.td}>{p.conditions.length ? <BadgeRow items={p.conditions} maxLines={2} /> : '—'}</td>
@@ -169,9 +168,9 @@ export function ClinicalProtocolsPanel() {
   return (
     <div className={styles.wrapper}>
       <SectionTitleBar
-        tabs={TABS}
-        activeTab={tab}
-        onTabChange={fromFirstPage(setTab)}
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
         actions={['search', 'filter']}
         onFilter={() => setFiltersOpen(v => !v)}
         filterActive={filtersOpen}
@@ -198,7 +197,7 @@ export function ClinicalProtocolsPanel() {
           <IntroCard
             icon="solar:document-medicine-linear"
             title="What are clinical protocols?"
-            description="Your clients’ clinical practice guidance (BP ranges, medication titration, lab recheck cadence, check-in schedules) turned into structured rules your care team can find, trust and build on."
+            description="Clinical practice guidance (BP ranges, medication titration, lab recheck cadence, check-in schedules) as structured rules your care team can find, trust and build on. Fold’s protocols for common chronic conditions are included; add your clients’ own alongside them."
             items={INTRO_ITEMS}
             onDismiss={() => setIntroDismissed(true)}
           />
@@ -206,6 +205,7 @@ export function ClinicalProtocolsPanel() {
       )}
       {filtersOpen && (
         <div className={styles.filterBar}>
+          <FilterChip label="Status" options={STATUS_OPTIONS} selected={statusFilter} onChange={fromFirstPage(setStatusFilter)} />
           <FilterChip label="Condition" options={conditionOptions} selected={conditionFilter} onChange={fromFirstPage(setConditionFilter)} searchable />
           <FilterChip label="Program" options={programOptions} selected={programFilter} onChange={fromFirstPage(setProgramFilter)} />
           <FilterChip label="Organization" options={orgOptions} selected={orgFilter} onChange={fromFirstPage(setOrgFilter)} searchable />

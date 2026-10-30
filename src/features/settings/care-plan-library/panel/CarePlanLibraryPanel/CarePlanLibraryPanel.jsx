@@ -33,8 +33,7 @@ import { TemplateImportDrawer } from '../../import/TemplateImportDrawer';
 import { TemplateVersionsDrawer } from '../../versions/TemplateVersionsDrawer';
 import { OverlayEditorDrawer } from '../../overlays/OverlayEditorDrawer';
 import { IpaRegistryDrawer } from '../../overlays/IpaRegistryDrawer';
-import { PathwayDrawer } from '../../pathways/PathwayDrawer';
-import { pathwayCounts } from '../../lib/carePathways';
+import { ClinicalProtocolsPanel } from '../../../clinical-protocols/ClinicalProtocolsPanel';
 import { overlaySummary } from '../../lib/ipaOverlays';
 import { todayIso } from '../../lib/templateVersions';
 import { BulkBar } from '../../../../../components/BulkBar/BulkBar';
@@ -43,7 +42,7 @@ import styles from './CarePlanLibraryPanel.module.css';
 
 const CARE_PLAN_TABS = [
   { key: 'template', label: 'Plan Template' },
-  { key: 'pathways', label: 'Fold Pathways' },
+  { key: 'protocols', label: 'Clinical Protocols' },
   { key: 'goals', label: 'Goals Library' },
   { key: 'interventions', label: 'Interventions Library' },
   { key: 'barriers', label: 'Barriers Library' },
@@ -58,7 +57,7 @@ const TAB_META = {
   barriers: { entityLabel: 'Barrier', emptyIcon: 'custom:barrier' },
   drafts: { entityLabel: 'Draft', emptyIcon: 'solar:clipboard-list-linear' },
   overlays: { entityLabel: 'Overlay', emptyIcon: 'solar:layers-linear' },
-  pathways: { entityLabel: 'Pathway', emptyIcon: 'solar:routing-2-linear' },
+  protocols: { entityLabel: 'Protocol', emptyIcon: 'solar:document-medicine-linear' },
 };
 const OVERLAY_COLUMNS = [
   { key: 'template', label: 'Template', sticky: 'left', left: 0, width: 260 },
@@ -67,16 +66,6 @@ const OVERLAY_COLUMNS = [
   { key: 'changes', label: 'What it changes', width: 340 },
   { key: 'updated', label: 'Last Update', width: 200 },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 132 },
-];
-
-const PATHWAY_COLUMNS = [
-  { key: 'pathway', label: 'Pathway', sticky: 'left', left: 0, width: 240 },
-  { key: 'condition', label: 'Condition', width: 180 },
-  { key: 'gbi', label: 'Recommended GBI Set', width: 300 },
-  { key: 'logic', label: 'Decision Logic', width: 280 },
-  { key: 'version', label: 'Version', width: 100 },
-  { key: 'templates', label: 'Templates', width: 120 },
-  { key: 'actions', label: 'Actions', sticky: 'right', width: 100 },
 ];
 
 // The intervention kinds a template can carry — same vocabulary as the goal
@@ -671,44 +660,6 @@ export function CarePlanLibraryPanel() {
       || (ipaById.get(o.ipaId)?.name || '').toLowerCase().includes(q)));
   }, [templateOverlays, templateById, ipaById, searchValue]);
 
-  // Fold pathways: read-only vendor content, filtered by name or condition.
-  const carePathways = useAppStore(s => s.carePathways);
-  const carePathwaysLoaded = useAppStore(s => s.carePathwaysLoaded);
-  const fetchCarePathways = useAppStore(s => s.fetchCarePathways);
-  const [openPathway, setOpenPathway] = useState(null);
-  useEffect(() => { if (activeTab === 'pathways' && !carePathwaysLoaded) fetchCarePathways(); }, [activeTab, carePathwaysLoaded, fetchCarePathways]);
-  const adaptedByPathway = useMemo(() => {
-    const m = new Map();
-    for (const t of allTemplates || []) if (t.sourcePathway?.id) m.set(t.sourcePathway.id, (m.get(t.sourcePathway.id) || 0) + 1);
-    return m;
-  }, [allTemplates]);
-  const filteredPathways = useMemo(() => {
-    const q = searchValue.trim().toLowerCase();
-    return (carePathways || []).filter(p => !q || p.name.toLowerCase().includes(q) || p.condition.toLowerCase().includes(q));
-  }, [carePathways, searchValue]);
-
-  const renderPathwayRow = (p) => {
-    const n = pathwayCounts(p);
-    const used = adaptedByPathway.get(p.id) || 0;
-    return (
-      <tr key={p.id} className={styles.row}>
-        <td className={nameTdClass}>
-          <button type="button" className={styles.nameLink} onClick={() => setOpenPathway(p)}>{p.name}</button>
-        </td>
-        <td className={styles.tdMuted}>{p.condition}</td>
-        <td className={styles.tdMuted}>{`${n.goals} goals • ${n.interventions} interventions • ${n.barriers} barriers`}</td>
-        <td className={styles.tdMuted}>{`${n.thresholds} thresholds • ${n.rules} rules • ${n.cadence} rechecks`}</td>
-        <td><Badge tone="primary" size="S" label={`Fold v${p.version}`} /></td>
-        <td className={styles.tdMuted}>{used ? `${used} template${used === 1 ? '' : 's'}` : 'None yet'}</td>
-        <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
-          <div className={styles.actionCell}>
-            <ActionButton icon="solar:eye-linear" size="sm" tooltip="View" onClick={() => setOpenPathway(p)} />
-          </div>
-        </td>
-      </tr>
-    );
-  };
-
   const renderOverlayRow = (o) => {
     const t = templateById.get(o.templateId);
     const sum = overlaySummary(t, o.overrides);
@@ -787,7 +738,13 @@ export function CarePlanLibraryPanel() {
 
   const meta = TAB_META[activeTab];
   const isTemplateTab = activeTab === 'template' || activeTab === 'drafts';
-  const primaryActionLabel = activeTab === 'pathways' || (activeTab === 'overlays' && !canManageTemplates) ? undefined : `New ${meta.entityLabel}`;
+  const primaryActionLabel = (activeTab === 'overlays' && !canManageTemplates) ? undefined : `New ${meta.entityLabel}`;
+
+  // Protocols have their own search, filters and upload, so the tab hands
+  // the whole pane, title bar included, to the protocols panel.
+  if (activeTab === 'protocols') {
+    return <ClinicalProtocolsPanel tabs={CARE_PLAN_TABS} activeTab={activeTab} onTabChange={handleTabChange} />;
+  }
 
   return (
     <div className={styles.wrapper}>
@@ -816,12 +773,10 @@ export function CarePlanLibraryPanel() {
               Import
             </Button>
           )}
-          {activeTab !== 'pathways' && (
-            <BulkSelectToggle
-              active={bulkMode}
-              onToggle={() => (bulkMode ? exitBulkMode() : setBulkMode(true))}
-            />
-          )}
+          <BulkSelectToggle
+            active={bulkMode}
+            onToggle={() => (bulkMode ? exitBulkMode() : setBulkMode(true))}
+          />
           </>
         )}
       />
@@ -886,23 +841,6 @@ export function CarePlanLibraryPanel() {
             }
             minTableWidth={1100}
           />
-          )
-        )}
-        {activeTab === 'pathways' && (
-          !carePathwaysLoaded ? <TableSkeleton rows={6} /> : (
-            <WorklistShell
-              header={null}
-              columns={PATHWAY_COLUMNS}
-              rows={filteredPathways}
-              renderRow={renderPathwayRow}
-              emptyState={(
-                <div className={styles.emptyState}>
-                  <Icon name="solar:routing-2-linear" size={32} color="var(--neutral-150)" />
-                  <p>No pathways match "<strong>{searchValue.trim()}</strong>".</p>
-                </div>
-              )}
-              minTableWidth={1100}
-            />
           )
         )}
         {activeTab === 'overlays' && (
@@ -1014,7 +952,6 @@ export function CarePlanLibraryPanel() {
         />
       )}
 
-      {openPathway && <PathwayDrawer pathway={openPathway} onClose={() => setOpenPathway(null)} />}
       {versionsFor && <TemplateVersionsDrawer template={versionsFor} onClose={() => setVersionsFor(null)} />}
 
       {overlayEditor && (

@@ -185,8 +185,6 @@ function mapCarePlanTemplateRow(row) {
     approvedAt: row.approved_at || null,
     // Template versioning: the version whose content this row holds.
     currentVersionNumber: row.current_version_number ?? null,
-    // The Fold pathway it was adapted from: { id, version, name } (care_pathways migration).
-    sourcePathway: row.source_pathway || null,
     sourceProtocol: row.source_protocol || null,
   };
 }

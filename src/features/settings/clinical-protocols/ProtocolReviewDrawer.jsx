@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { ChronicConditionSelect } from '../care-plan-library/shared/ChronicConditionSelect';
 import { useAppStore } from '../../../store/useAppStore';
 import { protocolCounts, protocolStatus } from './lib/protocolSchema';
+import { isFoldProtocol } from './lib/foldProtocols';
 import { PROTOCOL_SECTIONS, itemComplete } from './lib/protocolSections';
 import styles from './ClinicalProtocols.module.css';
 
@@ -135,9 +136,10 @@ function ProtocolSection({ section, items, editable, onItemsChange }) {
  * Review a parsed protocol: its details (tags, dates, author), then every
  * extracted item next to the passage it came from. Edit, remove or add items,
  * save, and approve (Active), which supersedes the Active protocol with the
- * same title and organization.
+ * same title and organization. `onApproved(id)` runs after a successful
+ * approval, before the drawer closes.
  */
-export function ProtocolReviewDrawer({ protocolId, onClose }) {
+export function ProtocolReviewDrawer({ protocolId, onClose, onApproved }) {
   const protocol = useAppStore(s => s.clinicalProtocols.find(p => p.id === protocolId));
   const isSample = useAppStore(s => s.clinicalProtocolsSample);
   const careProgramTypes = useAppStore(s => s.careProgramTypes);
@@ -184,7 +186,9 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
 
   if (!protocol || !draft) return null;
   const status = protocolStatus(protocol.status);
-  const editable = !isSample && EDITABLE.has(protocol.status);
+  // Fold's own protocols are maintained by Fold: read-only here.
+  const isFold = isFoldProtocol(protocol);
+  const editable = !isSample && !isFold && EDITABLE.has(protocol.status);
   const counts = protocolCounts(draft.protocol);
   const supersede = protocol.status === 'draft' ? protocolToSupersede(protocol.id) : null;
   const warnings = protocol.parseMeta?.warnings || [];
@@ -208,6 +212,7 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
     try {
       if (await approveClinicalProtocol(protocol.id, draft, { supersede })) {
         showToast?.(supersede ? `Approved; replaces version ${supersede.version || 'on file'}` : 'Protocol approved and active');
+        onApproved?.(protocol.id);
         onClose();
       }
     } finally {
@@ -223,8 +228,8 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
   const menuItems = [
     ...(protocol.sourcePath ? [{ key: 'original', icon: 'solar:file-download-linear', label: 'Open Original File' }] : []),
     ...(editable && protocol.sourceKind !== 'json' ? [{ key: 'reparse', icon: 'solar:refresh-linear', label: 'Parse Again' }] : []),
-    ...(protocol.status === 'active' && !isSample ? [{ key: 'retire', icon: 'solar:archive-linear', label: 'Retire' }] : []),
-    ...(!isSample ? [{ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true }] : []),
+    ...(protocol.status === 'active' && !isSample && !isFold ? [{ key: 'retire', icon: 'solar:archive-linear', label: 'Retire' }] : []),
+    ...(!isSample && !isFold ? [{ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true }] : []),
   ];
 
   return (
@@ -235,7 +240,7 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
       headerRight={(
         <>
           <Badge tone={status.tone} size="S" label={status.label} />
-          <span className={styles.headerDivider} />
+          {(menuItems.length > 0 || editable) && <span className={styles.headerDivider} />}
           {menuItems.length > 0 && (
             <ActionButton icon="solar:menu-dots-linear" tooltip="More" onClick={e => setMenu(e.currentTarget.getBoundingClientRect())} />
           )}
@@ -254,12 +259,13 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
     >
       <div className={styles.drawerBody}>
         {isSample && <Alert tone="info" message="Sample protocol. Run supabase/clinical_protocols_migration.sql to upload and review your own." />}
+        {isFold && <Alert tone="info" message="Fold protocol, built from the published guidelines listed below and kept current by Fold. It can't be edited; to follow different rules, upload your organization's protocol." />}
         {protocol.status === 'failed' && <Alert tone="error" message={protocol.parseError || 'This file could not be parsed.'} />}
         {protocol.status === 'processing' && <Alert tone="info" message="Parsing this document. Its items appear here when it finishes." />}
         {protocol.status === 'draft' && (
           <Alert tone="warning" message="Check every item against its source passage before approving. Nothing in this protocol is used until it is approved." />
         )}
-        {protocol.status === 'active' && protocol.approvedBy && (
+        {protocol.status === 'active' && protocol.approvedBy && !isFold && (
           <Alert tone="success" message={`Approved by ${protocol.approvedBy} on ${fmtDate(protocol.approvedAt)}.`} />
         )}
         {protocol.status === 'superseded' && <Alert tone="info" message="A newer version replaced this protocol. It is kept for reference." />}
