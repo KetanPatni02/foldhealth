@@ -2349,6 +2349,42 @@ export const useAppStore = create((set, get) => ({
     }));
   },
 
+  // Care plan templates a completed assessment suggested for this patient
+  // (form builder Care Plan tab rules, matched by the database trigger in
+  // assessment_care_plan_suggestions_migration.sql). Pending only; a missing
+  // table reads as none.
+  fetchAssessmentCarePlanSuggestions: async (patientId) => {
+    if (!patientId) return [];
+    const id = String(resolvePatientStoreId(get(), patientId));
+    const { data, error } = await supabase.from('assessment_care_plan_suggestions')
+      .select('id, template_id, form_id, form_response_id, mapping_id, program_codes, reason, created_at')
+      .eq('patient_id', id).eq('status', 'pending').order('created_at', { ascending: true });
+    if (error) {
+      if (!['42P01', 'PGRST205'].includes(error.code)) console.warn('fetchAssessmentCarePlanSuggestions:', error.message);
+      return [];
+    }
+    return (data || []).map(r => ({
+      id: r.id,
+      templateId: String(r.template_id),
+      formId: r.form_id,
+      formResponseId: r.form_response_id,
+      mappingId: r.mapping_id,
+      programCodes: r.program_codes || [],
+      reason: r.reason,
+      createdAt: r.created_at,
+    }));
+  },
+  // status: 'accepted' (the template was applied) | 'dismissed'.
+  resolveAssessmentCarePlanSuggestions: async (ids, status) => {
+    if (!ids?.length) return true;
+    const resolvedBy = await get()._resolveUpdatedBy();
+    const { error } = await supabase.from('assessment_care_plan_suggestions')
+      .update({ status, resolved_by: resolvedBy || null, resolved_at: new Date().toISOString() })
+      .in('id', ids);
+    if (error) console.warn('resolveAssessmentCarePlanSuggestions:', error.message);
+    return !error;
+  },
+
   // One send record per form (Send Assessment drawer). Best effort: the
   // message itself already went out, so a missing table only logs.
   recordAssessmentSends: async ({ patientId, formIds, sentByName, channels = [], programCodes = [] }) => {
@@ -16635,7 +16671,7 @@ export const useAppStore = create((set, get) => ({
   formBuilderSaving: false,
   // Active builder tab + Analytics sub-tab, mirrored into the URL hash so a
   // refresh restores the exact view. Set by the router (_pending*) on reload.
-  formBuilderMode: 'edit',          // 'edit' | 'score' | 'preview' | 'analytics'
+  formBuilderMode: 'edit',          // 'edit' | 'logic' | 'score' | 'care-plan' | 'preview' | 'analytics'
   formAnalyticsTab: 'insight',      // 'insight' | 'report' | 'responses'
   _pendingFormMode: null,           // set by router on refresh
   _pendingFormAnalyticsTab: null,   // set by router on refresh

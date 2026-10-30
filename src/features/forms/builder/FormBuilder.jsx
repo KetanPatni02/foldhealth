@@ -2,6 +2,7 @@
  * Full-screen form builder. Three modes via the header segmented control:
  *   • Edit Form — palette (drag) → canvas (drop/reorder) → properties
  *   • Score     — define scores + bands over the scorable fields
+ *   • Care Plan — map score ranges / answers to care plan templates to suggest
  *   • Preview   — fill the form for real, with live scoring
  *
  * The working copy (name / fields / scoring) lives in local state; Save pushes
@@ -44,6 +45,7 @@ import {
 } from './rating';
 import { ScorePanel } from './ScorePanel';
 import { LogicPanel } from './LogicPanel';
+import { CarePlanMappingPanel } from './CarePlanMappingPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { FormAnalyticsPanel } from '../analytics/FormAnalyticsPanel';
 import { FormSettings } from './FormSettings';
@@ -867,6 +869,7 @@ export function FormBuilder() {
       const { field, score, criticalTriggers } = instantiateInstrument(entry.instrument);
       setFields((prev) => insertAt(prev, field));
       setScoring((prev) => ({
+        ...prev,
         scores: [...(prev?.scores || []), score],
         criticalTriggers: [...(prev?.criticalTriggers || []), ...criticalTriggers],
       }));
@@ -938,6 +941,7 @@ export function FormBuilder() {
     // Remove any score / critical triggers registered by a validated instrument
     // instance (their ids are suffixed with the group's linkId).
     setScoring((prev) => ({
+      ...prev,
       scores: (prev?.scores || []).filter((s) => !String(s.id).endsWith(`_${id}`)),
       criticalTriggers: (prev?.criticalTriggers || []).filter((t) => !String(t.id).endsWith(`_${id}`)),
     }));
@@ -963,7 +967,7 @@ export function FormBuilder() {
         </div>
 
         <Toggle
-          items={[{ key: 'edit', label: 'Edit Form' }, { key: 'logic', label: 'Logic' }, { key: 'score', label: 'Score' }, { key: 'preview', label: 'Preview' }, { key: 'analytics', label: 'Analytics' }]}
+          items={[{ key: 'edit', label: 'Edit Form' }, { key: 'logic', label: 'Logic' }, { key: 'score', label: 'Score' }, { key: 'care-plan', label: 'Care Plan' }, { key: 'preview', label: 'Preview' }, { key: 'analytics', label: 'Analytics' }]}
           active={mode}
           onChange={setMode}
           size="M"
@@ -1024,6 +1028,12 @@ export function FormBuilder() {
       {mode === 'score' && (
         <div className={styles.body}>
           <ScorePanel fields={fields} scoring={scoring} onChange={setScoring} />
+        </div>
+      )}
+
+      {mode === 'care-plan' && (
+        <div className={styles.body}>
+          <CarePlanMappingPanel fields={fields} scoring={scoring} onChange={setScoring} />
         </div>
       )}
 
