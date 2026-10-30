@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Rnd } from 'react-rnd';
 import { useDropzone } from 'react-dropzone';
 import { pickElement, describeElement, KIT_ATTR } from './picker';
@@ -16,6 +16,8 @@ import {
 import { RichTextEditor } from './RichTextEditor';
 import { AttachmentStrip, BlobImage } from './AttachmentStrip';
 import { ImagePreview } from './ImagePreview';
+import { DoneCard } from './DoneCard';
+import { InlineComment } from './InlineComment';
 import { themeToStyle, mergeLabels } from './theme';
 
 const EDGE = 24; // drop within this many px of a side wall to collapse into a tab
@@ -42,6 +44,7 @@ const pageContext = () => (isBrowser ? {
 } : { url: '', title: '', viewport: { width: 0, height: 0 } });
 const newPoint = () => ({ id: nextId(), html: '', text: '', empty: true, attachments: [], context: pageContext() });
 const isEmpty = (p) => p.empty && !p.attachments.length;
+const escapeHtml = (s) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Size and position that fit the current window: a saved box from a larger
 // screen, or one left off-screen, opens fully visible.
@@ -115,6 +118,9 @@ export function ReviewDock({
   classNames = {},
   className,
   icons,
+  headerActions,
+  finishAction,
+  nextUp,
   children,
 }) {
   const Icons = useMemo(() => ({ ...DEFAULT_ICONS, ...(icons || {}) }), [icons]);
@@ -135,6 +141,48 @@ export function ReviewDock({
   const [activeId, setActiveId] = useState(() => points[0].id);
   const [busy, setBusy] = useState(null); // null | 'pick' | 'capture' | 'send'
   const [notice, setNotice] = useState(null); // { tone: 'error'|'ok', text }
+  // Shown in place of the editor right after a send or finish:
+  // { sent: number of points (0 if none), finished: boolean }.
+  const [done, setDone] = useState(null);
+  // The header and footer float over the body, which scrolls under them; each
+  // bar blurs what's beneath it once there is content there.
+  const bodyRef = useRef(null);
+  const headerRef = useRef(null);
+  const footerRef = useRef(null);
+  const [bars, setBars] = useState({ top: 0, bottom: 0 });
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => {
+      const top = headerRef.current?.offsetHeight || 0;
+      const bottom = footerRef.current?.offsetHeight || 0;
+      setBars(prev => (prev.top === top && prev.bottom === bottom ? prev : { top, bottom }));
+    };
+    const ro = new ResizeObserver(measure);
+    [headerRef.current, footerRef.current].forEach(el => el && ro.observe(el));
+    measure();
+    return () => ro.disconnect();
+  }, [done]);
+  const [scrollEdges, setScrollEdges] = useState({ above: false, below: false });
+  const measureScroll = useCallback(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const above = el.scrollTop > 1;
+    const below = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+    setScrollEdges(prev => (prev.above === above && prev.below === below ? prev : { above, below }));
+  }, []);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    // The timeline grows as you type and add points or files, not only on
+    // scroll; the body's children change when the sent screen swaps in.
+    const ro = new ResizeObserver(measureScroll);
+    ro.observe(el);
+    [...el.children].forEach(child => ro.observe(child));
+    measureScroll();
+    return () => ro.disconnect();
+  }, [measureScroll, done, points.length]);
+  // A picked element waiting for its inline comment: { element, name, attachment }.
+  const [inline, setInline] = useState(null);
   const [previewId, setPreviewIdState] = useState(null);
   // Wrap preview open/close and collapse/expand in a view transition so the
   // dock morphs smoothly into its tab (and the thumbnail grows into the modal
@@ -228,16 +276,37 @@ export function ReviewDock({
       const file = await captureElement(el);
       const name = describeElement(el);
       const r = el.getBoundingClientRect();
-      add([{
-        file, name: `${name}.png`, type: 'image/png', kind: 'element',
-        selector: selectorFor(el), element: name,
-        rect: { x: Math.round(r.left + window.scrollX), y: Math.round(r.top + window.scrollY), width: Math.round(r.width), height: Math.round(r.height) },
-      }]);
+      // Comment on it right where it is; adding makes it a point.
+      setInline({
+        element: el,
+        name,
+        attachment: {
+          file, name: `${name}.png`, type: 'image/png', kind: 'element',
+          selector: selectorFor(el), element: name,
+          rect: { x: Math.round(r.left + window.scrollX), y: Math.round(r.top + window.scrollY), width: Math.round(r.width), height: Math.round(r.height) },
+        },
+      });
     } catch (err) {
       setNotice({ tone: 'error', text: L.captureFailed(err?.message || String(err)) });
     } finally {
       setBusy(null);
     }
+  };
+
+  // The inline comment becomes a point with the element's screenshot. An
+  // untouched current point is filled instead of stacking an empty one.
+  const addInlinePoint = (text) => {
+    const point = {
+      ...newPoint(),
+      html: text ? text.split('\n').map(line => `<p>${escapeHtml(line)}</p>`).join('') : '',
+      text,
+      empty: !text,
+      attachments: [{ id: nextId(), ...inline.attachment }],
+    };
+    setPoints(prev => (isEmpty(active) ? prev.map(p => (p.id === active.id ? point : p)) : [...prev, point]));
+    setActiveId(point.id);
+    setInline(null);
+    setDone(null);
   };
 
   const screenshot = async () => {
@@ -274,8 +343,8 @@ export function ReviewDock({
 
   const filled = points.filter(p => !isEmpty(p));
 
-  const submit = async () => {
-    if (busy || !filled.length) return;
+  const submit = async ({ announce = true } = {}) => {
+    if (busy || !filled.length) return false;
     setBusy('send');
     setNotice(null);
     try {
@@ -291,18 +360,68 @@ export function ReviewDock({
         })),
         context: { ...pageContext(), userAgent: navigator.userAgent, createdAt: new Date().toISOString() },
       });
-      if (result !== false) {
-        const fresh = newPoint();
-        setPoints([fresh]);
-        setActiveId(fresh.id);
-        setNotice({ tone: 'ok', text: L.sent(filled.length) });
-      }
+      if (result === false) return false;
+      const fresh = newPoint();
+      setPoints([fresh]);
+      setActiveId(fresh.id);
+      if (announce) setDone({ sent: filled.length, finished: false });
+      return filled.length;
     } catch (err) {
       setNotice({ tone: 'error', text: L.sendFailed(err?.message || String(err)) });
+      return false;
     } finally {
       setBusy(null);
     }
   };
+
+  // finishAction: the host's "done" step (e.g. sign off). It takes the Send
+  // button's place while nothing is written, and sits in the Send menu after.
+  const [sendMenuOpen, setSendMenuOpen] = useState(false);
+  const sendMenu = useRef(null);
+  useEffect(() => {
+    if (!sendMenuOpen) return undefined;
+    const onDown = (e) => { if (!sendMenu.current?.contains(e.target)) setSendMenuOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setSendMenuOpen(false); };
+    // Capture phase: a host may stop events from leaving the kit's layer.
+    document.addEventListener('mousedown', onDown, true);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('mousedown', onDown, true);
+      document.removeEventListener('keydown', onKey, true);
+    };
+  }, [sendMenuOpen]);
+
+  const finish = async (sent = 0) => {
+    setBusy('finish');
+    setNotice(null);
+    try {
+      // The host may drop finishAction once it ran, so keep its label now.
+      const label = finishAction.doneLabel || L.done;
+      const ok = (await finishAction.onFinish()) !== false;
+      if (ok || sent) setDone({ sent, finished: ok, label });
+    } catch (err) {
+      setNotice({ tone: 'error', text: L.finishFailed(err?.message || String(err)) });
+      if (sent) setDone({ sent, finished: false });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const sendAndFinish = async () => {
+    setSendMenuOpen(false);
+    const sent = await submit({ announce: false });
+    if (sent) await finish(sent);
+  };
+
+  // With nothing to go to next, the confirmation steps aside on its own.
+  useEffect(() => {
+    if (!done || nextUp) return undefined;
+    const t = setTimeout(() => setDone(null), 2600);
+    return () => clearTimeout(t);
+  }, [done, nextUp]);
+
+  const doneTitle = done && (done.finished ? done.label : L.sentTitle);
+  const doneDetail = done && (done.sent ? L.sentDetail(done.sent) : null);
 
   // ── Collapse to a wall ──
   const nearestSide = () => (pos.x + size.width / 2 < window.innerWidth / 2 ? 'left' : 'right');
@@ -384,17 +503,31 @@ export function ReviewDock({
         <section
           className={cx('rk-panel', classNames.panel)}
           aria-label={`${title}`}
-          style={dockMorphing ? { viewTransitionName: 'rk-dock-surface' } : undefined}
+          style={{
+            ...(dockMorphing ? { viewTransitionName: 'rk-dock-surface' } : {}),
+            '--rk-bar-top': `${bars.top}px`,
+            '--rk-bar-bottom': `${bars.bottom}px`,
+          }}
           {...getRootProps()}
         >
           <input {...getInputProps()} />
-          <header className={cx('rk-header', 'rk-drag', classNames.header)}>
+          <header
+            ref={headerRef}
+            className={cx('rk-header', 'rk-drag', classNames.header)}
+            data-covering={scrollEdges.above || undefined}
+          >
+            <span className="rk-bar-blur" aria-hidden="true"><span /><span /><span /></span>
             <Icons.grip className="rk-grip" />
             <div className="rk-heading">
               <div className="rk-title" title={title}>{title}</div>
               {subtitle && <div className="rk-subtitle">{subtitle}</div>}
             </div>
             <div className="rk-header-actions rk-no-drag">
+              {headerActions?.map(({ id, label, icon: ActionIcon, onClick }) => (
+                <button key={id || label} type="button" className="rk-icon-btn" onClick={onClick} aria-label={label} title={label}>
+                  <ActionIcon width={16} height={16} />
+                </button>
+              ))}
               <button type="button" className="rk-icon-btn" onClick={() => collapseTo(nearestSide())} aria-label={L.collapse} title={L.collapse}>
                 <Icons.collapse />
               </button>
@@ -406,133 +539,194 @@ export function ReviewDock({
             </div>
           </header>
 
-          <div className="rk-body rk-no-drag">
-            <ol className={cx('rk-timeline', classNames.timeline)} aria-label={L.point}>
-              {!isEmpty(active) && (
-                <li className="rk-timeline-add-item">
-                  <button
-                    type="button"
-                    className="rk-timeline-add"
-                    onClick={addPoint}
-                    title={L.newPointHint}
-                  >
-                    <span className="rk-timeline-dot rk-timeline-dot--add" aria-hidden="true">
-                      <Icons.plus width={12} height={12} />
-                    </span>
-                    <span className="rk-timeline-add-label">{L.newPointHint}</span>
-                  </button>
-                </li>
-              )}
-              {[...points].reverse().map((p) => {
-                const idx = points.indexOf(p);
-                const isActive = p.id === active.id;
-                return (
-                  <li key={p.id} className={cx('rk-timeline-item', isActive && 'rk-timeline-item--active')}>
-                    <div className="rk-timeline-rail">
+          <div className="rk-scroll">
+          <div className="rk-body rk-no-drag" ref={bodyRef} onScroll={measureScroll}>
+            {done ? (
+              <DoneCard
+                key={`${done.sent}-${done.finished}`}
+                title={doneTitle}
+                detail={doneDetail}
+                nextUp={nextUp}
+                labels={L}
+                onDismiss={() => setDone(null)}
+              />
+            ) : (
+              <>
+                <ol className={cx('rk-timeline', classNames.timeline)} aria-label={L.point}>
+                  {!isEmpty(active) && (
+                    <li className="rk-timeline-add-item">
                       <button
                         type="button"
-                        className="rk-timeline-dot"
-                        onClick={() => setActiveId(p.id)}
-                        aria-label={L.pointTitle(idx + 1)}
-                        aria-current={isActive || undefined}
-                        title={L.pointTitle(idx + 1)}
+                        className="rk-timeline-add"
+                        onClick={addPoint}
+                        title={L.newPointHint}
                       >
-                        {idx + 1}
+                        <span className="rk-timeline-dot rk-timeline-dot--add" aria-hidden="true">
+                          <Icons.plus width={12} height={12} />
+                        </span>
+                        <span className="rk-timeline-add-label">{L.newPointHint}</span>
                       </button>
-                    </div>
-                    <div className="rk-timeline-card">
-                      {points.length > 1 && (
-                        <button
-                          type="button"
-                          className="rk-timeline-remove"
-                          onClick={() => removePoint(p.id)}
-                          aria-label={L.deletePoint(idx + 1)}
-                          title={L.deletePoint(idx + 1)}
-                        >
-                          <Icons.close width={12} height={12} />
-                        </button>
-                      )}
-                      {isActive ? (
-                        <>
-                          <AttachmentStrip
-                            key={`shots-${p.id}`}
-                            items={p.attachments}
-                            onOpen={setPreviewId}
-                            onRemove={removeAttachment}
-                            labelFor={labelFor}
-                            labels={L}
-                            className={classNames.attachments}
-                            hiddenId={previewId}
-                          />
-                          <RichTextEditor
-                            key={p.id}
-                            initialHtml={p.html}
-                            autoFocus={points.length > 1}
-                            placeholder={points.length > 1 ? L.pointPlaceholder(idx + 1) : L.placeholder}
-                            labels={L}
-                            className={classNames.editor}
-                            onChange={({ html, text, empty }) => updateActive(x => ({ ...x, html, text, empty }))}
-                            onFiles={addFiles}
-                            onSubmit={submit}
-                          />
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className="rk-timeline-view"
-                          onClick={() => setActiveId(p.id)}
-                          aria-label={L.pointTitle(idx + 1)}
-                        >
-                          {p.attachments.length > 0 && (
-                            <ul className="rk-timeline-attachments" aria-label={L.attachments}>
-                              {p.attachments.map(a => (
-                                <li key={a.id} className="rk-thumb" style={{ viewTransitionName: `rk-att-${a.id}` }}>
-                                  <span className="rk-thumb-open">
-                                    <BlobImage file={a.file} alt="" />
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
+                    </li>
+                  )}
+                  {[...points].reverse().map((p) => {
+                    const idx = points.indexOf(p);
+                    const isActive = p.id === active.id;
+                    return (
+                      <li key={p.id} className={cx('rk-timeline-item', isActive && 'rk-timeline-item--active')}>
+                        <div className="rk-timeline-rail">
+                          <button
+                            type="button"
+                            className="rk-timeline-dot"
+                            onClick={() => setActiveId(p.id)}
+                            aria-label={L.pointTitle(idx + 1)}
+                            aria-current={isActive || undefined}
+                            title={L.pointTitle(idx + 1)}
+                          >
+                            {idx + 1}
+                          </button>
+                        </div>
+                        <div className="rk-timeline-card">
+                          {points.length > 1 && (
+                            <button
+                              type="button"
+                              className="rk-timeline-remove"
+                              onClick={() => removePoint(p.id)}
+                              aria-label={L.deletePoint(idx + 1)}
+                              title={L.deletePoint(idx + 1)}
+                            >
+                              <Icons.close width={12} height={12} />
+                            </button>
                           )}
-                          {p.html ? (
-                            <div className="rk-timeline-body" dangerouslySetInnerHTML={{ __html: p.html }} />
+                          {isActive ? (
+                            <>
+                              <AttachmentStrip
+                                key={`shots-${p.id}`}
+                                items={p.attachments}
+                                onOpen={setPreviewId}
+                                onRemove={removeAttachment}
+                                labelFor={labelFor}
+                                labels={L}
+                                className={classNames.attachments}
+                                hiddenId={previewId}
+                              />
+                              <RichTextEditor
+                                key={p.id}
+                                initialHtml={p.html}
+                                autoFocus={points.length > 1}
+                                placeholder={points.length > 1 ? L.pointPlaceholder(idx + 1) : L.placeholder}
+                                labels={L}
+                                className={classNames.editor}
+                                onChange={({ html, text, empty }) => updateActive(x => ({ ...x, html, text, empty }))}
+                                onFiles={addFiles}
+                                onSubmit={submit}
+                              />
+                            </>
                           ) : (
-                            <div className="rk-timeline-body rk-timeline-body--empty">{L.placeholder}</div>
+                            <button
+                              type="button"
+                              className="rk-timeline-view"
+                              onClick={() => setActiveId(p.id)}
+                              aria-label={L.pointTitle(idx + 1)}
+                            >
+                              {p.attachments.length > 0 && (
+                                <ul className="rk-timeline-attachments" aria-label={L.attachments}>
+                                  {p.attachments.map(a => (
+                                    <li key={a.id} className="rk-thumb" style={{ viewTransitionName: `rk-att-${a.id}` }}>
+                                      <span className="rk-thumb-open">
+                                        <BlobImage file={a.file} alt="" />
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                              {p.html ? (
+                                <div className="rk-timeline-body" dangerouslySetInnerHTML={{ __html: p.html }} />
+                              ) : (
+                                <div className="rk-timeline-body rk-timeline-body--empty">{L.placeholder}</div>
+                              )}
+                            </button>
                           )}
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+                {children && <div className="rk-extra">{children}</div>}
+              </>
+            )}
             {notice && <p className={`rk-notice rk-notice-${notice.tone}`} role="status">{notice.text}</p>}
-            {children && <div className="rk-extra">{children}</div>}
+          </div>
           </div>
 
-          <footer className={cx('rk-footer', 'rk-no-drag', classNames.footer)}>
-            <div className="rk-tools">
-              <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={pick} disabled={!!busy} title={L.selectHint} aria-label={L.select}>
-                <Icons.select />
-                <span>{busy === 'pick' ? L.picking : L.select}</span>
-              </button>
-              <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={screenshot} disabled={!!busy} title={L.screenshotHint} aria-label={L.screenshot}>
-                <Icons.screenshot />
-                <span>{busy === 'capture' ? L.capturing : L.screenshot}</span>
-              </button>
-              <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={openFiles} disabled={!!busy} title={L.uploadHint(maxFileSizeMb)} aria-label={L.upload}>
-                <Icons.upload />
-                <span>{L.upload}</span>
-              </button>
-            </div>
-            <button type="button" className={cx('rk-send', classNames.sendButton)} onClick={submit} disabled={!!busy || !filled.length}>
-              {sendLabel}
-            </button>
-          </footer>
+          {/* The confirmation carries its own actions; Not now brings these back. */}
+          {!done && (
+            <footer
+              ref={footerRef}
+              className={cx('rk-footer', 'rk-no-drag', classNames.footer)}
+              data-covering={scrollEdges.below || undefined}
+            >
+              <span className="rk-bar-blur" aria-hidden="true"><span /><span /><span /></span>
+              <div className="rk-tools">
+                <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={pick} disabled={!!busy || !!inline} title={L.selectHint} aria-label={L.select}>
+                  <Icons.select />
+                  <span>{busy === 'pick' ? L.picking : L.select}</span>
+                </button>
+                <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={screenshot} disabled={!!busy} title={L.screenshotHint} aria-label={L.screenshot}>
+                  <Icons.screenshot />
+                  <span>{busy === 'capture' ? L.capturing : L.screenshot}</span>
+                </button>
+                <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={openFiles} disabled={!!busy} title={L.uploadHint(maxFileSizeMb)} aria-label={L.upload}>
+                  <Icons.upload />
+                  <span>{L.upload}</span>
+                </button>
+              </div>
+              {finishAction && !filled.length ? (
+                <button type="button" className={cx('rk-send', classNames.sendButton)} onClick={() => finish()} disabled={!!busy}>
+                  {finishAction.label}
+                </button>
+              ) : finishAction ? (
+                <div className="rk-send-group" ref={sendMenu}>
+                  <button type="button" className={cx('rk-send', 'rk-send-main', classNames.sendButton)} onClick={submit} disabled={!!busy}>
+                    {sendLabel}
+                  </button>
+                  <button
+                    type="button"
+                    className="rk-send rk-send-more"
+                    onClick={() => setSendMenuOpen(v => !v)}
+                    disabled={!!busy}
+                    aria-label={L.moreSendOptions}
+                    aria-expanded={sendMenuOpen}
+                  >
+                    <ChevronIcon direction="down" width={14} height={14} />
+                  </button>
+                  {sendMenuOpen && (
+                    <div className="rk-send-menu">
+                      <button type="button" className="rk-send-menu-item" onClick={sendAndFinish}>
+                        {finishAction.submitLabel}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button type="button" className={cx('rk-send', classNames.sendButton)} onClick={submit} disabled={!!busy || !filled.length}>
+                  {sendLabel}
+                </button>
+              )}
+            </footer>
+          )}
 
           {isDragActive && <div className="rk-drop-overlay">{L.dropHint(activeIndex + 1)}</div>}
         </section>
       </Rnd>
+      {inline && (
+        <InlineComment
+          element={inline.element}
+          elementName={inline.name}
+          labels={L}
+          onAdd={addInlinePoint}
+          onCancel={() => setInline(null)}
+        />
+      )}
       {previewing && (
         <ImagePreview
           key={previewing.id}

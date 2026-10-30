@@ -47,6 +47,16 @@ export interface ReviewKitLabels {
   send: string;
   sendPoints: (count: number) => string;
   sending: string;
+  moreSendOptions: string;
+  sentTitle: string;
+  sentDetail: (points: number) => string;
+  finishFailed: (message: string) => string;
+  upNext: string;
+  reviewNext: string;
+  notNow: string;
+  inlinePlaceholder: string;
+  inlineHint: string;
+  addPoint: string;
   sent: (count: number) => string;
   point: string;
   pointTitle: (n: number) => string;
@@ -191,8 +201,47 @@ export interface ReviewDockProps {
   className?: string;
   /** Swap any icon slot with your own component. */
   icons?: ReviewKitIcons;
+  /** Extra icon buttons in the header, before minimize. */
+  headerActions?: ReviewDockHeaderAction[];
+  /** The host's "done" step (e.g. sign off). With nothing written it replaces
+   *  Send; once there is feedback, Send gets a chevron menu offering
+   *  `submitLabel`, which sends and then runs `onFinish`. */
+  finishAction?: ReviewDockFinishAction;
+  /** Offered after a send or finish: the next thing to review. Without it,
+   *  the confirmation fades back to the editor on its own. */
+  nextUp?: ReviewDockNextUp;
   /** Extra content under the editor. */
   children?: ReactNode;
+}
+
+export interface ReviewDockFinishAction {
+  /** Button label while nothing is written, e.g. "Sign off". */
+  label: string;
+  /** Menu item that sends, then finishes, e.g. "Send and sign off". */
+  submitLabel: string;
+  /** Confirmation title once it ran, e.g. "Signed off". */
+  doneLabel?: string;
+  /** Return false when it didn't go through (the box then skips the confirmation). */
+  onFinish: () => Promise<unknown> | unknown;
+}
+
+export interface ReviewDockNextUp {
+  title: string;
+  /** Second line, e.g. the section and how many more are waiting. */
+  meta?: string;
+  /** Default "Review next". */
+  label?: string;
+  /** Default "Not now"; returns to the editor. */
+  dismissLabel?: string;
+  onAccept: () => void;
+}
+
+export interface ReviewDockHeaderAction {
+  id?: string;
+  /** Accessible name and tooltip. */
+  label: string;
+  icon: IconComponent;
+  onClick: () => void;
 }
 
 export declare function ReviewDock(props: ReviewDockProps): ReactElement | null;

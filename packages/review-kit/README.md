@@ -10,6 +10,8 @@ one piece of feedback with a point per screen.
   the screen to tuck it into a small tab.
 - **Select**: DevTools-style hover highlight. Press ↑ / ↓ to move to the parent
   or child element, then click or Enter to capture it (with a CSS selector).
+  A comment card opens right at the element; Enter adds your note and the
+  element's screenshot as a new point (Escape drops it).
 - **Screenshot**: one click captures what's on screen.
 - **Upload**: images and GIFs via button, paste, or drag and drop anywhere on
   the box (including onto the text).
@@ -260,6 +262,9 @@ See `DEFAULT_LABELS` for the full list.
 | `className` | `string` | Extra class on the root layer. |
 | `storageKey` | `string` | Where position and size are remembered. Default `review-kit:dock`. The box always opens expanded and fully on screen. |
 | `maxFileSizeMb` | `number` | Per-file upload limit. Default `10`. |
+| `headerActions` | `{ id?, label, icon, onClick }[]` | Extra icon buttons in the header, before minimize (e.g. a link back to your review queue). |
+| `finishAction` | `{ label, submitLabel, doneLabel?, onFinish }` | A "done" step such as sign off: replaces Send while nothing is written, and becomes a "send and finish" option in a chevron menu beside Send once there is feedback. |
+| `nextUp` | `{ title, meta?, label?, dismissLabel?, onAccept }` | Shown under the sent confirmation: the next thing to review, with Review next and Not now. Without it, the confirmation fades back to the editor. |
 | `children` | `ReactNode` | Extra content under the editor. |
 
 ## Lower-level helpers

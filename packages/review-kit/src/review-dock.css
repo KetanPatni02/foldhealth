@@ -144,14 +144,21 @@
   background: transparent;
   border-radius: 999px;
   background-clip: padding-box;
-  border: 1px solid transparent;
+  /* A 6px hit area around a 2px line; it thickens to 4px under the pointer. */
+  border: 2px solid transparent;
+  min-height: 24px;
   transition: background-color 120ms ease;
+}
+.rk-layer *::-webkit-scrollbar-thumb:hover,
+.rk-layer *::-webkit-scrollbar-thumb:active {
+  border-width: 1px;
 }
 .rk-layer *:hover::-webkit-scrollbar-thumb,
 .rk-layer *:focus-within::-webkit-scrollbar-thumb {
   background-color: var(--rk-scrollbar, color-mix(in srgb, currentColor 22%, transparent));
 }
-.rk-layer *::-webkit-scrollbar-thumb:hover {
+.rk-layer *::-webkit-scrollbar-thumb:hover,
+.rk-layer *::-webkit-scrollbar-thumb:active {
   background-color: var(--rk-scrollbar-hover, color-mix(in srgb, currentColor 38%, transparent));
 }
 .rk-layer *:hover,
@@ -247,6 +254,105 @@
 .rk-icon-btn:hover {
   background: var(--rk-bg-subtle);
   color: var(--rk-text);
+}
+
+/* The body fills the panel and scrolls under the header and footer, which
+   float over it; padding the size of each bar keeps content clear of them
+   at rest. Each bar carries a progressive blur that shows once content sits
+   beneath it, so nothing is cut off and the body keeps its full height. */
+.rk-scroll {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.rk-scroll > .rk-body {
+  padding-top: var(--rk-bar-top, 0px);
+  padding-bottom: var(--rk-bar-bottom, 0px);
+  scroll-padding-top: var(--rk-bar-top, 0px);
+  scroll-padding-bottom: var(--rk-bar-bottom, 0px);
+}
+
+/* Keep the scrollbar between the bars. */
+.rk-scroll > .rk-body::-webkit-scrollbar-track {
+  margin-top: var(--rk-bar-top, 0px);
+  margin-bottom: var(--rk-bar-bottom, 0px);
+}
+
+.rk-panel > .rk-header,
+.rk-panel > .rk-footer {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 4;
+  isolation: isolate;
+}
+
+.rk-panel > .rk-header { top: 0; }
+.rk-panel > .rk-footer { bottom: 0; }
+
+/* Three stacked backdrop blurs, strongest at the panel edge, each masked to a
+   band, plus a light wash of the surface; it runs a little past the bar so
+   the blur eases off instead of stopping at the bar's edge. */
+.rk-bar-blur {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: -1;
+  height: calc(100% + 16px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.rk-header > .rk-bar-blur { top: 0; }
+.rk-footer > .rk-bar-blur { bottom: 0; }
+
+[data-covering] > .rk-bar-blur {
+  opacity: 1;
+}
+
+.rk-bar-blur > span,
+.rk-bar-blur::after {
+  position: absolute;
+  inset: 0;
+}
+
+/* Under the bar itself the blur is at full strength behind a near-solid wash,
+   so text scrolling beneath never competes with the title or the tools; the
+   layers only ease off in the 16px tail past the bar. */
+.rk-bar-blur > span:nth-child(1) {
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.rk-bar-blur > span:nth-child(2) {
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.rk-bar-blur > span:nth-child(3) {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.rk-header > .rk-bar-blur > span:nth-child(1) { mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent); }
+.rk-header > .rk-bar-blur > span:nth-child(2) { mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent calc(100% - 6px)); }
+.rk-header > .rk-bar-blur > span:nth-child(3) { mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent calc(100% - 12px)); }
+.rk-footer > .rk-bar-blur > span:nth-child(1) { mask-image: linear-gradient(to top, #000 calc(100% - 16px), transparent); }
+.rk-footer > .rk-bar-blur > span:nth-child(2) { mask-image: linear-gradient(to top, #000 calc(100% - 22px), transparent calc(100% - 6px)); }
+.rk-footer > .rk-bar-blur > span:nth-child(3) { mask-image: linear-gradient(to top, #000 calc(100% - 28px), transparent calc(100% - 12px)); }
+
+.rk-bar-blur::after {
+  content: '';
+}
+.rk-header > .rk-bar-blur::after { background: linear-gradient(to bottom, var(--rk-bg-solid, var(--rk-bg)) calc(100% - 24px), transparent); opacity: 0.85; }
+.rk-footer > .rk-bar-blur::after { background: linear-gradient(to top, var(--rk-bg-solid, var(--rk-bg)) calc(100% - 24px), transparent); opacity: 0.85; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .rk-bar-blur > span { display: none; }
+  .rk-header > .rk-bar-blur::after { background: linear-gradient(to bottom, var(--rk-bg-solid, var(--rk-bg)) 60%, transparent); }
+  .rk-footer > .rk-bar-blur::after { background: linear-gradient(to top, var(--rk-bg-solid, var(--rk-bg)) 60%, transparent); }
 }
 
 .rk-body {
@@ -1252,8 +1358,208 @@
 }
 
 .rk-notice {
-  margin: 0;
+  /* Sits at the bottom of the body, just above the toolbar. */
+  margin: auto 0 0;
+  padding-bottom: var(--rk-space-2);
   font-size: var(--rk-font-sm);
+}
+
+.rk-notice + .rk-extra,
+.rk-extra + .rk-notice {
+  margin-top: 0;
+}
+
+/* ── Sent: a check that draws itself, then what's next ── */
+.rk-done {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* Bottom padding matches the footer's, so Review next lands where Send was. */
+  padding: var(--rk-space-3) 0 var(--rk-space-3);
+  animation: rk-done-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The check and title take the space above Up next and center in it. */
+.rk-done-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* safe: in a short box the content scrolls instead of clipping at the top. */
+  justify-content: safe center;
+  gap: var(--rk-space-1);
+  text-align: center;
+}
+
+.rk-done-check {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--rk-space-2);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--rk-success) 14%, transparent);
+  color: var(--rk-success);
+  animation: rk-done-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* One soft ring that ripples out as the check lands. */
+.rk-done-check::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--rk-success);
+  opacity: 0;
+  animation: rk-done-ring 700ms 180ms ease-out;
+}
+
+.rk-done-tick {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: rk-done-draw 360ms 200ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+.rk-done-title {
+  font-size: var(--rk-font-md);
+  font-weight: var(--rk-font-weight-medium);
+  color: var(--rk-text);
+}
+
+.rk-done-detail {
+  font-size: var(--rk-font-sm);
+  color: var(--rk-text-muted);
+}
+
+.rk-next {
+  width: 100%;
+  margin-top: var(--rk-space-3);
+  text-align: left;
+  animation: rk-next-in 360ms 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rk-next-label {
+  margin-bottom: 6px;
+  font-size: var(--rk-font-xs);
+  color: var(--rk-text-muted);
+}
+
+.rk-next-card {
+  padding: var(--rk-space-3);
+  border: 1px solid var(--rk-border);
+  border-radius: calc(var(--rk-radius-sm) + 4px);
+  background: var(--rk-bg-subtle);
+}
+
+.rk-next-title {
+  overflow: hidden;
+  font-size: var(--rk-font-md);
+  font-weight: var(--rk-font-weight-medium);
+  color: var(--rk-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rk-next-meta {
+  margin-top: 2px;
+  font-size: var(--rk-font-xs);
+  color: var(--rk-text-muted);
+}
+
+.rk-next-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--rk-space-2);
+  margin-top: var(--rk-space-3);
+}
+
+.rk-next-dismiss,
+.rk-next-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 var(--rk-space-3);
+  border: 0;
+  border-radius: var(--rk-radius-pill);
+  font: inherit;
+  font-size: var(--rk-font-sm);
+  font-weight: var(--rk-font-weight-medium);
+  cursor: pointer;
+  transition: background-color 120ms ease, filter 120ms ease;
+}
+
+.rk-next-dismiss {
+  background: none;
+  color: var(--rk-text-muted);
+}
+
+.rk-next-dismiss:hover {
+  background: var(--rk-bg-subtle);
+  color: var(--rk-text);
+}
+
+.rk-next-go {
+  padding-right: var(--rk-space-2);
+  background: var(--rk-accent);
+  color: var(--rk-accent-text);
+}
+
+.rk-next-go:hover {
+  filter: brightness(1.05);
+}
+
+.rk-next-arrow {
+  display: inline-flex;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rk-next-go:hover .rk-next-arrow {
+  transform: translateX(2px);
+}
+
+@keyframes rk-done-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rk-done-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes rk-done-ring {
+  0% { opacity: 0.45; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+
+@keyframes rk-done-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* pointer-events flips halfway through, so a double-click on the button that
+   was under the pointer (Send, Sign off) can't land on Review next. */
+@keyframes rk-next-in {
+  from { opacity: 0; transform: translateY(8px); pointer-events: none; }
+  to { opacity: 1; transform: none; pointer-events: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rk-done,
+  .rk-done-check,
+  .rk-next {
+    animation: none;
+  }
+  .rk-done-check::after {
+    display: none;
+  }
+  .rk-done-tick {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }
 
 .rk-notice-error {
@@ -1334,6 +1640,60 @@
   filter: brightness(1.05);
 }
 
+/* Split Send: the main action plus a chevron for the host's finish action. */
+.rk-send-group {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 1px;
+}
+
+.rk-send-main {
+  border-radius: var(--rk-radius-pill) 0 0 var(--rk-radius-pill);
+  padding-right: var(--rk-space-3);
+}
+
+.rk-send-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 var(--rk-radius-pill) var(--rk-radius-pill) 0;
+  padding: 0 var(--rk-space-2) 0 6px;
+}
+
+.rk-send-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 2;
+  min-width: 100%;
+  padding: 4px;
+  border: 1px solid var(--rk-border);
+  border-radius: var(--rk-radius-sm);
+  background: var(--rk-bg-solid, var(--rk-bg));
+  box-shadow: var(--rk-shadow);
+}
+
+.rk-send-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px var(--rk-space-2);
+  border: 0;
+  border-radius: calc(var(--rk-radius-sm) - 2px);
+  background: none;
+  font: inherit;
+  font-size: var(--rk-font-sm);
+  color: var(--rk-text);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rk-send-menu-item:hover,
+.rk-send-menu-item:focus-visible {
+  background: var(--rk-bg-subtle);
+}
+
 @container (max-width: 380px) {
   .rk-tool {
     padding: 0 var(--rk-space-1);
@@ -1347,6 +1707,8 @@
 .rk-drop-overlay {
   position: absolute;
   inset: var(--rk-space-2);
+  /* Above the floating header and footer. */
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1421,6 +1783,136 @@
 .rk-picking,
 .rk-picking * {
   cursor: crosshair !important;
+}
+
+/* ── Inline comment at a picked element ── */
+.rk-inline-target,
+.rk-inline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--rk-z);
+}
+
+.rk-inline-target {
+  border: 1.5px solid var(--rk-accent);
+  border-radius: 4px;
+  background: var(--rk-pick-fill);
+  pointer-events: none;
+  animation: rk-inline-target-in 200ms ease-out;
+}
+
+.rk-inline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rk-space-2);
+  padding: var(--rk-space-3);
+  border: 1px solid var(--rk-border);
+  border-radius: calc(var(--rk-radius-sm) + 6px);
+  background: var(--rk-bg);
+  -webkit-backdrop-filter: blur(var(--rk-glass-blur, 24px)) saturate(var(--rk-glass-saturate, 180%));
+  backdrop-filter: blur(var(--rk-glass-blur, 24px)) saturate(var(--rk-glass-saturate, 180%));
+  box-shadow: var(--rk-shadow);
+  font-family: var(--rk-font);
+  color: var(--rk-text);
+  pointer-events: auto;
+}
+
+.rk-inline > * {
+  animation: rk-inline-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rk-inline-element {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 8px;
+  border-radius: var(--rk-radius-pill);
+  background: var(--rk-accent-soft);
+  font-family: var(--rk-font-mono);
+  font-size: var(--rk-font-xs);
+  color: var(--rk-accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rk-inline-input {
+  width: 100%;
+  min-height: 64px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--rk-font-md);
+  line-height: 1.45;
+  color: var(--rk-text);
+}
+
+.rk-inline-input::placeholder {
+  color: var(--rk-text-muted);
+}
+
+.rk-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--rk-space-1);
+}
+
+.rk-inline-hint {
+  flex: 1;
+  font-size: var(--rk-font-xs);
+  color: var(--rk-text-muted);
+}
+
+.rk-inline-cancel,
+.rk-inline-add {
+  height: 28px;
+  padding: 0 var(--rk-space-3);
+  border: 0;
+  border-radius: var(--rk-radius-pill);
+  font: inherit;
+  font-size: var(--rk-font-sm);
+  font-weight: var(--rk-font-weight-medium);
+  cursor: pointer;
+  transition: background-color 120ms ease, filter 120ms ease;
+}
+
+.rk-inline-cancel {
+  background: none;
+  color: var(--rk-text-muted);
+}
+
+.rk-inline-cancel:hover {
+  background: var(--rk-bg-subtle);
+  color: var(--rk-text);
+}
+
+.rk-inline-add {
+  background: var(--rk-accent);
+  color: var(--rk-accent-text);
+}
+
+.rk-inline-add:hover {
+  filter: brightness(1.05);
+}
+
+@keyframes rk-inline-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rk-inline-target-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rk-inline > *,
+  .rk-inline-target {
+    animation: none;
+  }
 }
 
 .rk-pick-box {
