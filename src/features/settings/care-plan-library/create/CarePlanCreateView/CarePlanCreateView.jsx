@@ -4,6 +4,7 @@ import { Select } from '../../../../../components/Select/Select';
 import { Textarea } from '../../../../../components/Textarea/Textarea';
 import { Button } from '../../../../../components/Button/Button';
 import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
+import { RadioOptionGroup } from '../../../../../components/RadioOptionGroup/RadioOptionGroup';
 import { CloseButton } from '../../../../../components/CloseButton/CloseButton';
 import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
@@ -30,6 +31,8 @@ import { UnityPromptField } from '../../../../../components/UnityPromptField/Uni
 import { UnityIcon } from '../../../../../components/UnityIcon/UnityIcon';
 import { TableSkeleton } from '../../../../../components/TableSkeleton/TableSkeleton';
 import { protocolGuidanceText } from '../../../clinical-protocols/lib/protocolSchema';
+import { ProtocolUploadDrawer } from '../../../clinical-protocols/ProtocolUploadDrawer';
+import { ProtocolReviewDrawer } from '../../../clinical-protocols/ProtocolReviewDrawer';
 import { buildTemplateCatalog, TEMPLATE_DESCRIPTION_MAX } from '../../lib/aiTemplateDraft';
 import {
   requestTemplateDraft,
@@ -42,6 +45,13 @@ import styles from './CarePlanCreateView.module.css';
 
 const DRAFT_EXAMPLE = 'A care plan for newly diagnosed Type 2 diabetes with focus on medication adherence and dietary counseling.';
 
+
+const BUILD_MODES = [
+  { value: 'manual', label: 'Build it yourself', hint: 'Name it and add goals, interventions and barriers from the library.' },
+  { value: 'ai', label: 'Draft with UnityAI', hint: 'Describe it, optionally from a clinical protocol. UnityAI drafts the name, description, goals, interventions and barriers for you to review.' },
+];
+// The protocol picker's first option opens the upload drawer instead of picking.
+const UPLOAD_PROTOCOL = '__upload';
 
 const TEMPLATE_TYPES = [
   { value: 'general', label: 'General' },
@@ -58,6 +68,9 @@ export function CarePlanCreateView({ onClose, onSave }) {
   // Who it's for. A library template is for the organization or just its
   // creator; patient templates are only saved from a patient's care plan.
   const [scope, setScope] = useState('org');
+  // Built by hand, or drafted by UnityAI (which also writes the name and
+  // description, so those wait for the draft).
+  const [buildMode, setBuildMode] = useState('manual');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [templateType, setTemplateType] = useState('general');
@@ -83,7 +96,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const saveCarePlanGoal = useAppStore(s => s.saveCarePlanGoal);
   const barrierLibrary = useAppStore(s => s.carePlanBarriers);
 
-  // An Active clinical protocol (Settings > Clinical Protocols) the draft
+  // An Active clinical protocol (Care Plan Library > Clinical Protocols) the draft
   // follows; the saved template records it as its source.
   const clinicalProtocols = useAppStore(s => s.clinicalProtocols);
   const fetchClinicalProtocols = useAppStore(s => s.fetchClinicalProtocols);
@@ -91,9 +104,15 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const activeProtocols = useMemo(() => clinicalProtocols.filter(p => p.status === 'active'), [clinicalProtocols]);
   const [protocolId, setProtocolId] = useState('');
   const sourceProtocol = activeProtocols.find(p => p.id === protocolId) || null;
+  // A protocol can also be uploaded from here: upload, review, and once it's
+  // approved it becomes the pick.
+  const [protocolUploadOpen, setProtocolUploadOpen] = useState(false);
+  const [reviewProtocolId, setReviewProtocolId] = useState(null);
   const pickProtocol = (id) => {
+    if (id === UPLOAD_PROTOCOL) { setProtocolUploadOpen(true); return; }
     setProtocolId(id);
-    const picked = activeProtocols.find(p => p.id === id);
+    // Read from the store: a protocol approved a moment ago isn't in this render's list yet.
+    const picked = useAppStore.getState().clinicalProtocols.find(p => p.id === id);
     if (picked && !draftText.trim()) {
       const conditionsText = picked.conditions.length ? ` for ${picked.conditions.join(', ')}` : '';
       setDraftText(`A care plan following ${picked.title}${conditionsText}.`);
@@ -111,6 +130,11 @@ export function CarePlanCreateView({ onClose, onSave }) {
   // Only read inside handlers, so refs rather than state.
   const draftIdsRef = useRef(new Set());
   const draftConditionsRef = useRef(new Set());
+  // The name and description the last draft wrote; a redraft replaces them
+  // unless they've been edited since.
+  const draftTextRef = useRef({ name: '', description: '' });
+  // The protocol the current draft followed: what the template is saved as based on.
+  const [draftedProtocol, setDraftedProtocol] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const goalRows = useMemo(() => goals.map(g => ({
@@ -232,8 +256,11 @@ export function CarePlanCreateView({ onClose, onSave }) {
       setInterventions(prev => mergeDraft(prev, lists.interventions));
       setBarriers(prev => mergeDraft(prev, lists.barriers));
       draftIdsRef.current = new Set([...lists.goals, ...lists.interventions, ...lists.barriers].map(x => x.id));
-      if (!name.trim() && draft.name) setName(draft.name);
-      if (!description.trim() && draft.summary) setDescription(draft.summary);
+      const replaceable = (current, last) => !current.trim() || current === last;
+      if (draft.name && replaceable(name, draftTextRef.current.name)) setName(draft.name);
+      if (draft.summary && replaceable(description, draftTextRef.current.description)) setDescription(draft.summary);
+      draftTextRef.current = { name: draft.name || '', description: draft.summary || '' };
+      setDraftedProtocol(protocol ? sourceProtocol : null);
       // Conditions the last draft added are replaced too; ones picked by hand stay.
       const kept = conditions.filter(c => !draftConditionsRef.current.has(c));
       const keptSet = new Set(kept);
@@ -257,9 +284,16 @@ export function CarePlanCreateView({ onClose, onSave }) {
     const dropped = draftConditionsRef.current;
     setConditions(prev => prev.filter(c => !dropped.has(c)));
     draftConditionsRef.current = new Set();
+    if (name === draftTextRef.current.name) setName('');
+    if (description === draftTextRef.current.description) setDescription('');
+    draftTextRef.current = { name: '', description: '' };
+    setDraftedProtocol(null);
     setDraftReview(null);
   };
 
+  const aiMode = buildMode === 'ai';
+  // UnityAI writes the name and description, so they open for edits once it has drafted.
+  const awaitingDraft = aiMode && (!draftReview || drafting);
   const canSave = name.trim().length > 0 && !saving && !drafting;
 
   const payload = (savedGoals) => ({
@@ -272,8 +306,8 @@ export function CarePlanCreateView({ onClose, onSave }) {
     barriers: withoutDraftMarks(barriers),
     scope,
     renewal,
-    sourceProtocol: sourceProtocol
-      ? { id: sourceProtocol.id, title: sourceProtocol.title, version: sourceProtocol.version, organization: sourceProtocol.organization }
+    sourceProtocol: draftedProtocol
+      ? { id: draftedProtocol.id, title: draftedProtocol.title, version: draftedProtocol.version, organization: draftedProtocol.organization }
       : null,
   });
 
@@ -300,40 +334,59 @@ export function CarePlanCreateView({ onClose, onSave }) {
         </div>
 
         <div className={styles.formBody}>
-          {activeProtocols.length > 0 && (
-            <Select
-              label="Clinical protocol"
-              portal
-              searchable
-              placeholder="None: draft from the description only"
-              options={[
-                { value: '', label: 'None: draft from the description only' },
-                ...activeProtocols.map(p => ({
-                  value: p.id,
-                  label: [p.title, p.version && `v${p.version}`, p.organization].filter(Boolean).join(' · '),
-                })),
-              ]}
-              value={protocolId}
-              onChange={pickProtocol}
-              helperText={sourceProtocol
-                ? 'UnityAI follows its thresholds, cadence and titration, and the template is saved as based on it.'
-                : 'Optional. Start from an approved protocol in Settings > Clinical Protocols.'}
-            />
-          )}
-          <UnityPromptField
-            label="Describe this template in plain English"
-            value={draftText}
-            onChange={setDraftText}
-            onSubmit={draftWithAi}
-            placeholder="Who it's for and what it should focus on"
-            example={DRAFT_EXAMPLE}
-            actionLabel={draftReview ? 'Redraft' : 'Draft Template'}
-            generatingLabel="Drafting…"
-            generating={drafting}
-            error={draftError}
-            hint="UnityAI drafts goals, interventions and barriers, using your library first. Review and edit before saving."
-            maxLength={TEMPLATE_DESCRIPTION_MAX}
+          <RadioOptionGroup
+            label="How do you want to build it?"
+            name="buildMode"
+            variant="card"
+            options={BUILD_MODES}
+            value={buildMode}
+            onChange={setBuildMode}
           />
+
+          {aiMode && (
+            <>
+              <Select
+                label="Clinical protocol"
+                portal
+                searchable
+                placeholder="None: draft from the description only"
+                // Upload leads the list (and sits in the label row) so it stays in
+                // reach however many protocols there are.
+                labelAction={(
+                  <Button variant="ghost" size="sm" leadingIcon="solar:upload-minimalistic-linear" onClick={() => setProtocolUploadOpen(true)}>
+                    Upload
+                  </Button>
+                )}
+                options={[
+                  { value: UPLOAD_PROTOCOL, label: 'Upload a new protocol', icon: 'solar:upload-minimalistic-linear' },
+                  { value: '', label: 'None: draft from the description only' },
+                  ...activeProtocols.map(p => ({
+                    value: p.id,
+                    label: [p.title, p.version && `v${p.version}`, p.organization].filter(Boolean).join(' · '),
+                  })),
+                ]}
+                value={protocolId}
+                onChange={pickProtocol}
+                helperText={sourceProtocol
+                  ? 'UnityAI follows its thresholds, cadence and titration, and the template is saved as based on it.'
+                  : 'Optional. Pick an approved protocol, or upload one to review and approve.'}
+              />
+              <UnityPromptField
+                label="Describe this template in plain English"
+                value={draftText}
+                onChange={setDraftText}
+                onSubmit={draftWithAi}
+                placeholder="Who it's for and what it should focus on"
+                example={DRAFT_EXAMPLE}
+                actionLabel={draftReview ? 'Redraft' : 'Draft Template'}
+                generatingLabel="Drafting…"
+                generating={drafting}
+                error={draftError}
+                hint="UnityAI drafts the name, description, goals, interventions and barriers, using your library first. Review and edit before saving."
+                maxLength={TEMPLATE_DESCRIPTION_MAX}
+              />
+            </>
+          )}
 
           <div className={styles.field}>
             <div className={styles.fieldLabelRow}>
@@ -344,7 +397,8 @@ export function CarePlanCreateView({ onClose, onSave }) {
             <Input
               value={name}
               onChange={e => setName(e.target.value.slice(0, CARE_PLAN_NAME_MAX))}
-              placeholder="Enter Care Plan Name"
+              disabled={awaitingDraft}
+              placeholder={awaitingDraft ? 'UnityAI names it when it drafts' : 'Enter Care Plan Name'}
               characterLimit={CARE_PLAN_NAME_MAX}
               aria-label="Care Plan Name"
             />
@@ -355,7 +409,8 @@ export function CarePlanCreateView({ onClose, onSave }) {
             <Textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="Briefly describe the Plan objective"
+              disabled={awaitingDraft}
+              placeholder={awaitingDraft ? 'UnityAI writes it when it drafts' : 'Briefly describe the Plan objective'}
               rows={3}
               aria-label="Description"
             />
@@ -585,6 +640,21 @@ export function CarePlanCreateView({ onClose, onSave }) {
           showCreateNew={false}
           onClose={() => setTemplatesOpen(false)}
           onApply={addFromTemplates}
+        />
+      )}
+
+      {protocolUploadOpen && (
+        <ProtocolUploadDrawer
+          onClose={() => setProtocolUploadOpen(false)}
+          onReview={(id) => { setProtocolUploadOpen(false); setReviewProtocolId(id); }}
+        />
+      )}
+      {reviewProtocolId && (
+        <ProtocolReviewDrawer
+          key={reviewProtocolId}
+          protocolId={reviewProtocolId}
+          onApproved={pickProtocol}
+          onClose={() => setReviewProtocolId(null)}
         />
       )}
     </div>

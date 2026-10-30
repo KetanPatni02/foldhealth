@@ -1,6 +1,6 @@
 /* The Fold clinical protocol: a client's clinical practice guidance as a
    structured object. Shared by the parser (api/_handlers/clinical-protocol-parse.js),
-   the JSON importer, the store and the Settings > Clinical Protocols screens,
+   the JSON importer, the store and the Care Plan Library > Clinical Protocols screens,
    so a protocol means the same thing everywhere. Plain JS, no React.
 
    Every extracted item carries `source` (the passage it came from, verbatim)
@@ -25,7 +25,8 @@ export const PROTOCOL_STATUSES = [
 const STATUS_BY_VALUE = Object.fromEntries(PROTOCOL_STATUSES.map(s => [s.value, s]));
 export const protocolStatus = (value) => STATUS_BY_VALUE[value] || STATUS_BY_VALUE.draft;
 
-export const SOURCE_KINDS = ['pdf', 'docx', 'json'];
+// 'fold': Fold's own protocols (lib/foldProtocols.js), seeded rather than uploaded.
+export const SOURCE_KINDS = ['pdf', 'docx', 'json', 'fold'];
 
 export const COMPARATORS = ['<', '<=', '>', '>=', '=', 'between'];
 const COMPARATOR_TEXT = { '<': '<', '<=': '≤', '>': '>', '>=': '≥', '=': '=' };

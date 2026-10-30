@@ -1,21 +1,22 @@
-/* Fold Pathway Library: the care pathways Fold ships with every account.
-   This is Fold's content, not the client's (client guidance is a clinical
-   protocol, Settings > Clinical Protocols).
+/* Fold clinical protocols: the care pathways Fold ships with every account,
+   stored as Active, read-only clinical protocols (organization "Fold") next to
+   the client's own in Care Plan Library > Clinical Protocols. Each also seeds
+   a starter care plan template linked to it.
 
-   Each pathway is a recommended GBI set plus decision logic and recheck
+   Each entry is a recommended GBI set plus decision logic and recheck
    cadence for one condition:
      - goals, interventions and barriers name rows of the shared Care Plan
-       Library by exact title (resolved to ids by lib/carePathways.js), so a
-       pathway never invents a library item. Interventions name the goal they
+       Library by exact title (the seed resolves them to ids), so a starter
+       template never invents a library item. Interventions name the goal they
        serve (goalTitle) and barriers the goals they block (goalTitles).
      - thresholds, decisionRules and cadence use the clinical protocol shapes
-       (clinical-protocols/lib/protocolSchema.js), so both read the same way.
-       `source` says what each item rests on: a named guideline, or Fold
-       care-management practice where the guideline sets no rule.
+       (lib/protocolSchema.js). `source` says what each item rests on: a named
+       guideline, or Fold care-management practice where the guideline sets
+       no rule.
 
-   Pathways are care-management scaffolding, not orders: actions route
-   decisions to the treating clinician. Bump `version` on any clinical change
-   and regenerate supabase/care_pathways_seed.sql (scripts/genCarePathwaySeed.mjs). */
+   These are care-management scaffolding, not orders: actions route decisions
+   to the treating clinician. Bump `version` on any clinical change and
+   regenerate supabase/fold_protocols_seed.sql (scripts/genFoldProtocolsSeed.mjs). */
 
 const FOLD = 'Fold care-management practice';
 const ADA = 'ADA Standards of Care in Diabetes (2026)';
@@ -27,7 +28,7 @@ const KDIGO_BP = 'KDIGO 2021 Guideline for Blood Pressure in CKD';
 const HTN = '2025 AHA/ACC Guideline for High Blood Pressure in Adults';
 const LIPID = '2018 AHA/ACC Guideline on the Management of Blood Cholesterol';
 
-export const CARE_PATHWAY_CONTENT = [
+export const FOLD_PROTOCOL_CONTENT = [
   {
     id: 'diabetes',
     name: 'Type 2 Diabetes',
@@ -71,12 +72,12 @@ export const CARE_PATHWAY_CONTENT = [
       { measure: 'Blood glucose', comparator: '<', value: 70, unit: 'mg/dL', label: 'Level 1 hypoglycemia', action: 'Treat with 15 g fast-acting carbohydrate, recheck in 15 minutes, log the event.', source: ADA },
       { measure: 'Blood glucose', comparator: '<', value: 54, unit: 'mg/dL', label: 'Level 2 hypoglycemia', action: 'Same-day notice to the treating clinician; review glucose-lowering medicines.', source: ADA },
       { measure: 'Blood pressure', comparator: '<', value: 130, unit: 'mmHg systolic (and < 80 diastolic)', label: 'BP goal in diabetes', source: ADA },
-      { measure: 'Urine albumin-to-creatinine ratio', comparator: '>=', value: 30, unit: 'mg/g', label: 'Albuminuria', action: 'Follow the Chronic Kidney Disease pathway alongside this one.', source: ADA },
+      { measure: 'Urine albumin-to-creatinine ratio', comparator: '>=', value: 30, unit: 'mg/g', label: 'Albuminuria', action: 'Follow the Chronic Kidney Disease protocol alongside this one.', source: ADA },
     ],
     decisionRules: [
       { when: 'A1C is above the individualized goal at a scheduled check', then: 'Notify the treating clinician for treatment intensification review (avoid therapeutic inertia), recheck A1C in 3 months and move check-ins to every 2 weeks until the plan is updated.', source: ADA },
       { when: 'Level 2 or level 3 (severe) hypoglycemia is reported', then: 'Notify the treating clinician the same day, review insulin and sulfonylurea use, and confirm glucagon is prescribed and the household knows how to use it.', source: ADA },
-      { when: 'eGFR < 60 mL/min/1.73m² or urine albumin-to-creatinine ratio ≥ 30 mg/g', then: 'Flag for clinician review of kidney-protective therapy (SGLT2 inhibitor and ACE inhibitor or ARB) and start the Chronic Kidney Disease pathway.', source: ADA },
+      { when: 'eGFR < 60 mL/min/1.73m² or urine albumin-to-creatinine ratio ≥ 30 mg/g', then: 'Flag for clinician review of kidney-protective therapy (SGLT2 inhibitor and ACE inhibitor or ARB) and start the Chronic Kidney Disease protocol.', source: ADA },
       { when: 'A1C is at goal on two consecutive checks with a stable regimen', then: 'Space A1C to every 6 months and check-ins to monthly.', source: ADA },
     ],
     cadence: [

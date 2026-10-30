@@ -20,7 +20,7 @@ const sameProtocol = (a, b) => a.title.trim().toLowerCase() === b.title.trim().t
   && (a.organization || '').trim().toLowerCase() === (b.organization || '').trim().toLowerCase();
 
 /*
- * Settings > Clinical Protocols (clinical_protocols_migration.sql): the
+ * Care Plan Library > Clinical Protocols (clinical_protocols_migration.sql): the
  * library, uploads (extract text in the browser, keep the original in the
  * private bucket, parse via /api/clinical-protocol-parse or import Fold JSON
  * directly), review edits, approval with superseding, retire and delete.

@@ -323,7 +323,6 @@ const SETTINGS_SECTION_TO_NAV = {
   'calls': 'calls',
   'care-plan-library': 'care-plan-library',
   'care-program-config': 'care-program-config',
-  'clinical-protocols': 'clinical-protocols',
   'crm-widgets': 'crm-widgets',
   'embedded-components': 'embedded-components',
   'content': 'content',
@@ -341,7 +340,7 @@ const SETTINGS_NAV_TO_SECTION = Object.fromEntries(
 );
 
 // Sections whose single tab strip lives in the store and rides the URL.
-const CARE_PLAN_TABS = ['template', 'pathways', 'goals', 'interventions', 'barriers', 'drafts', 'overlays'];
+const CARE_PLAN_TABS = ['template', 'protocols', 'goals', 'interventions', 'barriers', 'drafts', 'overlays'];
 
 function tabForListSlug(section, list) {
   if (list === 'TOC IP' || section === 'tcm-queue' || section === 'toc-queue') return 'toc-queue';
@@ -493,6 +492,13 @@ export function hashToState(route, state = null) {
       updates.careProgramConfigTab = route.id || 'overview';
       return updates;
     }
+    // Clinical Protocols moved into the Care Plan Library; old links land on its tab.
+    if (route.section === 'clinical-protocols') {
+      updates.settingsNavItem = 'care-plan-library';
+      updates.carePlanTab = 'protocols';
+      updates.carePlanCreateOpen = false;
+      return updates;
+    }
     // Care Plan Library — tab + create overlay rides the URL so refresh restores it.
     if (route.section === 'care-plan-library') {
       updates.settingsNavItem = 'care-plan-library';
@@ -501,7 +507,9 @@ export function hashToState(route, state = null) {
         updates.carePlanCreateOpen = true;
         return updates;
       }
-      updates.carePlanTab = CARE_PLAN_TABS.includes(route.tab) ? route.tab : 'template';
+      // Fold Pathways became Fold clinical protocols.
+      const tab = route.tab === 'pathways' ? 'protocols' : route.tab;
+      updates.carePlanTab = CARE_PLAN_TABS.includes(tab) ? tab : 'template';
       updates.carePlanCreateOpen = false;
       return updates;
     }
