@@ -22,9 +22,10 @@
 
   --rk-overlay: var(--surface-overlay);
 
-  /* Just under Fold's drawers (400), so Signoff and other drawers cover the
-     box instead of sitting beneath it. */
-  --rk-z: 399;
+  /* Above everything, drawers and popovers included, so the box stays usable
+     over whatever is being reviewed. Its container is the last thing in
+     <body>, so it also wins ties with Fold's other max-z layers. */
+  --rk-z: 2147483647;
 }
 
 .fold-review-footer {

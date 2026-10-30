@@ -192,6 +192,8 @@ function useAnchorReference(anchor) {
 // the key there so a drawer or dialog underneath stays open.
 const layers = [];
 
+const OUTSIDE_PRESS_IGNORE = '[data-outside-press-ignore]';
+
 // Without an overlay, a press outside the panel closes it and still lands on
 // whatever was pressed. Presses inside a popover opened on top of this one,
 // or on the anchor element (its trigger toggles it), don't count as outside.
@@ -205,6 +207,7 @@ function useLayer(open, close, panelRef, anchorEl, outsidePress) {
     layers.push(layer);
     const onKey = (e) => {
       if (e.key !== 'Escape' || layers[layers.length - 1] !== layer) return;
+      if (document.activeElement?.closest?.(OUTSIDE_PRESS_IGNORE)) return;
       e.stopPropagation();
       closeRef.current();
     };
@@ -213,6 +216,8 @@ function useLayer(open, close, panelRef, anchorEl, outsidePress) {
       if (above.some(l => l.panelRef.current?.contains(e.target))) return;
       // A child popover's overlay: that press closes the child only.
       if (e.target.closest?.('[data-popover-overlay]')) return;
+      // Tools that float over the app (the design review box) don't count.
+      if (e.target.closest?.(OUTSIDE_PRESS_IGNORE)) return;
       if (anchorEl?.contains(e.target)) return;
       closeRef.current();
     };

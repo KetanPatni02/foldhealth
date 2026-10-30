@@ -156,8 +156,9 @@ export function RichTextEditor({ placeholder, onChange, onFiles, onSubmit, initi
     const onDown = (e) => {
       if (colorRef.current && !colorRef.current.contains(e.target)) setColorOpen(false);
     };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
+    // Capture phase: a host may stop events from leaving the kit's layer.
+    document.addEventListener('mousedown', onDown, true);
+    return () => document.removeEventListener('mousedown', onDown, true);
   }, [colorOpen]);
 
   if (!editor) return null;
