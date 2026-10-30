@@ -8,7 +8,7 @@ import {
 import { simulateRun } from '../../features/automations/lib/simulate';
 import { buildRuleInputs, evaluateRule, rulesForProgram } from '../../features/automations/lib/clinicalCriteria';
 import { enrollmentRulesOf } from '../../features/automations/lib/enrollmentRules';
-import { gbiTransitions, programStatusRulesOf, rulesForProgramStatus } from '../../features/automations/lib/programStatusRules';
+import { gbiRestorations, gbiTransitions, isHoldProgramStatus, programStatusRulesOf, programStatusTriggerOf, rulesForProgramStatus } from '../../features/automations/lib/programStatusRules';
 import { getNode } from '../../features/automations/lib/graph';
 import { statusDef } from '../../features/automations/lib/catalog';
 import {
@@ -33,7 +33,8 @@ import { SAMPLE_MEMBERS } from '../../features/automations/data/sampleMembers';
  * And runProgramStatusRules: a program moving to Unable to Reach, Paused,
  * Completed or Closed runs the "program status changes" automations, which
  * set every open goal, intervention and barrier in its plan to the mapped
- * status with a reason (lib/programStatusRules.js).
+ * status with a reason (lib/programStatusRules.js). Coming back from Unable
+ * to Reach or Paused puts the items those moved back where they were.
  */
 
 const MISSING = new Set(['42P01', 'PGRST205']);
@@ -603,51 +604,39 @@ export function createAutomationsSlice(set, get) {
       return { matched: matched.map(r => r.rule), taskId };
     },
 
-    runProgramStatusRules: async (patientId, program, status) => {
+    runProgramStatusRules: async (patientId, program, status, { from: prevStatus } = {}) => {
       if (!patientId || !program?.id || !status) return { changed: [] };
-      if (get().automationsStatus !== 'ready') await get().fetchAutomations();
-      const rules = rulesForProgramStatus(programStatusRulesOf(get().automations), program.code, status);
-      if (!rules.length) return { changed: [] };
-
-      const { data: planRow } = await supabase.from('patient_care_plans').select('id')
-        .eq('patient_id', String(patientId)).eq('program_id', program.id).maybeSingle();
       const TABLES = { goal: 'patient_care_plan_goals', intervention: 'patient_care_plan_interventions', barrier: 'patient_care_plan_barriers' };
-      const items = { goal: [], intervention: [], barrier: [] };
-      if (planRow) {
-        const reads = await Promise.all(Object.entries(TABLES).map(([kind, table]) => supabase.from(table)
-          .select('id, title, status').eq('plan_id', planRow.id).is('retired_instance_id', null)
-          .then(res => [kind, res.data || []])));
-        for (const [kind, rows] of reads) items[kind] = rows;
-      }
-      const transitions = gbiTransitions(items, rules);
-
-      // One write per kind and target; the reason column comes with
-      // gbi_status_reason_migration.sql, so retry without it until then.
-      const changed = [];
-      const groups = new Map();
-      for (const t of transitions) {
-        const k = `${t.kind}|${t.to}|${t.reason}`;
-        if (!groups.has(k)) groups.set(k, []);
-        groups.get(k).push(t);
-      }
-      // Groups touch disjoint rows, so they write concurrently.
-      const written = await Promise.all([...groups.values()].map(async (list) => {
-        const { kind, to, reason } = list[0];
-        const base = { status: to, updated_at: nowIso(), ...(kind === 'barrier' ? {} : { updated_by: 'Automations' }) };
-        const ids = list.map(t => t.id);
-        let { error } = await supabase.from(TABLES[kind]).update({ ...base, status_reason: reason || null }).in('id', ids);
-        if (error && /status_reason/.test(error.message || '')) ({ error } = await supabase.from(TABLES[kind]).update(base).in('id', ids));
-        if (error) { console.warn('runProgramStatusRules:', error.message); return []; }
-        return list;
-      }));
-      for (const list of written) changed.push(...list);
-
-      if (changed.length) {
-        get().logCarePlanAudit(patientId, program, changed.map(t => ({
-          entityType: t.kind, entityId: t.id, action: 'status_changed', summary: t.title,
-          detail: `${t.reason || `Program ${status}`}: ${t.from} → ${t.to}`,
-        })));
-        // Show the new statuses wherever this plan is open.
+      const readItems = async () => {
+        const { data: planRow } = await supabase.from('patient_care_plans').select('id')
+          .eq('patient_id', String(patientId)).eq('program_id', program.id).maybeSingle();
+        const items = { goal: [], intervention: [], barrier: [] };
+        if (planRow) {
+          // status_hold and status_reason come with migrations; read without
+          // them until those have run.
+          const read = (table, cols) => supabase.from(table).select(cols).eq('plan_id', planRow.id).is('retired_instance_id', null);
+          const reads = await Promise.all(Object.entries(TABLES).map(async ([kind, table]) => {
+            let res = await read(table, 'id, title, status, status_reason, status_hold');
+            if (res.error) res = await read(table, 'id, title, status');
+            return [kind, (res.data || []).map(r => ({ id: r.id, title: r.title, status: r.status, statusReason: r.status_reason || null, statusHold: r.status_hold || null }))];
+          }));
+          for (const [kind, rows] of reads) items[kind] = rows;
+        }
+        return { planRow, items };
+      };
+      // One update per group of rows; drops a column the table doesn't have yet.
+      const writeRows = async (kind, ids, fields) => {
+        let payload = fields;
+        for (;;) {
+          const { error } = await supabase.from(TABLES[kind]).update(payload).in('id', ids);
+          if (!error) return true;
+          const missing = ['status_hold', 'status_reason'].find(c => c in payload && (error.message || '').includes(c));
+          if (!missing) { console.warn('runProgramStatusRules:', error.message); return false; }
+          payload = Object.fromEntries(Object.entries(payload).filter(([k]) => k !== missing));
+        }
+      };
+      // Show the new statuses wherever this plan is open.
+      const patchStore = (changed) => {
         const key = carePlanKey(patientId, program.id);
         const lists = { goal: 'goals', intervention: 'interventions', barrier: 'barriers' };
         const patchList = (slice) => {
@@ -656,7 +645,7 @@ export function createAutomationsSlice(set, get) {
           for (const [kind, listKey] of Object.entries(lists)) {
             const byId = new Map(changed.filter(t => t.kind === kind).map(t => [t.id, t]));
             if (!byId.size || !next[listKey]) continue;
-            next[listKey] = next[listKey].map(x => (byId.has(x.id) ? { ...x, status: byId.get(x.id).to, statusReason: byId.get(x.id).reason } : x));
+            next[listKey] = next[listKey].map(x => (byId.has(x.id) ? { ...x, status: byId.get(x.id).to, statusReason: byId.get(x.id).reason || '' } : x));
           }
           return next;
         };
@@ -664,6 +653,64 @@ export function createAutomationsSlice(set, get) {
           patientCarePlans: st.patientCarePlans[key] ? { ...st.patientCarePlans, [key]: patchList(st.patientCarePlans[key]) } : st.patientCarePlans,
           patientSignedCarePlans: st.patientSignedCarePlans?.[key] ? { ...st.patientSignedCarePlans, [key]: patchList(st.patientSignedCarePlans[key]) } : st.patientSignedCarePlans,
         }));
+      };
+
+      // Back from Unable to Reach or Paused to a status with no rules of its
+      // own: put the held items back.
+      if (!programStatusTriggerOf(status)) {
+        if (!isHoldProgramStatus(prevStatus)) return { changed: [] };
+        const { items } = await readItems();
+        const { restore, clear } = gbiRestorations(items);
+        const ok = await Promise.all(restore.map(async t => ((await writeRows(t.kind, [t.id], {
+          status: t.to, status_reason: t.reason, status_hold: null, updated_at: nowIso(), ...(t.kind === 'barrier' ? {} : { updated_by: 'Automations' }),
+        })) ? t : null)));
+        await Promise.all(Object.keys(TABLES).map((kind) => {
+          const ids = clear.filter(c => c.kind === kind).map(c => c.id);
+          return ids.length ? writeRows(kind, ids, { status_hold: null }) : null;
+        }));
+        const changed = ok.filter(Boolean);
+        if (changed.length) {
+          get().logCarePlanAudit(patientId, program, changed.map(t => ({
+            entityType: t.kind, entityId: t.id, action: 'status_changed', summary: t.title,
+            detail: `Program ${prevStatus} → ${status}: ${t.from} → ${t.to}`,
+          })));
+          patchStore(changed);
+          get().showToast?.(`${changed.length} care plan item${changed.length === 1 ? '' : 's'} back to ${changed.length === 1 ? 'its' : 'their'} status before ${prevStatus}`);
+        }
+        return { changed };
+      }
+
+      if (get().automationsStatus !== 'ready') await get().fetchAutomations();
+      const rules = rulesForProgramStatus(programStatusRulesOf(get().automations), program.code, status);
+      if (!rules.length) return { changed: [] };
+      const { planRow, items } = await readItems();
+      // Completed and Closed are final: their items forget any hold.
+      const transitions = gbiTransitions(items, rules, { hold: isHoldProgramStatus(status) });
+
+      // One write per kind, target and stored hold.
+      const changed = [];
+      const groups = new Map();
+      for (const t of transitions) {
+        const k = `${t.kind}|${t.to}|${t.reason}|${JSON.stringify(t.hold)}`;
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(t);
+      }
+      // Groups touch disjoint rows, so they write concurrently.
+      const written = await Promise.all([...groups.values()].map(async (list) => {
+        const { kind, to, reason, hold } = list[0];
+        const ok = await writeRows(kind, list.map(t => t.id), {
+          status: to, status_reason: reason || null, status_hold: hold, updated_at: nowIso(), ...(kind === 'barrier' ? {} : { updated_by: 'Automations' }),
+        });
+        return ok ? list : [];
+      }));
+      for (const list of written) changed.push(...list);
+
+      if (changed.length) {
+        get().logCarePlanAudit(patientId, program, changed.map(t => ({
+          entityType: t.kind, entityId: t.id, action: 'status_changed', summary: t.title,
+          detail: `${t.reason || `Program ${status}`}: ${t.from} → ${t.to}`,
+        })));
+        patchStore(changed);
         const to = [...new Set(changed.map(t => t.to))].join(', ');
         get().showToast?.(`${changed.length} open care plan item${changed.length === 1 ? '' : 's'} set to ${to}`);
       }

@@ -5821,8 +5821,9 @@ export const useAppStore = create((set, get) => ({
         statusType: 'warning',
       });
       // UTR / Paused / Completed / Closed carry the program's open care plan
-      // items with them (Settings > Automations, program status changes).
-      get().runProgramStatusRules(patientId, updated, patch.status).catch(err => console.warn('runProgramStatusRules:', err?.message || err));
+      // items with them (Settings > Automations, program status changes);
+      // leaving UTR or Paused puts them back.
+      get().runProgramStatusRules(patientId, updated, patch.status, { from: prevStatus }).catch(err => console.warn('runProgramStatusRules:', err?.message || err));
     }
     if (updated) {
       supabase.from('patient_care_programs').upsert({
