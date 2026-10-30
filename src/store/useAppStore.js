@@ -82,6 +82,7 @@ import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 import { buildPatientFacts, buildTemplateChoices, draftCounts } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/individualizedPlan';
+import { pendingRecommendation } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanRecommendation';
 import { buildTemplateCatalog } from '../features/settings/care-plan-library/lib/aiTemplateDraft';
 import { apiFetch } from '../lib/apiFetch';
 import { sdohSocialRisk } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/sdohReport';
@@ -246,6 +247,8 @@ import { createTemplateVersionsSlice } from './slices/templateVersionsSlice';
 import { createIpaOverlaysSlice } from './slices/ipaOverlaysSlice';
 import { applyOverlay, blockedSignoffs } from '../features/settings/care-plan-library/lib/ipaOverlays';
 import { contentOf as templateContentOf } from '../features/settings/care-plan-library/lib/templateVersions';
+import { withCategory } from '../features/settings/care-plan-library/lib/templateCategories';
+import { buildRuleInputs } from '../features/automations/lib/clinicalCriteria';
 import { effectiveVersion as effectiveTemplateVersion, todayIso as todayIsoDate } from '../features/settings/care-plan-library/lib/templateVersions';
 import { createClinicalProtocolsSlice } from './slices/clinicalProtocolsSlice';
 import { createTemplateSuggestionsSlice } from './slices/templateSuggestionsSlice';
@@ -807,6 +810,24 @@ export const useAppStore = create((set, get) => ({
   // falls back to a local mock for patients with no rows yet.
   patientProblems: {},           // { [patientId]: Problem[] }
   patientProblemsLoadedFor: {},  // { [patientId]: true }: gates the skeleton
+  // What a template category's criteria read for a patient (buildRuleInputs):
+  // the problem list and dated lab results. Loaded once per patient per session.
+  patientCriteriaInputs: {},
+  fetchPatientCriteriaInputs: async (patientId) => {
+    if (!patientId) return null;
+    const cached = get().patientCriteriaInputs[patientId];
+    if (cached) return cached;
+    const [problems, events] = await Promise.all([
+      supabase.from('patient_problems').select('title, status').eq('patient_id', String(patientId)),
+      supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit').eq('patient_id', String(patientId)),
+    ]);
+    if (problems.error) console.warn('fetchPatientCriteriaInputs (problems):', problems.error.message);
+    if (events.error) console.warn('fetchPatientCriteriaInputs (events):', events.error.message);
+    const inputs = buildRuleInputs({ problems: problems.data || [], clinicalEvents: events.data || [] });
+    set(s => ({ patientCriteriaInputs: { ...s.patientCriteriaInputs, [patientId]: inputs } }));
+    return inputs;
+  },
+
   fetchPatientProblems: async (patientId) => {
     if (!patientId) return;
     const { data, error } = await supabase.from('patient_problems')
@@ -2794,6 +2815,65 @@ export const useAppStore = create((set, get) => ({
     if (error) reportPersistFailure(`deletePatientCarePlanSummary(${patientId})`, error);
   },
 
+  // The same AI recap for one program's care plan, one row per patient +
+  // program (patient_care_plan_program_summaries), keyed here by carePlanKey.
+  // Kept until regenerated (overwrite) or dismissed (delete).
+  programCarePlanSummaries: {},        // { [carePlanKey]: { summary, generatedBy, generatedAt } | null }
+  programCarePlanSummaryLoadedFor: {}, // { [carePlanKey]: bool }
+
+  fetchProgramCarePlanSummary: async (patientId, programId) => {
+    if (!patientId || !programId) return;
+    const key = carePlanKey(patientId, programId);
+    if (get().programCarePlanSummaryLoadedFor[key]) return;
+    const { data, error } = await supabase
+      .from('patient_care_plan_program_summaries')
+      .select('summary, generated_by, generated_at')
+      .eq('patient_id', String(patientId))
+      .eq('program_id', programId)
+      .maybeSingle();
+    if (error) console.warn('fetchProgramCarePlanSummary:', error.message);
+    set(s => ({
+      programCarePlanSummaries: {
+        ...s.programCarePlanSummaries,
+        [key]: data ? { summary: data.summary, generatedBy: data.generated_by, generatedAt: data.generated_at } : null,
+      },
+      programCarePlanSummaryLoadedFor: { ...s.programCarePlanSummaryLoadedFor, [key]: true },
+    }));
+  },
+
+  saveProgramCarePlanSummary: async (patientId, programId, summary) => {
+    if (!patientId || !programId || !summary) return;
+    const key = carePlanKey(patientId, programId);
+    const now = new Date().toISOString();
+    const generatedBy = get().currentUserProfile?.name || null;
+    set(s => ({
+      programCarePlanSummaries: { ...s.programCarePlanSummaries, [key]: { summary, generatedBy, generatedAt: now } },
+      programCarePlanSummaryLoadedFor: { ...s.programCarePlanSummaryLoadedFor, [key]: true },
+    }));
+    const { error } = await supabase
+      .from('patient_care_plan_program_summaries')
+      .upsert(
+        { patient_id: String(patientId), program_id: programId, summary, generated_by: generatedBy, generated_at: now, updated_at: now },
+        { onConflict: 'patient_id,program_id' },
+      );
+    if (error) reportPersistFailure(`saveProgramCarePlanSummary(${key})`, error);
+  },
+
+  deleteProgramCarePlanSummary: async (patientId, programId) => {
+    if (!patientId || !programId) return;
+    const key = carePlanKey(patientId, programId);
+    set(s => ({
+      programCarePlanSummaries: { ...s.programCarePlanSummaries, [key]: null },
+      programCarePlanSummaryLoadedFor: { ...s.programCarePlanSummaryLoadedFor, [key]: true },
+    }));
+    const { error } = await supabase
+      .from('patient_care_plan_program_summaries')
+      .delete()
+      .eq('patient_id', String(patientId))
+      .eq('program_id', programId);
+    if (error) reportPersistFailure(`deleteProgramCarePlanSummary(${key})`, error);
+  },
+
   fetchPatientCarePlan: async (patientId, programId) => {
     if (!patientId || !programId) return;
     const key = carePlanKey(patientId, programId);
@@ -2974,8 +3054,10 @@ export const useAppStore = create((set, get) => ({
   // best templates and a tailored GBI set, and writes it onto this program's
   // plan unsigned (a draft): every item flagged for review with its rationale
   // and the facts it cites. Pipeline: care-plan/lib/individualizedPlan.js.
-  // Returns { counts, templates } or throws with a message for the caller.
-  draftIndividualizedPlan: async (patientId, program) => {
+  // `recommended` ([{ templateId, rule, criteria }], from matchCarePlanTemplates)
+  // limits it to the templates the enrollment automations matched and has the
+  // model merge all of them. Returns { counts, templates } or throws.
+  draftIndividualizedPlan: async (patientId, program, { recommended = [] } = {}) => {
     // Without the AI columns the drafted items can't carry their flag or
     // evidence, so say so before calling the model or touching the plan.
     const probe = await supabase.from('patient_care_plan_goals').select('ai_suggested').limit(1);
@@ -3006,12 +3088,16 @@ export const useAppStore = create((set, get) => ({
     });
     if (!facts.length) throw new Error('There’s nothing on this patient’s record to plan from yet: no conditions, labs, events, assessments or barriers.');
 
-    const templates = buildTemplateChoices(s0.carePlanTemplates, s0.carePlanGoals);
+    const recommendedIds = new Set(recommended.map(r => String(r.templateId)));
+    const templates = buildTemplateChoices(
+      recommendedIds.size ? s0.carePlanTemplates.filter(t => recommendedIds.has(String(t.id))) : s0.carePlanTemplates,
+      s0.carePlanGoals,
+    );
     const catalog = buildTemplateCatalog({ goals: s0.carePlanGoals, interventions: s0.carePlanInterventionTemplates, barriers: s0.carePlanBarriers });
     const res = await apiFetch('/api/care-plan-individualized', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ facts, templates, catalog, programName: program.name || program.code }),
+      body: JSON.stringify({ facts, templates, catalog, programName: program.name || program.code, recommended }),
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json?.draft) throw new Error(json?.error?.message || 'Could not draft the plan. Please try again.');
@@ -3047,6 +3133,13 @@ export const useAppStore = create((set, get) => ({
       }),
     ]);
 
+    // The templates it's built from wait with it, applied on approval.
+    if (draft.templates.length) {
+      await get().setCarePlanRecommendedTemplates(patientId, program, draft.templates.map(t => ({
+        id: t.id, name: t.name, why: t.why || '', ...(t.automation ? { automation: t.automation } : {}),
+      })));
+    }
+
     const counts = draftCounts(draft);
     await get().logCarePlanAudit(patientId, program, {
       entityType: 'plan',
@@ -3055,6 +3148,7 @@ export const useAppStore = create((set, get) => ({
       detail: [
         draft.summary,
         draft.templates.length ? `Based on: ${draft.templates.map(t => t.name).join(', ')}` : 'No template fit; tailored from the record',
+        recommended.length ? `Recommended by automations: ${[...new Set(recommended.map(r => r.rule))].join(', ')}` : null,
         `${facts.length} patient inputs read`,
       ].filter(Boolean).join(' · '),
     });
@@ -3074,7 +3168,58 @@ export const useAppStore = create((set, get) => ({
     const results = await Promise.all(items
       .filter(({ item }) => item?.aiSuggested && !item.aiReviewedAt)
       .map(({ kind, item }) => save[kind]?.({ ...item, aiReviewedBy: by, aiReviewedAt: at })));
+    // The last item approved approves the recommendation: its templates apply.
+    const cur = get().patientCarePlans[carePlanKey(patientId, program.id)];
+    if (cur?.plan?.recommendedTemplates?.length && !pendingRecommendation(cur).length) {
+      await get().applyRecommendedTemplates(patientId, program);
+    }
     return results.filter(Boolean).length;
+  },
+
+  // Record a recommendation's templates on the plan, pending approval
+  // (care_plan_recommended_templates migration); [] clears them.
+  setCarePlanRecommendedTemplates: async (patientId, program, recommended) => {
+    const key = carePlanKey(patientId, program.id);
+    const planId = get().patientCarePlans[key]?.plan?.id;
+    if (!planId) return false;
+    const list = recommended?.length ? recommended : [];
+    const { error } = await supabase.from('patient_care_plans')
+      .update({ recommended_templates: list.length ? list : null }).eq('id', planId);
+    if (error) {
+      // Before the migration the recommendation still works, without its templates.
+      if (!/recommended_templates/.test(error.message || '')) console.warn('setCarePlanRecommendedTemplates:', error.message);
+      return false;
+    }
+    set(s => {
+      const c = s.patientCarePlans[key];
+      if (!c?.plan) return {};
+      return { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, plan: { ...c.plan, recommendedTemplates: list } } } };
+    });
+    return true;
+  },
+
+  // Approving a recommendation applies its templates like any template
+  // (recorded on the plan, a run with its version and renewal, its
+  // conditions) without merging their items again, then clears them.
+  applyRecommendedTemplates: async (patientId, program) => {
+    const key = carePlanKey(patientId, program.id);
+    const plan = get().patientCarePlans[key]?.plan;
+    const recommended = plan?.recommendedTemplates || [];
+    if (!recommended.length) return false;
+    if (!get().carePlanTemplates.length) await get().fetchCarePlanLibrary();
+    const known = new Set(get().carePlanTemplates.map(t => String(t.id)));
+    const prev = plan.appliedTemplateIds || [];
+    const ids = recommended.map(t => t.id).filter(id => known.has(String(id)));
+    const ok = await get().applyPatientCarePlanTemplates(patientId, program, [...prev, ...ids], undefined, {}, { mergeContent: false });
+    if (!ok) return false;
+    await get().setCarePlanRecommendedTemplates(patientId, program, []);
+    await get().logCarePlanAudit(patientId, program, {
+      entityType: 'plan',
+      action: 'recommendation_approved',
+      summary: 'Approved the recommended care plan',
+      detail: `Templates applied: ${recommended.map(t => t.name).join(', ')}`,
+    });
+    return true;
   },
 
   // Lazily create the plan header row so the first goal/intervention has a
@@ -3210,6 +3355,9 @@ export const useAppStore = create((set, get) => ({
     const templates = get().carePlanTemplates || [];
     const appliedIds = cur?.plan?.appliedTemplateIds || [];
     if (!cur?.plan || !appliedIds.length || !templates.length) return 0;
+    // A UnityAI-drafted plan holds the items chosen from its templates;
+    // restoring their full content would bring back what it left out.
+    if ((cur.goals || []).some(g => g.aiSuggested)) return 0;
     set(s => ({ carePlanTemplatesSyncedFor: { ...s.carePlanTemplatesSyncedFor, [key]: true } }));
 
     const before = (cur.goals?.length || 0) + (cur.interventions?.length || 0) + (cur.barriers?.length || 0);
@@ -3218,8 +3366,13 @@ export const useAppStore = create((set, get) => ({
     set({ carePlanAuditSuppressed: true });
     try {
       for (const id of appliedIds) {
-        const template = templates.find(t => String(t.id) === String(id));
-        if (template) await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
+        const stored = templates.find(t => String(t.id) === String(id));
+        if (!stored) continue;
+        // With the category its active run went on with. One at a time: each
+        // template merges into the same plan, de-duplicating by title.
+        const run = (cur.templateInstances || []).find(i => String(i.templateId) === String(id) && i.status === 'active');
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop
+        await applyTemplateToPlan(get, patientId, program, withCategory(stored, run?.categoryId || null), libraryGoals);
       }
     } finally {
       set({ carePlanAuditSuppressed: false });
@@ -3235,7 +3388,8 @@ export const useAppStore = create((set, get) => ({
   // interventions and barriers, and until apply recorded the linkage it carried
   // none. So for each matching goal: an item already on the plan is attached to
   // it, and one that is missing is created against it. Plan items with no
-  // library match are left alone — they were authored by hand here.
+  // library match are left alone — they were authored by hand here — and so
+  // are UnityAI-drafted goals.
   //
   // Deliberately no audit rows: this reconciles the plan with the library it
   // was built from, it is not a care decision someone made.
@@ -3262,6 +3416,9 @@ export const useAppStore = create((set, get) => ({
     const newBarriers = new Map();   // title → { link, goalIds }
 
     for (const goal of cur.goals || []) {
+      // A UnityAI-drafted goal already carries the items UnityAI chose for
+      // this patient; adding the library's full set would undo that curation.
+      if (goal.aiSuggested) continue;
       const lib = libraryGoals.find(g => norm(g.title) === norm(goal.title));
       if (!lib) continue;
       for (const link of lib.interventions || []) {
@@ -4142,7 +4299,12 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
-  applyPatientCarePlanTemplates: async (patientId, program, nextTemplateIds, priorityUpdates) => {
+  // `categoryPicks` ({ templateId: categoryId }) chooses the category a newly
+  // applied template goes on with: Common + that category. No pick = Common.
+  // `mergeContent: false` applies the templates (record, runs, conditions)
+  // without merging their items: an approved recommendation already holds
+  // the items UnityAI chose from them.
+  applyPatientCarePlanTemplates: async (patientId, program, nextTemplateIds, priorityUpdates, categoryPicks = {}, { mergeContent = true } = {}) => {
     const key = carePlanKey(patientId, program.id);
     const cur = get().patientCarePlans[key];
     const prevIds = cur?.plan?.appliedTemplateIds || [];
@@ -4157,8 +4319,9 @@ export const useAppStore = create((set, get) => ({
     // One at a time: each template merges into the same plan's goals, so
     // concurrent applies would race on the de-duplication.
     for (const templateId of toAdd) {
-      const base = baseById.get(templateId);
-      if (!base) continue;
+      const stored = baseById.get(templateId);
+      if (!stored) continue;
+      const base = withCategory(stored, categoryPicks?.[templateId] || null);
       // react-doctor-disable-next-line react-doctor/async-await-in-loop
       const found = await get().overlayForPatient(templateId, patientId);
       const template = found
@@ -4171,7 +4334,7 @@ export const useAppStore = create((set, get) => ({
         : base;
       resolved.set(templateId, template);
       // react-doctor-disable-next-line react-doctor/async-await-in-loop
-      await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
+      if (mergeContent) await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
     }
 
     const ok = await get().setPatientCarePlanAppliedTemplates(patientId, program, nextIds, priorityUpdates);
@@ -4447,7 +4610,7 @@ export const useAppStore = create((set, get) => ({
     const key = carePlanKey(patientId, program.id);
     const planId = get().patientCarePlans[key]?.plan?.id;
     if (!planId) return null;
-    const { data, error } = await supabase.from('patient_care_plan_template_instances').insert({
+    const row = {
       plan_id: planId,
       template_id: template.id,
       template_name: template.name || '',
@@ -4461,12 +4624,21 @@ export const useAppStore = create((set, get) => ({
       created_by: get().currentUserProfile?.name || null,
       // The IPA overlay it went on with, and who must sign because of it.
       ...(template.overlayId ? { overlay_id: template.overlayId, signoff_route: template.signoffRoute || null } : {}),
+      // The category it went on with (withCategory tags the template).
+      ...(template.category ? { category_id: template.category.id, category_name: template.category.name } : {}),
       // The version applied, so the plan keeps it when a newer one is published.
       ...(() => {
         const v = effectiveTemplateVersion(get().carePlanTemplateVersions?.[template.id] || [], todayIsoDate());
         return v ? { template_version_id: v.id, template_version_number: v.versionNumber } : {};
       })(),
-    }).select().single();
+    };
+    const insert = (r) => supabase.from('patient_care_plan_template_instances').insert(r).select().single();
+    let { data, error } = await insert(row);
+    // Before the categories migration the run saves without its category.
+    if (error && /category_/.test(error.message || '') && row.category_id) {
+      const { category_id: _ci, category_name: _cn, ...rowWithoutCategory } = row;
+      ({ data, error } = await insert(rowWithoutCategory));
+    }
     if (error) { console.warn('startCarePlanTemplateInstance:', error.message); return null; }
     const instance = mapTemplateInstanceRow(data);
     get().patchCarePlanTemplateInstances(key, list => [...list, instance]);
@@ -4492,17 +4664,19 @@ export const useAppStore = create((set, get) => ({
   // suggestion from the template's longest goal duration.
   renewPatientCarePlanTemplate: async (patientId, program, templateId, mode, endsOn = null) => {
     const key = carePlanKey(patientId, program.id);
-    const template = (get().carePlanTemplates || []).find(t => String(t.id) === String(templateId));
+    const stored = (get().carePlanTemplates || []).find(t => String(t.id) === String(templateId));
     const slice = get().patientCarePlans[key];
-    if (!template || !slice?.plan) return false;
+    if (!stored || !slice?.plan) return false;
     const libraryGoals = get().carePlanGoals || [];
     const now = new Date();
-    const fail = () => { get().showToast(`Could not ${mode} "${template.name}"`); return false; };
+    const fail = () => { get().showToast(`Could not ${mode} "${stored.name}"`); return false; };
 
     let current = (slice.templateInstances || [])
       .find(i => String(i.templateId) === String(templateId) && i.status === 'active');
-    if (!current) current = await get().startCarePlanTemplateInstance(patientId, program, template, null);
+    if (!current) current = await get().startCarePlanTemplateInstance(patientId, program, stored, null);
     if (!current) return fail();
+    // Applying again keeps the run's category.
+    const template = withCategory(stored, current.categoryId);
     const instances = supabase.from('patient_care_plan_template_instances');
 
     if (mode === 'extend') {
@@ -5478,6 +5652,8 @@ export const useAppStore = create((set, get) => ({
       row.patient_id = row.scope === 'patient' ? (values.patientId != null ? String(values.patientId) : null) : null;
     }
     if (values.renewal) row.renewal = values.renewal;
+    // Per-patient categories on top of the Common lists.
+    if (Array.isArray(values.categories)) row.categories = values.categories;
     // A draft revision of a published template, waiting for approval.
     if (!id && values.replacesTemplateId) row.replaces_template_id = values.replacesTemplateId;
     // The clinical protocol (and version) a new template was drafted from.
@@ -5509,6 +5685,10 @@ export const useAppStore = create((set, get) => ({
     if (error && /replaces_template_id/.test(error.message || '') && 'replaces_template_id' in row) {
       const { replaces_template_id: _rt, ...rowWithoutReplaces } = row;
       ({ data, error } = await run(rowWithoutReplaces));
+    }
+    if (error && /categories/.test(error.message || '') && 'categories' in row) {
+      const { categories: _c, ...rowWithoutCategories } = row;
+      ({ data, error } = await run(rowWithoutCategories));
     }
     if (error && /source_protocol/.test(error.message || '') && 'source_protocol' in row) {
       const { source_protocol: _spr, ...rowWithoutProtocol } = row;
@@ -5631,7 +5811,7 @@ export const useAppStore = create((set, get) => ({
         await get().ensureCarePlanTemplateVersion(fresh, { effectiveDate: todayIsoDate(), note: 'Approved' });
         return { published: get().carePlanTemplates.find(t => t.id === fresh.id) || fresh };
       }
-      const content = { name: d.name, conditions: d.conditions, goals: d.goals, interventions: d.interventions, barriers: d.barriers, renewal: d.renewal };
+      const content = { name: d.name, conditions: d.conditions, goals: d.goals, interventions: d.interventions, barriers: d.barriers, renewal: d.renewal, categories: d.categories || [] };
       if (get().carePlanTemplateVersioningReady) {
         // A revision is the template's next version, in effect today; plans
         // move to it at their next review (Publish version offers the rest).

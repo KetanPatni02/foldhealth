@@ -36,21 +36,14 @@ export const FOLD_PROTOCOL_CONTENT = [
     version: '2026.1',
     summary: 'Glycemic control toward an individualized A1C goal, hypoglycemia prevention and routine complication screening for adults with type 2 diabetes.',
     sources: [ADA],
+    // Common: what every patient with type 2 diabetes gets, at any A1C.
     goals: [
-      { title: 'Improve A1C control' },
-      { title: 'Maintain glucose within target range' },
       { title: 'Reduce episodes of hypoglycemia' },
-      { title: 'Monitor blood glucose consistently' },
       { title: 'Improve diabetes medication adherence' },
       { title: 'Complete routine diabetes monitoring' },
       { title: 'Improve renal risk monitoring' },
     ],
     interventions: [
-      { title: 'Diabetes education', goalTitle: 'Improve A1C control' },
-      { title: 'A1C follow-up', goalTitle: 'Improve A1C control' },
-      { title: 'Diabetes nutrition coaching', goalTitle: 'Improve A1C control' },
-      { title: 'Glucose monitoring support', goalTitle: 'Monitor blood glucose consistently' },
-      { title: 'Glucose pattern review', goalTitle: 'Maintain glucose within target range' },
       { title: 'Hypoglycemia education', goalTitle: 'Reduce episodes of hypoglycemia' },
       { title: 'Hypoglycemia review', goalTitle: 'Reduce episodes of hypoglycemia' },
       { title: 'Medication adherence education', goalTitle: 'Improve diabetes medication adherence' },
@@ -58,12 +51,65 @@ export const FOLD_PROTOCOL_CONTENT = [
       { title: 'Renal monitoring', goalTitle: 'Improve renal risk monitoring' },
     ],
     barriers: [
-      { title: 'Limited progress toward A1C target', goalTitles: ['Improve A1C control'] },
-      { title: 'Diabetes self-management complexity', goalTitles: ['Improve A1C control', 'Monitor blood glucose consistently'] },
-      { title: 'Glucose-monitoring difficulty', goalTitles: ['Monitor blood glucose consistently'] },
       { title: 'Hypoglycemia risk', goalTitles: ['Reduce episodes of hypoglycemia'] },
       { title: 'Medication adherence difficulty', goalTitles: ['Improve diabetes medication adherence'] },
       { title: 'Lab access issue', goalTitles: ['Complete routine diabetes monitoring', 'Improve renal risk monitoring'] },
+    ],
+    // By the latest A1C, against the thresholds below (ADA goal < 7% for most
+    // adults; Fold flags 9% or above). Checked in order, first match wins.
+    categories: [
+      {
+        id: 'diabetes-a1c-9-plus',
+        name: 'A1C 9% or above',
+        match: 'all',
+        criteria: [{ type: 'lab', lab: 'hba1c', op: '>=', value: 9, withinDays: 180 }],
+        goals: [
+          { title: 'Improve A1C control', priority: 'high' },
+          { title: 'Monitor blood glucose consistently' },
+          { title: 'Maintain glucose within target range' },
+        ],
+        interventions: [
+          { title: 'Diabetes education', goalTitle: 'Improve A1C control' },
+          { title: 'A1C follow-up', goalTitle: 'Improve A1C control' },
+          { title: 'Diabetes nutrition coaching', goalTitle: 'Improve A1C control' },
+          { title: 'Glucose monitoring support', goalTitle: 'Monitor blood glucose consistently' },
+          { title: 'Glucose pattern review', goalTitle: 'Maintain glucose within target range' },
+        ],
+        barriers: [
+          { title: 'Limited progress toward A1C target', priority: 'high', goalTitles: ['Improve A1C control'] },
+          { title: 'Diabetes self-management complexity', goalTitles: ['Improve A1C control', 'Monitor blood glucose consistently'] },
+          { title: 'Glucose-monitoring difficulty', goalTitles: ['Monitor blood glucose consistently'] },
+        ],
+      },
+      {
+        id: 'diabetes-a1c-7-to-9',
+        name: 'A1C 7% to 8.9%',
+        match: 'all',
+        criteria: [{ type: 'lab', lab: 'hba1c', op: '>=', value: 7, withinDays: 180 }],
+        goals: [
+          { title: 'Improve A1C control' },
+          { title: 'Monitor blood glucose consistently' },
+        ],
+        interventions: [
+          { title: 'Diabetes education', goalTitle: 'Improve A1C control' },
+          { title: 'A1C follow-up', goalTitle: 'Improve A1C control' },
+          { title: 'Diabetes nutrition coaching', goalTitle: 'Improve A1C control' },
+          { title: 'Glucose monitoring support', goalTitle: 'Monitor blood glucose consistently' },
+        ],
+        barriers: [
+          { title: 'Limited progress toward A1C target', goalTitles: ['Improve A1C control'] },
+          { title: 'Glucose-monitoring difficulty', goalTitles: ['Monitor blood glucose consistently'] },
+        ],
+      },
+      {
+        id: 'diabetes-a1c-at-goal',
+        name: 'A1C below 7% (at goal)',
+        match: 'all',
+        criteria: [{ type: 'lab', lab: 'hba1c', op: '<', value: 7, withinDays: 365 }],
+        goals: [{ title: 'Maintain glucose within target range' }],
+        interventions: [{ title: 'Glucose pattern review', goalTitle: 'Maintain glucose within target range' }],
+        barriers: [],
+      },
     ],
     thresholds: [
       { measure: 'A1C', comparator: '<', value: 7, unit: '%', label: 'Goal for most nonpregnant adults', action: 'Individualize: a less stringent goal (such as < 8%) fits limited life expectancy or high hypoglycemia risk.', source: ADA },

@@ -6,7 +6,11 @@ import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
 import { Button } from '../../../../../components/Button/Button';
 import { CloseButton } from '../../../../../components/CloseButton/CloseButton';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
-import { CarePlanSections, ChronicConditionSelect, TemplateRenewalChoice, TemplateScopeChoice } from '../../shared';
+import {
+  CarePlanSections, CategoryCriteriaCard, ChronicConditionSelect, CommonSectionNote, COMMON,
+  TemplateCategoryBar, TemplateRenewalChoice, TemplateScopeChoice, useTemplateCategories,
+} from '../../shared';
+import { categoriesProblem } from '../../lib/templateCategories';
 import { CARE_PLAN_NAME_MAX } from '../../lib/carePlanLimits';
 import { CreateGoalDrawer } from '../../goals/CreateGoalDrawer/CreateGoalDrawer';
 import { AddGoalsDrawer } from '../../goals/AddGoalsDrawer/AddGoalsDrawer';
@@ -82,6 +86,25 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
   const [picker, setPicker] = useState(null); // 'goals' | 'interventions' | 'barriers'
   // { list, item, rect } — which row's menu is open.
   const [rowMenu, setRowMenu] = useState(null);
+  // Common + categories: the three lists above hold whichever is on screen.
+  const cats = useTemplateCategories(template.categories, { goals, interventions, barriers }, { setGoals, setInterventions, setBarriers });
+  const showToast = useAppStore(s => s.showToast);
+  const save = () => {
+    const snap = cats.snapshot();
+    const problem = categoriesProblem(snap.categories);
+    if (problem) { showToast?.(problem); return; }
+    onSave?.({
+      name: name.trim(),
+      description,
+      conditions,
+      goals: snap.goals,
+      interventions: snap.interventions,
+      barriers: snap.barriers,
+      categories: snap.categories,
+      renewal,
+      ...(scope !== templateScopeOf(template) && { scope, patientId: template.patientId }),
+    });
+  };
 
   const removeFromList = (list, id) => {
     const setters = { goals: setGoals, interventions: setInterventions, barriers: setBarriers };
@@ -292,19 +315,7 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
 
       <div className={styles.planPane}>
         <div className={styles.toolbar}>
-          <Button
-            disabled={!name.trim()}
-            onClick={() => onSave?.({
-              name: name.trim(),
-              description,
-              conditions,
-              goals,
-              interventions,
-              barriers,
-              renewal,
-              ...(scope !== templateScopeOf(template) && { scope, patientId: template.patientId }),
-            })}
-          >
+          <Button disabled={!name.trim()} onClick={save}>
             Save
           </Button>
           <span className={styles.toolbarDivider} />
@@ -312,6 +323,20 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
         </div>
 
         <div className={styles.planBody}>
+          <div className={styles.categories}>
+            <TemplateCategoryBar categories={cats.categories} active={cats.active} onSelect={cats.select} onAdd={cats.add} />
+            {cats.active === COMMON && cats.categories.length > 0 && <CommonSectionNote />}
+            {cats.activeCategory && (
+              <CategoryCriteriaCard
+                category={cats.activeCategory}
+                index={cats.categories.indexOf(cats.activeCategory)}
+                total={cats.categories.length}
+                onChange={patch => cats.update(cats.active, patch)}
+                onRemove={() => cats.remove(cats.active)}
+                onMove={by => cats.move(cats.active, by)}
+              />
+            )}
+          </div>
           <CarePlanSections
             goalRows={goalRows}
             interventionRows={interventionRows}
