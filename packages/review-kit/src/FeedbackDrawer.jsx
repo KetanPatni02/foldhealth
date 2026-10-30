@@ -5,6 +5,9 @@ import { KIT_ATTR } from './picker';
 
 const cx = (...a) => a.filter(Boolean).join(' ');
 
+const EMPTY_ITEMS = [];
+const EMPTY_CLASSNAMES = {};
+
 const DEFAULT_TABS = [
   { id: 'needs-review', label: 'Needs review' },
   { id: 'in-progress', label: 'In progress' },
@@ -22,7 +25,7 @@ const DEFAULT_TABS = [
 export function FeedbackDrawer({
   open,
   onClose,
-  items = [],
+  items = EMPTY_ITEMS,
   onOpenItem,
   onStartReview,
   title = 'Feedback',
@@ -32,7 +35,7 @@ export function FeedbackDrawer({
   colorMode,
   labels,
   className,
-  classNames = {},
+  classNames = EMPTY_CLASSNAMES,
 }) {
   const L = useMemo(() => mergeLabels(labels), [labels]);
   const themeStyle = useMemo(() => themeToStyle(theme), [theme]);
@@ -70,10 +73,10 @@ export function FeedbackDrawer({
   return (
     <div {...layerProps}>
       <div className="rk-fb-scrim" onClick={onClose} aria-hidden="true" />
-      <aside
+      <dialog
         ref={panel}
+        open
         className={cx('rk-fb-panel', classNames.panel)}
-        role="dialog"
         aria-label={title}
       >
         <header className="rk-fb-header">
@@ -117,8 +120,8 @@ export function FeedbackDrawer({
           })}
         </nav>
 
-        <div className="rk-fb-list" role="list">
-          {visible.length === 0 ? (
+        {visible.length === 0 ? (
+          <div className="rk-fb-list">
             <div className="rk-fb-empty">
               <div className="rk-fb-empty-title">Nothing here yet</div>
               <div className="rk-fb-empty-body">
@@ -129,17 +132,17 @@ export function FeedbackDrawer({
                     : 'Submitted reviews will stack up here.'}
               </div>
             </div>
-          ) : (
-            visible.map((item) => (
-              <FeedbackCard
-                key={item.id}
-                item={item}
-                onOpen={() => onOpenItem?.(item)}
-              />
-            ))
-          )}
-        </div>
-      </aside>
+          </div>
+        ) : (
+          <ul className="rk-fb-list">
+            {visible.map((item) => (
+              <li key={item.id}>
+                <FeedbackCard item={item} onOpen={() => onOpenItem?.(item)} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </dialog>
     </div>
   );
 }
@@ -148,7 +151,7 @@ function FeedbackCard({ item, onOpen }) {
   const shots = item.shots || item.attachmentCount || 0;
   const points = item.points || item.pointCount || 0;
   return (
-    <button type="button" className="rk-fb-card" onClick={onOpen} role="listitem">
+    <button type="button" className="rk-fb-card" onClick={onOpen}>
       <div className="rk-fb-card-head">
         <div className="rk-fb-card-title" title={item.title}>{item.title}</div>
         {item.target && (

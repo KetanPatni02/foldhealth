@@ -259,6 +259,13 @@
   padding: 0 var(--rk-space-3);
 }
 
+/* Host content passed as children sits at the bottom of the body, just
+   above the footer, rather than floating under the last point. */
+.rk-extra {
+  margin-top: auto;
+  padding-bottom: var(--rk-space-2);
+}
+
 /* ── Points: one per screen or section of a flow ── */
 
 .rk-points {
@@ -1492,6 +1499,13 @@
 
 .rk-fb-panel {
   position: fixed;
+  inset: 0 0 0 auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
   right: 0;
   top: 0;
   bottom: 0;
@@ -1619,12 +1633,19 @@
 /* The scrollable list. */
 .rk-fb-list {
   flex: 1;
+  margin: 0;
+  list-style: none;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: var(--rk-space-2);
   padding: 0 var(--rk-space-3) var(--rk-space-3);
   overflow-y: auto;
+}
+
+.rk-fb-list > li {
+  display: flex;
+  flex-direction: column;
 }
 
 .rk-fb-empty {

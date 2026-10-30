@@ -428,16 +428,18 @@ export function ReviewDock({
                 const isActive = p.id === active.id;
                 return (
                   <li key={p.id} className={cx('rk-timeline-item', isActive && 'rk-timeline-item--active')}>
-                    <aside className="rk-timeline-rail" aria-hidden="true">
+                    <div className="rk-timeline-rail">
                       <button
                         type="button"
                         className="rk-timeline-dot"
                         onClick={() => setActiveId(p.id)}
+                        aria-label={L.pointTitle(idx + 1)}
+                        aria-current={isActive || undefined}
                         title={L.pointTitle(idx + 1)}
                       >
                         {idx + 1}
                       </button>
-                    </aside>
+                    </div>
                     <div className="rk-timeline-card">
                       {points.length > 1 && (
                         <button
@@ -505,7 +507,7 @@ export function ReviewDock({
               })}
             </ol>
             {notice && <p className={`rk-notice rk-notice-${notice.tone}`} role="status">{notice.text}</p>}
-            {children}
+            {children && <div className="rk-extra">{children}</div>}
           </div>
 
           <footer className={cx('rk-footer', 'rk-no-drag', classNames.footer)}>
