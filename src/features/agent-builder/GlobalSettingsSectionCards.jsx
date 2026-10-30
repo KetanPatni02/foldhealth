@@ -43,7 +43,7 @@ export function GlobalSettingsIdentitySection({ settings, update, errors, markTo
           className={styles.textarea}
           variant={showUseCaseError ? 'error' : 'default'}
           value={settings.useCaseName}
-          onChange={e => update('useCaseName', e.target.value.slice(0, 500))}
+          onChange={text => update('useCaseName', text.slice(0, 500))}
           onBlur={() => markTouched('useCaseName')}
           maxLength={500}
           rows={2}

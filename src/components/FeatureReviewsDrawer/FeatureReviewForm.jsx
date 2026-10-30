@@ -119,7 +119,7 @@ export function FeatureReviewForm({ parentId: initialParentId = null, onClose, o
           rows={4}
           placeholder="What the reviewer should check"
           value={description}
-          onChange={e => setDescription(e.target.value)}
+          onChange={text => setDescription(text)}
         />
       </div>
     </Drawer>

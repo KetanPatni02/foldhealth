@@ -171,6 +171,7 @@
 .noWrap { white-space: nowrap; }
 
 .subTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.subTitleRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 
 .empty {
   display: flex;

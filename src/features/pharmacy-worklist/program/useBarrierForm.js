@@ -43,6 +43,17 @@ function recordFor(x, s) {
   };
 }
 
+// A gap's record with barriers / interventions added to one drug. A gap-wide
+// record turns per medication first (each drug keeping the gap's lists, as
+// the form's switch does), so the other drugs are unchanged.
+export function recordWithMedAdditions(x, rec, medId, add) {
+  const s = stateFrom(x, rec);
+  const meds = s.perMed ? { ...s.meds } : Object.fromEntries(activeMeds(x).map(d => [d.id, { ...s.gap }]));
+  const cur = meds[medId] || EMPTY;
+  meds[medId] = { barriers: union([cur.barriers, add.barriers]), interventions: union([cur.interventions, add.interventions]) };
+  return recordFor(x, { ...s, perMed: true, meds });
+}
+
 // The barrier form's state and save, apart from its layout, so a host (the
 // gap drawer) can put Save in its own header, as it does for Outreach.
 export function useBarrierForm(member) {

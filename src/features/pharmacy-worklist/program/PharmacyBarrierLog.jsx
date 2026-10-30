@@ -7,13 +7,16 @@ import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { EmptyState } from '../../../components/EmptyState/EmptyState';
 import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
+import { Select } from '../../../components/Select/Select';
 import { SubTabs } from '../../../components/SubTabs/SubTabs';
+import { Textarea } from '../../../components/Textarea/Textarea';
 import { useAppStore } from '../../../store/useAppStore';
 import { toast } from '../../../components/Toast/sonnerToast';
-import { MEASURE_NAMES, MEASURE_ORDER, medLabel } from '../pharmacyWorklist.utils';
+import { MEASURE_NAMES, MEASURE_ORDER, medLabel, todayMdy } from '../pharmacyWorklist.utils';
 import { Sep } from '../PharmacyCells';
-import { INTERVENTION_ADDRESSES } from '../adherencePicklists';
+import { BARRIERS, INTERVENTIONS, INTERVENTION_ADDRESSES } from '../adherencePicklists';
 import { buildBarrierHistory, hasBarrierData } from './barrierHistory';
+import { latestFor, recordWithMedAdditions } from './useBarrierForm';
 import styles from './PharmacyBarrierLog.module.css';
 
 // An active barrier with its Resolve button beside it.
@@ -236,7 +239,40 @@ export function PharmacyBarrierLog({ member, onEdit }) {
 // layout: what stands for it now (its own record, or the gap's when logged
 // for every drug, plus its Reason for Non-Adherence), with the same Resolve /
 // Done / Didn't work actions, then its history, collapsed until opened.
-export function DrugBarriers({ member, code, medId }) {
+const BARRIER_OPTIONS = BARRIERS.map(v => ({ value: v, label: v }));
+const INTERVENTION_OPTIONS = INTERVENTIONS.map(v => ({ value: v, label: v }));
+
+// Inline add under a drug's Barriers & Interventions: pick barriers and
+// interventions, add a note, and log them for this drug only.
+function DrugBarrierAdd({ member, x, d, onDone }) {
+  const logInterventions = useAppStore(s => s.logPharmacyInterventions);
+  const currentUser = useAppStore(s => s.currentUserProfile);
+  const [add, setAdd] = useState({ barriers: [], interventions: [] });
+  const [note, setNote] = useState('');
+  const canSave = add.barriers.length > 0 || add.interventions.length > 0;
+  const save = () => {
+    const record = recordWithMedAdditions(x, latestFor(member.interventionLog, x.code)?.rec, d.id, add);
+    logInterventions(member.id, {
+      date: todayMdy(), by: currentUser?.name || 'You', note, medication: medLabel(d), measures: { [x.code]: record },
+    });
+    toast.success(`Added to ${medLabel(d)}`);
+    onDone();
+  };
+  return (
+    <div className={styles.addForm}>
+      <Select label="Barriers" multiple badges searchable portal options={BARRIER_OPTIONS} value={add.barriers} placeholder="Add barriers" onChange={v => setAdd(a => ({ ...a, barriers: v }))} />
+      <Select label="Interventions" multiple badges searchable portal options={INTERVENTION_OPTIONS} value={add.interventions} placeholder="Add interventions" onChange={v => setAdd(a => ({ ...a, interventions: v }))} />
+      <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note" aria-label="Note" />
+      <div className={styles.addActions}>
+        <Button variant="outline" onClick={onDone}>Cancel</Button>
+        <Button disabled={!canSave} onClick={save}>Add</Button>
+      </div>
+    </div>
+  );
+}
+
+// `adding` / `onAddDone`: the host's + button opens the inline add form.
+export function DrugBarriers({ member, code, medId, adding = false, onAddDone }) {
   const [showHistory, setShowHistory] = useState(false);
   const { resolve, onFinish, prompt } = useBarrierActions(member?.id);
   const x = member?.measures.find(m => m.code === code);
@@ -268,6 +304,7 @@ export function DrugBarriers({ member, code, medId }) {
 
   return (
     <div className={styles.drugPanel}>
+      {adding && <DrugBarrierAdd member={member} x={x} d={d} onDone={onAddDone} />}
       {gapLevel && <span className={styles.titleSub}>Applies to all {code} medications</span>}
       {barriers.length || interventions.length ? (
         <div className={styles.current}>

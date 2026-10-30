@@ -73,7 +73,7 @@ export function SavePanel({ state, graph, problems, onSave, onClose, onShowProbl
           title="Description"
           mandatory
           value={description}
-          onChange={e => setDescription(e.target.value)}
+          onChange={text => setDescription(text)}
           rows={3}
           placeholder="Tell your team what this automation does"
           maxLength={DESC_MAX}
