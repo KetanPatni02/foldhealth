@@ -23,6 +23,7 @@ import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
 import { EmptyState } from '../EmptyState/EmptyState';
 import { toast } from '../Toast/sonnerToast';
 import { useAppStore } from '../../store/useAppStore';
+import { GENERAL_FEEDBACK } from '../../store/slices/featureReviewsSlice';
 import { mySignoff, sameEmail, useReviewerEmail, useReviewerOptions } from './featureReviewHooks';
 import { FeatureReviewForm } from './FeatureReviewForm';
 import styles from './FeatureReviewsDrawer.module.css';
@@ -51,6 +52,7 @@ const EMPTY = {
   pending: { title: 'Everything is signed off', description: 'No feature is waiting for a review.' },
   signed: { title: 'No signoffs yet', description: 'Signed features show up here with who signed and when.' },
   all: { title: 'No features yet', description: 'Features assigned to you for review show up here.' },
+  [GENERAL_FEEDBACK]: { title: 'No general feedback yet', description: 'Feedback from Start a review, not tied to a feature, shows up here.' },
   suggested: { title: 'No suggestions', description: 'New features and bug fixes merged to main show up here to keep or remove.' },
 };
 
@@ -140,8 +142,14 @@ export function FeatureReviewsDrawer({ onClose, focusId = null }) {
     all: approved.length + (isManager ? suggested.length : 0), suggested: suggested.length,
   };
 
+  // General feedback: the author's own, or everyone's for managers.
+  const generalFeedback = useAppStore(s => s.featureReviewComments[GENERAL_FEEDBACK] || EMPTY_COMMENTS);
+  const fetchComments = useAppStore(s => s.fetchFeatureReviewComments);
+  useEffect(() => { fetchComments(null); }, [fetchComments]);
+
   // Opened on one item (from the review box): show it under All.
-  const [tab, setTab] = useState(focusId ? 'all' : null);
+  const [tab, setTab] = useState(focusId === GENERAL_FEEDBACK ? GENERAL_FEEDBACK : focusId ? 'all' : null);
+  const onFeedbackTab = tab === GENERAL_FEEDBACK;
   // Managers land on everything; reviewers on what's waiting for them.
   const activeTab = tab || (isManager || counts.mine === 0 ? 'all' : 'mine');
   const [newestFirst, setNewestFirst] = useState(true);
@@ -243,15 +251,28 @@ export function FeatureReviewsDrawer({ onClose, focusId = null }) {
     <Drawer
       title="Design Signoff"
       onClose={onClose}
-      noCloseDivider={isManager}
-      headerRight={isManager ? (
+      noCloseDivider
+      headerRight={(
         <>
-          <Button variant="outline" size="sm" leadingIcon="solar:add-circle-linear" onClick={() => setForm({ parentId: null })}>
-            Add Feature
+          <Button
+            variant="outline"
+            size="sm"
+            leadingIcon="solar:pen-new-square-linear"
+            onClick={() => {
+              startFeatureReview({ id: null, title: 'General feedback' });
+              onClose();
+            }}
+          >
+            Start a review
           </Button>
+          {isManager && (
+            <Button variant="outline" size="sm" leadingIcon="solar:add-circle-linear" onClick={() => setForm({ parentId: null })}>
+              Add Feature
+            </Button>
+          )}
           <span className={styles.headerDivider} />
         </>
-      ) : undefined}
+      )}
     >
       <DndContext
         sensors={sensors}
@@ -274,14 +295,15 @@ export function FeatureReviewsDrawer({ onClose, focusId = null }) {
             { key: 'signed', label: 'Signed', count: counts.signed },
             { key: 'all', label: 'All', count: counts.all },
             ...(isManager ? [{ key: 'suggested', label: 'Suggested', count: counts.suggested }] : []),
+            { key: GENERAL_FEEDBACK, label: 'General feedback', count: generalFeedback.length },
           ]}
-          trailing={(
+          trailing={!onFeedbackTab && (
             <Button variant="ghost" size="sm" leadingIcon="solar:sort-vertical-linear" onClick={() => setNewestFirst(v => !v)}>
               {newestFirst ? 'Newest first' : 'Oldest first'}
             </Button>
           )}
         />
-        {!loading && fetched && days.length > 0 && (
+        {!onFeedbackTab && !loading && fetched && days.length > 0 && (
           // Visual column labels only; each row's controls carry their own labels.
           <div className={`${styles.grid} ${styles.head}`} aria-hidden="true">
             <span className={styles.headFeature}>Feature</span>
@@ -298,7 +320,11 @@ export function FeatureReviewsDrawer({ onClose, focusId = null }) {
           />
         )}
       </div>
-      {loading || !fetched ? (
+      {onFeedbackTab ? (
+        generalFeedback.length
+          ? <div className={styles.padded}><ReviewComments featureId={GENERAL_FEEDBACK} /></div>
+          : <EmptyState icon="solar:chat-square-linear" {...EMPTY[GENERAL_FEEDBACK]} />
+      ) : loading || !fetched ? (
         <div className={styles.padded}><CardSkeleton count={4} /></div>
       ) : days.length === 0 ? (
         <EmptyState icon="solar:clipboard-check-linear" {...EMPTY[activeTab]} />

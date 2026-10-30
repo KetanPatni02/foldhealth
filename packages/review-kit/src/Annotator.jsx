@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Stage, Layer, Group, Image as KImage, Rect, Ellipse, Arrow, Line, Text, Circle, Transformer } from 'react-konva';
 import { ANNOTATOR_ICONS } from './annotator-icons';
+import { CloseIcon } from './icons';
 import { openModal } from './modal';
 
 // Toolbar groups, in order. Letters are keyboard shortcuts.
@@ -15,7 +16,7 @@ const TOOL_GROUPS = [
 const SHORTCUTS = Object.fromEntries(TOOL_GROUPS.flat().map(([tool, key]) => [key.toLowerCase(), tool]));
 const BOX_TYPES = new Set(['rect', 'highlight', 'ellipse', 'redact']);
 const PAD = 40;
-const BAR = 88; // room under the image for the toolbar
+const BAR = 0; // toolbar lives in its own row below the canvas, not over it
 const TIP_DELAY = 400;
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
@@ -68,7 +69,7 @@ const normalizeBox = ({ ox, oy, ...s }, p) => ({
  * steps, redaction and crop. Done hands back a PNG at the image's original
  * resolution (the marks are redrawn at full size, never upscaled).
  */
-export default function Annotator({ file, name, labels, onSave, onCancel }) {
+export default function Annotator({ file, attachmentId, name, labels, onSave, onCancel }) {
   const L = labels;
   const T = labels.tools;
   const [palette] = useState(kitPalette);
@@ -84,6 +85,7 @@ export default function Annotator({ file, name, labels, onSave, onCancel }) {
   const [selectedId, setSelectedId] = useState(null);
   const [editing, setEditing] = useState(null); // { x, y, value } while typing text
   const [saving, setSaving] = useState(false);
+  const [zoomFactor, setZoomFactor] = useState(1);
   const box = useRef(null);
   const stage = useRef(null);
   const transformer = useRef(null);
@@ -140,13 +142,15 @@ export default function Annotator({ file, name, labels, onSave, onCancel }) {
   const pixelated = useMemo(() => (img ? pixelate(img) : null), [img]);
 
   // Fit the image into the canvas area (never more than 2x), centred above the toolbar.
+  // zoomFactor lets the user bump the fit scale up or down from the toolbar.
   const view = useMemo(() => {
     if (!img || !size.w) return null;
     const iw = img.naturalWidth;
     const ih = img.naturalHeight;
-    const scale = Math.max(0.05, Math.min((size.w - PAD * 2) / iw, (size.h - PAD - BAR) / ih, 2));
+    const baseScale = Math.max(0.05, Math.min((size.w - PAD * 2) / iw, (size.h - PAD - BAR) / ih, 2));
+    const scale = Math.max(0.1, Math.min(4, baseScale * zoomFactor));
     return { iw, ih, scale, x: (size.w - iw * scale) / 2, y: Math.max(PAD / 2, (size.h - BAR - ih * scale) / 2) };
-  }, [img, size]);
+  }, [img, size, zoomFactor]);
 
   // Mark sizes follow the image, so they look the same on any screenshot.
   const unit = view ? Math.max(2, Math.round(Math.max(view.iw, view.ih) / 400)) : 2;
@@ -374,17 +378,50 @@ export default function Annotator({ file, name, labels, onSave, onCancel }) {
     // A native modal dialog keeps focus inside. Escape is handled below (it
     // clears a selection first), so the browser's own close is held back;
     // if the browser closes it anyway, treat that as Cancel.
-    <dialog ref={openModal} className="rk-annotator" aria-label={L.annotateTitle(name)} onCancel={e => e.preventDefault()} onClose={onCancel}>
+    <dialog
+      ref={openModal}
+      className="rk-annotator"
+      aria-label={L.annotateTitle(name)}
+      onCancel={e => e.preventDefault()}
+      onClose={onCancel}
+      style={{ viewTransitionName: 'rk-preview-shell' }}
+    >
       <header className="rk-preview-header">
         <span className="rk-preview-name" title={name}>{L.annotateTitle(name)}</span>
-        <button type="button" className="rk-tool" onClick={onCancel}>{L.cancel}</button>
-        <button type="button" className="rk-send rk-annotator-done" onClick={save} disabled={!view || saving}>
+        <button
+          type="button"
+          className="rk-preview-annotate rk-preview-annotate--done"
+          onClick={save}
+          disabled={!view || saving}
+          style={{ viewTransitionName: 'rk-preview-action' }}
+        >
           <ToolIcon name="done" size={16} />
           <span>{L.done}</span>
+        </button>
+        <button
+          type="button"
+          className="rk-icon-btn"
+          onClick={onCancel}
+          aria-label={L.closePreview || L.cancel}
+          title={L.closePreview || L.cancel}
+        >
+          <CloseIcon />
         </button>
       </header>
 
       <div className="rk-annotator-canvas" ref={box} style={{ cursor }}>
+        {view && (
+          <div
+            className="rk-annotator-frame"
+            aria-hidden="true"
+            style={{
+              left: view.x,
+              top: view.y,
+              width: view.iw * view.scale,
+              height: view.ih * view.scale,
+            }}
+          />
+        )}
         {view && (
           <Stage
             ref={stage}
@@ -457,8 +494,34 @@ export default function Annotator({ file, name, labels, onSave, onCancel }) {
             {tip.keys && <kbd>{tip.keys}</kbd>}
           </div>
         )}
+      </div>
 
-        {view && <span className="rk-annotator-zoom" aria-label={L.zoom}>{Math.round(view.scale * 100)}%</span>}
+      <div className="rk-annotator-controls">
+        {view && (
+          <div className="rk-annotator-zoom" aria-label={L.zoom}>
+            <button
+              type="button"
+              className="rk-annotator-zoom-btn"
+              onClick={() => setZoomFactor(z => Math.max(0.25, +(z - 0.25).toFixed(2)))}
+              disabled={zoomFactor <= 0.25}
+              aria-label={L.zoomOut || 'Zoom out'}
+              title={L.zoomOut || 'Zoom out'}
+            >
+              <ToolIcon name="zoom-out" />
+            </button>
+            <span className="rk-annotator-zoom-value">{Math.round(view.scale * 100)}%</span>
+            <button
+              type="button"
+              className="rk-annotator-zoom-btn"
+              onClick={() => setZoomFactor(z => Math.min(4, +(z + 0.25).toFixed(2)))}
+              disabled={zoomFactor >= 4}
+              aria-label={L.zoomIn || 'Zoom in'}
+              title={L.zoomIn || 'Zoom in'}
+            >
+              <ToolIcon name="zoom-in" />
+            </button>
+          </div>
+        )}
 
         <div className="rk-annotator-bar" role="toolbar" aria-label={L.annotateTitle(name)} {...tipHandlers}>
           {TOOL_GROUPS.map((group, gi) => (
@@ -516,20 +579,23 @@ export default function Annotator({ file, name, labels, onSave, onCancel }) {
               )}
             </div>
           ))}
-          <div className="rk-annotator-group">
-            <span className="rk-annotator-divider" aria-hidden="true" />
-            <button type="button" className="rk-annotator-tool" onClick={undo} aria-disabled={!past.length} aria-label={T.undo} data-tip={T.undo} data-keys={`${MOD}Z`}>
-              <ToolIcon name="undo" />
-            </button>
-            <button type="button" className="rk-annotator-tool" onClick={redo} aria-disabled={!future.length} aria-label={T.redo} data-tip={T.redo} data-keys={`⇧${MOD}Z`}>
-              <ToolIcon name="redo" />
-            </button>
-            {selected && (
+        </div>
+
+        <div className="rk-annotator-actions" role="toolbar" aria-label={T.undo} {...tipHandlers}>
+          <button type="button" className="rk-annotator-tool" onClick={undo} aria-disabled={!past.length} aria-label={T.undo} data-tip={T.undo} data-keys={`${MOD}Z`}>
+            <ToolIcon name="undo" />
+          </button>
+          <button type="button" className="rk-annotator-tool" onClick={redo} aria-disabled={!future.length} aria-label={T.redo} data-tip={T.redo} data-keys={`⇧${MOD}Z`}>
+            <ToolIcon name="redo" />
+          </button>
+          {selected && (
+            <>
+              <span className="rk-annotator-divider" aria-hidden="true" />
               <button type="button" className="rk-annotator-tool" onClick={removeSelected} aria-label={T.remove} data-tip={T.remove} data-keys="⌫">
                 <ToolIcon name="remove" />
               </button>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </dialog>

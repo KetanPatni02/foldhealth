@@ -3,9 +3,18 @@ import { Rnd } from 'react-rnd';
 import { useDropzone } from 'react-dropzone';
 import { pickElement, describeElement, KIT_ATTR } from './picker';
 import { captureElement, captureViewport, selectorFor } from './capture';
-import { PickIcon, CameraIcon, UploadIcon, CloseIcon, CollapseIcon, ChevronIcon, GripIcon, PlusIcon } from './icons';
+import {
+  PickIcon,
+  CameraIcon,
+  UploadIcon,
+  CloseIcon,
+  CollapseIcon,
+  ChevronIcon,
+  GripIcon,
+  PlusIcon,
+} from './icons';
 import { RichTextEditor } from './RichTextEditor';
-import { AttachmentStrip } from './AttachmentStrip';
+import { AttachmentStrip, BlobImage } from './AttachmentStrip';
 import { ImagePreview } from './ImagePreview';
 import { themeToStyle, mergeLabels } from './theme';
 
@@ -82,6 +91,17 @@ const defaultPosition = () => (isBrowser ? {
  * Styling: `theme` (design tokens), CSS variables (--rk-*), and `classNames`
  * slots. Wording: `labels`. Storage: whatever `onSubmit` does with the points.
  */
+const DEFAULT_ICONS = {
+  select: PickIcon,
+  screenshot: CameraIcon,
+  upload: UploadIcon,
+  close: CloseIcon,
+  plus: PlusIcon,
+  collapse: CollapseIcon,
+  chevron: ChevronIcon,
+  grip: GripIcon,
+};
+
 export function ReviewDock({
   title,
   subtitle,
@@ -90,11 +110,14 @@ export function ReviewDock({
   storageKey = 'review-kit:dock',
   maxFileSizeMb = 10,
   theme,
+  colorMode,
   labels,
   classNames = {},
   className,
+  icons,
   children,
 }) {
+  const Icons = useMemo(() => ({ ...DEFAULT_ICONS, ...(icons || {}) }), [icons]);
   const L = useMemo(() => mergeLabels(labels), [labels]);
   const themeStyle = useMemo(() => themeToStyle(theme), [theme]);
 
@@ -112,7 +135,28 @@ export function ReviewDock({
   const [activeId, setActiveId] = useState(() => points[0].id);
   const [busy, setBusy] = useState(null); // null | 'pick' | 'capture' | 'send'
   const [notice, setNotice] = useState(null); // { tone: 'error'|'ok', text }
-  const [previewId, setPreviewId] = useState(null);
+  const [previewId, setPreviewIdState] = useState(null);
+  // Wrap preview open/close and collapse/expand in a view transition so the
+  // dock morphs smoothly into its tab (and the thumbnail grows into the modal
+  // image). Falls back silently in browsers without startViewTransition.
+  const withViewTransition = useCallback((fn) => {
+    if (typeof document !== 'undefined' && typeof document.startViewTransition === 'function') {
+      document.startViewTransition(fn);
+    } else {
+      fn();
+    }
+  }, []);
+  const setPreviewId = useCallback((next) => withViewTransition(() => setPreviewIdState(next)), [withViewTransition]);
+  // The dock gets its view-transition-name only while it is actually morphing
+  // between full and collapsed, so other transitions (preview → annotator,
+  // image preview open) don't capture the dock as a static snapshot and cause
+  // a flicker.
+  const [dockMorphing, setDockMorphing] = useState(false);
+  const collapseTo = useCallback((side) => {
+    setDockMorphing(true);
+    withViewTransition(() => setCollapsed(side));
+    setTimeout(() => setDockMorphing(false), 500);
+  }, [withViewTransition]);
 
   const active = points.find(p => p.id === activeId) || points[0];
   const activeIndex = points.indexOf(active);
@@ -263,11 +307,15 @@ export function ReviewDock({
   // ── Collapse to a wall ──
   const nearestSide = () => (pos.x + size.width / 2 < window.innerWidth / 2 ? 'left' : 'right');
   const expand = () => {
-    setPos(p => ({
-      x: collapsed === 'left' ? EDGE + 8 : Math.max(0, window.innerWidth - size.width - EDGE - 8),
-      y: clamp(p.y, 0, Math.max(0, window.innerHeight - size.height)),
-    }));
-    setCollapsed(null);
+    setDockMorphing(true);
+    withViewTransition(() => {
+      setPos(p => ({
+        x: collapsed === 'left' ? EDGE + 8 : Math.max(0, window.innerWidth - size.width - EDGE - 8),
+        y: clamp(p.y, 0, Math.max(0, window.innerHeight - size.height)),
+      }));
+      setCollapsed(null);
+    });
+    setTimeout(() => setDockMorphing(false), 500);
   };
   const sideAt = (x, width) => {
     if (x <= EDGE) return 'left';
@@ -280,6 +328,7 @@ export function ReviewDock({
     className: cx('rk-root', 'rk-layer', className, classNames.root),
     style: themeStyle,
     [KIT_ATTR]: '',
+    ...(colorMode ? { 'data-rk-theme': colorMode } : {}),
   };
   const shotCount = points.reduce((n, p) => n + p.attachments.length, 0);
 
@@ -289,12 +338,15 @@ export function ReviewDock({
         <button
           type="button"
           className={cx('rk-tab', `rk-tab-${collapsed}`, classNames.tab)}
-          style={{ top: clamp(pos.y + 16, 8, (isBrowser ? window.innerHeight : 600) - 96) }}
+          style={{
+            top: clamp(pos.y + 16, 8, (isBrowser ? window.innerHeight : 600) - 96),
+            ...(dockMorphing ? { viewTransitionName: 'rk-dock-surface' } : {}),
+          }}
           onClick={expand}
           aria-label={L.open(title)}
           title={title}
         >
-          <ChevronIcon direction={collapsed === 'left' ? 'right' : 'left'} />
+          <Icons.chevron direction={collapsed === 'left' ? 'right' : 'left'} />
           {(filled.length > 0 || shotCount > 0) && <span className="rk-tab-dot" aria-hidden="true" />}
         </button>
       </div>
@@ -309,7 +361,7 @@ export function ReviewDock({
     <div {...layerProps}>
       {edgeHint && <div className={`rk-edge-hint rk-edge-hint-${edgeHint}`} aria-hidden="true" />}
       <Rnd
-        className="rk-dock"
+        className={cx('rk-dock', edgeHint && `rk-dock--pulling-${edgeHint}`)}
         bounds="window"
         size={size}
         position={pos}
@@ -322,99 +374,154 @@ export function ReviewDock({
           setEdgeHint(null);
           setPos({ x: d.x, y: d.y });
           const side = sideAt(d.x, size.width);
-          if (side) setCollapsed(side);
+          if (side) collapseTo(side);
         }}
         onResizeStop={(_e, _dir, ref, _delta, p) => {
           setSize({ width: ref.offsetWidth, height: ref.offsetHeight });
           setPos(p);
         }}
       >
-        <section className={cx('rk-panel', classNames.panel)} aria-label={`${title}`} {...getRootProps()}>
+        <section
+          className={cx('rk-panel', classNames.panel)}
+          aria-label={`${title}`}
+          style={dockMorphing ? { viewTransitionName: 'rk-dock-surface' } : undefined}
+          {...getRootProps()}
+        >
           <input {...getInputProps()} />
           <header className={cx('rk-header', 'rk-drag', classNames.header)}>
-            <GripIcon className="rk-grip" />
+            <Icons.grip className="rk-grip" />
             <div className="rk-heading">
               <div className="rk-title" title={title}>{title}</div>
               {subtitle && <div className="rk-subtitle">{subtitle}</div>}
             </div>
             <div className="rk-header-actions rk-no-drag">
-              <button type="button" className="rk-icon-btn" onClick={() => setCollapsed(nearestSide())} aria-label={L.collapse} title={L.collapse}>
-                <CollapseIcon />
+              <button type="button" className="rk-icon-btn" onClick={() => collapseTo(nearestSide())} aria-label={L.collapse} title={L.collapse}>
+                <Icons.collapse />
               </button>
               {onClose && (
                 <button type="button" className="rk-icon-btn" onClick={onClose} aria-label={L.close} title={L.close}>
-                  <CloseIcon />
+                  <Icons.close />
                 </button>
               )}
             </div>
           </header>
 
-          <nav className={cx('rk-points', 'rk-no-drag', classNames.points)} aria-label={L.point}>
-            <div className="rk-point-tabs" role="tablist">
-              {points.map((p, i) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={p.id === active.id}
-                  className={cx('rk-point-tab', p.id === active.id && 'rk-point-tab-on', isEmpty(p) && 'rk-point-tab-empty')}
-                  onClick={() => setActiveId(p.id)}
-                  title={p.text ? `${i + 1}. ${p.text.slice(0, 80)}` : L.pointTitle(i + 1)}
-                >
-                  {i + 1}
-                  {p.attachments.length > 0 && <span className="rk-point-shots">{p.attachments.length}</span>}
-                </button>
-              ))}
-              <button type="button" className="rk-point-add" onClick={addPoint} title={L.newPointHint}>
-                <PlusIcon width={14} height={14} />
-                <span>{L.point}</span>
-              </button>
-            </div>
-            {points.length > 1 && (
-              <button type="button" className="rk-point-remove" onClick={() => removePoint(active.id)} title={L.deletePoint(activeIndex + 1)}>
-                {L.deletePoint(activeIndex + 1)}
-              </button>
-            )}
-          </nav>
-
-          <AttachmentStrip
-            key={`shots-${active.id}`}
-            items={active.attachments}
-            onOpen={setPreviewId}
-            onRemove={removeAttachment}
-            labelFor={labelFor}
-            labels={L}
-            className={classNames.attachments}
-          />
-
           <div className="rk-body rk-no-drag">
-            <RichTextEditor
-              key={active.id}
-              initialHtml={active.html}
-              autoFocus={points.length > 1}
-              placeholder={points.length > 1 ? L.pointPlaceholder(activeIndex + 1) : L.placeholder}
-              labels={L}
-              className={classNames.editor}
-              onChange={({ html, text, empty }) => updateActive(p => ({ ...p, html, text, empty }))}
-              onFiles={addFiles}
-              onSubmit={submit}
-            />
+            <ol className={cx('rk-timeline', classNames.timeline)} aria-label={L.point}>
+              {!isEmpty(active) && (
+                <li className="rk-timeline-add-item">
+                  <button
+                    type="button"
+                    className="rk-timeline-add"
+                    onClick={addPoint}
+                    title={L.newPointHint}
+                  >
+                    <span className="rk-timeline-dot rk-timeline-dot--add" aria-hidden="true">
+                      <Icons.plus width={12} height={12} />
+                    </span>
+                    <span className="rk-timeline-add-label">{L.newPointHint}</span>
+                  </button>
+                </li>
+              )}
+              {[...points].reverse().map((p) => {
+                const idx = points.indexOf(p);
+                const isActive = p.id === active.id;
+                return (
+                  <li key={p.id} className={cx('rk-timeline-item', isActive && 'rk-timeline-item--active')}>
+                    <div className="rk-timeline-rail">
+                      <button
+                        type="button"
+                        className="rk-timeline-dot"
+                        onClick={() => setActiveId(p.id)}
+                        aria-label={L.pointTitle(idx + 1)}
+                        aria-current={isActive || undefined}
+                        title={L.pointTitle(idx + 1)}
+                      >
+                        {idx + 1}
+                      </button>
+                    </div>
+                    <div className="rk-timeline-card">
+                      {points.length > 1 && (
+                        <button
+                          type="button"
+                          className="rk-timeline-remove"
+                          onClick={() => removePoint(p.id)}
+                          aria-label={L.deletePoint(idx + 1)}
+                          title={L.deletePoint(idx + 1)}
+                        >
+                          <Icons.close width={12} height={12} />
+                        </button>
+                      )}
+                      {isActive ? (
+                        <>
+                          <AttachmentStrip
+                            key={`shots-${p.id}`}
+                            items={p.attachments}
+                            onOpen={setPreviewId}
+                            onRemove={removeAttachment}
+                            labelFor={labelFor}
+                            labels={L}
+                            className={classNames.attachments}
+                            hiddenId={previewId}
+                          />
+                          <RichTextEditor
+                            key={p.id}
+                            initialHtml={p.html}
+                            autoFocus={points.length > 1}
+                            placeholder={points.length > 1 ? L.pointPlaceholder(idx + 1) : L.placeholder}
+                            labels={L}
+                            className={classNames.editor}
+                            onChange={({ html, text, empty }) => updateActive(x => ({ ...x, html, text, empty }))}
+                            onFiles={addFiles}
+                            onSubmit={submit}
+                          />
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="rk-timeline-view"
+                          onClick={() => setActiveId(p.id)}
+                          aria-label={L.pointTitle(idx + 1)}
+                        >
+                          {p.attachments.length > 0 && (
+                            <ul className="rk-timeline-attachments" aria-label={L.attachments}>
+                              {p.attachments.map(a => (
+                                <li key={a.id} className="rk-thumb" style={{ viewTransitionName: `rk-att-${a.id}` }}>
+                                  <span className="rk-thumb-open">
+                                    <BlobImage file={a.file} alt="" />
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {p.html ? (
+                            <div className="rk-timeline-body" dangerouslySetInnerHTML={{ __html: p.html }} />
+                          ) : (
+                            <div className="rk-timeline-body rk-timeline-body--empty">{L.placeholder}</div>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
             {notice && <p className={`rk-notice rk-notice-${notice.tone}`} role="status">{notice.text}</p>}
-            {children}
+            {children && <div className="rk-extra">{children}</div>}
           </div>
 
           <footer className={cx('rk-footer', 'rk-no-drag', classNames.footer)}>
             <div className="rk-tools">
-              <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={pick} disabled={!!busy} title={L.selectHint}>
-                <PickIcon />
+              <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={pick} disabled={!!busy} title={L.selectHint} aria-label={L.select}>
+                <Icons.select />
                 <span>{busy === 'pick' ? L.picking : L.select}</span>
               </button>
-              <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={screenshot} disabled={!!busy} title={L.screenshotHint}>
-                <CameraIcon />
+              <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={screenshot} disabled={!!busy} title={L.screenshotHint} aria-label={L.screenshot}>
+                <Icons.screenshot />
                 <span>{busy === 'capture' ? L.capturing : L.screenshot}</span>
               </button>
-              <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={openFiles} disabled={!!busy} title={L.uploadHint(maxFileSizeMb)}>
-                <UploadIcon />
+              <button type="button" className={cx('rk-tool', classNames.toolButton)} onClick={openFiles} disabled={!!busy} title={L.uploadHint(maxFileSizeMb)} aria-label={L.upload}>
+                <Icons.upload />
                 <span>{L.upload}</span>
               </button>
             </div>
@@ -439,3 +546,4 @@ export function ReviewDock({
     </div>
   );
 }
+

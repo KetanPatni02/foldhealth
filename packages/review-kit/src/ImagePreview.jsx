@@ -13,8 +13,19 @@ const Annotator = lazy(() => import('./Annotator'));
  * marked-up image.
  */
 export function ImagePreview({ attachment, name, labels, onAnnotated, onClose }) {
-  const [annotating, setAnnotating] = useState(false);
+  const [annotating, setAnnotatingState] = useState(false);
   const dialog = useRef(null);
+
+  // Wrap the preview → annotator switch in a view transition so the shared
+  // dialog shell and the image morph in place instead of popping. Falls back
+  // silently without startViewTransition.
+  const setAnnotating = (next) => {
+    if (typeof document !== 'undefined' && typeof document.startViewTransition === 'function') {
+      document.startViewTransition(() => setAnnotatingState(next));
+    } else {
+      setAnnotatingState(next);
+    }
+  };
 
   // A click on the backdrop (the dialog itself, outside its content) closes
   // the preview: a mouse shortcut alongside Escape and the close button.
@@ -31,6 +42,7 @@ export function ImagePreview({ attachment, name, labels, onAnnotated, onClose })
       <Suspense fallback={<div className="rk-modal-backdrop"><p className="rk-annotator-loading">{labels.annotateLoading}</p></div>}>
         <Annotator
           file={attachment.file}
+          attachmentId={attachment.id}
           name={name}
           labels={labels}
           onCancel={() => setAnnotating(false)}
@@ -47,10 +59,16 @@ export function ImagePreview({ attachment, name, labels, onAnnotated, onClose })
       className="rk-preview"
       aria-label={labels.preview(name)}
       onClose={onClose}
+      style={{ viewTransitionName: 'rk-preview-shell' }}
     >
       <header className="rk-preview-header">
         <span className="rk-preview-name" title={name}>{name}</span>
-        <button type="button" className="rk-tool rk-preview-annotate" onClick={() => setAnnotating(true)}>
+        <button
+          type="button"
+          className="rk-preview-annotate"
+          onClick={() => setAnnotating(true)}
+          style={{ viewTransitionName: 'rk-preview-action' }}
+        >
           <PenIcon />
           <span>{labels.annotate}</span>
         </button>
@@ -59,7 +77,12 @@ export function ImagePreview({ attachment, name, labels, onAnnotated, onClose })
         </button>
       </header>
       <div className="rk-preview-body">
-        <BlobImage file={attachment.file} alt={name} />
+        <BlobImage
+          file={attachment.file}
+          alt={name}
+          className="rk-preview-img"
+          style={{ viewTransitionName: `rk-att-${attachment.id}` }}
+        />
       </div>
     </dialog>
   );

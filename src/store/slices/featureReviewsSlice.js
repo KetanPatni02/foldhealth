@@ -3,6 +3,8 @@ import { toast } from '../../components/Toast/sonnerToast';
 
 const ACTIVE_REVIEW_KEY = 'fold:design-review';
 const ATTACHMENT_BUCKET = 'review-attachments';
+// Comments key for feedback not tied to a Signoff item (feature_id NULL).
+export const GENERAL_FEEDBACK = 'general';
 
 function readActiveReview() {
   try { return JSON.parse(sessionStorage.getItem(ACTIVE_REVIEW_KEY) || 'null'); } catch { return null; }
@@ -151,7 +153,8 @@ export function createFeatureReviewsSlice(set, get) {
     activeReview: readActiveReview(),
     featureReviewComments: {},
 
-    startFeatureReview: ({ id, title, area, link }) => {
+    // id null starts general feedback, not tied to a Signoff item.
+    startFeatureReview: ({ id = null, title, area, link }) => {
       const review = { featureId: id, title, area: area || '', link: link || '' };
       try { sessionStorage.setItem(ACTIVE_REVIEW_KEY, JSON.stringify(review)); } catch { /* private mode */ }
       set({ activeReview: review });
@@ -163,11 +166,12 @@ export function createFeatureReviewsSlice(set, get) {
     },
 
     // Comments with short-lived signed URLs for their attachments.
+    // featureId null loads general feedback (yours, or all of it for managers).
     fetchFeatureReviewComments: async (featureId) => {
-      const { data, error } = await supabase
+      const query = supabase
         .from('feature_review_comments')
-        .select('id, feature_id, author_email, author_name, body, points, context, created_at')
-        .eq('feature_id', featureId)
+        .select('id, feature_id, author_email, author_name, body, points, context, created_at');
+      const { data, error } = await (featureId ? query.eq('feature_id', featureId) : query.is('feature_id', null))
         .order('created_at', { ascending: false });
       if (error) {
         console.warn('[store] review comments fetch failed:', error.message);
@@ -182,16 +186,17 @@ export function createFeatureReviewsSlice(set, get) {
           c.points = c.points.map(p => ({ ...p, attachments: p.attachments.map(a => ({ ...a, url: urlFor.get(a.path) || null })) }));
         });
       }
-      set({ featureReviewComments: { ...get().featureReviewComments, [featureId]: comments } });
+      set({ featureReviewComments: { ...get().featureReviewComments, [featureId || GENERAL_FEEDBACK]: comments } });
     },
 
     // One piece of feedback: a series of points, each with its own comment,
-    // screenshots and page. Files upload under <featureId>/<commentId>/;
+    // screenshots and page. Files upload under <featureId>/<commentId>/ (or
+    // general/<commentId>/ when featureId is null);
     // one that fails is skipped with a warning.
     submitFeatureReviewComment: async ({ featureId, points, context }) => {
       const commentId = crypto.randomUUID();
       const uploadOne = async (a, pi, ai) => {
-        const path = `${featureId}/${commentId}/${pi + 1}-${ai + 1}-${safeName(a.name)}`;
+        const path = `${featureId || GENERAL_FEEDBACK}/${commentId}/${pi + 1}-${ai + 1}-${safeName(a.name)}`;
         const { error } = await supabase.storage.from(ATTACHMENT_BUCKET)
           .upload(path, a.file, { contentType: a.type || a.file.type, upsert: false });
         if (error) {

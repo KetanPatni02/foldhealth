@@ -130,6 +130,8 @@ export function Select({
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
+      // Presses in tools floating over the app (the design review box) aren't "outside".
+      if (e.target.closest?.('[data-outside-press-ignore]')) return;
       const inWrap = wrapRef.current?.contains(e.target);
       // A portaled menu is outside wrapRef, so check it separately or the
       // menu would close before the click landed on an option.
