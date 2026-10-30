@@ -10,7 +10,8 @@ import { PauseCarePlanDialog } from '../drawers/PauseCarePlanDialog/PauseCarePla
 import { CarePlanPausedContext } from '../lib/carePlanPausedContext';
 import { fmtCarePlanDate } from '../tables/carePlanTableModel';
 import { isCarePlanPaused, pauseSummary } from '../lib/carePlanPause';
-import { pendingRecommendation } from '../lib/carePlanRecommendation';
+import { assessmentSuggestionsFor, pendingRecommendation } from '../lib/carePlanRecommendation';
+import { resolvePatientStoreId } from '../../../../../../../lib/resolvePatientStoreId';
 import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { IndividualizedPlanCard } from '../ai/IndividualizedPlanCard';
 import { AiReviewContext } from '../ai/aiReviewContext';
@@ -782,6 +783,25 @@ export function CarePlanView({ patientId, program }) {
   const reviewAiSuggestions = useAppStore(s => s.reviewAiSuggestions);
   const setCarePlanRecommendedTemplates = useAppStore(s => s.setCarePlanRecommendedTemplates);
   const aiPending = useMemo(() => (viewedVersion ? [] : pendingRecommendation(live)), [live, viewedVersion]);
+  // Templates a completed assessment suggested (form builder Care Plan rules).
+  const fetchAssessmentCarePlanSuggestions = useAppStore(s => s.fetchAssessmentCarePlanSuggestions);
+  const resolveAssessmentSuggestionsFor = useAppStore(s => s.resolveAssessmentSuggestionsFor);
+  const patientStoreId = useAppStore(s => String(resolvePatientStoreId(s, patientId)));
+  const rawAssessmentSuggestions = useAppStore(s => s.assessmentCarePlanSuggestions[patientStoreId]);
+  useEffect(() => { if (patientId) fetchAssessmentCarePlanSuggestions(patientId); }, [patientId, fetchAssessmentCarePlanSuggestions]);
+  const assessmentSuggestions = useMemo(() => (
+    viewedVersion ? [] : assessmentSuggestionsFor(rawAssessmentSuggestions, program.code, live?.plan?.appliedTemplateIds || [])
+      .map(s => ({ ...s, templateName: carePlanTemplates.find(t => String(t.id) === s.templateId)?.name }))
+      .filter(s => s.templateName)
+  ), [rawAssessmentSuggestions, program.code, live?.plan?.appliedTemplateIds, carePlanTemplates, viewedVersion]);
+  const dismissAssessmentSuggestions = async () => {
+    setAiBusy(true);
+    try {
+      if (await resolveAssessmentSuggestionsFor(patientId, program, 'dismissed')) showToast('Dismissed the assessment suggestions');
+    } finally {
+      setAiBusy(false);
+    }
+  };
   const planIsEmpty = !live || (live.goals.length + live.interventions.length + (live.barriers || []).length) === 0;
   // When the record has nothing to plan from, the care manager describes the
   // patient instead (the start card asks up front on an empty plan).
@@ -809,7 +829,7 @@ export function CarePlanView({ patientId, program }) {
       showToast(desc
         ? `UnityAI drafted ${r.counts} from your description`
         : n
-          ? `Recommended ${r.counts} from ${n} automation-matched ${n === 1 ? 'template' : 'templates'}`
+          ? `Recommended ${r.counts} from ${n} matched ${n === 1 ? 'template' : 'templates'}`
           : `No automation matched; UnityAI recommended ${r.counts}`);
       setDescribeOpen(false);
       setDescription('');
@@ -845,6 +865,8 @@ export function CarePlanView({ patientId, program }) {
           : kind === 'intervention' ? deletePatientCarePlanIntervention(patientId, program.id, item.id)
             : deletePatientCarePlanBarrier(patientId, program.id, item.id)
       )));
+      const discarded = (live?.plan?.recommendedTemplates || []).map(t => t.id);
+      if (discarded.length) await resolveAssessmentSuggestionsFor(patientId, program, 'dismissed', discarded);
       await setCarePlanRecommendedTemplates(patientId, program, []);
       showToast('Discarded the recommended plan');
     } finally {
@@ -1133,6 +1155,15 @@ export function CarePlanView({ patientId, program }) {
           error={aiError}
           onUseTemplate={planIsEmpty ? handleTemplates : null}
           onCancel={planIsEmpty ? null : () => setDescribeOpen(false)}
+        />
+      ) : assessmentSuggestions.length > 0 && canEdit ? (
+        <IndividualizedPlanCard
+          state="suggested"
+          suggestions={assessmentSuggestions}
+          error={aiError}
+          busy={aiBusy}
+          onDraft={() => runIndividualizedPlan()}
+          onDiscard={dismissAssessmentSuggestions}
         />
       ) : !carePlanLoading && planIsEmpty && canEdit && !viewedVersion ? (
         <IndividualizedPlanCard state="start" error={aiError} onDraft={() => runIndividualizedPlan()} onUseTemplate={handleTemplates} />

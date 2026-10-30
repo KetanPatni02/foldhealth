@@ -8,6 +8,7 @@ import {
 import { simulateRun } from '../../features/automations/lib/simulate';
 import { buildRuleInputs, evaluateRule, rulesForProgram } from '../../features/automations/lib/clinicalCriteria';
 import { enrollmentRulesOf } from '../../features/automations/lib/enrollmentRules';
+import { assessmentSuggestionsFor, withAssessmentSuggestions } from '../../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanRecommendation';
 import { gbiRestorations, gbiTransitions, isHoldProgramStatus, programStatusRulesOf, programStatusTriggerOf, rulesForProgramStatus } from '../../features/automations/lib/programStatusRules';
 import { getNode } from '../../features/automations/lib/graph';
 import { statusDef } from '../../features/automations/lib/catalog';
@@ -501,23 +502,28 @@ export function createAutomationsSlice(set, get) {
       if (!patientId || !program?.id) return none;
       if (get().automationsStatus !== 'ready') await get().fetchAutomations();
       const applicable = rulesForProgram(enrollmentRulesOf(get().automations), program.code);
-      if (!applicable.length) return none;
+      // Templates a completed assessment suggested count as matches too.
+      const suggestions = assessmentSuggestionsFor(await get().fetchAssessmentCarePlanSuggestions(patientId), program.code);
+      if (!applicable.length && !suggestions.length) return none;
 
-      const [problems, events, responses] = await Promise.all([
-        supabase.from('patient_problems').select('title, status').eq('patient_id', String(patientId)),
-        supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit').eq('patient_id', String(patientId)),
-        // patient_id on form_responses comes with the automation rules migration.
-        supabase.from('form_responses').select('form_id, answers, status, completed_at, created_at').eq('patient_id', String(patientId))
-          .order('created_at', { ascending: false }).limit(50),
-      ]);
-      const inputs = buildRuleInputs({
-        problems: problems.data || [],
-        clinicalEvents: events.data || [],
-        responses: responses.error ? [] : (responses.data || []),
-      });
-      const results = applicable.map(rule => ({ rule, ...evaluateRule(rule, inputs) }));
+      let results = [];
+      if (applicable.length) {
+        const [problems, events, responses] = await Promise.all([
+          supabase.from('patient_problems').select('title, status').eq('patient_id', String(patientId)),
+          supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit').eq('patient_id', String(patientId)),
+          // patient_id on form_responses comes with the automation rules migration.
+          supabase.from('form_responses').select('form_id, answers, status, completed_at, created_at').eq('patient_id', String(patientId))
+            .order('created_at', { ascending: false }).limit(50),
+        ]);
+        const inputs = buildRuleInputs({
+          problems: problems.data || [],
+          clinicalEvents: events.data || [],
+          responses: responses.error ? [] : (responses.data || []),
+        });
+        results = applicable.map(rule => ({ rule, ...evaluateRule(rule, inputs) }));
+      }
       const matched = results.filter(r => r.matched);
-      if (matched.length && !get().carePlanTemplates.length) await get().fetchCarePlanLibrary();
+      if ((matched.length || suggestions.length) && !get().carePlanTemplates.length) await get().fetchCarePlanLibrary();
       const known = new Set(get().carePlanTemplates.map(t => String(t.id)));
       const recommended = [];
       for (const r of matched) {
@@ -526,7 +532,7 @@ export function createAutomationsSlice(set, get) {
           recommended.push({ templateId: String(id), rule: r.rule.name, criteria: r.reasons.filter(x => x.ok).map(x => x.text) });
         }
       }
-      return { results, matched, recommended };
+      return { results, matched, recommended: withAssessmentSuggestions(recommended, suggestions, known) };
     },
 
     // A new plan recommended for review: the automation-matched templates
@@ -569,7 +575,9 @@ export function createAutomationsSlice(set, get) {
         }
         const already = new Set(prev.map(String));
         const attached = aiDraft ? [] : recommended.map(r => r.templateId).filter(id => !already.has(id));
-        if (attached.length) await get().applyPatientCarePlanTemplates(patientId, program, [...prev, ...attached]);
+        if (attached.length && await get().applyPatientCarePlanTemplates(patientId, program, [...prev, ...attached])) {
+          await get().resolveAssessmentSuggestionsFor(patientId, program, 'accepted', attached);
+        }
 
         const memberName = get().patients.find(p => String(p.id) === String(patientId))?.name || '';
         const users = get().platformUsers || [];
