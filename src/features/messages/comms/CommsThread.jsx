@@ -246,8 +246,14 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
   };
 
   // Opens at the newest message; on first load a focused message out of view
-  // is brought to the middle instead.
+  // is brought to the middle instead, highlighted for 3 seconds.
   const focusedOnce = useRef(false);
+  const [focusFaded, setFocusFaded] = useState(false);
+  useEffect(() => {
+    if (loading || !focusMessageId) return undefined;
+    const t = setTimeout(() => setFocusFaded(true), 3000);
+    return () => clearTimeout(t);
+  }, [loading, focusMessageId]);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -593,7 +599,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
                 onToggle={() => togglePicked(m.id)}
               >
                 {m.id === focusMessageId ? (
-                  <div className={styles.focusedMessage} data-focused="true">
+                  <div className={`${styles.focusedMessage} ${focusFaded ? styles.focusedMessageDone : ''}`} data-focused="true">
                     {item}
                   </div>
                 ) : item}
