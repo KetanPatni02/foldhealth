@@ -224,13 +224,19 @@ export function CarePlanView({ patientId, program }) {
     for (const entry of Object.values(out)) entry.version = entry.previous.length + 1;
     return out;
   }, [live?.templateInstances]);
-  // The template version each active run is on, and the newer one it is
-  // waiting to move to (published with "next review" or a future date).
+  // The template version each active run is on, the newer one it is waiting
+  // to move to (published with "next review" or a future date), and the
+  // template category it went on with.
   const templateVersionChains = useAppStore(s => s.carePlanTemplateVersions);
   const templateVersionInfo = useMemo(() => {
     const out = {};
     for (const inst of live?.templateInstances || []) {
-      if (inst.status !== 'active' || !inst.templateVersionNumber) continue;
+      if (inst.status !== 'active') continue;
+      const category = inst.categoryName || '';
+      if (!inst.templateVersionNumber) {
+        if (category) out[inst.templateId] = { pending: false, category, title: `Category: ${category}` };
+        continue;
+      }
       const pending = inst.pendingVersionId
         && (templateVersionChains[inst.templateId] || []).find(v => v.id === inst.pendingVersionId);
       const when = pending && (inst.pendingMode === 'review'
@@ -238,7 +244,8 @@ export function CarePlanView({ patientId, program }) {
         : `when opened on or after ${inst.pendingEffectiveDate?.slice(5, 7)}/${inst.pendingEffectiveDate?.slice(8, 10)}/${inst.pendingEffectiveDate?.slice(0, 4)}`);
       out[inst.templateId] = {
         pending: !!pending,
-        title: `Template version ${inst.templateVersionNumber}${pending ? `. Version ${pending.versionNumber} applies ${when}.` : ''}`,
+        category,
+        title: `${category ? `Category: ${category}. ` : ''}Template version ${inst.templateVersionNumber}${pending ? `. Version ${pending.versionNumber} applies ${when}.` : ''}`,
       };
     }
     return out;
@@ -786,10 +793,10 @@ export function CarePlanView({ patientId, program }) {
       setAiBusy(false);
     }
   };
-  const handleApplyTemplates = async (ids, priorities) => {
+  const handleApplyTemplates = async (ids, priorities, categoryPicks) => {
     setTemplatesDrawerOpen(false);
     if (!canEdit) return;
-    await applyPatientCarePlanTemplates(patientId, program, ids, priorities);
+    await applyPatientCarePlanTemplates(patientId, program, ids, priorities, categoryPicks);
   };
   const handleTrends = () => setTrendsOpen(true);
   const handleAssigneeChange = (intervention, user) => {

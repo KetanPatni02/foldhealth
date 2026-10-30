@@ -358,7 +358,7 @@ export function CarePlanViewDrawers(d) {
           appliedTemplatePriorities={appliedTemplatePriorities}
           patientProblems={patientProblems}
           onClose={() => { setTemplatesDrawerOpen(false); setCreatedTemplateIds([]); }}
-          onApply={(ids, priorities) => { setCreatedTemplateIds([]); handleApplyTemplates(ids, priorities); }}
+          onApply={(ids, priorities, categoryPicks) => { setCreatedTemplateIds([]); handleApplyTemplates(ids, priorities, categoryPicks); }}
           onCreateNew={() => { setTemplatesDrawerOpen(false); setTemplateCreateOpen(true); }}
           preselectedIds={createdTemplateIds}
           onApplyAgain={canEdit ? setApplyAgainTemplate : undefined}
