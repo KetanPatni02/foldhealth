@@ -24,7 +24,7 @@ function TemplateBadge({
       className={`${styles.appliedTemplateBadge} ${isActive ? styles.appliedTemplateBadgeActive : ''}`}
       aria-pressed={isActive}
       onClick={() => onSelect(template.id)}
-      aria-label={`${templatePriority} priority, ${template.name}${version ? `, version ${version}` : ''}${isActive ? ', filter active' : ''}`}
+      aria-label={`${templatePriority} priority, ${template.name}${templateVersion?.category ? `, ${templateVersion.category}` : ''}${version ? `, version ${version}` : ''}${isActive ? ', filter active' : ''}`}
       title={templateVersion?.title}
     >
       <Badge
@@ -34,6 +34,7 @@ function TemplateBadge({
           <>
             <PriorityIcon priority={templatePriority} size={12} />
             {template.name}
+            {templateVersion?.category && <span className={styles.runVersion}>{templateVersion.category}</span>}
             {version && <span className={styles.runVersion}>V{version}</span>}
             {templateVersion?.pending && <Icon name="solar:refresh-circle-linear" size={12} color="var(--primary-300)" />}
           </>
@@ -112,7 +113,8 @@ export function AppliedTemplateStrip({
   onRemove,
   trailing = null,
   runsByTemplate = {},
-  // { [templateId]: { title, pending } }: the template version each run is on.
+  // { [templateId]: { title, pending, category } }: the template version each
+  // run is on, and the category it went on with.
   templateVersions = {},
   // Past-version view: chips show, nothing filters or removes.
   readOnly = false,

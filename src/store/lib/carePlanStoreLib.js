@@ -7,6 +7,7 @@ import {
   templateLinkOwners,
 } from '../../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 import { defaultRenewalFor } from '../../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
+import { itemsFor } from '../../features/settings/care-plan-library/lib/templateCategories';
 
 // public.notifications row → the shape the bell popover already renders.
 // `persisted: true` is what separates a DB-backed notification from a local
@@ -186,6 +187,9 @@ function mapCarePlanTemplateRow(row) {
     // Template versioning: the version whose content this row holds.
     currentVersionNumber: row.current_version_number ?? null,
     sourceProtocol: row.source_protocol || null,
+    // Common is goals / interventions / barriers; categories add more per
+    // patient (care_plan_template_categories migration, lib/templateCategories.js).
+    categories: Array.isArray(row.categories) ? row.categories : [],
   };
 }
 
@@ -229,6 +233,9 @@ function mapTemplateInstanceRow(row) {
     // The IPA overlay it was applied with, and who must sign because of it.
     overlayId: row.overlay_id || null,
     signoffRoute: row.signoff_route || null,
+    // The template category this run applied (Common + that category).
+    categoryId: row.category_id || null,
+    categoryName: row.category_name || '',
   };
 }
 
@@ -564,11 +571,13 @@ function templateItems(template, slice, libraryGoals) {
     }
     return norm(e?.title || '');
   }).filter(Boolean));
-  const goalTitles = titlesOf(template.goals, true);
+  // Common and every category: only what is on the plan matches anyway.
+  const all = (k) => itemsFor(template, k, undefined);
+  const goalTitles = titlesOf(all('goals'), true);
   const goals = (slice?.goals || []).filter(g => goalTitles.has(norm(g.title)));
   const goalIds = new Set(goals.map(g => g.id));
-  const intvTitles = titlesOf(template.interventions);
-  const barrierTitles = titlesOf(template.barriers);
+  const intvTitles = titlesOf(all('interventions'));
+  const barrierTitles = titlesOf(all('barriers'));
   // Interventions match on title only, as the applied-templates strip does; a
   // later intervention hung off a template goal is not the template's.
   const interventions = (slice?.interventions || [])

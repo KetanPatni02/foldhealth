@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
+import { SubTabs } from '../../../../../../../../components/SubTabs/SubTabs';
+import { categoriesOf, describeCriteria, withCategory } from '../../../../../../../settings/care-plan-library/lib/templateCategories';
 import { CarePlanSections } from '../../../../../../../settings/care-plan-library/shared';
 import { goalCategoryIcon } from '../../../../../../../settings/care-plan-library/lib';
 import {
@@ -16,14 +18,20 @@ import styles from './TemplatePreviewDrawer.module.css';
  * patient plan. Renders the template's Goals / Interventions / Barriers with
  * the same shared CarePlanSections stack the template editor and New Care Plan
  * use, so a template reads identically wherever it is reviewed. Nothing here
- * writes: no "+" add affordances, no row menus, no clickable rows.
+ * writes: no "+" add affordances, no row menus, no clickable rows. A template
+ * with categories shows Common, or what a patient in a category gets.
  */
 export function TemplatePreviewDrawer({ template, onClose }) {
   const libraryGoals = useAppStore(s => s.carePlanGoals);
+  const categories = categoriesOf(template);
+  const [section, setSection] = useState('common');
+  const category = categories.find(c => c.id === section) || null;
+  // An unknown id (a deleted category) shows Common.
+  const shown = useMemo(() => withCategory(template || {}, section), [template, section]);
 
-  const goals = useMemo(() => template?.goals || [], [template]);
-  const interventions = useMemo(() => template?.interventions || [], [template]);
-  const barriers = useMemo(() => template?.barriers || [], [template]);
+  const goals = shown.goals;
+  const interventions = shown.interventions;
+  const barriers = shown.barriers;
   const conditions = (template?.conditions || []).filter(Boolean);
 
   const goalRows = useMemo(() => goals.map((entry, i) => {
@@ -92,6 +100,22 @@ export function TemplatePreviewDrawer({ template, onClose }) {
             </div>
           )}
         </div>
+
+        {categories.length > 0 && (
+          <div className={styles.categories}>
+            <SubTabs
+              size="S"
+              tabs={[{ key: 'common', label: 'Common' }, ...categories.map(c => ({ key: c.id, label: c.name }))]}
+              activeKey={section}
+              onChange={setSection}
+            />
+            <span className={styles.categoryNote}>
+              {category
+                ? `For patients with ${describeCriteria(category)}: Common plus this category.`
+                : 'Goes to every patient. Each category adds its own for the patients who match it.'}
+            </span>
+          </div>
+        )}
 
         <CarePlanSections
           goalRows={goalRows}

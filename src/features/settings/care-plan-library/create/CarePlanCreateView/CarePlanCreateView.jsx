@@ -16,7 +16,11 @@ import { INTERVENTION_EDITORS } from '../../interventions';
 import { ApplyTemplatesDrawer } from '../../../../patient/right-panel/tabs/care-programs/care-plan/drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
-import { CarePlanSections, ChronicConditionSelect, TemplateRenewalChoice, TemplateScopeChoice } from '../../shared';
+import {
+  CarePlanSections, CategoryCriteriaCard, ChronicConditionSelect, CommonSectionNote, COMMON,
+  TemplateCategoryBar, TemplateRenewalChoice, TemplateScopeChoice, useTemplateCategories,
+} from '../../shared';
+import { categoriesProblem } from '../../lib/templateCategories';
 import { LIBRARY_SCOPE_CHOICES } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateScope';
 import { defaultRenewalFor } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { CARE_PLAN_NAME_MAX } from '../../lib/carePlanLimits';
@@ -88,6 +92,9 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const [picker, setPicker] = useState(null); // 'goals' | 'interventions' | 'barriers'
   // { list, item, rect } — which row's menu is open.
   const [rowMenu, setRowMenu] = useState(null);
+  // Common + categories: the three lists above hold whichever is on screen.
+  const cats = useTemplateCategories([], { goals, interventions, barriers }, { setGoals, setInterventions, setBarriers });
+  const showToast = useAppStore(s => s.showToast);
   const [editingGoal, setEditingGoal] = useState(null);
   const [editingIntervention, setEditingIntervention] = useState(null);
   const libraryTemplates = useAppStore(s => s.carePlanTemplates);
@@ -240,6 +247,8 @@ export function CarePlanCreateView({ onClose, onSave }) {
   };
 
   const draftWithAi = async (text) => {
+    // A draft is the template's Common section.
+    cats.select(COMMON);
     setDrafting(true);
     setDraftError('');
     try {
@@ -277,6 +286,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
   };
 
   const discardDraft = () => {
+    cats.select(COMMON);
     setGoals(prev => dropDraft(prev));
     setInterventions(prev => dropDraft(prev));
     setBarriers(prev => dropDraft(prev));
@@ -296,7 +306,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const awaitingDraft = aiMode && (!draftReview || drafting);
   const canSave = name.trim().length > 0 && !saving && !drafting;
 
-  const payload = (savedGoals) => {
+  const payload = (savedGoals, snap) => {
     const drafted = draftedProtocolRef.current;
     return {
       name: name.trim(),
@@ -304,8 +314,9 @@ export function CarePlanCreateView({ onClose, onSave }) {
       templateType,
       conditions,
       goals: savedGoals,
-      interventions: withoutDraftMarks(interventions),
-      barriers: withoutDraftMarks(barriers),
+      interventions: withoutDraftMarks(snap.interventions),
+      barriers: withoutDraftMarks(snap.barriers),
+      categories: snap.categories,
       scope,
       renewal,
       sourceProtocol: drafted
@@ -318,12 +329,15 @@ export function CarePlanCreateView({ onClose, onSave }) {
   // first, so the template references real goals (and a retry won't create
   // them twice).
   const save = async (status) => {
+    const snap = cats.snapshot();
+    const problem = categoriesProblem(snap.categories);
+    if (problem) { showToast?.(problem); return; }
     setSaving(true);
     try {
-      const savedGoals = await materializeNewGoals(goals, saveCarePlanGoal);
+      const savedGoals = await materializeNewGoals(snap.goals, saveCarePlanGoal);
       if (!savedGoals) return;
-      setGoals(savedGoals);
-      await onSave?.({ ...payload(savedGoals), status });
+      if (cats.active === COMMON) setGoals(savedGoals);
+      await onSave?.({ ...payload(savedGoals, snap), status });
     } finally {
       setSaving(false);
     }
@@ -476,6 +490,22 @@ export function CarePlanCreateView({ onClose, onSave }) {
         </div>
 
         <div className={styles.goalsBody}>
+          {!drafting && (
+            <div className={styles.categories}>
+              <TemplateCategoryBar categories={cats.categories} active={cats.active} onSelect={cats.select} onAdd={cats.add} />
+              {cats.active === COMMON && cats.categories.length > 0 && <CommonSectionNote />}
+              {cats.activeCategory && (
+                <CategoryCriteriaCard
+                  category={cats.activeCategory}
+                  index={cats.categories.indexOf(cats.activeCategory)}
+                  total={cats.categories.length}
+                  onChange={patch => cats.update(cats.active, patch)}
+                  onRemove={() => cats.remove(cats.active)}
+                  onMove={by => cats.move(cats.active, by)}
+                />
+              )}
+            </div>
+          )}
           {drafting ? (
             <div className={styles.draftingCard} role="status" aria-live="polite">
               <span className={styles.draftingTitle}>

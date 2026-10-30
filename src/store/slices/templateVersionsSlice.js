@@ -65,13 +65,21 @@ export function createTemplateVersionsSlice(set, get) {
   // The template row takes a version's content (it is now the one in effect).
   const adoptVersion = async (templateId, version) => {
     const c = version.content || {};
-    const { data, error } = await supabase.from('care_plan_templates').update({
+    const patch = {
       name: c.name, conditions: c.conditions || [], goals: c.goals || [], interventions: c.interventions || [], barriers: c.barriers || [],
       ...(c.renewal ? { renewal: c.renewal } : {}),
+      categories: c.categories || [],
       current_version_number: version.versionNumber,
       updated_by: version.publishedBy || get().currentUserProfile?.name || null,
       updated_at: new Date().toISOString(),
-    }).eq('id', templateId).select().single();
+    };
+    const update = (p) => supabase.from('care_plan_templates').update(p).eq('id', templateId).select().single();
+    let { data, error } = await update(patch);
+    // Before the categories migration a version without categories still adopts.
+    if (error && /categories/.test(error.message || '') && !(c.categories || []).length) {
+      const { categories: _c, ...withoutCategories } = patch;
+      ({ data, error } = await update(withoutCategories));
+    }
     if (error) { console.warn('adopt template version:', error.message); return null; }
     const t = mapCarePlanTemplateRow(data);
     patchTemplate(t);
@@ -229,7 +237,10 @@ export function createTemplateVersionsSlice(set, get) {
         const chain = versionsOf(toVersion.templateId);
         const from = chain.find(v => v.id === instance.templateVersionId)
           || chain.find(v => v.versionNumber === (instance.templateVersionNumber ?? 1)) || null;
-        const diff = versionDiff(from?.content || {}, toVersion.content);
+        // A run with a category moves Common + its category; one without, Common alone.
+        const categoryId = instance.categoryId !== undefined ? instance.categoryId
+          : ((slice?.templateInstances || []).find(i => i.id === instance.id)?.categoryId ?? null);
+        const diff = versionDiff(from?.content || {}, toVersion.content, { categoryId });
         const name = toVersion.content?.name || 'Template';
 
         if (slice?.plan) {

@@ -94,7 +94,8 @@ export function SettingsLayout() {
               if (saved) setCarePlanTemplateScreen(null);
               return;
             }
-            const content = { ...contentOf(template), ...contentOf({ ...template, ...values }) };
+            // Categories are taken as edited, so removing the last one sticks.
+            const content = { ...contentOf(template), ...contentOf({ ...template, ...values }), categories: values.categories ?? template.categories ?? [] };
             if (canManageTemplates) { setPublishing({ template, content, scope: values.scope }); return; }
             const saved = await saveCarePlanTemplate({ ...content, status: 'draft', replacesTemplateId: template.id });
             if (!saved) return;
