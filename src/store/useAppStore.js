@@ -81,7 +81,7 @@ import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activity
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
-import { buildPatientFacts, buildTemplateChoices, draftCounts } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/individualizedPlan';
+import { buildPatientFacts, buildTemplateChoices, draftCounts, withDescription } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/individualizedPlan';
 import { pendingRecommendation } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanRecommendation';
 import { buildTemplateCatalog } from '../features/settings/care-plan-library/lib/aiTemplateDraft';
 import { apiFetch } from '../lib/apiFetch';
@@ -3059,6 +3059,35 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // The patient's record as citable facts for UnityAI (care-plan/lib/
+  // individualizedPlan.js): conditions, profile condition tags, labs, events,
+  // assessments, open barriers. Empty when there's nothing to plan from; a plan can then be
+  // drafted from the care manager's description instead.
+  loadCarePlanFacts: async (patientId) => {
+    const pid = String(patientId);
+    const [problems, events, responses, forms, otherBarriers, profile] = await Promise.all([
+      supabase.from('patient_problems').select('title, status').eq('patient_id', pid),
+      supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit, reference_low, reference_high').eq('patient_id', pid),
+      supabase.from('form_responses').select('form_id, answers, status, completed_at, created_at').eq('patient_id', pid)
+        .order('created_at', { ascending: false }).limit(50),
+      supabase.from('forms').select('id, name').limit(300),
+      supabase.from('patient_care_plans').select('program_code, patient_care_plan_barriers(title, status)').eq('patient_id', pid),
+      supabase.from('p360_profiles').select('condition_tags').eq('patient_id', pid).maybeSingle(),
+    ]);
+    const openBarriers = (otherBarriers.data || []).flatMap(p => (p.patient_care_plan_barriers || [])
+      .filter(b => !['Met', 'Resolved', 'Not Met', 'Discontinued', 'Not Applicable'].includes(b.status))
+      .map(b => ({ title: b.title, program: p.program_code })));
+    return buildPatientFacts({
+      problems: problems.data || [],
+      clinicalEvents: events.data || [],
+      // patient_id on form_responses arrives with the automation rules migration.
+      responses: responses.error ? [] : (responses.data || []),
+      formNames: new Map((forms.data || []).map(f => [String(f.id), f.name])),
+      barriers: openBarriers,
+      profileTags: Array.isArray(profile.data?.condition_tags) ? profile.data.condition_tags : [],
+    });
+  },
+
   // ── Individualized Plan AI (care_plan_ai_suggestions migration) ──
   // Reads the patient's conditions, labs, recent encounters, assessments and
   // open barriers as numbered facts, asks /api/care-plan-individualized for the
@@ -3068,7 +3097,9 @@ export const useAppStore = create((set, get) => ({
   // `recommended` ([{ templateId, rule, criteria }], from matchCarePlanTemplates)
   // limits it to the templates the enrollment automations matched and has the
   // model merge all of them. Returns { counts, templates } or throws.
-  draftIndividualizedPlan: async (patientId, program, { recommended = [] } = {}) => {
+  // `description`: the care manager's plain-English account of the patient,
+  // planned from (and cited) alongside the record, or instead of an empty one.
+  draftIndividualizedPlan: async (patientId, program, { recommended = [], description = '' } = {}) => {
     // Without the AI columns the drafted items can't carry their flag or
     // evidence, so say so before calling the model or touching the plan.
     const probe = await supabase.from('patient_care_plan_goals').select('ai_suggested').limit(1);
@@ -3077,27 +3108,12 @@ export const useAppStore = create((set, get) => ({
     }
     if (!get().carePlanTemplates.length || !get().carePlanGoals.length) await get().fetchCarePlanLibrary();
     const s0 = get();
-    const pid = String(patientId);
-    const [problems, events, responses, forms, otherBarriers] = await Promise.all([
-      supabase.from('patient_problems').select('title, status').eq('patient_id', pid),
-      supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit, reference_low, reference_high').eq('patient_id', pid),
-      supabase.from('form_responses').select('form_id, answers, status, completed_at, created_at').eq('patient_id', pid)
-        .order('created_at', { ascending: false }).limit(50),
-      supabase.from('forms').select('id, name').limit(300),
-      supabase.from('patient_care_plans').select('program_code, patient_care_plan_barriers(title, status)').eq('patient_id', pid),
-    ]);
-    const openBarriers = (otherBarriers.data || []).flatMap(p => (p.patient_care_plan_barriers || [])
-      .filter(b => !['Met', 'Resolved', 'Not Met', 'Discontinued', 'Not Applicable'].includes(b.status))
-      .map(b => ({ title: b.title, program: p.program_code })));
-    const facts = buildPatientFacts({
-      problems: problems.data || [],
-      clinicalEvents: events.data || [],
-      // patient_id on form_responses arrives with the automation rules migration.
-      responses: responses.error ? [] : (responses.data || []),
-      formNames: new Map((forms.data || []).map(f => [String(f.id), f.name])),
-      barriers: openBarriers,
-    });
-    if (!facts.length) throw new Error('There’s nothing on this patient’s record to plan from yet: no conditions, labs, events, assessments or barriers.');
+    const facts = withDescription(await get().loadCarePlanFacts(patientId), description);
+    if (!facts.length) {
+      const err = new Error('There’s nothing on this patient’s profile or record to plan from yet: no conditions, condition tags, labs, events, assessments or barriers. Describe the patient instead.');
+      err.code = 'no_record';
+      throw err;
+    }
 
     const recommendedIds = new Set(recommended.map(r => String(r.templateId)));
     const templates = buildTemplateChoices(
@@ -3160,7 +3176,11 @@ export const useAppStore = create((set, get) => ({
         draft.summary,
         draft.templates.length ? `Based on: ${draft.templates.map(t => t.name).join(', ')}` : 'No template fit; tailored from the record',
         recommended.length ? `Recommended by automations: ${[...new Set(recommended.map(r => r.rule))].join(', ')}` : null,
-        `${facts.length} patient inputs read`,
+        description.trim() ? 'From the care manager’s description' : null,
+        ...(() => {
+          const n = facts.filter(f => f.kind !== 'description').length;
+          return n ? [`${n} patient ${n === 1 ? 'input' : 'inputs'} read`] : [];
+        })(),
       ].filter(Boolean).join(' · '),
     });
     return { counts, summary: draft.summary, templates: draft.templates };

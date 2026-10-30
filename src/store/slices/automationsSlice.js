@@ -533,9 +533,11 @@ export function createAutomationsSlice(set, get) {
     // merged and tailored by UnityAI, every item flagged until approved. With
     // no match, UnityAI picks the templates itself. Throws like
     // draftIndividualizedPlan.
-    recommendCarePlan: async (patientId, program) => {
+    // `description` (the care manager's account of the patient) is planned
+    // from too: the way in when the record has nothing to plan from.
+    recommendCarePlan: async (patientId, program, { description = '' } = {}) => {
       const { recommended } = await get().matchCarePlanTemplates(patientId, program);
-      const draft = await get().draftIndividualizedPlan(patientId, program, { recommended });
+      const draft = await get().draftIndividualizedPlan(patientId, program, { recommended, description });
       return { ...draft, recommended };
     },
 

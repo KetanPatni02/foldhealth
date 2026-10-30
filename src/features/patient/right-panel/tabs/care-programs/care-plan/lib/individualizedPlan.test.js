@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildIndividualizedPrompt, buildPatientFacts, buildTemplateChoices, draftCounts, draftLimits, normalizeIndividualizedDraft, recommendedForPrompt,
+  buildIndividualizedPrompt, buildPatientFacts, buildTemplateChoices, draftCounts, draftLimits, normalizeIndividualizedDraft, recommendedForPrompt, withDescription, DESCRIPTION_MAX,
 } from './individualizedPlan';
 
 const today = new Date(2026, 9, 19);
@@ -144,5 +144,49 @@ describe('automation-recommended plans', () => {
       ['t-htn', 'Hypertension'],
     ]);
     expect(draft.templates[1]).toMatchObject({ why: 'Matched by automation: Hypertension', citations: [] });
+  });
+});
+
+describe('planning from a care manager description', () => {
+  const description = '68-year-old with type 2 diabetes, lives alone, misses doses and has no transport.';
+
+  it('adds the description as one more citable fact', () => {
+    expect(withDescription([], description)).toEqual([{ id: 'F1', kind: 'description', text: description, date: null }]);
+    const more = withDescription(facts, description);
+    expect(more.at(-1)).toMatchObject({ id: `F${facts.length + 1}`, kind: 'description' });
+    expect(withDescription(facts, '   ')).toBe(facts);
+    expect(withDescription([], 'x'.repeat(DESCRIPTION_MAX + 50))[0].text).toHaveLength(DESCRIPTION_MAX);
+  });
+
+  it('tells the model not to invent what the description does not state', () => {
+    const prompt = buildIndividualizedPrompt({ facts: withDescription([], description), templates: [], catalog: { goals: [], interventions: [], barriers: [] } });
+    expect(prompt).toContain('care manager\'s own account');
+    expect(prompt).toContain(description);
+    expect(buildIndividualizedPrompt({ facts, templates: [], catalog: { goals: [], interventions: [], barriers: [] } })).not.toContain('own account');
+  });
+
+  it('keeps citations to the description', () => {
+    const f = withDescription([], description);
+    const draft = normalizeIndividualizedDraft({
+      summary: 'Diabetes support.',
+      templates: [],
+      goals: [{ libraryId: null, title: 'Take diabetes medicines as prescribed', priority: 'high', rationale: 'Misses doses', citations: ['F1'] }],
+      interventions: [],
+      barriers: [],
+    }, { facts: f, templates: [], catalog: { goals: [], interventions: [], barriers: [] } });
+    expect(draft.goals[0].citations).toEqual([expect.objectContaining({ fact: 'F1', kind: 'description' })]);
+  });
+});
+
+describe('profile condition tags', () => {
+  it('become facts unless the record already names them', () => {
+    const f = buildPatientFacts({
+      problems: [{ title: 'Chronic Pain', status: 'Active' }],
+      profileTags: ['chronic pain', 'Needs Transportation', ' ', 7],
+    });
+    expect(f.map(x => [x.kind, x.text])).toEqual([
+      ['condition', 'Chronic Pain (problem list)'],
+      ['profile', 'Needs Transportation (patient profile)'],
+    ]);
   });
 });
