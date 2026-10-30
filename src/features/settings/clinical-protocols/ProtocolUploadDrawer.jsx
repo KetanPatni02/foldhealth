@@ -57,7 +57,7 @@ export function ProtocolUploadDrawer({ onClose, onReview }) {
       <div className={styles.drawerBody}>
         <p className={styles.hint}>
           Upload a client&apos;s clinical practice guidance. Each file is parsed into a draft protocol (thresholds, decision rules,
-          cadence, medication titration and cross-references) for a supervisor to review. Nothing is used until it is approved.
+          cadence, medication titration and cross-references) for an admin to review. Nothing is used until it is approved.
           JSON in the Fold protocol format imports directly.
         </p>
         <Dropzone

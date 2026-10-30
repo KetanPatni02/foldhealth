@@ -47,7 +47,7 @@ const INTRO_ITEMS = [
   {
     icon: 'solar:shield-check-linear',
     title: 'Review before it’s used',
-    description: 'Every item sits next to the passage it came from. Nothing is used until a supervisor approves it.',
+    description: 'Every item sits next to the passage it came from. Nothing is used until an admin approves it.',
   },
   {
     icon: 'solar:refresh-linear',

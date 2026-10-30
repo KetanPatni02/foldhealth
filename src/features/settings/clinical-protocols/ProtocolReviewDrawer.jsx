@@ -143,6 +143,7 @@ function ProtocolSection({ section, items, editable, onItemsChange }) {
 export function ProtocolReviewDrawer({ protocolId, onClose, onApproved }) {
   const protocol = useAppStore(s => s.clinicalProtocols.find(p => p.id === protocolId));
   const isSample = useAppStore(s => s.clinicalProtocolsSample);
+  const isAdmin = useAppStore(s => s.currentUserIsAdmin);
   const careProgramTypes = useAppStore(s => s.careProgramTypes);
   const fetchCareProgramTypes = useAppStore(s => s.fetchCareProgramTypes);
   const saveClinicalProtocol = useAppStore(s => s.saveClinicalProtocol);
@@ -192,7 +193,9 @@ export function ProtocolReviewDrawer({ protocolId, onClose, onApproved }) {
   const status = protocolStatus(protocol.status);
   // Fold's own protocols are maintained by Fold: read-only here.
   const isFold = isFoldProtocol(protocol);
-  const editable = !isSample && !isFold && EDITABLE.has(protocol.status);
+  // Only admins edit, approve, retire or delete (RLS enforces the same).
+  const canManage = !isSample && !isFold && isAdmin;
+  const editable = canManage && EDITABLE.has(protocol.status);
   const canDraftTemplate = !isSample && !isFold && protocol.status === 'active';
   const counts = protocolCounts(draft.protocol);
   const supersede = protocol.status === 'draft' ? protocolToSupersede(protocol.id) : null;
@@ -233,8 +236,8 @@ export function ProtocolReviewDrawer({ protocolId, onClose, onApproved }) {
   const menuItems = [
     ...(protocol.sourcePath ? [{ key: 'original', icon: 'solar:file-download-linear', label: 'Open Original File' }] : []),
     ...(editable && protocol.sourceKind !== 'json' ? [{ key: 'reparse', icon: 'solar:refresh-linear', label: 'Parse Again' }] : []),
-    ...(protocol.status === 'active' && !isSample && !isFold ? [{ key: 'retire', icon: 'solar:archive-linear', label: 'Retire' }] : []),
-    ...(!isSample && !isFold ? [{ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true }] : []),
+    ...(protocol.status === 'active' && canManage ? [{ key: 'retire', icon: 'solar:archive-linear', label: 'Retire' }] : []),
+    ...(canManage ? [{ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true }] : []),
   ];
 
   return (
@@ -265,6 +268,7 @@ export function ProtocolReviewDrawer({ protocolId, onClose, onApproved }) {
       <div className={styles.drawerBody}>
         {isSample && <Alert tone="info" message="Sample protocol. Run supabase/clinical_protocols_migration.sql to upload and review your own." />}
         {isFold && <Alert tone="info" message="Fold protocol, built from the published guidelines listed below and kept current by Fold. It can't be edited; to follow different rules, upload your organization's protocol." />}
+        {!isSample && !isFold && !isAdmin && <Alert tone="info" message="Only an admin can edit, approve, retire or delete protocols." />}
         {protocol.status === 'failed' && <Alert tone="error" message={protocol.parseError || 'This file could not be parsed.'} />}
         {protocol.status === 'processing' && <Alert tone="info" message="Parsing this document. Its items appear here when it finishes." />}
         {protocol.status === 'draft' && (
