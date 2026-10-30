@@ -34,6 +34,7 @@ import { TemplateVersionsDrawer } from '../../versions/TemplateVersionsDrawer';
 import { OverlayEditorDrawer } from '../../overlays/OverlayEditorDrawer';
 import { IpaRegistryDrawer } from '../../overlays/IpaRegistryDrawer';
 import { ClinicalProtocolsPanel } from '../../../clinical-protocols/ClinicalProtocolsPanel';
+import { TemplateSuggestionsPanel } from '../../suggestions/TemplateSuggestionsPanel';
 import { overlaySummary } from '../../lib/ipaOverlays';
 import { todayIso } from '../../lib/templateVersions';
 import { BulkBar } from '../../../../../components/BulkBar/BulkBar';
@@ -48,6 +49,7 @@ const CARE_PLAN_TABS = [
   { key: 'barriers', label: 'Barriers Library' },
   { key: 'drafts', label: 'Draft Templates' },
   { key: 'overlays', label: 'IPA Overlays' },
+  { key: 'suggestions', label: 'Suggestions' },
 ];
 
 const TAB_META = {
@@ -58,6 +60,7 @@ const TAB_META = {
   drafts: { entityLabel: 'Draft', emptyIcon: 'solar:clipboard-list-linear' },
   overlays: { entityLabel: 'Overlay', emptyIcon: 'solar:layers-linear' },
   protocols: { entityLabel: 'Protocol', emptyIcon: 'solar:document-medicine-linear' },
+  suggestions: { entityLabel: 'Suggestion', emptyIcon: 'solar:magic-stick-3-linear' },
 };
 const OVERLAY_COLUMNS = [
   { key: 'template', label: 'Template', sticky: 'left', left: 0, width: 260 },
@@ -279,6 +282,8 @@ export function CarePlanLibraryPanel() {
   const approveCarePlanTemplateDrafts = useAppStore(s => s.approveCarePlanTemplateDrafts);
   // Importing, approving and versioning templates is for supervisors.
   const canManageTemplates = useCanManageTemplates();
+  // Suggestions are a supervisor's queue.
+  const libraryTabs = canManageTemplates ? CARE_PLAN_TABS : CARE_PLAN_TABS.filter(t => t.key !== 'suggestions');
   const [importOpen, setImportOpen] = useState(false);
   const templateVersions = useAppStore(s => s.carePlanTemplateVersions);
   const [versionsFor, setVersionsFor] = useState(null);
@@ -333,9 +338,10 @@ export function CarePlanLibraryPanel() {
   };
 
   // The Plan Template tab lists published templates; Draft Templates lists
-  // the ones saved from New Care Plan's "Save as Draft".
+  // the ones saved from New Care Plan's "Save as Draft". Archived (retired
+  // from Suggestions) templates are in neither.
   const publishedTemplates = useMemo(
-    () => templates.filter(t => t.status !== 'draft'),
+    () => templates.filter(t => t.status !== 'draft' && t.status !== 'archived'),
     [templates],
   );
   const draftTemplates = useMemo(
@@ -743,13 +749,16 @@ export function CarePlanLibraryPanel() {
   // Protocols have their own search, filters and upload, so the tab hands
   // the whole pane, title bar included, to the protocols panel.
   if (activeTab === 'protocols') {
-    return <ClinicalProtocolsPanel tabs={CARE_PLAN_TABS} activeTab={activeTab} onTabChange={handleTabChange} />;
+    return <ClinicalProtocolsPanel tabs={libraryTabs} activeTab={activeTab} onTabChange={handleTabChange} />;
+  }
+  if (activeTab === 'suggestions') {
+    return <TemplateSuggestionsPanel tabs={libraryTabs} activeTab={activeTab} onTabChange={handleTabChange} />;
   }
 
   return (
     <div className={styles.wrapper}>
       <SectionTitleBar
-        tabs={CARE_PLAN_TABS}
+        tabs={libraryTabs}
         activeTab={activeTab}
         onTabChange={handleTabChange}
         actions={isTemplateTab ? ['search', 'filter'] : ['search']}

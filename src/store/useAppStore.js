@@ -248,6 +248,7 @@ import { applyOverlay, blockedSignoffs } from '../features/settings/care-plan-li
 import { contentOf as templateContentOf } from '../features/settings/care-plan-library/lib/templateVersions';
 import { effectiveVersion as effectiveTemplateVersion, todayIso as todayIsoDate } from '../features/settings/care-plan-library/lib/templateVersions';
 import { createClinicalProtocolsSlice } from './slices/clinicalProtocolsSlice';
+import { createTemplateSuggestionsSlice } from './slices/templateSuggestionsSlice';
 
 // patientId → in-flight fetchPatientConsents request.
 const consentFetches = new Map();
@@ -391,6 +392,7 @@ export const useAppStore = create((set, get) => ({
   ...createTemplateVersionsSlice(set, get),
   ...createIpaOverlaysSlice(set, get),
   ...createClinicalProtocolsSlice(set, get),
+  ...createTemplateSuggestionsSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
   // keyed by member id. Falls back to the bundled MONITORING_SEED until
