@@ -21,7 +21,7 @@ import { BulkChangeHedisAssigneeDialog } from './BulkChangeHedisAssigneeDialog';
 import { SortPopover } from '../../components/SortPopover/SortPopover';
 
 // Axes the reviewer can sort the Member column on. Age is stored as
-// "48y 4m" — useTableSort's number path would collapse that to 484
+// "48y 4m", useTableSort's number path would collapse that to 484
 // via a non-digit strip, so we sort on `_ageYears` (decorated below).
 const HEDIS_MEMBER_SORT_ITEMS = [
   { key: 'name',      label: 'Name' },
@@ -50,8 +50,8 @@ export function HedisWorklistTable() {
   const showToast = useAppStore(s => s.showToast);
   const hedisMembers = useAppStore(s => s.hedisMembers);
 
-  // HEDIS filter state now lives in the store (same shape as HCC's hccFilters
-  // — `{ [k]: string[] }`) so the shared FilterChipBar + SavedFiltersChip
+  // HEDIS filter state now lives in the store (same shape as HCC's hccFilters,
+  // `{ [k]: string[] }`) so the shared FilterChipBar + SavedFiltersChip
   // and the saveSavedFilter / applySavedFilter machinery drive it directly.
   const hedisFilters = useAppStore(s => s.hedisFilters);
   const saveHedisFilter = useAppStore(s => s.saveHedisFilter);
@@ -109,7 +109,7 @@ export function HedisWorklistTable() {
 
   // Data-derived option pools passed to the FilterChipBar so `dynamic` chips
   // (Assignee, State, City, IPA, HP Code) enumerate only what the loaded
-  // members actually carry — same pattern HCC's FilterChipBar uses.
+  // members actually carry: same pattern HCC's FilterChipBar uses.
   const platformUsers = useAppStore(s => s.platformUsers);
   const dynamicOpts = useMemo(() => {
     const state = new Set();
@@ -119,7 +119,7 @@ export function HedisWorklistTable() {
     const assignee = new Set();
     // Care Gaps: enumerate every unique gap CODE the loaded members
     // carry so the popover doubles as a live measure catalog. Codes are
-    // rendered as "CODE — Measure Name" via `careGapsLabelMap` below.
+    // rendered as "CODE: Measure Name" via `careGapsLabelMap` below.
     const careGaps = new Set();
     for (const m of (hedisMembers || [])) {
       if (m.state) state.add(m.state);
@@ -188,7 +188,7 @@ export function HedisWorklistTable() {
 
   const thStyle = `${rowStyles.stickyLeft}`;
 
-  // Column prefs — HedisWorklistTable renders a bespoke table, so we wire
+  // Column prefs: HedisWorklistTable renders a bespoke table, so we wire
   // useWorklistColumns directly. The sticky checkbox / Member / Actions
   // columns bracket the customisable middle band.
   const columnPrefs = useWorklistColumns('hedis', HEDIS_MIDDLE_COLUMNS);
@@ -210,7 +210,7 @@ export function HedisWorklistTable() {
         leadingElement={<SubnavToggle />}
         title="HEDIS"
         // Empty dropdown label collapses the chip to just its value
-        // ("2026 ⌄") — the worklist heading beside it already tells
+        // ("2026 ⌄"): the worklist heading beside it already tells
         // the reader what year picker they're looking at.
         dropdownLabel=""
         dropdownOptions={YEARS.map(String)}
@@ -231,8 +231,8 @@ export function HedisWorklistTable() {
         filterActive={filterBarOpen}
         filterBadgeCount={activeFilterCount}
         onFilter={() => setFilterBarOpen(v => !v)}
-        onDownload={() => showToast('Export — coming soon')}
-        onHistory={() => showToast('History — coming soon')}
+        onDownload={() => showToast('Export: coming soon')}
+        onHistory={() => showToast('History: coming soon')}
         rightExtras={
           <>
             <SavedFiltersChip list="HEDIS" />
@@ -268,7 +268,7 @@ export function HedisWorklistTable() {
               {/* Member header uses the shared HeaderCell so the sort
                   icon chrome matches Start Date, but its click routes
                   to a SortPopover (the Member column has four valid
-                  axes — Name / Age / Gender / ID — that a plain
+                  axes, Name / Age / Gender / ID, that a plain
                   asc/desc toggle can't express). Same pattern the HCC
                   worklist's Member header uses. */}
               <HeaderCell
@@ -279,7 +279,7 @@ export function HedisWorklistTable() {
                 onSort={(_field, rect) => setMemberSortPop(rect)}
                 className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember} ${styles.memberTh}`}
               />
-              {/* Every middle column renders as HeaderCell — sortable
+              {/* Every middle column renders as HeaderCell, sortable
                   ones (col.sortKey) get the click-to-sort chevron;
                   non-sortable ones fall through to HeaderCell's plain
                   label rendering so type + padding stay in sync with
@@ -363,7 +363,7 @@ export function HedisWorklistTable() {
       onSubmit={(name) => { saveHedisFilter(name); setSaveDialogOpen(false); }}
       onCancel={() => setSaveDialogOpen(false)}
     />
-    {/* Floating bulk-action bar — appears when one or more rows are
+    {/* Floating bulk-action bar: appears when one or more rows are
         selected via the sticky-left checkbox column. Change Assignee is
         the only wired verb for now; the rest of BulkBar's default cluster
         (Run Automation / More menu) stays on its shared "coming soon"
@@ -385,7 +385,7 @@ export function HedisWorklistTable() {
         items={HEDIS_MEMBER_SORT_ITEMS}
         currentKey={sortKey}
         currentDir={sortDir}
-        /* onSort no longer dismisses the popover — the picked
+        /* onSort no longer dismisses the popover, the picked
            direction should stay highlighted in primary so the
            reviewer can see the applied selection. Dismiss happens on
            overlay click / Escape / Clear Sort. */

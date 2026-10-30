@@ -38,7 +38,7 @@ export function LiveDrawer() {
 
   return (
     <Drawer title={liveTag} onClose={closeLiveDrawer}>
-      {/* Call Info Card — matches DetailDrawer */}
+      {/* Call Info Card: matches DetailDrawer */}
       <div className={styles.callCard}>
         <div className={styles.callCardLeft}>
           <div className={styles.callIcon}>
@@ -146,7 +146,7 @@ export function LiveDrawer() {
         </div>
       )}
 
-      {/* Goals Section — collapsible */}
+      {/* Goals Section: collapsible */}
       <button type="button" className={styles.sectionHeader} onClick={() => toggleSection('goals')}>
         <span className={styles.sectionTitle}>
           <Icon name="solar:target-bold" size={15} color="var(--primary-300)" />
@@ -180,7 +180,7 @@ export function LiveDrawer() {
         </div>
       )}
 
-      {/* Transcript — collapsible */}
+      {/* Transcript: collapsible */}
       <button type="button" className={styles.sectionHeader} onClick={() => toggleSection('transcript')}>
         <span className={styles.sectionTitle}>
           <Icon name="solar:chat-round-dots-bold" size={15} color="var(--primary-300)" />

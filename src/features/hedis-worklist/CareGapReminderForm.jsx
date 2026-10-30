@@ -6,7 +6,7 @@ import { todayIso } from './useCareGapReminderForm';
 import styles from './CareGapReminderForm.module.css';
 
 /**
- * Care Gap drawer — "Set Reminder" pane body. Pass the object returned by
+ * Care Gap drawer: "Set Reminder" pane body. Pass the object returned by
  * `useCareGapReminderForm()` as `form`; `users` feeds the Assignee picker.
  */
 export function CareGapReminderForm({ form, users = [] }) {

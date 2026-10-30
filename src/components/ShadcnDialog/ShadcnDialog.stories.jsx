@@ -19,7 +19,7 @@ export default {
     docs: {
       description: {
         component:
-          'shadcn/ui compound `Dialog` (Radix-backed) — general-purpose modal. Compose: `Dialog` (root, open state), `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`. Use the `example` control to flip between the composition patterns.',
+          'shadcn/ui compound `Dialog` (Radix-backed): general-purpose modal. Compose: `Dialog` (root, open state), `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`. Use the `example` control to flip between the composition patterns.',
       },
     },
   },

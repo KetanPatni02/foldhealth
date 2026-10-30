@@ -5,7 +5,7 @@ import { DatePickerPopover } from './DatePickerPopover';
 import styles from './DatePicker.module.css';
 
 /**
- * Fold date field — thin API-compat wrapper over `<Input type="date">`
+ * Fold date field: thin API-compat wrapper over `<Input type="date">`
  * for single-date usage, or a range-formatted text input + popover for
  * `mode="range"`.
  *
@@ -14,8 +14,8 @@ import styles from './DatePicker.module.css';
  *   onSelect   (iso) => void
  *
  * Range mode (mode="range"):
- *   value      { start, end } — each an ISO string
- *   onSelect   (range) => void — fires only after both endpoints are set
+ *   value      { start, end }, each an ISO string
+ *   onSelect   (range) => void: fires only after both endpoints are set
  *   Displayed as "MM/DD/YYYY - MM/DD/YYYY"
  *
  * Single mode also takes `isDayDisabled`: (iso) => true greys that day out, or

@@ -282,7 +282,7 @@ export function CarePlanViewDrawers(d) {
           }
         >
           <div className={styles.drawerBody}>
-            <p className={styles.drawerHint}>Records a maintenance note on the signed plan without editing it — it appears in the plan's History.</p>
+            <p className={styles.drawerHint}>Records a maintenance note on the signed plan without editing it, it appears in the plan's History.</p>
             <div className={styles.drawerField}>
               <span className={styles.drawerLabel}>Note <span className={styles.required}>*</span></span>
               <Textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="e.g. Reviewed with patient; no changes needed." rows={3} />
@@ -412,7 +412,7 @@ export function CarePlanViewDrawers(d) {
             )}
             <div className={styles.drawerField}>
               <span className={styles.drawerLabel}>Template Name <span className={styles.required}>*</span></span>
-              <Input autoFocus value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. Type 2 Diabetes — Standard" aria-label="Template name" />
+              <Input autoFocus value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. Type 2 Diabetes, Standard" aria-label="Template name" />
             </div>
             <ChronicConditionSelect value={templateConditions} onChange={setTemplateConditions} label="Conditions" />
             <TemplateScopeChoice value={templateScope} onChange={setTemplateScope} choices={PATIENT_SCOPE_CHOICES} />

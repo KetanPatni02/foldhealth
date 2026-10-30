@@ -28,7 +28,7 @@ function fmtCarePlanDate(isoOrDisplay) {
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 }
 
-// Care plan sign-menu — split button. The main half signs directly
+// Care plan sign-menu: split button. The main half signs directly
 // (Sign is the primary action), the chevron opens a menu with the
 // alternate path (send to a reviewer). Same split pattern the med-recon
 // signer uses so the two step surfaces read consistently.
@@ -81,7 +81,7 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
     const plan = liveCarePlan?.plan;
     // Author and date come from the plan row itself. Plans created before the
     // author was recorded fall back to the earliest version's author, but only
-    // when that version was cut the same day the plan was created — a later
+    // when that version was cut the same day the plan was created, a later
     // signature says who signed, not who authored, and naming the wrong person
     // is worse than naming none.
     const sameDay = (a, b) => {
@@ -98,7 +98,7 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
     const usingMock = !plan;
     const signedBy = plan?.signedBy || null;
     const signedAt = plan?.signedAt || null;
-    // Look for a pending "review requested" audit entry — the newest
+    // Look for a pending "review requested" audit entry: the newest
     // review event that hasn't been overtaken by a `signed` event.
     // The audit slice is newest-first, so the first plan-level entry
     // we find determines the current state (signed → clears review,
@@ -206,18 +206,18 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
               </button>
               {(() => {
                 // Meta row under the title. Responsive by container width:
-                //   • Narrow  — "Created by …" collapses into a compact
+                //   • Narrow: "Created by …" collapses into a compact
                 //               [•••] Badge (shared component) that reveals
                 //               the full text via the shared Tooltip.
-                //   • Wide    — the full "Created by …" text renders inline.
+                //   • Wide: the full "Created by …" text renders inline.
                 // Status tail (right of the bullet) prefers, in order:
-                //   1. "Sent for review to X on <date>" — warning, when a
+                //   1. "Sent for review to X on <date>", warning, when a
                 //      review is pending (unsigned).
                 //   2. "N unsigned changes since vN": warning, when the
                 //      draft differs from the signed version.
                 //   3. "Signed by X on <date>": green.
                 //   4. "Not signed": neutral grey.
-                // A plan with no recorded author reads "Created on <date>" —
+                // A plan with no recorded author reads "Created on <date>",
                 // naming nobody beats naming the wrong clinician.
                 const createdText = carePlanMeta.createdBy
                   ? `Created by ${carePlanMeta.createdBy} on ${carePlanMeta.createdDate}`

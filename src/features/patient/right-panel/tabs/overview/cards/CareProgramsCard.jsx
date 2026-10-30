@@ -8,6 +8,7 @@ import { programUrlKey } from '../../care-programs/CareProgramsTab/CareProgramsT
 import styles from './overviewCards.module.css';
 import { isProgramClosed } from '../../../../data/programStatus';
 import { programAttention } from './programAttention';
+import { isEmptyDash } from '../../../../../../lib/emptyDash';
 
 const VISIBLE = 3;
 const REASON_CLASS = { error: styles.textError, warning: styles.textWarning };
@@ -57,7 +58,7 @@ export function CareProgramsCard({ patientId }) {
                 meta={[
                   reason && <span key="why" className={REASON_CLASS[tone]}>{reason}</span>,
                   reason !== 'No owner' && (prog.assignee || 'Unassigned'),
-                  prog.startDate !== '—' && `Started ${prog.startDate}`,
+                  !isEmptyDash(prog.startDate) && `Started ${prog.startDate}`,
                 ]}
                 trailing={(
                   <span className={styles.trail}>

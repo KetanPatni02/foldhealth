@@ -76,14 +76,14 @@ export function SidebarFloating() {
   // manual toggle.
   const patientDetailOpen = useAppStore(s => Boolean(s.selectedPatientId));
 
-  // Unread counts for the two badged items — same selectors Sidebar uses, so
+  // Unread counts for the two badged items, same selectors Sidebar uses, so
   // the number on the floating variant stays in sync with the standard one.
   const messagesUnreadCount = useAppStore(s => s.messagesUnreadCount);
   const taskNotificationsUnread = useAppStore(
     s => (s.notifications || []).filter(n => !n.read && (n.type || '').startsWith('task.')).length,
   );
 
-  // Help menu wiring — identical to Sidebar.jsx: warm the changelog +
+  // Help menu wiring: identical to Sidebar.jsx: warm the changelog +
   // Featurebase JWT the moment the user reaches for Help so the popover
   // reads correct unread counts and the feedback link survives popup
   // blockers.

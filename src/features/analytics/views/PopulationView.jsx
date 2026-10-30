@@ -139,7 +139,7 @@ export function PopulationView({ showToast, editing = false, resetTick = 0 }) {
   );
 
   const renderDetail = () => (
-    <Card title="Actionable Member Lists — Detail" flush>
+    <Card title="Actionable Member Lists: Detail" flush>
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead>

@@ -7,7 +7,7 @@ import { CARE_PLAN_TITLE_MAX } from '../../lib/carePlanLimits';
 import styles from './BarrierDrawer.module.css';
 
 /**
- * BarrierDrawer — authoring form for a single barrier, shared by the Care Plan
+ * BarrierDrawer: authoring form for a single barrier, shared by the Care Plan
  * Library's "New Barrier" and the care plan's own add / edit barrier action so
  * both surfaces capture the same fields.
  *

@@ -9,6 +9,7 @@ import { closureReasonLabel, isProgramClosed } from '../../../../../data/program
 import { instanceLabel, previousInstances } from '../../../../../data/programLifecycle';
 import { pauseSummary } from '../../care-plan/lib/carePlanPause';
 import styles from './ProgramDetailView.module.css';
+import { isEmptyDash } from '../../../../../../../lib/emptyDash';
 
 const EMPTY = [];
 
@@ -114,7 +115,7 @@ function EnrollmentColumns({ program }) {
         <div className={styles.expandColTitle}>Enrollment</div>
         <div className={styles.expandRows}>
           <DetailRow icon="solar:hashtag-linear" label="Instance:" value={instanceLabel(live, programs)} />
-          <DetailRow icon="solar:calendar-add-linear" label="Started:" value={live.startDate || '—'} />
+          <DetailRow icon="solar:calendar-add-linear" label="Started:" value={live.startDate || '-'} />
           <DetailRow icon="solar:calendar-mark-linear" label="Planned End:" value={live.plannedEndDate || 'Not set'} />
           <DetailRow icon="solar:user-check-linear" label="Enrolled By:" value={live.enrolledBy || 'Not recorded'} />
           {trigger && <DetailRow icon="solar:bolt-linear" label="Trigger:" value={trigger} />}
@@ -125,7 +126,7 @@ function EnrollmentColumns({ program }) {
             <DetailRow
               icon="solar:close-circle-linear"
               label="Closed:"
-              value={[live.endDate !== '—' && live.endDate, closureReasonLabel(live.closureReason) || live.status].filter(Boolean).join(' · ')}
+              value={[!isEmptyDash(live.endDate) && live.endDate, closureReasonLabel(live.closureReason) || live.status].filter(Boolean).join(' · ')}
             />
           )}
         </div>
@@ -141,7 +142,7 @@ function EnrollmentColumns({ program }) {
                 label={`${instanceLabel(p, programs)}:`}
                 value={[
                   [p.status, closureReasonLabel(p.closureReason)].filter(Boolean).join(' · '),
-                  [p.startDate, p.endDate].filter(v => v && v !== '—').join(' to '),
+                  [p.startDate, p.endDate].filter(v => v && !isEmptyDash(v)).join(' to '),
                   p.assignee && p.assignee !== 'Unassigned' ? p.assignee : null,
                 ].filter(Boolean).join(' · ')}
               />

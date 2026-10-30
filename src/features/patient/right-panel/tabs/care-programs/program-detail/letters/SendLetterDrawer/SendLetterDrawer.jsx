@@ -20,7 +20,7 @@ function Field({ label, required, filled, children }) {
 }
 
 /**
- * SendLetterDrawer — right-side send form for a program letter (Figma 851:37792).
+ * SendLetterDrawer: right-side send form for a program letter (Figma 851:37792).
  * Member/company details come prefilled; the mailing address + options are
  * editable before sending.
  *

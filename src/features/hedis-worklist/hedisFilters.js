@@ -1,6 +1,6 @@
 import { parseLocalDate } from '../../lib/localDate';
 import { GENDER_FILTER_OPTIONS, LANGUAGE_FILTER_OPTIONS, MEMBER_STATUS_FILTER_OPTIONS, memberGenderLabel, memberLanguageLabel } from '../../lib/memberFilters';
-// HEDIS worklist filter definitions — parallel to `src/features/hcc/filters.js`
+// HEDIS worklist filter definitions: parallel to `src/features/hcc/filters.js`
 // so the shared FilterChipBar / MoreFiltersPopover can drive both worklists
 // with the same UX (chip → popover, Label|Value active state, More Filters,
 // Clear All, Save Filter). Kept intentionally simpler than HCC's defs: no
@@ -134,10 +134,10 @@ export const FILTER_DEFS = [
   { k: 'pcpState',            label: 'PCP State', type: 'multi',
     dynamic: 'pcpState', opts: [] },
   // ── Care-gap volume + timing ───────────────────────────────────────
-  // Care Gaps is the measure filter — pick specific gap codes (CBP,
+  // Care Gaps is the measure filter, pick specific gap codes (CBP,
   // COL, DSF-A, …) to keep the worklist to members carrying any of
   // those gaps. Options are computed from the loaded members at
-  // render time (dynamic: 'careGaps'); labels render as "CODE —
+  // render time (dynamic: 'careGaps'); labels render as "CODE,
   // Measure Name" so the popover reads without needing the codebook.
   { k: 'careGaps',            label: 'Gaps', type: 'multi',
     dynamic: 'careGaps', opts: [], searchable: true },
@@ -158,7 +158,7 @@ export const FILTER_DEFS = [
 
 export const FILTER_DEF_MAP = Object.fromEntries(FILTER_DEFS.map(d => [d.k, d]));
 
-// Predicate — returns true when a HEDIS member row passes every active filter.
+// Predicate: returns true when a HEDIS member row passes every active filter.
 // Used by HedisWorklistTable's `filtered` memo. Mirrors the HCC pattern in
 // `filters.js` (memberMatchesFilters + matchOne).
 export function memberMatchesFilters(member, filters) {
@@ -185,7 +185,7 @@ function matchOne(m, k, vals) {
     }
     case 'assignee': {
       // Match a member if the row-level assignee OR any per-gap assignee
-      // is in the selected set — same fields the row's Assignee column
+      // is in the selected set: same fields the row's Assignee column
       // renders, so filter and cell agree on who "owns" the row.
       const valSet = new Set(vals);
       if (valSet.has(m.assignee)) return true;
@@ -224,7 +224,7 @@ function matchOne(m, k, vals) {
     case 'pcpState':            return vals.includes(m.pcpState);
     // Care-gap volume + timing
     case 'careGaps': {
-      // Match on the gap CODE — vals are things like 'CBP', 'DSF-A'
+      // Match on the gap CODE: vals are things like 'CBP', 'DSF-A'
       // (pulled from the loaded members via the `careGaps` dynamic
       // options resolver). A member passes when any of their open
       // gaps is in the selected set.

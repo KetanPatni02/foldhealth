@@ -62,9 +62,9 @@ const INTRO_ITEMS = [
 ];
 
 const fmtDay = (iso) => {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const [y, m, d] = String(iso).slice(0, 10).split('-');
-  return y && m && d ? `${m}/${d}/${y}` : '—';
+  return y && m && d ? `${m}/${d}/${y}` : '-';
 };
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const STATUS_OPTIONS = Object.keys(IN_STATUS);
@@ -148,8 +148,8 @@ export function ClinicalProtocolsPanel({ tabs, activeTab, onTabChange }) {
             <span className={styles.nameSub}>{[p.organization, p.version && `v${p.version}`, !isFoldProtocol(p) && p.sourceName].filter(Boolean).join(' · ')}</span>
           </span>
         </td>
-        <td className={styles.td}>{p.conditions.length ? <BadgeRow items={p.conditions} maxLines={2} /> : '—'}</td>
-        <td className={styles.td}>{p.programCodes.length ? <BadgeRow items={p.programCodes} maxLines={1} /> : '—'}</td>
+        <td className={styles.td}>{p.conditions.length ? <BadgeRow items={p.conditions} maxLines={2} /> : '-'}</td>
+        <td className={styles.td}>{p.programCodes.length ? <BadgeRow items={p.programCodes} maxLines={1} /> : '-'}</td>
         <td className={`${styles.td} ${styles.nowrap}`}>{fmtDay(p.effectiveDate)}</td>
         <td className={`${styles.td} ${styles.nowrap} ${reviewDue ? styles.overdue : ''}`}>{fmtDay(p.reviewDate)}{reviewDue ? ' · due' : ''}</td>
         <td className={styles.td}><Badge tone={status.tone} size="S" label={status.label} /></td>

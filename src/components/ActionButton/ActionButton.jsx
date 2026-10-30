@@ -22,7 +22,7 @@ function warnLegacy(size, state) {
 }
 
 /**
- * Fold Health ActionButton — square icon-only toolbar/action button.
+ * Fold Health ActionButton: square icon-only toolbar/action button.
  *
  * Matches Figma Fold-Pixel-1.0 node 25:25238 exactly.
  *

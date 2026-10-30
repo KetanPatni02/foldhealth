@@ -21,7 +21,7 @@ const LOCATION_COLUMNS = [
   { key: 'actions', label: 'Action',       sticky: 'right',        width: 120 },
 ];
 
-// EHR badge tone map — keeps each EHR visually distinct in the table + the
+// EHR badge tone map: keeps each EHR visually distinct in the table + the
 // filter chip (Fold = primary purple, Elation = teal-adjacent, NEXTGEN = amber).
 const EHR_TONE = {
   'Fold EHR':          'ai-care',
@@ -163,15 +163,15 @@ export function LocationsTab({ tabsForBar, activeTab, setActiveTab }) {
       <td className={styles.td}>
         {loc.ehrInstance ? (
           <Badge variant={EHR_TONE[loc.ehrInstance] || 'ai-neutral'} label={loc.ehrInstance} />
-        ) : <span style={{ color: 'var(--neutral-200)' }}>—</span>}
+        ) : <span style={{ color: 'var(--neutral-200)' }}>-</span>}
       </td>
       <td className={styles.td}>
         <div className={styles.addressCell}>
-          <span>{loc.addressLine1 || '—'}</span>
+          <span>{loc.addressLine1 || '-'}</span>
           {loc.addressLine2 && <span className={styles.addressLine2}>{loc.addressLine2}</span>}
         </div>
       </td>
-      <td className={styles.td}>{loc.zipCode || '—'}</td>
+      <td className={styles.td}>{loc.zipCode || '-'}</td>
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
           <ActionButton icon="solar:pen-linear" tooltip="Edit" onClick={() => setEditing(loc)} />

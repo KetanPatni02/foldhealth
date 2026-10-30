@@ -248,7 +248,7 @@ function partitionRetired(rows) {
   return [live, retired];
 }
 
-// Standalone (goal-independent) reusable intervention — the Interventions
+// Standalone (goal-independent) reusable intervention: the Interventions
 // Library tab. Distinct from the goal-linked care_plan_interventions rows.
 function mapCarePlanInterventionTemplateRow(row) {
   return {
@@ -496,7 +496,7 @@ function patientCarePlanBarrierToRow(b, planId) {
 }
 
 // Sync a barrier's goal set in the join table. Returns the goal ids that ended
-// up recorded — before the join-table migration that is the legacy column only.
+// up recorded: before the join-table migration that is the legacy column only.
 async function linkBarrierGoals(barrierId, goalIds) {
   const del = await supabase.from('patient_care_plan_barrier_goals').delete().eq('barrier_id', barrierId);
   const missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
@@ -521,7 +521,7 @@ function mapPatientCarePlanRow(row) {
     conditions: (row.conditions || []).map(label => ({ label })),
     conditionTotal: row.condition_total ?? (row.conditions || []).length,
     appliedTemplateIds: row.applied_template_ids || [],
-    // { [templateId]: 'low' | 'medium' | 'high' } — categorizes the applied
+    // { [templateId]: 'low' | 'medium' | 'high' }: categorizes the applied
     // templates on the sticky-top strip. Empty until Alok Kumar runs the
     // care_plan_applied_template_priorities migration.
     appliedTemplatePriorities: row.applied_template_priorities && typeof row.applied_template_priorities === 'object'
@@ -556,7 +556,7 @@ function carePlanKey(patientId, programId) {
 // readout share one source of truth.
 
 // Derive an audit entry from a goal/intervention save by diffing against its
-// previous state — a create, a status change, a progress change, a rename,
+// previous state: a create, a status change, a progress change, a rename,
 // or a generic edit. Progress is its own action so the Goal Details activity
 // feed can render the "changed the Progress" row with from → to badges.
 // A template's contents as they sit on the plan. There is no template_id on
@@ -681,7 +681,7 @@ function configChanges(base, prevConfig, nextConfig) {
     .map(k => ({
       ...base,
       action: 'updated',
-      detail: `${CONFIG_LABEL[k]}: ${configValue(a[k]) || '—'} → ${configValue(b[k]) || '—'}`,
+      detail: `${CONFIG_LABEL[k]}: ${configValue(a[k]) || '-'} → ${configValue(b[k]) || '-'}`,
     }));
 }
 
@@ -710,7 +710,7 @@ function auditForSave(entityType, next, prev) {
     const to = field.read(next) ?? '';
     if (String(from) === String(to)) continue;
     const fmt = field.format || (v => String(v ?? ''));
-    changes.push({ ...base, action: field.action, detail: `${fmt(from) || '—'} → ${fmt(to) || '—'}` });
+    changes.push({ ...base, action: field.action, detail: `${fmt(from) || '-'} → ${fmt(to) || '-'}` });
   }
   changes.push(...configChanges(base, prev.config, next.config));
   // A save that changed nothing we can name leaves no history line: an

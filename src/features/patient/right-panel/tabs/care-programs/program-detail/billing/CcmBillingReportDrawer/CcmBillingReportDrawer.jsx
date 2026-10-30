@@ -87,7 +87,7 @@ export function CcmBillingReportDrawer({ report, onClose }) {
           </div>
           <div className={styles.detailCol}>
             <span className={styles.detailLabel}>Provider</span>
-            <span className={styles.detailValue}>{report.providerName || '—'}</span>
+            <span className={styles.detailValue}>{report.providerName || '-'}</span>
           </div>
           <div className={styles.detailCol}>
             <span className={styles.detailLabel}>Total Billable Time</span>

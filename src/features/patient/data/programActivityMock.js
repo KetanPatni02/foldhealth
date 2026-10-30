@@ -78,7 +78,7 @@ export const PROGRAM_ACTIVITY_BY_MONTH = [
 
 // 'Profile' (was 'Demographics') is the single patient-profile surface on
 // the right panel; it wraps the Demographics/Insurance Toggle inside the
-// ProfileTab component. Tasks is also owned by the right panel now — the
+// ProfileTab component. Tasks is also owned by the right panel now, the
 // left panel dropped both to avoid duplicate nav on the P360 screen.
 // Monitoring is hidden (its view is still in PatientDetailView); Today opens
 // the Comprehensive Care Plan instead.
@@ -150,7 +150,7 @@ export const CARE_PROGRAMS_MOCK = [
 // Missing patients fall back to a "clean" default: no AWV, no APE, LOB
 // pre-filled to Medicaid, IPA pre-filled to CFC.
 export const APCM_PATIENT_SCENARIOS = {
-  // p1 — Active AWV. Triggers AC-9 / AC-14 (AWV blocks APE).
+  // p1: Active AWV. Triggers AC-9 / AC-14 (AWV blocks APE).
   p1: {
     label: 'has active AWV',
     defaults: { ipa: 'CFC', lob: 'medicaid' },
@@ -164,7 +164,7 @@ export const APCM_PATIENT_SCENARIOS = {
     ],
   },
 
-  // p2 — Already has an active APE for MY 2026. Triggers AC-10 / AC-15
+  // p2: Already has an active APE for MY 2026. Triggers AC-10 / AC-15
   // (same-year duplicate block).
   p2: {
     label: 'has existing APE for 2026',
@@ -177,7 +177,7 @@ export const APCM_PATIENT_SCENARIOS = {
     ],
   },
 
-  // p3 — Patient's LOB is Medicare on file. Triggers AC-6 (Medicare-guidance
+  // p3: Patient's LOB is Medicare on file. Triggers AC-6 (Medicare-guidance
   // error). No AWV → the drawer opens cleanly, error surfaces on Create.
   p3: {
     label: 'LOB = Medicare',
@@ -189,9 +189,9 @@ export const APCM_PATIENT_SCENARIOS = {
     ],
   },
 
-  // p4 — Clean positive path (TC-1): no AWV, no APE, Medicaid pre-filled.
+  // p4: Clean positive path (TC-1): no AWV, no APE, Medicaid pre-filled.
   p4: {
-    label: 'clean — Medicaid',
+    label: 'clean: Medicaid',
     defaults: { ipa: 'CFC', lob: 'medicaid' },
     programs: [
       { id: 'cp-p4-tcm', name: 'Transitional Care Management (TCM)', acuity: null, status: 'Enrolled',
@@ -200,16 +200,16 @@ export const APCM_PATIENT_SCENARIOS = {
     ],
   },
 
-  // p5 — Clean positive path (TC-2): no AWV, Commercial LOB, different IPA.
+  // p5: Clean positive path (TC-2): no AWV, Commercial LOB, different IPA.
   p5: {
-    label: 'clean — Commercial',
+    label: 'clean: Commercial',
     defaults: { ipa: 'Astrana', lob: 'commercial' },
     programs: [],
   },
 };
 
 // Default programs shown for any patient NOT in the scenario map above.
-// Intentionally excludes AWV so APE creation is unblocked out of the box —
+// Intentionally excludes AWV so APE creation is unblocked out of the box,
 // AWV-block behavior is still demonstrable via p1. Provides realistic
 // context (SNP + HIU + TCM) without gating the positive path.
 const DEFAULT_PROGRAMS = CARE_PROGRAMS_MOCK.filter(
@@ -587,7 +587,7 @@ export const PRE_VISIT_MOCK = {
       {
         icon: 'solar:danger-circle-linear', title: 'Risk & Acuity',
         rows: [
-          ['Recent LACE Score', '—'],
+          ['Recent LACE Score', '-'],
           ['Recent Acuity Level', 'Low-risk'],
           ['Chronic Conditions', "Hypertension, Parkinson's Disease, Kidney Disease"],
         ],

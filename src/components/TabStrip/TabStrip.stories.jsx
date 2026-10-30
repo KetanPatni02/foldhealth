@@ -9,7 +9,7 @@ export default {
     layout: 'padded',
     docs: {
       description: {
-        component: 'Horizontal tab bar with animated underline. Controlled — parent owns the active key.',
+        component: 'Horizontal tab bar with animated underline. Controlled, parent owns the active key.',
       },
     },
   },

@@ -58,7 +58,7 @@ export const CMP_MIDDLE_COLUMNS = [
         className={styles.subProgramLink}
         onClick={(ev) => { ev.stopPropagation(); ctx.onOpenEnrollment(e); }}
       >
-        {e.subProgram || '—'}
+        {e.subProgram || '-'}
       </button>
     ),
   },
@@ -105,7 +105,7 @@ export const CMP_MIDDLE_COLUMNS = [
       return (
         <span className={`${styles.carePlanStatus} ${look?.className || styles.carePlanNone}`}>
           {look && <Icon name={look.icon} size={14} color="currentColor" />}
-          {e.carePlanStatus || '—'}
+          {e.carePlanStatus || '-'}
         </span>
       );
     },
@@ -149,7 +149,7 @@ export const CMP_MIDDLE_COLUMNS = [
     perEnrollment: true,
     renderItem: (e) => {
       const due = dueInfo(e.nextActionDue);
-      if (!due) return '—';
+      if (!due) return '-';
       return (
         <div className={styles.dueCell}>
           <div className={styles.dueDate}>{e.nextActionDue}</div>
@@ -167,7 +167,7 @@ export const CMP_MIDDLE_COLUMNS = [
     sortKey: 'programStartSort',
     width: 130,
     perEnrollment: true,
-    renderItem: (e) => e.programStartDate || '—',
+    renderItem: (e) => e.programStartDate || '-',
   },
   {
     key: 'programDueDate',
@@ -175,7 +175,7 @@ export const CMP_MIDDLE_COLUMNS = [
     sortKey: 'programDueSort',
     width: 130,
     perEnrollment: true,
-    renderItem: (e) => e.programDueDate || '—',
+    renderItem: (e) => e.programDueDate || '-',
   },
   {
     key: 'ri',
@@ -183,7 +183,7 @@ export const CMP_MIDDLE_COLUMNS = [
     sortKey: 'ri',
     width: 110,
     renderCell: (member) => (
-      member.ri ? <Badge size="M" variant={RISK_VARIANT[member.ri] || 'lace-low'} label={member.ri} /> : '—'
+      member.ri ? <Badge size="M" variant={RISK_VARIANT[member.ri] || 'lace-low'} label={member.ri} /> : '-'
     ),
   },
   {

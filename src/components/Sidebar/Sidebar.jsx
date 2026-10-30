@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { icon: 'solar:users-group-rounded-linear', filledIcon: 'solar:users-group-rounded-bold', label: 'Population', page: 'population' },
   { icon: 'solar:calendar-linear', filledIcon: 'solar:calendar-bold', label: 'Calendar', page: 'calendar' },
   { icon: 'solar:checklist-minimalistic-linear', filledIcon: 'solar:checklist-minimalistic-bold', label: 'Tasks', page: 'tasks' },
-  // No hardcoded `badge` here any more — Messages and Tasks both read live
+  // No hardcoded `badge` here any more: Messages and Tasks both read live
   // counts (see navBadges below). The old `badge: 8` was already unreachable
   // once Messages switched to the store count, and read as a real number.
   { icon: 'solar:chat-round-dots-linear', filledIcon: 'solar:chat-round-dots-bold', label: 'Comms', page: 'messages' },
@@ -74,7 +74,7 @@ export function Sidebar() {
   // The Featurebase JWT rides along for the same reason as the changelog:
   // "Give Feedback" reads it synchronously (window.open cannot survive an
   // await without tripping popup blockers), so it has to already be in the
-  // store by the time that item is clicked — but minting it at login cost an
+  // store by the time that item is clicked, but minting it at login cost an
   // Edge Function call on every page load. Hovering Help, then reading the
   // popover, then clicking is comfortably longer than the ~0.5 s mint. If a
   // user does beat it, openFeedbackPortal falls back to the anonymous portal,
@@ -106,12 +106,12 @@ export function Sidebar() {
   // rect from the active <a>'s ref on every change. CSS transitions
   // `top` / `height` so the purple background glides between items
   // instead of snapping. We measure with useLayoutEffect (pre-paint) so
-  // the very first render already positions the pill correctly — no
+  // the very first render already positions the pill correctly, no
   // flash from origin.
   const navItemsRef = useRef(null);
   // Ref map keyed by nav-item label. Points at the inner .itemInner card
-  // (not the outer <a> tile) so the pill exactly overlays the 60×60 card
-  // — 1:1 aspect — instead of the 64×64 tile which includes 2px padding.
+  // (not the outer <a> tile) so the pill exactly overlays the 60×60 card,
+  // 1:1 aspect, instead of the 64×64 tile which includes 2px padding.
   const innerRefs = useRef({});
   const [pill, setPill] = useState(null); // { top, left, width, height } | null
   const [pillReady, setPillReady] = useState(false); // gate first-paint transition
@@ -123,7 +123,7 @@ export function Sidebar() {
     const inner = activeItem ? innerRefs.current[activeItem.label] : null;
     const container = navItemsRef.current;
     if (!inner || !container) { setPill(null); return; }
-    // .itemInner sits inside an .item that has position:relative — its
+    // .itemInner sits inside an .item that has position:relative, its
     // offsetParent is that anchor, so total top = anchor.offsetTop +
     // inner.offsetTop (the 2px padding). Width/height come straight
     // from the inner card so the pill is always a perfect square.
@@ -224,7 +224,7 @@ export function Sidebar() {
                 className={styles.itemInner}
               >
                 {/* Crossfade linear ↔ bold. Wrap each Icon in a positioned
-                    span so the layer classes attach to a stable element —
+                    span so the layer classes attach to a stable element,
                     the Icon component intercepts some solar:* names and
                     renders a custom SVG that ignores className, which would
                     leave the linear icon visible behind the bold. */}

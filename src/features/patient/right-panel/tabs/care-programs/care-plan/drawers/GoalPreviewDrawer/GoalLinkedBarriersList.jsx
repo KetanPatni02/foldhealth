@@ -13,7 +13,7 @@ import styles from './GoalPreviewDrawer.module.css';
  *   [ icon ]  [ title / subtitle ]  [ status | (open) | unlink ]
  *
  * Barriers have no priority or assignee, so those slots are omitted.
- * `onOpen` is optional — when provided, the arrow-right-up action
+ * `onOpen` is optional: when provided, the arrow-right-up action
  * surfaces the same way it does on the interventions list.
  */
 export function GoalLinkedBarriersList({
@@ -75,7 +75,7 @@ export function GoalLinkedBarriersList({
                 />
               </>
             )}
-            {/* Three-dot menu — Open, Unlink and the scope-aware
+            {/* Three-dot menu: Open, Unlink and the scope-aware
                 Delete flow all live here so both rows carry the
                 identical overflow control on the far right. */}
             <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />

@@ -158,7 +158,7 @@ export function CarePlanView({ patientId, program }) {
   const [problemText, setProblemText] = useState('');
   const [trendsOpen, setTrendsOpen] = useState(false);
   const { openSections, toggleSection } = useCarePlanOpenSections();
-  // Which section's duplicate flags are expanded — { goal: bool, intervention: bool, barrier: bool }.
+  // Which section's duplicate flags are expanded: { goal: bool, intervention: bool, barrier: bool }.
   // Default collapsed; clicking the section-header duplicates badge toggles the panel.
   // The section whose duplicates popover is open: { kind, rect } or null.
   const [duplicatesOpen, setDuplicatesOpen] = useState(null);
@@ -462,7 +462,7 @@ export function CarePlanView({ patientId, program }) {
     closeNoteDrawer({ force: true });
     await addCarePlanNote(patientId, program, body);
   };
-  // The drawer is driven entirely by the store flag — the toolbar button and
+  // The drawer is driven entirely by the store flag, the toolbar button and
   // the step header (a separate component) both set it, and closing clears it.
   // A mock plan can still be previewed/downloaded; only Share (which persists
   // real ids) is gated to a saved plan.
@@ -597,7 +597,7 @@ export function CarePlanView({ patientId, program }) {
   };
 
   // Undoing a cascade puts the goal back first, then re-links its children to
-  // the new row — restoring them in any other order returns them loose.
+  // the new row: restoring them in any other order returns them loose.
   const undoGoalCascade = (goal, cascade) => createUndoGoalCascadeAction(goal, cascade, gbiCtx);
 
   // `withLinked` false leaves the goal's interventions and barriers on the plan.
@@ -887,7 +887,7 @@ export function CarePlanView({ patientId, program }) {
     setLinkPopover(null);
     if (!ids.length || !canEdit) return;
     // The selected items are distinct rows linking to the same goal, so the
-    // writes are independent — run them together. Each item is resolved by a
+    // writes are independent: run them together. Each item is resolved by a
     // Map lookup rather than a per-id array scan.
     if (kind === 'intervention') {
       const byId = new Map((data.interventions || []).map(i => [i.id, i]));

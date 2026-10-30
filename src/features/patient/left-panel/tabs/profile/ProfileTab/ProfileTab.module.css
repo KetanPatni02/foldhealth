@@ -1,4 +1,4 @@
-/* Profile tab — Figma Fold-Pixel 1.0 node 6820:269258.
+/* Profile tab: Figma Fold-Pixel 1.0 node 6820:269258.
  * A stack of collapsible sections (Contact Info, Basic Info, Address,
  * Other Info) each rendering label/value cells in a wrap-flow grid so
  * they collapse from 2 columns → 1 column on narrow layouts. */
@@ -73,7 +73,7 @@
   width: 100%;
 }
 
-/* Every field is a flex row inside .grid — flex-basis via min-width
+/* Every field is a flex row inside .grid, flex-basis via min-width
  * makes them fall from 2 columns to 1 as the panel narrows. */
 .field {
   flex: 1 0 0;
@@ -116,7 +116,7 @@
 /* ── View row (segmented control + edit action) ──────────────── */
 /* Toggle sits on the left, the single Edit ActionButton is pinned to
  * the far right. The per-section edit pencils used to live inside each
- * Section header — those were removed so the profile surface has one
+ * Section header: those were removed so the profile surface has one
  * canonical edit entry-point instead of five. */
 .viewRow {
   display: flex;

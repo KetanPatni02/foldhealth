@@ -62,7 +62,7 @@ function parseChange(detail) {
  * that moved 81 → 71 → 85 reads 81 → 85, and anything added then removed
  * inside the same version drops out entirely.
  *
- * `rows` are oldest-first. Template rows pass through untouched — they already
+ * `rows` are oldest-first. Template rows pass through untouched, they already
  * describe a whole apply.
  */
 export function netVersionRows(rows) {

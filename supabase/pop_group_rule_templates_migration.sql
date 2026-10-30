@@ -1,7 +1,7 @@
 -- Rule templates for the "Import Rule" drawer in Population Groups.
 -- Customers can pick a pre-built rule to bootstrap a new Dynamic group,
 -- then customise it in the builder. Templates are read-only for app
--- users — seeded by the Fold team, displayed in a Drawer, never edited
+-- users: seeded by the Fold team, displayed in a Drawer, never edited
 -- in the UI.
 
 CREATE TABLE IF NOT EXISTS pop_group_rule_templates (

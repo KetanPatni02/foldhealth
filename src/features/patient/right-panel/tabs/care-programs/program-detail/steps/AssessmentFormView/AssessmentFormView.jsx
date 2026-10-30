@@ -15,7 +15,7 @@ import styles from './AssessmentFormView.module.css';
 // don't re-run on every render before the first answer is given.
 const EMPTY_ANSWERS = {};
 
-// Answerable leaves only — groups just nest, display blocks aren't answers.
+// Answerable leaves only: groups just nest, display blocks aren't answers.
 function flattenLeaves(items) {
   const leaves = [];
   const walk = (arr) => (arr || []).forEach(f => {
@@ -42,7 +42,7 @@ function defaultAnswerFor(field) {
   }
 }
 
-// Recursively render the saved form's fields exactly as defined — sections,
+// Recursively render the saved form's fields exactly as defined: sections,
 // display blocks, and numbered leaf questions (numbering only the answerable
 // leaves, matching the Review view). Branching (visibility) and recall (piped
 // text) are honored via the shared form engine.
@@ -115,7 +115,7 @@ export function AssessmentFormView({
   const loading = loadedFor !== formName;
   // Answers keyed by form name, so pointing at a different form starts from a
   // clean sheet without an explicit reset. `initialAnswers` seeds the map on
-  // mount — used by the TOC drawer to show an already-filled assessment.
+  // mount: used by the TOC drawer to show an already-filled assessment.
   const [answersByForm, setAnswersByForm] = useState(() =>
     initialAnswers ? { [formName]: initialAnswers } : {},
   );
@@ -139,7 +139,7 @@ export function AssessmentFormView({
 
   const items = useMemo(() => form?.schema?.items || [], [form]);
 
-  // Seed a fully-answered demo state once, on load — never overwrites a
+  // Seed a fully-answered demo state once, on load, never overwrites a
   // form that already has answers (prefilled or user-edited), and never
   // goes through onAnswer/onAnswersChange so Save stays disabled until the
   // reviewer actually touches a question.
@@ -220,7 +220,7 @@ export function AssessmentFormView({
         </div>
       )}
 
-      {/* Form questions — rendered from the saved definition */}
+      {/* Form questions: rendered from the saved definition */}
       <div className={styles.formScroll}>
         {items.length === 0
           ? <p className={styles.state}>This form has no questions yet.</p>

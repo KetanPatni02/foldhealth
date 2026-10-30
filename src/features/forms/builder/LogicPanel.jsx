@@ -1,9 +1,9 @@
 /**
- * Logic tab — the visual workflow / branching builder.
+ * Logic tab: the visual workflow / branching builder.
  *
  * A React-Flow node map (one node per field, edges for conditional rules) on the
  * left, and a rule editor on the right. Rules compile to the field's
- * `enableWhen[]` + `enableBehavior` — exactly what the engine evaluates and the
+ * `enableWhen[]` + `enableBehavior`, exactly what the engine evaluates and the
  * renderer now honors (Phase 1). "Show field B when A = Yes" ⇒ B.enableWhen =
  * [{question:'A', operator:'=', answer:'Yes'}], drawn as an edge A → B.
  */

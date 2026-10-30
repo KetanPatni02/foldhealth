@@ -54,7 +54,7 @@ function GoalCard({ goal, onOpen, onEdit }) {
         </div>
         <div className={s.cardStat}>
           <div className={`${s.cardStatVal} ${goal.totalRuns === 0 ? s.cardStatValAmber : ''}`}>
-            {goal.totalRuns > 0 ? goal.totalRuns.toLocaleString() : '—'}
+            {goal.totalRuns > 0 ? goal.totalRuns.toLocaleString() : '-'}
           </div>
           <div className={s.cardStatLabel}>Runs</div>
         </div>
@@ -149,13 +149,13 @@ function GoalsTable({ goals, onOpen, onEdit, onDelete }) {
                   </div>
                 </td>
                 <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums' }}>
-                  {g.totalRuns > 0 ? g.totalRuns.toLocaleString() : '—'}
+                  {g.totalRuns > 0 ? g.totalRuns.toLocaleString() : '-'}
                 </td>
                 <td style={tdStyle}>
-                  {g.agents.length > 0 ? g.agents.length : '—'}
+                  {g.agents.length > 0 ? g.agents.length : '-'}
                 </td>
                 <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                  {g.created || '—'}
+                  {g.created || '-'}
                 </td>
                 <td style={tdStyle} onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

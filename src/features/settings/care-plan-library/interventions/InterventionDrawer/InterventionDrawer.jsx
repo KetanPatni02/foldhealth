@@ -61,7 +61,7 @@ const vitalOptionsWithUnits = (list) => list.map(v => {
   const cfg = MEASURE_CONFIG[v];
   let unit = '';
   if (cfg?.dual && Array.isArray(cfg.units) && cfg.units.length) {
-    // Blood Pressure / Height use dual entries — collapse duplicates.
+    // Blood Pressure / Height use dual entries, collapse duplicates.
     unit = [...new Set(cfg.units.filter(Boolean))].join('/');
   } else if (cfg?.unit) {
     unit = cfg.unit;
@@ -73,8 +73,8 @@ const isTask = (kind) => kind === 'patient-task' || kind === 'internal-task';
 
 /**
  * One drawer for every intervention kind. The kind decides which entity field
- * sits under the title — a form, an education item, a vital, or a plain
- * description — while title/priority, member task title and the task-date
+ * sits under the title: a form, an education item, a vital, or a plain
+ * description: while title/priority, member task title and the task-date
  * block are common to all. Keeping it as a single component means switching
  * kind swaps the fields in place instead of tearing the drawer down.
  */
@@ -85,7 +85,7 @@ export function InterventionDrawer({
   kind = 'internal-task',
   onKindChange,
   title: titleOverride,
-  // Optional Care Plan bindings — mirror the Barrier Detail Drawer:
+  // Optional Care Plan bindings: mirror the Barrier Detail Drawer:
   //   • linkToGoalsAllowed: show a Linked Goals section with a picker
   //     modelled on LinkGoalToBarrierDrawer. Hide entirely when the
   //     drawer is opened from a goal-scoped surface (that goal is the
@@ -98,11 +98,11 @@ export function InterventionDrawer({
   availableGoals = EMPTY_AVAILABLE_GOALS,
   linkedGoalIds: linkedGoalIdsProp,
   activityEntries,
-  // Patient name — surfaces as the read-only "Member" row. Interventions
+  // Patient name: surfaces as the read-only "Member" row. Interventions
   // authored on a plan always target that plan's patient, so it can't be
   // edited here; the Assigned To row is the mutable owner instead.
   memberName,
-  // Opens a linked goal in its detail drawer — mirrors the barrier drawer's
+  // Opens a linked goal in its detail drawer, mirrors the barrier drawer's
   // Open Goal action so the intervention's linked goals surface the same
   // interaction. Optional; the arrow just no-ops when the caller omits it.
   onOpenGoal,
@@ -132,7 +132,7 @@ export function InterventionDrawer({
 
   const [title, setTitle] = useState(intervention?.title ?? '');
   // Auto-grow the Task Title textarea to match the care-plan Add Task
-  // drawer — long titles wrap onto a second line instead of scrolling
+  // drawer: long titles wrap onto a second line instead of scrolling
   // horizontally in a single-line input.
   const titleTextareaRef = useRef(null);
   useEffect(() => {
@@ -361,7 +361,7 @@ export function InterventionDrawer({
           />
         )}
 
-        {/* Task Title — reuses the care-plan Add Task drawer's title
+        {/* Task Title: reuses the care-plan Add Task drawer's title
             treatment: big 2xl label + auto-growing textarea, char
             counter + red mandatory dot on the same header line. Priority
             lives in its own detail row below. */}
@@ -441,7 +441,7 @@ export function InterventionDrawer({
           </div>
         )}
 
-        {/* Description — same Textarea treatment as the care-plan Patient
+        {/* Description: same Textarea treatment as the care-plan Patient
             Task drawer (rich-text + attachment) so every intervention
             kind's long-form field reads and behaves the same. */}
         {(isTask(kind) || kind === 'measure-vital') && (
@@ -457,10 +457,10 @@ export function InterventionDrawer({
         )}
 
 
-        {/* Assignee / Member — mirrors the AddTaskDrawer inline detail
+        {/* Assignee / Member: mirrors the AddTaskDrawer inline detail
             rows so the fields read the same wherever an intervention
             surfaces as a task. Borderless DetailDropdown values keep
-            the row visually calm — no double borders / boxes. */}
+            the row visually calm: no double borders / boxes. */}
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>
             Assigned To
@@ -478,13 +478,13 @@ export function InterventionDrawer({
             avatarVariant={assignedTo && assignedTo === memberName ? 'patient' : 'staff'}
             onSelect={(u) => setAssignedTo(u?.name || '')}
             pickerTitle="Assign to"
-            // Only Internal Task lets the user reassign — every other
+            // Only Internal Task lets the user reassign, every other
             // intervention kind runs on the member and the assignee
             // stays locked to them.
             disabled={kind !== 'internal-task'}
           />
         </div>
-        {/* Priority — was inline in the Title field, now its own row so
+        {/* Priority: was inline in the Title field, now its own row so
             the layout matches the care-plan Add Task drawer. */}
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>Priority</span>
@@ -525,7 +525,7 @@ export function InterventionDrawer({
             name={memberName}
             initials={initialsOf(memberName)}
             unassigned={!memberName}
-            unassignedLabel="—"
+            unassignedLabel="-"
             size="S"
             showRole={false}
             avatarVariant="patient"
@@ -710,7 +710,7 @@ export function InterventionDrawer({
           </div>
         </div>
 
-        {/* Repeat toggle — simple Switch with "Repeat" label, positioned
+        {/* Repeat toggle: simple Switch with "Repeat" label, positioned
             directly under Duration Type (Figma 8521:289961). When on, the
             count / every / ends fields expand inline below. */}
         <div className={styles.repeatBlock}>
@@ -764,7 +764,7 @@ export function InterventionDrawer({
           )}
         </div>
 
-            {/* Linked Goals — same collapsible section + row treatment
+            {/* Linked Goals: same collapsible section + row treatment
                 the Barrier Detail Drawer uses (icon + title/subtitle +
                 open/unlink cluster), so linked-goal rows read identically
                 across barrier and intervention surfaces. */}
@@ -847,7 +847,7 @@ export function InterventionDrawer({
               </section>
             )}
 
-            {/* Activity Log — pre-mapped audit rows in the shared
+            {/* Activity Log: pre-mapped audit rows in the shared
                 ActivityLog primitive, same shape the Barrier Detail
                 Drawer uses. Silent when no history yet. */}
             {Array.isArray(activityEntries) && activityEntries.length > 0 && (

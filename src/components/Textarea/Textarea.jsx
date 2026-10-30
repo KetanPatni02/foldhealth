@@ -22,12 +22,12 @@ import { exitEmptyListItem, applyListShortcut, numberListItems, nestListItem, ou
  * multi-line input into the full labeled + toolbar treatment without
  * swapping components:
  *
- *   • Plain — no `title`, `richText`, `supportingText`, `bottomButton`,
+ *   • Plain: no `title`, `richText`, `supportingText`, `bottomButton`,
  *     `speechToText`, `maxLength`, `mandatory`, or `info` prop. Renders a
  *     bare <textarea> exactly like it always has. Existing consumers
  *     don't need to change.
  *
- *   • Enhanced — any of the props above are set. Renders the labeled
+ *   • Enhanced: any of the props above are set. Renders the labeled
  *     card: header (title + optional info + required "*"), body
  *     (contentEditable in `richText` mode, else <textarea>), footer
  *     (formatting toolbar, speech-to-text, character counter, and an
@@ -44,7 +44,7 @@ export const Textarea = forwardRef(function Textarea({
   className,
   rows = 3,
   disabled,
-  // Enhanced-mode props — presence toggles the labeled/card layout.
+  // Enhanced-mode props: presence toggles the labeled/card layout.
   //
   // `title`, `supportingText` and `info` each accept BOTH a string and a
   // boolean so callers can flip them on/off from a design-system control
@@ -69,8 +69,8 @@ export const Textarea = forwardRef(function Textarea({
   attachment = false,    // boolean toggle (attaches paperclip button) OR { onClick } / accept
   onAttachmentClick,
   onAttachmentFiles,     // (FileList) → parent handles the upload
-  moreActions,           // [{ icon, label, onClick, disabled }] — appended to the toolbar
-  // Mentions — richText-only. Pass an array of `{ id, name, initials, role?
+  moreActions,           // [{ icon, label, onClick, disabled }], appended to the toolbar
+  // Mentions: richText-only. Pass an array of `{ id, name, initials, role?
   // realProfile? }` and the editor will pop a picker on "@". `onMentionSelect`
   // and `onMentionsChange` mirror CommentComposer's contract so consumers
   // moving off it don't have to relearn the callback shape.
@@ -100,14 +100,14 @@ export const Textarea = forwardRef(function Textarea({
 
   // Attachment / speech-to-text / bottomButton / moreActions are all
   // richText-only affordances so they don't contribute to the enhanced
-  // gate on their own — see `showFooter` below. Only real label + helper
+  // gate on their own: see `showFooter` below. Only real label + helper
   // props (title, info, mandatory, supportingText, maxLength) or richText
   // itself toggle the enhanced layout.
   const enhanced = !!(titleText || infoResolved || mandatory || supportingTextText || richText ||
                      maxLength);
 
   if (!enhanced) {
-    // Legacy plain textarea — untouched contract.
+    // Legacy plain textarea: untouched contract.
     const cls = [
       styles.textarea,
       variant === 'error' ? styles.textareaError : '',
@@ -207,11 +207,11 @@ export const LinkHighlightTextarea = forwardRef(function LinkHighlightTextarea({
 });
 
 // ────────────────────────────────────────────────────────────────────────
-// Enhanced layout — labeled card with optional rich-text toolbar. Kept as
+// Enhanced layout: labeled card with optional rich-text toolbar. Kept as
 // an inner component so the exported Textarea can still forward its ref
 // to the underlying editor node in either shape.
 
-// Custom bullet-list glyph — Solar's list icons don't include the leading
+// Custom bullet-list glyph: Solar's list icons don't include the leading
 // dot markers, so we ship a hand-drawn SVG at 1px stroke to match the
 // design-system icon weight. Kept inline so it lives with the toolbar
 // definition instead of a one-off shared file.
@@ -247,7 +247,7 @@ const RICH_TOOLBAR = [
   { cmd: 'insertOrderedList',   icon: <NumberedListIcon />,          label: 'Numbered list' },
 ];
 
-// eslint-disable-next-line no-unused-vars — split out purely for readability
+// eslint-disable-next-line no-unused-vars: split out purely for readability
 const EnhancedTextarea = forwardRef(function EnhancedTextarea({
   variant,
   className,
@@ -289,7 +289,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
     else if (ref) ref.current = el;
   }, [ref]);
 
-  // Keep controlled contentEditable in sync — otherwise React's reconciler
+  // Keep controlled contentEditable in sync: otherwise React's reconciler
   // never touches innerHTML after mount and the field ignores prop updates.
   // The editor's own edits come back as `value`; rewriting innerHTML for
   // those would throw the caret to the start (e.g. after a paste, whose
@@ -501,7 +501,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
         return;
       }
     }
-    // execCommand is the pragmatic path here — a full ProseMirror stack
+    // execCommand is the pragmatic path here, a full ProseMirror stack
     // would dwarf everything else this component does, and every browser
     // still supports the four toggles the Figma toolbar shows.
     document.execCommand(cmd, false, null);
@@ -518,7 +518,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
   ].filter(Boolean).join(' ');
 
   // Attachment, speech-to-text, moreActions, and the bottomButton are all
-  // rich-text-only affordances — they live inside the formatting footer,
+  // rich-text-only affordances: they live inside the formatting footer,
   // so none of them surface when richText is off. Toggling richText on
   // reveals the whole footer bar; the sub-flags then decide which slots
   // are populated.
@@ -710,7 +710,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
   );
 });
 
-// Portaled @mention picker — anchored under (or above) the editor. Kept
+// Portaled @mention picker: anchored under (or above) the editor. Kept
 // inline so the enhanced textarea is a self-contained primitive with no
 // cross-package coupling.
 function MentionMenu({ anchor, matches, activeIdx, onPick }) {

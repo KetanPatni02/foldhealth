@@ -76,7 +76,7 @@ export function MessagesView() {
   const [searchQuery, setSearchQuery]     = useState('');
   const [convRefreshKey, setConvRefreshKey] = useState(0);
   // Starts true so the very first paint is a skeleton, not the empty state.
-  // Only the FIRST load flips it — background refreshes (a realtime nudge
+  // Only the FIRST load flips it, background refreshes (a realtime nudge
   // bumping convRefreshKey) must not blank a list the user is reading.
   const [convLoading, setConvLoading] = useState(true);
   const [showSearch, setShowSearch]       = useState(false);
@@ -94,8 +94,8 @@ export function MessagesView() {
   const { patients, me } = useCommsPeople();
 
   // getSession() reads the persisted session locally; getUser() makes a
-  // network call to re-validate it. Nothing here needs re-validation — the
-  // app is already behind an auth gate and only `user.id` is used — and that
+  // network call to re-validate it. Nothing here needs re-validation, the
+  // app is already behind an auth gate and only `user.id` is used: and that
   // round-trip measured ~131ms during which `loadConversations` could not
   // even start, because it is gated on `currentUser`. That was the single
   // biggest cost in getting the chat list on screen.
@@ -116,7 +116,7 @@ export function MessagesView() {
       .select('id, full_name, first_name, last_name, email, avatar_url')
       .then(({ data, error }) => {
         if (error) {
-          console.warn('[MessagesView] profiles fetch failed — chat names will show as "Unknown" and New Chat list will be empty.', error);
+          console.warn('[MessagesView] profiles fetch failed: chat names will show as "Unknown" and New Chat list will be empty.', error);
           return;
         }
         setAllProfiles(data || []);
@@ -148,7 +148,7 @@ export function MessagesView() {
 
   const loadConversations = useCallback(async () => {
     if (!currentUser) return;
-    // Named columns rather than `*` — the reduce below only reads these five,
+    // Named columns rather than `*`, the reduce below only reads these five,
     // and `*` drags any media/attachment columns along for every message in
     // the history.
     const { data } = await supabase
@@ -202,7 +202,7 @@ export function MessagesView() {
         filter: `recipient_id=eq.${currentUser.id}`,
       }, (payload) => {
         setConvRefreshKey(k => k + 1);
-        // Fire a bell notification for the arrival — but not if I'm
+        // Fire a bell notification for the arrival, but not if I'm
         // already looking at the chat with that sender (the message will
         // land in the open view; nothing to announce). Also skip echoes
         // where I somehow received my own message.

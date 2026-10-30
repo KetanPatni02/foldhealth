@@ -9,7 +9,7 @@ import { useAppStore } from '../../../../store/useAppStore';
 const HRA = ASSESSMENT_STEPS.HRA;
 
 /**
- * Phq9AssessmentDrawer — opened from the TOC agent queue's "View details"
+ * Phq9AssessmentDrawer: opened from the TOC agent queue's "View details"
  * touchpoint. Bare question list only (no progress/score strip), prefilled
  * so the reviewer sees a fully-answered assessment. Save stays disabled
  * until they actually edit a question (AssessmentFormView's onAnswersChange).

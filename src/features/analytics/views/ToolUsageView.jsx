@@ -118,7 +118,7 @@ export function ToolUsageView({ showToast, editing = false, resetTick = 0 }) {
   );
 
   const renderNonAdopters = () => (
-    <Card title="Non-Adopters — 0 Logins (Past 30 Days)" flush>
+    <Card title="Non-Adopters: 0 Logins (Past 30 Days)" flush>
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead>

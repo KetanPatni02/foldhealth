@@ -9,7 +9,7 @@ export default {
     docs: {
       description: {
         component:
-          'A segmented on/off control — two to four short labels with a sliding pill that animates to the active option. Use it for view switches (HCC / ICD, Workflow / Configure / Analytics) where the choices are always visible and mutually exclusive. For binary on/off preferences prefer `Switch`; for longer option lists prefer `Select` or `RadioButton`.',
+          'A segmented on/off control: two to four short labels with a sliding pill that animates to the active option. Use it for view switches (HCC / ICD, Workflow / Configure / Analytics) where the choices are always visible and mutually exclusive. For binary on/off preferences prefer `Switch`; for longer option lists prefer `Select` or `RadioButton`.',
       },
     },
   },

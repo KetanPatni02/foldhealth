@@ -1,5 +1,5 @@
 /**
- * Preview tab — renders the form via the shared FormRenderer (which honors the
+ * Preview tab: renders the form via the shared FormRenderer (which honors the
  * layout mode: entire-page / by-section / by-question) inside a Web (MacBook) or
  * Mobile (iPhone) device mockup, with a live score sidebar.
  */
@@ -108,7 +108,7 @@ export function PreviewPanel({ fields, scoring, formName, settings }) {
           <div className={styles.pvResultBody}>
             {result.scores.map((s) => (
               <div key={s.id} className={styles.pvScoreCard}>
-                <div className={styles.pvScoreVal}>{s.value ?? '—'}</div>
+                <div className={styles.pvScoreVal}>{s.value ?? '-'}</div>
                 <div className={styles.pvScoreMeta}>
                   <span className={styles.pvScoreName}>{scoring.scores.find((d) => d.id === s.id)?.label || s.id}</span>
                   <span className={styles.pvScoreStatus}>{s.status}</span>

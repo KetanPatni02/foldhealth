@@ -183,7 +183,7 @@ function TemplateTab({ block }) {
     // Detect whether the currently-selected header/footer matches an existing
     // built-in or user preset byte-for-byte. If it does, hiding the Save
     // button avoids creating duplicate library entries. Read `doc` via the
-    // *prop* (`block`) so this recomputes whenever the doc mutates — using
+    // *prop* (`block`) so this recomputes whenever the doc mutates, using
     // useAppStore.getState() here would skip re-runs since it doesn't sub.
     let currentFingerprint = '';
     if (block?.data?.role === role) {
@@ -225,7 +225,7 @@ function TemplateTab({ block }) {
       <div className={styles.templateScroll}>
         <SectionHeading>{`Change ${label}`}</SectionHeading>
 
-        {/* Save current as preset — only when the current header/footer
+        {/* Save current as preset: only when the current header/footer
             differs from every known preset. Avoids creating duplicates. */}
         {canSavePreset && (
         <div className={styles.presetSaveBar}>
@@ -340,7 +340,7 @@ function TemplateTab({ block }) {
 // ── Column width ratio bar ──────────────────────────────────────────────────
 
 
-// Header/footer preset card — live preview + meta. User presets show edit /
+// Header/footer preset card: live preview + meta. User presets show edit /
 // delete actions on hover; built-in presets are apply-only. Shares the same
 // CSS classes as the ComponentsPanel PresetCard so the picker and the right-
 // panel list stay visually identical.
@@ -469,22 +469,22 @@ function TemplatePresetCard({
 // inputs short-circuit so we don't hit jsdom in tests.
 
 
-// Link input — inline collapsible row. Shows a "+ Add link" affordance when
+// Link input: inline collapsible row. Shows a "+ Add link" affordance when
 // no link is set, expands to an Input that captures the href and a checkbox
 // to toggle target="_blank" (defaults to true to match prior behaviour).
 
-// Padding control — three modes:
+// Padding control: three modes:
 //  • uniform:   one value for all four sides (1 input)
 //  • symmetric: top/bottom + left/right (2 inputs)
 //  • per-side:  four independent values (4 inputs)
 // The mode auto-detects from current values so something else editing
 // padding can't strand the UI in the wrong mode.
 
-// Border control — uses the same +/− toggle pattern as LinkInput so the
+// Border control: uses the same +/− toggle pattern as LinkInput so the
 // builder UI is consistent. Collapsed when no border values are set;
 // expanding applies sensible defaults.
 
-// ── Independent decoration toggles — bold/italic/underline/strike can combine ─
+// ── Independent decoration toggles: bold/italic/underline/strike can combine ─
 // The leading "none" button is a one-click clear that turns every decoration
 // off in a single tap (matches the Figma reference).
 
@@ -493,11 +493,11 @@ function TemplatePresetCard({
 // Uniform / Symmetric (vertical bars) / Per-side mode icons. Symmetric is a
 // square with two vertical guides hinting at independent top/bottom only.
 
-// PadAllSidesIcon — used as the input-field icon when padding is in
+// PadAllSidesIcon: used as the input-field icon when padding is in
 // uniform mode. Two concentric squares clearly read as "padding on all
 // sides" and avoid clashing with RadiusIcon (rounded-corner glyph).
 
-// Symmetric input icons — vertical & horizontal axes.
+// Symmetric input icons: vertical & horizontal axes.
 
 
 // Vertical-align icons for the fixed-height container Position toggle.

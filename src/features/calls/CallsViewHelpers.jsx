@@ -118,7 +118,7 @@ export function CallsTableRow({ row, onClick }) {
       <td className={styles.td}>
         {row.duration != null
           ? <span className={styles.secondaryText}>{row.duration}</span>
-          : <span className={styles.emDash}>—</span>}
+          : <span className={styles.emDash}>-</span>}
       </td>
       <td className={styles.td}>
         <div className={styles.goalStatusCell}>
@@ -132,14 +132,14 @@ export function CallsTableRow({ row, onClick }) {
               <span className={styles.secondaryText}>{row.goalStatus.passed}/{row.goalStatus.total} Met</span>
             </>
           ) : (
-            <span className={styles.emDash}>—</span>
+            <span className={styles.emDash}>-</span>
           )}
         </div>
       </td>
       <td className={styles.td}>
         {row.engagementScore != null
           ? <EngagementScoreBadge score={row.engagementScore} />
-          : <span className={styles.emDash}>—</span>}
+          : <span className={styles.emDash}>-</span>}
       </td>
       <td className={styles.td}>
         <span className={row.ooh === 'Yes' ? styles.oohYes : styles.secondaryText}>{row.ooh}</span>

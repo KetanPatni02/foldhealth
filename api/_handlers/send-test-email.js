@@ -46,7 +46,7 @@ export default async function handler(req, res) {
   const name = headerText(fromName, 80);
   const from = name ? `${name} <${defaultFrom.match(/<(.+)>/)?.[1] || defaultFrom}>` : defaultFrom;
 
-  // One-click list unsubscribe (RFC 8058) — improves deliverability and is a
+  // One-click list unsubscribe (RFC 8058): improves deliverability and is a
   // Gmail/Yahoo bulk-sender requirement. Only added when the caller supplies a
   // resolved URL.
   const headers = listUnsubscribe

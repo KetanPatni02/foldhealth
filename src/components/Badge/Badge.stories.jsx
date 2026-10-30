@@ -59,7 +59,7 @@ export const Playground = {
 };
 
 /**
- * Mirrors the Figma matrix at node 24:1678 — every tone (rows) × size
+ * Mirrors the Figma matrix at node 24:1678, every tone (rows) × size
  * (columns) × hover=false/true (row pairs). Read-only visual reference.
  */
 export const AllStates = {
@@ -80,7 +80,7 @@ export const AllStates = {
           <div />
           {SIZES.map(size => <div key={size} style={headerStyle}>Size {size}</div>)}
           {TONES.flatMap(tone => {
-            // Disabled + Ghost skip the hover row (matches Figma — those types
+            // Disabled + Ghost skip the hover row (matches Figma: those types
             // don't have a hover state defined).
             const hoverStates = (tone === 'disabled') ? [false] : [false, true];
             return hoverStates.map(hover => (
@@ -103,7 +103,7 @@ export const AllStates = {
 };
 
 /**
- * Slot variations — dot, leading icon, trailing icon, count, all together.
+ * Slot variations: dot, leading icon, trailing icon, count, all together.
  */
 export const Slots = {
   parameters: {

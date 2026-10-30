@@ -7,7 +7,7 @@ const THUMB_LABELS = ['Minimum value', 'Maximum value'];
 // variant 'neutral': grey range and a small thumb (Print drawer logo scale).
 const Slider = React.forwardRef(({ className, variant = 'primary', ...props }, ref) => {
   const neutral = variant === 'neutral';
-  // Radix forwards these to Root only — pull them off and forward to each Thumb
+  // Radix forwards these to Root only, pull them off and forward to each Thumb
   // so screen readers announce the slider's purpose (axe: aria-input-field-name).
   const { 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, ...rootProps } = props;
   const thumbCount = Array.isArray(rootProps.value ?? rootProps.defaultValue) ? (rootProps.value ?? rootProps.defaultValue).length : 1;

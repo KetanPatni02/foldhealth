@@ -1,5 +1,5 @@
 /**
- * Settings sub-nav definition — single source for the section list, their
+ * Settings sub-nav definition: single source for the section list, their
  * store nav keys (which double as SideNav keys), and display labels.
  * Consumed by SettingsSubNav (rendering) and SettingsLayout (empty-state
  * titles); URL slugs live in src/lib/router.js (SETTINGS_SECTION_TO_NAV).

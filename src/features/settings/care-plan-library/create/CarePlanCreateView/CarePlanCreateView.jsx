@@ -63,7 +63,7 @@ const TEMPLATE_TYPES = [
 ];
 
 /**
- * New Care Plan — full-pane template creation (Figma Care-Plan-Creation
+ * New Care Plan: full-pane template creation (Figma Care-Plan-Creation
  * 14108:294857). Left column holds the plan's identity (name, description,
  * template type); the right column is where goals accrue, empty until the
  * first one is added.
@@ -90,7 +90,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const [barriers, setBarriers] = useState([]);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [picker, setPicker] = useState(null); // 'goals' | 'interventions' | 'barriers'
-  // { list, item, rect } — which row's menu is open.
+  // { list, item, rect }, which row's menu is open.
   const [rowMenu, setRowMenu] = useState(null);
   // Common + categories: the three lists above hold whichever is on screen.
   const cats = useTemplateCategories([], { goals, interventions, barriers }, { setGoals, setInterventions, setBarriers });
@@ -156,7 +156,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
     icon: 'solar:flag-linear',
     status: 'Not Started',
     currentValue: 'No Data',
-    trend: '—',
+    trend: '-',
     progress: '0%',
   })), [goals]);
 
@@ -459,7 +459,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
             <TemplateRenewalChoice value={renewal} onChange={setRenewalPick} />
           </div>
 
-          {/* A chronic-conditions template needs to say which conditions —
+          {/* A chronic-conditions template needs to say which conditions,
               same picker the goal drawer and the template editor use. */}
           {templateType === 'chronic' && (
             <div className={styles.field}>

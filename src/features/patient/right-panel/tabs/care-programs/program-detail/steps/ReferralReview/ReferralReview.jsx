@@ -83,7 +83,7 @@ export function ReferralReview() {
                   <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
                   {r.attachments} Attachment{r.attachments === 1 ? '' : 's'}
                 </span>
-              ) : <span className={styles.muted}>—</span>}
+              ) : <span className={styles.muted}>-</span>}
             </td>
             <td className={styles.createdCell}>{r.createdOn}</td>
           </tr>

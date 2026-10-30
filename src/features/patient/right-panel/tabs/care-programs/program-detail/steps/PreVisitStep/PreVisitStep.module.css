@@ -159,7 +159,7 @@
 .careProvider {
   color: var(--neutral-500);
 }
-/* Inner flex keeps the avatar + name aligned — `display: flex` on a <td>
+/* Inner flex keeps the avatar + name aligned, `display: flex` on a <td>
    would break table column sizing. */
 .careProviderInner {
   display: inline-flex;

@@ -40,7 +40,7 @@ const fromIso = (iso) => {
   return m ? `${m[2]}/${m[3]}/${m[1]}` : '';
 };
 
-// Demo extraction payload — mirrors Figma 4687:127406 so the post-upload
+// Demo extraction payload: mirrors Figma 4687:127406 so the post-upload
 // state looks like the design (real integration would call the OCR
 // pipeline and populate these from the model's field-level output).
 const DEMO_EXTRACTION = {
@@ -68,7 +68,7 @@ function tier(score) {
   return score >= 85 ? 'high' : score >= 60 ? 'medium' : 'low';
 }
 
-// Confidence gauge + citation trigger — the small arc meter + % that sits
+// Confidence gauge + citation trigger: the small arc meter + % that sits
 // next to each auto-filled field's label. Clicking cites the source doc.
 function ConfGauge({ score, onCite }) {
   if (typeof score !== 'number') return null;
@@ -86,7 +86,7 @@ function ConfGauge({ score, onCite }) {
   );
 }
 
-// Orange "M" chip — shown in place of the AI confidence gauge once the user
+// Orange "M" chip: shown in place of the AI confidence gauge once the user
 // manually sets or overrides a field (Figma Task Drawer, node 6OC).
 function ManualBadge() {
   return (
@@ -112,7 +112,7 @@ function FieldRow({ label, required, confidence, manual, onCite, children, error
 }
 
 /**
- * Source-document viewer — slides in on the LEFT of the drawer (Figma Task
+ * Source-document viewer: slides in on the LEFT of the drawer (Figma Task
  * Drawer 5IX): dark PDF-style chrome with a toolbar (filename, page count,
  * zoom, download/print) over a white rendered page. The eye action and the
  * confidence gauges open it; ICD citations highlight the matching line.
@@ -170,7 +170,7 @@ function DocViewerPanel({ extracted, highlightCode, onClose }) {
             <ul className={styles.sheetIcds}>
               {extracted.icds.map(icd => (
                 <li key={icd.code} className={icd.code === highlightCode ? styles.sheetHl : undefined}>
-                  <strong>{icd.code}</strong> — {icd.desc} <span className={styles.sheetHcc}>({icd.hcc})</span>
+                  <strong>{icd.code}</strong>, {icd.desc} <span className={styles.sheetHcc}>({icd.hcc})</span>
                 </li>
               ))}
             </ul>
@@ -184,7 +184,7 @@ function DocViewerPanel({ extracted, highlightCode, onClose }) {
 }
 
 /**
- * In-flight upload/extract card — matches the Upload-process states in
+ * In-flight upload/extract card: matches the Upload-process states in
  * Figma (3D6): file row + `{size} • {status}` with a spinner, a green
  * progress bar, and an X to cancel. Renders in place of the dropzone
  * while the document is being processed, then hands off to the extracted
@@ -235,7 +235,7 @@ function DosBlock({ block, providerOptions, onChange, onRemove }) {
   const cite = (code = null) => setPreview({ code });
 
   const manual = block.manual || {};
-  // Mark a field as manually entered/overridden as the user edits it —
+  // Mark a field as manually entered/overridden as the user edits it,
   // its gauge flips to the M chip (only meaningful once extraction ran).
   const setField = (name, value) =>
     onChange({ ...block, [name]: value, manual: { ...manual, [name]: true } });
@@ -265,7 +265,7 @@ function DosBlock({ block, providerOptions, onChange, onRemove }) {
       const t = setTimeout(() => setProc(p => (p ? { ...p, phase: 'extracting', progress: 0 } : p)), 350);
       return () => clearTimeout(t);
     }
-    // Extraction complete — populate the block and drop the processing card.
+    // Extraction complete: populate the block and drop the processing card.
     const fileName = proc.name;
     const t = setTimeout(() => {
       setProc(null);
@@ -463,7 +463,7 @@ export function HccAddDosDrawer() {
 
   if (!member) return null;
 
-  // Every mandatory field must be present — including at least one ICD, so a
+  // Every mandatory field must be present, including at least one ICD, so a
   // worklist record is never created with a zero ICD count.
   const canSave = blocks.some(b => b.file && b.dos && b.provider && b.pos && b.docType && (b.icds?.length > 0));
 

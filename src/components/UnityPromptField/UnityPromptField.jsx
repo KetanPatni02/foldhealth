@@ -4,7 +4,7 @@ import { UnityIcon } from '../UnityIcon/UnityIcon';
 import styles from './UnityPromptField.module.css';
 
 /**
- * UnityPromptField — a plain-English request to UnityAI: a labelled textarea
+ * UnityPromptField: a plain-English request to UnityAI: a labelled textarea
  * with the Unity mark, a character counter and the action that sends it.
  * The host does the generating; this owns the input, the "Try …" example
  * that fills it, and Cmd/Ctrl+Enter to submit.

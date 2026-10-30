@@ -127,15 +127,15 @@ export function CarePlanBarriersTable({
   onSelectAll,
   onToggleSelect,
   onStatusMenu,
-  // ({ kind: 'barrier', item, rect }) => void — opens the priority menu.
+  // ({ kind: 'barrier', item, rect }) => void: opens the priority menu.
   onPriorityMenu,
   onRowMenu,
   onOpenBarrier,
   // Notes icon → open the barrier drawer at its Note section.
   onOpenNotes,
-  // (barrier) => boolean — whether it has a current (undeleted) note.
+  // (barrier) => boolean: whether it has a current (undeleted) note.
   hasNote,
-  // (barrier, title) => void — saves an in-place title edit.
+  // (barrier, title) => void: saves an in-place title edit.
   onTitleChange,
   linked,
   template = false,

@@ -38,7 +38,7 @@ const TEMPLATE_TYPES = [
 ];
 
 // A goal's row icon follows its measure category, the way an intervention's
-// follows its kind — the flag is the fallback for an uncategorised goal.
+// follows its kind: the flag is the fallback for an uncategorised goal.
 const GOAL_CATEGORY_ICONS = {
   Vital: 'solar:heart-pulse-linear',
   Activity: 'solar:dumbbell-small-linear',
@@ -49,7 +49,7 @@ const GOAL_CATEGORY_ICONS = {
 /**
  * A Care Plan Library template, full-pane like New Care Plan: identity on the
  * left, the plan itself on the right rendered with the same GBI tables the
- * patient care plan uses — a template is the plan a patient will get, so it
+ * patient care plan uses: a template is the plan a patient will get, so it
  * should read identically before it is applied.
  *
  */
@@ -84,7 +84,7 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
   const [interventions, setInterventions] = useState(template.interventions || []);
   const [barriers, setBarriers] = useState(template.barriers || []);
   const [picker, setPicker] = useState(null); // 'goals' | 'interventions' | 'barriers'
-  // { list, item, rect } — which row's menu is open.
+  // { list, item, rect }, which row's menu is open.
   const [rowMenu, setRowMenu] = useState(null);
   // Common + categories: the three lists above hold whichever is on screen.
   const cats = useTemplateCategories(template.categories, { goals, interventions, barriers }, { setGoals, setInterventions, setBarriers });
@@ -187,7 +187,7 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
       id: entry.id || `goal-${i}`,
       icon: GOAL_CATEGORY_ICONS[payload.category] || payload.icon,
       currentValue: 'No Data',
-      trend: '—',
+      trend: '-',
       progress: '0%',
     };
   }), [goals, libraryGoals]);
@@ -385,7 +385,7 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
 
       {editingIntervention && (() => {
         const Editor = INTERVENTION_EDITORS[editingIntervention.kind];
-        // A template entry is a reference — { id, kind, title } — so the
+        // A template entry is a reference, { id, kind, title }, so the
         // prefill is its title plus whatever the library row carries. Only a
         // config saved from this drawer has the scheduling fields.
         const libRow = (interventionLibrary || []).find(i => i.id === editingIntervention.id);

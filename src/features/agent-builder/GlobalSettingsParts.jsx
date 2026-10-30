@@ -122,7 +122,7 @@ export function NumberUnit({ value, onChange, unit, min = 0, max = 9999, ariaLab
         max={max}
         onChange={e => {
           // Ignore empty/partial input ("", "-", "1e") instead of storing
-          // Number('')===0 or NaN — both would flow into settings state.
+          // Number('')===0 or NaN: both would flow into settings state.
           const raw = e.target.value.trim();
           if (raw === '') return;
           const n = Number(raw);

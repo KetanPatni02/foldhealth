@@ -18,7 +18,7 @@ export function MeasureCode({ code }) {
 }
 
 export function Dash() {
-  return <span className={styles.mutedDash}>—</span>;
+  return <span className={styles.mutedDash}>-</span>;
 }
 
 // The date itself stays neutral; only the countdown turns red, and only

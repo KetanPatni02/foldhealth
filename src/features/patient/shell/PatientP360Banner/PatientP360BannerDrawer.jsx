@@ -65,7 +65,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
   const display = usePatientDisplay(patient);
   const { summary: consent } = usePatientConsent(patient.id);
 
-  const noop = (label) => () => showToast(`${label} — coming soon`);
+  const noop = (label) => () => showToast(`${label}: coming soon`);
   // Shared by the row buttons and their overflow menu entries. An overflowed
   // Call anchors its popover to the More button, since its own button is gone.
   const runAction = (label) => {
@@ -122,7 +122,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
               )}
             </div>
             <div className={styles.drawerMetaRow}>
-              <span className={styles.drawerMetaText}>{display.gender} • {display.dob || '—'} ({display.age})</span>
+              <span className={styles.drawerMetaText}>{display.gender} • {display.dob || '-'} ({display.age})</span>
               <span className={styles.drawerMetaDot}>•</span>
               <button ref={consentBadgeRef} className={styles.drawerConsentBadge} onClick={handleConsentClick}>
                 Consent: {consentSummaryLabel(consent)}
@@ -142,7 +142,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
           </div>
           <div className={styles.drawerProfileIdRow}>
             <span className={styles.drawerProfileOrg}>{selectedProfileId === 'central' ? p.health_plan_name : activeProfileName}</span>
-            {/* health_plan_id already carries its '#' — don't prepend another
+            {/* health_plan_id already carries its '#', don't prepend another
                 (the old template rendered "##94949494WIWI"). */}
             <span className={styles.drawerProfileIdText}>({p.health_plan_id || formatFoldId(patient.memberId)})</span>
             <span className={styles.drawerPlusBadge}>+{(p.insurance_profiles || FALLBACK_P360.insurance_profiles).length - 1}</span>
@@ -248,7 +248,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
               <button type="button" key={prof.id} aria-pressed={selectedProfileId === prof.id} className={`${styles.profileOption} ${selectedProfileId === prof.id ? styles.profileOptionSelected : ''}`}
                 onClick={() => { setSelectedProfileId(prof.id); setShowProfileDropdown(false); setDrawerDropdownStyle(null); }}>
                 <div className={styles.profileOptionHeader}>
-                  {/* Central Profile IS the FoldHealth identity — show the real
+                  {/* Central Profile IS the FoldHealth identity, show the real
                       Fold ID; other insurer profiles keep their sample ids. */}
                   <div><div className={styles.profileOptionName}>{prof.name}</div><div className={styles.profileOptionSub}>{prof.id === 'central' ? `Fold ID: ${formatFoldId(patient.memberId)}` : prof.subtitle}</div></div>
                   {selectedProfileId === prof.id ? <Icon name="solar:check-circle-bold" size={20} color="var(--status-success)" /> : <span className={styles.profileOptionRadio} />}

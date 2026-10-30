@@ -59,7 +59,7 @@ export function PopulationGroupsRow({ group, columns, hiddenSet, selected, onTog
         </td>
       ))}
 
-      {/* Actions — sticky-right, L-size buttons with dividers */}
+      {/* Actions: sticky-right, L-size buttons with dividers */}
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.actionsCell}>
           <ActionButton icon="solar:bolt-linear" tooltip="Run Automation" />

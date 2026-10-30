@@ -81,7 +81,7 @@ export function OrgPanel() {
     return () => { cancelled = true; };
   }, [showToast]);
 
-  // Read an image file into a data URL — no storage bucket needed, and SVGs
+  // Read an image file into a data URL, no storage bucket needed, and SVGs
   // render cleanly in an <img>. Persisted as-is in the logo_url text column.
   const readLogoFile = (file) => {
     if (!file) return;
@@ -251,7 +251,7 @@ export function OrgPanel() {
         />
       </div>
 
-      {/* Preview — only once a logo exists */}
+      {/* Preview: only once a logo exists */}
       {logo && (
         <div className={styles.formGroup}>
           <span className={styles.label}>Preview</span>

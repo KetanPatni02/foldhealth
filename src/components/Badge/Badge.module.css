@@ -23,9 +23,9 @@
   align-self: center;
 }
 
-/* Sizes — S=20px / M=24px / L=28px height (locked so padding + font can't
+/* Sizes: S=20px / M=24px / L=28px height (locked so padding + font can't
    drift the overall dimensions). Padding uses --space-1 (4px) / --space-2
-   (8px) — the token system's 4px grid has no 6px stop, so M's horizontal
+   (8px): the token system's 4px grid has no 6px stop, so M's horizontal
    padding lands at 8px (closest token) and L uses --space-2 all round.
    box-sizing: border-box so the 0.5px border sits inside the target height. */
 .sizeXS { height: 18px; padding: 0 var(--space-1);          font-size: var(--font-xs);   box-sizing: border-box; gap: calc(var(--space-1) / 2); }
@@ -33,7 +33,7 @@
 .sizeM { height: 24px; padding: var(--space-1) var(--space-2); font-size: var(--font-base); box-sizing: border-box; }
 .sizeL { height: 28px; padding: var(--space-2);                font-size: var(--font-lg);   box-sizing: border-box; border-radius: 6px; }
 
-/* Tones — the 10 canonical Types from the Figma matrix. Uses design-token
+/* Tones: the 10 canonical Types from the Figma matrix. Uses design-token
    backgrounds + color-mix borders (matches the pattern from .status-ready,
    .compliance-*, .awv-*). `.hover` forces the hover-state background for
    Storybook demos. Real hover only darkens badges that do something
@@ -68,7 +68,7 @@
 .tone-warning.hover,   .interactive.tone-warning:hover   { background: color-mix(in srgb, var(--status-warning) 12%, transparent); }
 .tone-error.hover,     .interactive.tone-error:hover     { background: color-mix(in srgb, var(--status-error) 12%, transparent); }
 .tone-info.hover,      .interactive.tone-info:hover      { background: color-mix(in srgb, var(--status-info) 12%, transparent); }
-/* Disabled never darkens on hover — it's disabled. */
+/* Disabled never darkens on hover: it's disabled. */
 
 .dot {
   width: 6px;
@@ -125,7 +125,7 @@
 .yes { background: var(--status-error-light); color: var(--status-error); border-color: rgba(215,40,37,0.2); }
 .no { background: var(--neutral-50); color: var(--neutral-300); border-color: rgba(111,122,144,0.2); }
 
-/* DOS source — matches the letter badge in HccWorklistRow (D/C/M) so the
+/* DOS source: matches the letter badge in HccWorklistRow (D/C/M) so the
    DiagPanel and worklist tell the same colour story per source. */
 .dos-source-documents { background: var(--neutral-50);   color: var(--neutral-300);   border-color: var(--neutral-150); }
 .dos-source-claims    { background: var(--primary-50);   color: var(--primary-300);   border-color: var(--primary-200); }
@@ -149,7 +149,7 @@
 .care-plan-updated { background: var(--status-success-light); color: var(--status-success); border-color: rgba(0,155,83,0.2); }
 .care-plan-pending { background: var(--status-warning-light); color: var(--status-warning); border-color: rgba(217,165,11,0.2); }
 
-/* AWV Program Sub Status — mirrors the TOC status palette. `open` / `new`
+/* AWV Program Sub Status: mirrors the TOC status palette. `open` / `new`
    are informational (blue), `unable` is neutral, `engaged` is success,
    `attempted` + `engaged-followup` are warning. */
 .awv-open              { background: var(--status-info-light);    color: var(--status-info);    border-color: color-mix(in srgb, var(--status-info) 20%, transparent); }
@@ -159,7 +159,7 @@
 .awv-attempted         { background: var(--status-warning-light); color: var(--status-warning); border-color: color-mix(in srgb, var(--status-warning) 20%, transparent); }
 .awv-engaged-followup  { background: var(--status-warning-light); color: var(--status-warning); border-color: color-mix(in srgb, var(--status-warning) 20%, transparent); }
 
-/* No new SNP-specific or tag-specific variants are declared here — SNP Program
+/* No new SNP-specific or tag-specific variants are declared here, SNP Program
    Sub Status pills and worklist row Tags cells map their values to the
    existing status/tone variants above (toc-* / lace-* / priority-* /
    ai-* / outreach-*). See features/snp-worklist/SnpWorklistRow.jsx for the

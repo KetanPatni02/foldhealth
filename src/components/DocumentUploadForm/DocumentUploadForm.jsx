@@ -5,7 +5,7 @@ import { Input } from '../Input/Input';
 import styles from './DocumentUploadForm.module.css';
 
 /**
- * DocumentUploadForm — the HCC upload widget (demo-PHI strip + UploadDropField)
+ * DocumentUploadForm: the HCC upload widget (demo-PHI strip + UploadDropField)
  * with two metadata fields: Document Type and Caption. Pass the object
  * returned by `useDocumentUploadForm()` as `form`.
  *

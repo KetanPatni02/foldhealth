@@ -85,7 +85,7 @@
   flex-shrink: 0;
 }
 
-/* Add Care Note drawer body — small composer with a labelled
+/* Add Care Note drawer body: small composer with a labelled
    Textarea. Padding relies on the Drawer's default body inset, so
    only the internal spacing is set here. */
 .addNoteBody {

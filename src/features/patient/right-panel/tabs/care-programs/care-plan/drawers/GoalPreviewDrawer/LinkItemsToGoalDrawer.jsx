@@ -18,7 +18,7 @@ import styles from '../BarrierDetailDrawer/LinkGoalToBarrierDrawer.module.css';
  * Selected group with divider, primary Link button in the header), so
  * every "link existing" surface across the care plan reads the same.
  *
- * `items` is the pre-filtered candidate list — the caller strips out
+ * `items` is the pre-filtered candidate list: the caller strips out
  * anything already linked to this goal so the picker only offers new
  * connections. Each item is:
  *   { id, title, subtitle?, badge? }

@@ -1,4 +1,4 @@
-/* TabStrip — matches the pattern of the app's top-level TabBar (Worklist /
+/* TabStrip: matches the pattern of the app's top-level TabBar (Worklist /
    TOC Agent Queue). Reused by drawers that need the same tab affordance.
    Active state paints via a single sliding underline (see .tabUnderline)
    so switching tabs reads as one line moving between them, matching
@@ -15,7 +15,7 @@
   position: relative;
   /* When the tab list is wider than its container (Care Gap drawer with
      seven tabs at 630px, etc.), the row scrolls horizontally instead of
-     wrapping — same affordance the embedded variant already has. Scrollbar
+     wrapping: same affordance the embedded variant already has. Scrollbar
      is hidden for a clean look; users still drag/scroll horizontally. */
   overflow-x: auto;
   scrollbar-width: none;
@@ -29,7 +29,7 @@
   margin-right: calc(-1 * var(--drawer-body-padding-x, 24px));
 }
 
-/* Compact 6px gap variant — used inside content drawers where the default
+/* Compact 6px gap variant: used inside content drawers where the default
    12px between tabs reads too airy. Applies to non-embedded rows too. */
 .sizeS { gap: calc(var(--space-1) + calc(var(--space-1) / 2)); }
 
@@ -74,7 +74,7 @@
               opacity 160ms ease-out;
 }
 
-/* Trailing slot — action buttons pinned to the far right of the tab row.
+/* Trailing slot: action buttons pinned to the far right of the tab row.
    The spacer flexes to push them past the last tab; the wrapper keeps its
    own children together with a small gap for multi-button groups. */
 .trailingSpacer { flex: 1; }
@@ -84,7 +84,7 @@
   gap: 8px;
 }
 
-/* Notification dot — a small pulsing accent next to the label ("new
+/* Notification dot: a small pulsing accent next to the label ("new
    activity"). Consumers opt in per item via `notif: true`. */
 .notifDot {
   display: inline-block;
@@ -100,7 +100,7 @@
   50%      { opacity: .5; transform: scale(.75); }
 }
 
-/* Embedded — strip the outer bar chrome so this row can drop inside another
+/* Embedded: strip the outer bar chrome so this row can drop inside another
    header (SectionTitleBar). Tabs, underline, hover/active colors stay. */
 .embedded {
   background: transparent;
@@ -114,7 +114,7 @@
   align-items: stretch;
   /* Take remaining space in the parent header and scroll horizontally when
      tab count outgrows the container (e.g. when History pushes the last tab
-     off-screen in a narrow drawer). Hide the scrollbar for a clean look —
+     off-screen in a narrow drawer). Hide the scrollbar for a clean look,
      users still drag/scroll horizontally. */
   flex: 1;
   min-width: 0;

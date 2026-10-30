@@ -18,7 +18,7 @@ logger.warnOnce = (msg, options) => {
   warnOnce(msg, options);
 };
 
-// Stable build identifier — the git commit SHA when running on Vercel (or
+// Stable build identifier: the git commit SHA when running on Vercel (or
 // GitHub Actions), a timestamp locally. Baked into the bundle as
 // __APP_VERSION__ and mirrored in /version.json so the running client can
 // detect a fresh deploy and prompt the user to reload before their lazy
@@ -70,7 +70,7 @@ export default defineConfig({
   plugins: [tailwindcss(), react(), devApiPlugin(), emitVersionJsonPlugin()],
   server: {
     // Honor the harness-assigned PORT so the preview browser and the actual
-    // dev server always agree — without this, Vite's default 5173 collides
+    // dev server always agree: without this, Vite's default 5173 collides
     // with other sessions and silently auto-increments to a port the
     // harness never learns about.
     port: Number(process.env.PORT) || 5173,
@@ -86,7 +86,7 @@ export default defineConfig({
     // No manualChunks. Earlier attempts to group recharts into a
     // 'vendor-charts' chunk caused Rolldown's CJS interop to hoist React's
     // require_* wrappers into that chunk, which then dragged vendor-charts
-    // into the entry's static import graph — defeating lazy-loading and
+    // into the entry's static import graph: defeating lazy-loading and
     // forcing recharts onto the first-paint critical path.
     //
     // Auto-chunking respects the lazy() boundaries in AppLayout: recharts

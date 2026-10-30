@@ -42,7 +42,7 @@ const meta = { date: '05/14/2026', time: '2:30 PM', by: 'Delores Conn', role: 'C
 const OUTREACH = {
   t: 'outreach',
   ...meta,
-  title: '4th Outreach — Outgoing Call',
+  title: '4th Outreach: Outgoing Call',
   outcome: 'Completed, Engaged',
   outcomeColor: 'var(--status-success)',
   note: 'Patient confirmed BP readings will be logged daily; agreed to next-week follow-up.',
@@ -55,7 +55,7 @@ const OUTREACH = {
     transcript: [
       { speaker: 'Delores Conn', t: '00:09', text: 'Hi, Christian. Thanks for taking the time today. How are you feeling?' },
       { speaker: 'Christian Silva', t: '00:27', text: "I've been pretty tired lately, and a bit short of breath this past week." },
-      { speaker: 'Delores Conn', t: '01:12', text: 'Understood — I want to make sure your PCP knows about that.' },
+      { speaker: 'Delores Conn', t: '01:12', text: 'Understood: I want to make sure your PCP knows about that.' },
     ],
   },
 };
@@ -119,7 +119,7 @@ const UPLOAD = {
   fileType: 'Visit Note',
 };
 
-// HCC audit variants — accept (double-check icon, success tint), dismiss
+// HCC audit variants: accept (double-check icon, success tint), dismiss
 // (circle-X, error tint), delete (trash, error tint). Rail icon comes from
 // ACT_ICON per `t`; body renders through GenericEntryBody so the headline
 // carries the full "X Status Changed to Accept" copy the DiagPanel shows.
@@ -141,7 +141,7 @@ const DELETE = {
   title: 'ICD: F32.1(Manual) is Deleted',
 };
 
-// Preset entry sets — one per former variant story. The `example` control
+// Preset entry sets: one per former variant story. The `example` control
 // picks one; the `entries` object control still lets you hand-edit a feed.
 const EXAMPLES = {
   'all-variants': {
@@ -155,7 +155,7 @@ const EXAMPLES = {
       CLINICAL_NOTE,
       COMMENT,
       { t: 'group', label: 'March 2026' },
-      { t: 'outreach', date: '03/22/2026', time: '4:00 PM', by: 'Delores Conn', role: 'Co-Ordinator', title: '1st Outreach — Patient Chat', outcome: 'Scheduled with PCP' },
+      { t: 'outreach', date: '03/22/2026', time: '4:00 PM', by: 'Delores Conn', role: 'Co-Ordinator', title: '1st Outreach: Patient Chat', outcome: 'Scheduled with PCP' },
       UPLOAD,
       { t: 'group', label: 'January 2026' },
       ACCEPT,

@@ -50,8 +50,8 @@ export function HeaderActions({
   // True when the CURRENT USER is the author of a note that is already
   // Pending Review (i.e. they submitted it, the reviewer hasn't signed
   // yet, and they've reopened it to edit). In that state the primary
-  // action becomes "Update and Save" — pushes the revised state back
-  // to the same reviewer via `onSubmitForReview` (which re-notifies) —
+  // action becomes "Update and Save", pushes the revised state back
+  // to the same reviewer via `onSubmitForReview` (which re-notifies),
   // and the chevron replaces "Submit for Review" (redundant, already
   // submitted) with the two sign-off escape hatches. Reviewers keep
   // their `primaryLabel` ("Sign & Save") and every other status keeps
@@ -59,7 +59,7 @@ export function HeaderActions({
   authorEditingSubmitted = false,
   // True when the reviewer is signing off a submitted note. Trims the
   // chevron menu to reviewer-appropriate actions only (Sign and Print)
-  // and drops the "Submit for Review" author action — the note is
+  // and drops the "Submit for Review" author action: the note is
   // already in review, the reviewer's job is to sign it.
   reviewerFlow = false,
 }) {
@@ -126,7 +126,7 @@ export function HeaderActions({
 export function TitleBlock({ title, statusLabel = 'In Progress', stacked = false, status = null }) {
   // Stacked variant is used by the sign-off review drawer so the title
   // reads the same way the read-only preview and the CareGap pane header
-  // do — main title on top, a small icon+text status row beneath —
+  // do: main title on top, a small icon+text status row beneath,
   // instead of an inline pill next to the title.
   if (stacked) {
     const stat = status === 'signed'
@@ -154,12 +154,12 @@ export function TitleBlock({ title, statusLabel = 'In Progress', stacked = false
   );
 }
 
-/* MultiUploadDropField — thin wrapper around UploadDropField that renders
+/* MultiUploadDropField: thin wrapper around UploadDropField that renders
    one completed-file card per uploaded document + one live Dropzone at
    the bottom for the next file. Each slot is its own UploadDropField
    instance (fresh `key` so its internal state is scoped to that slot).
    On the first successful upload we push another empty slot so the drop
-   area is always available. Clear a slot from its own trash icon —
+   area is always available. Clear a slot from its own trash icon,
    UploadDropField already handles that. */
 function MultiUploadDropField({ onFile }) {
   const [slots, setSlots] = useState([{ id: 0, hasFile: false }]);
@@ -187,7 +187,7 @@ function MultiUploadDropField({ onFile }) {
   );
 }
 
-/* AssigneeDisplay — read-only Avatar + full name used inside the
+/* AssigneeDisplay: read-only Avatar + full name used inside the
    ClinicalNotePanel's LHS Visit Notes table and the RHS active-gap
    header. Assignee changes on the clinical note itself aren't wired,
    so this replaces the interactive AssigneeChange chip: no hover, no
@@ -344,7 +344,7 @@ function GapRow({ gap, data, ready, mandatoryComplete, assignee, isActive, onSel
           checked={ready}
           disabled={!mandatoryComplete}
           onChange={onToggleReady}
-          ariaLabel={`Ready for review — ${gap.code}`}
+          ariaLabel={`Ready for review: ${gap.code}`}
         />
       </div>
     </div>
@@ -394,7 +394,7 @@ export function GapEvidencePane({ v }) {
               if (next && !mandatoryComplete) return;
               v.updateGap(gap.code, { manuallyOff: !next });
             }}
-            ariaLabel={`Ready for review — ${gap.code}`}
+            ariaLabel={`Ready for review: ${gap.code}`}
           />
           <span className={styles.gapEvidenceReadyLabel}>
             Ready for Review
@@ -443,10 +443,10 @@ export function GapEvidencePane({ v }) {
   );
 }
 
-/* ConsolidatedNoteBody — stacked authoring layout used when the author
+/* ConsolidatedNoteBody: stacked authoring layout used when the author
    clicks Edit on a Pending Review note (leftWorkspace mode
    'clinical-note-consolidated'). One shared DOS card at the top, then
-   one collapsible section per gap the submitted note bundled — each
+   one collapsible section per gap the submitted note bundled, each
    section reuses the same evidence-form component the single-gap
    workspace renders (EED, CBP, or the templated GenericEvidenceForm).
    Content hydrates from the submitted note's payload via
@@ -468,7 +468,7 @@ export function ConsolidatedNoteBody({ v }) {
   return (
     <div className={styles.consolidatedBody}>
       {/* Info banner is hoisted to CareGapDetailDrawer so it can sit as
-          a sibling of leftPaneBody — outside the padded, scrollable
+          a sibling of leftPaneBody: outside the padded, scrollable
           container. See the 'clinical-note-consolidated' branch there. */}
       <div ref={scrollRef} className={styles.consolidatedScroll}>
         <div className={styles.dosCard} data-section-id="dos">
@@ -537,7 +537,7 @@ export function ConsolidatedNoteBody({ v }) {
   );
 }
 
-/* Floating section jumper — pins to the bottom of the consolidated
+/* Floating section jumper: pins to the bottom of the consolidated
    authoring surface so the reviewer can hop between DOS and each gap
    section without hunting through a long scroll. Prev/Next arrows
    move one section at a time; the middle pill opens a MenuPopover
@@ -840,13 +840,13 @@ function EedEvidenceForm({ v, data, submitted }) {
 
       <FieldStack>
         <FieldLabel>Upload Evidence (if available):</FieldLabel>
-        <MultiUploadDropField onFile={() => v.showToast('Attach evidence — coming soon')} />
+        <MultiUploadDropField onFile={() => v.showToast('Attach evidence: coming soon')} />
       </FieldStack>
     </div>
   );
 }
 
-/* CBP Visit Note — Controlling Blood Pressure evidence form.
+/* CBP Visit Note: Controlling Blood Pressure evidence form.
    Backed by the "CBP Visit Note" template row (form_type='Note') seeded in
    supabase/forms_type_column_and_cbp_visit_note_migration.sql. */
 function CbpEvidenceForm({ v, data, submitted }) {
@@ -855,7 +855,7 @@ function CbpEvidenceForm({ v, data, submitted }) {
   const priorReading = '156/78 mmHg on 06/04/2026';
   return (
     <div className={styles.evidenceForm}>
-      {/* Initial Blood Pressure card — date + BP reading + location. */}
+      {/* Initial Blood Pressure card: date + BP reading + location. */}
       <div className={styles.cbpCard}>
         <div className={styles.cbpCardTitle}>Initial Blood Pressure</div>
         <div className={styles.cbpBpBlock}>
@@ -945,7 +945,7 @@ function CbpEvidenceForm({ v, data, submitted }) {
 
       <FieldStack>
         <FieldLabel>Upload Evidence (if available):</FieldLabel>
-        <MultiUploadDropField onFile={() => v.showToast('Attach evidence — coming soon')} />
+        <MultiUploadDropField onFile={() => v.showToast('Attach evidence: coming soon')} />
       </FieldStack>
     </div>
   );
@@ -970,7 +970,7 @@ function CbpRadioGroup({ label, value, options, onChange, error }) {
   );
 }
 
-/* GenericEvidenceForm — renders any gap whose fields live in
+/* GenericEvidenceForm: renders any gap whose fields live in
    GAP_TEMPLATES (utils). Backed by the parallel "{CODE} Visit Note"
    template rows seeded in
    supabase/hedis_gap_clinical_note_templates_seed.sql. Field types map to
@@ -983,7 +983,7 @@ function GenericEvidenceForm({ code, v, data, submitted }) {
   // Settings → Content → Notes edits reach the app immediately; fall
   // back to the JS constant when the DB hasn't been synced yet
   // (fresh clone, migration not run, etc.). Same descriptor shape in
-  // both places — see scripts/sync-note-templates.mjs.
+  // both places: see scripts/sync-note-templates.mjs.
   const dbTemplate = useAppStore(s => s.noteTemplatesByGap?.[code]);
   const dbFields = Array.isArray(dbTemplate?.schema?.items) ? dbTemplate.schema.items : null;
   const allFields = dbFields && dbFields.length ? dbFields : GAP_TEMPLATES[code];
@@ -1043,7 +1043,7 @@ function GenericEvidenceForm({ code, v, data, submitted }) {
       )}
       <FieldStack>
         <FieldLabel>Upload Evidence (if available):</FieldLabel>
-        <MultiUploadDropField onFile={() => v.showToast('Attach evidence — coming soon')} />
+        <MultiUploadDropField onFile={() => v.showToast('Attach evidence: coming soon')} />
       </FieldStack>
     </div>
   );
@@ -1193,7 +1193,7 @@ function FieldError({ children }) {
   return <div className={styles.fieldError}>{children}</div>;
 }
 
-/* Single-gap inline body — rendered inside CareGapDetailDrawer's left
+/* Single-gap inline body: rendered inside CareGapDetailDrawer's left
    workspace when the member has only one open gap. Reuses the DOS card and
    evidence form from the consolidated drawer; drops the visit-notes table
    and the "Common for all gaps" pill (both meaningless with one gap). */

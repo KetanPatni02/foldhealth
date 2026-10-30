@@ -69,7 +69,7 @@ const TAG_VARIANT_BY_TONE = {
 };
 
 function TagCell({ tags, tagsMore }) {
-  if (!tags?.length) return <span className={styles.mutedDash}>—</span>;
+  if (!tags?.length) return <span className={styles.mutedDash}>-</span>;
   return (
     <span className={styles.tagCell}>
       {tags.map(t => (
@@ -109,7 +109,7 @@ const CARE_PLAN_STATUS_LOOK = {
 // Statuses with a plan behind them, which open it in the Review drawer.
 const REVIEWABLE_CARE_PLAN = new Set(['Signed', 'Draft', 'On Hold']);
 function CarePlanStatusBadge({ status, pause }) {
-  if (!status) return <span className={styles.statusText}>—</span>;
+  if (!status) return <span className={styles.statusText}>-</span>;
   const look = CARE_PLAN_STATUS_LOOK[status];
   const badge = (
     <span className={`${styles.carePlanStatus} ${look?.className || styles.carePlanNone}`}>
@@ -192,7 +192,7 @@ export const SNP_MIDDLE_COLUMNS = [
     label: 'Next Action Due',
     sortKey: 'nextActionDueSort',
     sortType: 'date',
-    renderCell: (m) => <span className={styles.dateText}>{m.nextActionDue || '—'}</span>,
+    renderCell: (m) => <span className={styles.dateText}>{m.nextActionDue || '-'}</span>,
   },
   {
     key: 'outreach',
@@ -230,20 +230,20 @@ export const SNP_MIDDLE_COLUMNS = [
     label: 'Trigger Date',
     sortKey: 'triggerDateSort',
     sortType: 'date',
-    renderCell: (m) => <span className={styles.dateText}>{m.triggerDate || '—'}</span>,
+    renderCell: (m) => <span className={styles.dateText}>{m.triggerDate || '-'}</span>,
   },
   {
     key: 'lastAdmission',
     label: 'Last Admission',
     sortKey: 'lastAdmissionSort',
     sortType: 'date',
-    renderCell: (m) => <span className={styles.mutedDash}>{m.lastAdmission || '—'}</span>,
+    renderCell: (m) => <span className={styles.mutedDash}>{m.lastAdmission || '-'}</span>,
   },
   {
     key: 'trigger',
     label: 'Trigger',
     sortKey: 'trigger',
-    renderCell: (m) => <span className={styles.triggerText}>{m.trigger || '—'}</span>,
+    renderCell: (m) => <span className={styles.triggerText}>{m.trigger || '-'}</span>,
   },
   {
     key: 'riskIq',
@@ -264,7 +264,7 @@ export const SNP_MIDDLE_COLUMNS = [
     renderCell: (m) => (
       m.taskCount
         ? <button type="button" className={styles.taskLink} onClick={e => e.stopPropagation()}>{m.taskCount}</button>
-        : <span className={styles.mutedDash}>—</span>
+        : <span className={styles.mutedDash}>-</span>
     ),
   },
 ];
@@ -316,7 +316,7 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
 
   const handleRowClick = () => {
     if (m.patientId) navigateToPatient(m.patientId);
-    else showToast(`${m.name} — no linked patient record yet`);
+    else showToast(`${m.name}, no linked patient record yet`);
   };
 
   const openInCareProgram = (e) => {

@@ -24,7 +24,7 @@ import styles from './PAMIHxTab.module.css';
 
 const NOOP = () => {};
 
-// — Static data —
+// Static data,
 //
 // Recent Clinical Events and Lab / Imaging Reports have no source to read from
 // yet, so they show fixed sample rows for every patient. Their sections keep
@@ -48,7 +48,7 @@ const IMAGING_REPORTS = [
   { id: 'ir2', title: 'Abdominal Ultrasound', issuedOn: '2024-08-15' },
 ];
 
-// — Shared primitives —
+// Shared primitives,
 
 function Badge({ label }) {
   return <span className={styles.badge}>{label}</span>;
@@ -171,7 +171,7 @@ function AddBtn({ onClick, disabled }) {
   );
 }
 
-// — Row components —
+// Row components,
 
 function ClinicalEventRow({ event }) {
   return (
@@ -386,7 +386,7 @@ function reportColumns(nameLabel) {
   ];
 }
 
-// — Section components —
+// Section components,
 
 function RecentClinicalEvents({ updates, loading }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -421,7 +421,7 @@ function ProblemsSection({ patientId }) {
   useEffect(() => { if (patientId) fetchPatientProblems(patientId); }, [patientId, fetchPatientProblems]);
 
   const problems = useMemo(() => storeProblems || [], [storeProblems]);
-  // Controlled stays on the active list — see the Add Problems drawer.
+  // Controlled stays on the active list, see the Add Problems drawer.
   const active = problems.filter(p => p.status !== 'Resolved');
   const resolvedCount = problems.filter(p => p.status === 'Resolved').length;
   const loading = !!patientId && !loadedFor;

@@ -28,7 +28,7 @@ describe('parseLocalDate', () => {
     expect(parseLocalDate(null)).toBeNull();
     expect(parseLocalDate(undefined)).toBeNull();
     expect(parseLocalDate('')).toBeNull();
-    expect(parseLocalDate('—')).toBeNull();
+    expect(parseLocalDate('-')).toBeNull();
     expect(localDateMs('nope')).toBeNaN();
   });
 });

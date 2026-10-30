@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import styles from './Tooltip.module.css';
 
 /**
- * Tooltip — lightweight portaled hover/focus tooltip.
+ * Tooltip: lightweight portaled hover/focus tooltip.
  *
  * Wraps a single trigger element (usually a button) and renders a small
  * dark bubble above it on hover / keyboard focus, with a 120ms open delay
@@ -18,7 +18,7 @@ import styles from './Tooltip.module.css';
  *             vertically on the trigger.
  *  - className (string)  Optional class on the inline wrapper span.
  *  - maxWidth (number)  Wrap long content at this pixel width (default is a
- *             single nowrap line — pass this for sentence-length tooltips).
+ *             single nowrap line: pass this for sentence-length tooltips).
  *  - align   ('center' | 'left' | 'right')  Horizontal anchoring. Defaults to
  *             centring on the trigger; 'right' pins the bubble's right edge to
  *             the trigger's, for triggers near the right edge of a panel where

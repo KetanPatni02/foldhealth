@@ -9,7 +9,7 @@ export function EmailIframe({ html, renderWidth, theme = 'light' }) {
   const [scale, setScale] = useState(1);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
-  // Preview surface mirrors the in-component theme toggle, not the app theme —
+  // Preview surface mirrors the in-component theme toggle, not the app theme,
   // recipients see emails on a device with its own light/dark setting, so the
   // iframe and its wrapper must paint together to prevent a white flash before
   // the email HTML loads.
@@ -17,7 +17,7 @@ export function EmailIframe({ html, renderWidth, theme = 'light' }) {
 
   // Inject a thin transparent scrollbar into the iframe document so the email
   // preview doesn't render with the OS-default scrollbar (which paints as a
-  // wide dark bar over the rendered design). Preview-only — does not affect
+  // wide dark bar over the rendered design). Preview-only, does not affect
   // the actual email HTML delivered to recipients. Always prepended (no head
   // matching) and forced with !important so we win the cascade vs whatever
   // styles the email template ships with.
@@ -32,7 +32,7 @@ export function EmailIframe({ html, renderWidth, theme = 'light' }) {
     ::-webkit-scrollbar-thumb:hover { background: ${scrollbarThumbHover} !important; background-clip: padding-box !important; }
   </style>`;
 
-  // Render the email HTML via srcdoc + sandbox — isolates the iframe from the
+  // Render the email HTML via srcdoc + sandbox, isolates the iframe from the
   // parent origin so any <script> in the email markup cannot run in the app.
   // Always prepend the scrollbar style; HTML parsers tolerate <style> outside
   // <head> and hoist it.
@@ -140,7 +140,7 @@ export function DevicePreview({ device }) {
   const htmlOverride = useAppStore(s => s.htmlPreviewOverride);
   const stageRef = useRef(null);
   const [stageW, setStageW] = useState(0);
-  // Theme override for the device preview — lets the user see how the email
+  // Theme override for the device preview, lets the user see how the email
   // would render on a device with system dark mode versus light mode without
   // changing their actual OS theme.
   const [theme, setTheme] = useState('light');

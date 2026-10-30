@@ -88,7 +88,7 @@ export function CallsView() {
     if (row.patientId) {
       openDetail(row.patientId, row);
     } else {
-      showToast('Call details — coming soon');
+      showToast('Call details: coming soon');
     }
   };
 

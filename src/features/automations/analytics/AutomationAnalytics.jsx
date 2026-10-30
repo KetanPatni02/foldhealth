@@ -217,7 +217,7 @@ export function AutomationAnalytics({ id }) {
           >
             <div className={styles.tiles} style={{ '--tile-count': 3 }}>
               <KpiTile label="Total executions" icon="solar:bolt-linear" value={num(ov.total)} />
-              <KpiTile label="Success ratio" icon="solar:check-square-linear" value={ov.successRatio == null ? '—' : `${ov.successRatio}%`} info={ov.successRatio == null ? null : 'Completed members out of members who finished (completed or failed).'} />
+              <KpiTile label="Success ratio" icon="solar:check-square-linear" value={ov.successRatio == null ? '-' : `${ov.successRatio}%`} info={ov.successRatio == null ? null : 'Completed members out of members who finished (completed or failed).'} />
               <KpiTile label="Time saved" icon="solar:clock-circle-linear" value={formatSaved(ov.minutesSaved)} />
             </div>
             <StatusDonut

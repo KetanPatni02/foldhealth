@@ -127,7 +127,7 @@ export function IcdRowExpansionPanel({
               <button
                 type="button"
                 className={styles.meatBtn}
-                onClick={() => showToast('Saved as draft — wiring in a follow-up.')}
+                onClick={() => showToast('Saved as draft: wiring in a follow-up.')}
               >
                 <Icon name="solar:notes-linear" size={12} color="var(--neutral-300)" />
                 <span>Save as Draft</span>

@@ -11,7 +11,7 @@ import { applyFontMappings } from './htmlToDocument';
 // the user to map each to a font the builder can load. On confirm we
 // rewrite the pending doc with the chosen substitutions and commit it via
 // setEmailDocument. Skipping leaves the original (unrenderable) font name
-// in place — the renderer falls back to Inter, which is safe.
+// in place: the renderer falls back to Inter, which is safe.
 export function FontSubstitutionDialog() {
   const pendingFontDoc = useAppStore(s => s.pendingFontDoc);
   const pendingUnknownFonts = useAppStore(s => s.pendingUnknownFonts);
@@ -19,7 +19,7 @@ export function FontSubstitutionDialog() {
   const closeFontSubstitutionDialog = useAppStore(s => s.closeFontSubstitutionDialog);
   const setEmailDocument = useAppStore(s => s.setEmailDocument);
 
-  // Default every unknown font to Inter — the existing builder default —
+  // Default every unknown font to Inter, the existing builder default,
   // so a single Confirm click works.
   const [mappings, setMappings] = useState(() =>
     Object.fromEntries(pendingUnknownFonts.map(f => [f, 'Inter']))

@@ -133,7 +133,7 @@ export function ProgramDiagnosisGapsTable({ memberName, search }) {
   }, [memberName]);
 
   // Options are derived from the full unfiltered set so a picker never
-  // hides a value the user might want to add — narrowing on Measure Year
+  // hides a value the user might want to add, narrowing on Measure Year
   // doesn't collapse the HCC dropdown to a single row.
   const filterMeta = useMemo(() => {
     const yearSet = new Set();
@@ -170,7 +170,7 @@ export function ProgramDiagnosisGapsTable({ memberName, search }) {
     const end = parseLocalDate(rangeEnd);
 
     return allGroups.filter(g => {
-      // Group-level HCC filter — the whole HCC row drops out when its
+      // Group-level HCC filter: the whole HCC row drops out when its
       // label isn't in the picked set.
       if (hccActive && !filters.hcc.includes(g.raw)) return false;
 

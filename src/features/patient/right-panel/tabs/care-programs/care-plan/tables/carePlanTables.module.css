@@ -1,4 +1,4 @@
-/* Care-plan GBI tables — WorklistShell rows styled to Figma SNP-Story 8444:300069. */
+/* Care-plan GBI tables: WorklistShell rows styled to Figma SNP-Story 8444:300069. */
 
 .tableWrap {
   border: 0.5px solid var(--neutral-150);
@@ -109,7 +109,7 @@
   max-width: var(--gbi-col-progress);
   text-align: left;
   vertical-align: middle;
-  /* Progress + Adherence read-only — cancel the row's pointer cursor
+  /* Progress + Adherence read-only: cancel the row's pointer cursor
      so the affordance only shows on truly interactive cells (Title,
      Target/Due date, Assigned To, Status, Actions). */
   cursor: default;
@@ -124,7 +124,7 @@
   max-width: var(--gbi-col-value);
   vertical-align: middle;
 }
-/* Goals table date columns — Start + Target. Width is set by the
+/* Goals table date columns: Start + Target. Width is set by the
    column definitions (GBI_COL_DATE_WIDTH for Start, GBI_COL_WIDTH.assignee
    for Target) so they line up column-for-column with the intervention
    table's Due Date + Assigned To slots. This cell only owns padding +
@@ -160,7 +160,7 @@
   text-align: center;
 }
 
-/* Barriers table — shares GBI row + name cell patterns */
+/* Barriers table: shares GBI row + name cell patterns */
 .barrierStatusTd {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
   border-left: none;
@@ -309,14 +309,14 @@
   width: 16px;
   height: 16px;
 }
-/* Intervention title's subline — start date + duration. 12px in the
+/* Intervention title's subline: start date + duration. 12px in the
    grey200 hint color per spec (overrides the shared .nameSecondary
    default neutral-300 without leaking to Goals/Barriers). */
 .intvSubMeta {
   font-size: var(--font-sm);
   color: var(--neutral-200);
 }
-/* Due Date column — plain read-only text. Aligns to the left with
+/* Due Date column: plain read-only text. Aligns to the left with
    the Due Date header, uses the same 14px / neutral-300 hint tone
    that every other read-only date cell in the app reads in. */
 .dueDateText {
@@ -325,18 +325,18 @@
   font-size: var(--font-sm);
   font-variant-numeric: tabular-nums;
   /* Read-only date (Start Date, and any date cell without an editable
-     button) — cancel the row's pointer cursor so hovering doesn't
+     button): cancel the row's pointer cursor so hovering doesn't
      promise a click that isn't wired. */
   cursor: default;
 }
-/* Due Date cell wrapper — pairs the date label with the recurring
+/* Due Date cell wrapper: pairs the date label with the recurring
    glyph so cadence reads inline with the schedule. */
 .dueDateCell {
   display: inline-flex;
   align-items: center;
   gap: calc(var(--space-1) / 2);
 }
-/* Editable date cell — inherits the read-only date's tone so the
+/* Editable date cell: inherits the read-only date's tone so the
    column reads calm at rest and lights up primary on hover to
    telegraph the click affordance. */
 .dateBtn {
@@ -470,7 +470,7 @@
   color: var(--neutral-300);
 }
 
-/* Intervention table — shares GBI row + name cell patterns */
+/* Intervention table: shares GBI row + name cell patterns */
 .intvNameHeader {
   display: inline-flex;
   align-items: center;
@@ -522,7 +522,7 @@
 .metaDateOverdue {
   color: var(--status-error);
 }
-/* Editable date — same hover target as the status / priority buttons. */
+/* Editable date: same hover target as the status / priority buttons. */
 .metaDateBtn {
   padding: 0 var(--space-1);
   margin: 0 calc(-1 * var(--space-1));
@@ -577,7 +577,7 @@
   flex-shrink: 0;
 }
 
-/* Completed group toggle — sits inside the table body as a full-width row. */
+/* Completed group toggle: sits inside the table body as a full-width row. */
 .completedToggleRow {
   border-top: 0.5px solid var(--neutral-100);
 }

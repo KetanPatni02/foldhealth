@@ -89,12 +89,12 @@ export function DocToolbar({ batch, setSelectedAll, showToast }) {
 
 /**
  * Left-panel preview. Shows a stack of "scanned pages" for the active
- * document — one card per encounter page. Clicking a card brings the
+ * document: one card per encounter page. Clicking a card brings the
  * preview into focus (currently just visual; future enhancement could
  * scroll-sync with the table).
  */
 /**
- * DocSwitcher — dropdown-style selector inside the preview header.
+ * DocSwitcher: dropdown-style selector inside the preview header.
  * Replaces the top tab strip. Clicking the active filename opens a
  * popover listing every batch with its status icon (pending / ready /
  * flagged), encounter count, and a "current" marker on the active
@@ -131,7 +131,7 @@ export function DocSwitcher({ activeBatch, batches, onSelect }) {
             <Icon name="solar:document-text-linear" size={13} color="var(--primary-300)" />
           )}
         </span>
-        <span className={styles.switcherName}>{activeBatch?.fileName || '—'}</span>
+        <span className={styles.switcherName}>{activeBatch?.fileName || '-'}</span>
         {multi && (
           <>
             <span className={styles.switcherCounter}>
@@ -235,11 +235,11 @@ export function PagePreview({ activeBatch, batches, onSelect, previewRef }) {
             {encs.map((enc, i) => (
               <div key={enc.tempId || i} className={styles.previewPageEnc} data-preview-enc={enc.tempId}>
                 <div className={styles.previewPageMeta}>
-                  <div data-preview-field="patient"><strong>Patient:</strong> {enc.patient?.name || '—'}</div>
-                  <div data-preview-field="dob"><strong>DOB:</strong> {enc.patient?.dob || '—'}</div>
-                  <div data-preview-field="dos"><strong>DOS:</strong> {enc.dos || '—'}</div>
-                  <div data-preview-field="provider"><strong>Provider:</strong> {enc.provider || '—'}</div>
-                  <div data-preview-field="pos"><strong>POS:</strong> {enc.pos || '—'}{enc.posDesc ? ` — ${enc.posDesc}` : ''}</div>
+                  <div data-preview-field="patient"><strong>Patient:</strong> {enc.patient?.name || '-'}</div>
+                  <div data-preview-field="dob"><strong>DOB:</strong> {enc.patient?.dob || '-'}</div>
+                  <div data-preview-field="dos"><strong>DOS:</strong> {enc.dos || '-'}</div>
+                  <div data-preview-field="provider"><strong>Provider:</strong> {enc.provider || '-'}</div>
+                  <div data-preview-field="pos"><strong>POS:</strong> {enc.pos || '-'}{enc.posDesc ? `, ${enc.posDesc}` : ''}</div>
                 </div>
                 <div className={styles.previewPageSection} data-preview-field="icds">
                   <h3 className={styles.previewPageH2}>Assessment &amp; Plan</h3>
@@ -262,7 +262,7 @@ export function PagePreview({ activeBatch, batches, onSelect, previewRef }) {
 }
 
 /**
- * Right-panel table — slimmer cousin of the main upload-review table.
+ * Right-panel table: slimmer cousin of the main upload-review table.
  * Renders one row per encounter with Member · DOS · Provider · POS ·
  * ICDs · Action, each with the per-field confidence chip the main
  * drawer uses.
@@ -467,7 +467,7 @@ export function SftpRow({ enc, hccMembers, onPatch, onRemove, showToast, checked
 }
 
 /**
- * DocReviewCompleted — empty-state hero shown in the Pending tab
+ * DocReviewCompleted: empty-state hero shown in the Pending tab
  * once every encounter on the active document has been triaged
  * (added / deleted). Matches Figma 180:63466.
  */
@@ -505,9 +505,9 @@ export function DocReviewCompleted({ total, nextBatch, onPickNext, onBackToWorkl
 }
 
 /**
- * Document Review patient card — one card per patient. Header shows
- * the matched member identity once, followed by N "encounter blocks"
- * — one per DOS surfaced in this document. Each block carries its own
+ * Document Review patient card: one card per patient. Header shows
+ * the matched member identity once, followed by N "encounter blocks",
+ * one per DOS surfaced in this document. Each block carries its own
  * Ready/Mismatch/Error pill, per-DOS actions, and the editable field
  * grid (DOS · ICD · Provider · POS · Category). Single-DOS patients
  * render with no DOS-count chip and no separators.
@@ -533,7 +533,7 @@ export function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWor
 
   return (
     <div className={styles.encCard}>
-      {/* Patient row — avatar, identity, per-record "Missing Field" badge,
+      {/* Patient row: avatar, identity, per-record "Missing Field" badge,
           overflow menu. No inline buttons here per parity spec; actions
           live in the bottom bar. */}
       <div className={styles.encCardHead}>
@@ -543,7 +543,7 @@ export function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWor
           <div className={styles.encCardMeta}>
             {member?.g || ''} <span className={styles.encCardMetaDot}>•</span>
             {member?.age || ''} <span className={styles.encCardMetaDot}>•</span>
-            #{first?.patient?.patientId || first?.patient?.matchedMemberDisplayId || '—'}
+            #{first?.patient?.patientId || first?.patient?.matchedMemberDisplayId || '-'}
           </div>
         </div>
         {anyMissing && (
@@ -553,11 +553,11 @@ export function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWor
           size="sm"
           icon="solar:menu-dots-linear"
           tooltip="More"
-          onClick={() => showToast?.('More actions — coming soon')}
+          onClick={() => showToast?.('More actions: coming soon')}
         />
       </div>
 
-      {/* One collapsible card per DOS — header, Documents subsection,
+      {/* One collapsible card per DOS: header, Documents subsection,
           2×2 field grid with confidence badges, and per-DOS ICD list. */}
       {group.encs.map((enc, i) => (
         <EncounterBlock
@@ -573,17 +573,17 @@ export function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWor
         />
       ))}
 
-      {/* "+ Add More DOS" affordance — dashed tinted button. */}
+      {/* "+ Add More DOS" affordance: dashed tinted button. */}
       <button
         type="button"
         className={styles.addMoreDos}
-        onClick={() => showToast?.('Add another DOS — coming soon')}
+        onClick={() => showToast?.('Add another DOS: coming soon')}
       >
         <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
         Add More DOS
       </button>
 
-      {/* Bottom action bar — Delete Record on the left, Add to the
+      {/* Bottom action bar: Delete Record on the left, Add to the
           Worklist on the right (disabled until at least one DOS is Ready). */}
       <div className={styles.encCardFooter}>
         <Button variant="outline" tone="primary" size="sm" leadingIcon="solar:trash-bin-trash-linear" onClick={handleDeleteRecord}>
@@ -609,7 +609,7 @@ export function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWor
 /**
  * Status badge with a hover tooltip explaining *why* this row is
  * flagged. Tooltip is portaled to escape the card's overflow. No tip
- * when `reason` is empty (e.g. Ready rows) — just renders the Badge.
+ * when `reason` is empty (e.g. Ready rows), just renders the Badge.
  */
 export function StatusBadgeWithTip({ variant, icon, label, reason, tone }) {
   const wrapRef = useRef(null);
@@ -664,7 +664,7 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
 
   return (
     <div className={[styles.encBlock, isFirst ? '' : styles.encBlockSep].join(' ')}>
-      {/* Collapsible header — chevron, "DOS: <date>", status pill, trash. */}
+      {/* Collapsible header: chevron, "DOS: <date>", status pill, trash. */}
       <div className={styles.dosCardHead}>
         <button
           type="button"
@@ -679,7 +679,7 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
             style={collapsed ? { transform: 'rotate(-90deg)' } : undefined}
           />
         </button>
-        <span className={styles.dosCardTitle}>DOS: {enc.dos || '—'}</span>
+        <span className={styles.dosCardTitle}>DOS: {enc.dos || '-'}</span>
         <Badge size="M"
           variant={status === 'ready' ? 'status-completed' : status === 'mismatch' ? 'status-review' : 'status-review'}
           icon={status === 'ready' ? 'solar:check-circle-bold' : 'solar:hourglass-line-linear'}
@@ -691,13 +691,13 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
 
       {!collapsed && (
         <div className={styles.dosCardBody}>
-          {/* Documents subsection — label + Upload text link + document card. */}
+          {/* Documents subsection: label + Upload text link + document card. */}
           <div className={styles.dosDocsHead}>
             <span className={styles.dosSectionLabel}>Documents</span>
             <button
               type="button"
               className={styles.dosUploadLink}
-              onClick={() => showToast?.('Upload document — coming soon')}
+              onClick={() => showToast?.('Upload document: coming soon')}
             >
               <Icon name="solar:upload-minimalistic-linear" size={12} color="var(--primary-300)" />
               Upload
@@ -708,9 +708,9 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
               <PdfDocIcon />
             </span>
             <div className={styles.dosDocMain}>
-              <div className={styles.dosDocName}>{activeBatch?.fileName || '—'}</div>
+              <div className={styles.dosDocName}>{activeBatch?.fileName || '-'}</div>
               <div className={styles.dosDocMeta}>
-                {shortDateOrRaw(activeBatch?.ingestedAt) || '—'}
+                {shortDateOrRaw(activeBatch?.ingestedAt) || '-'}
                 {activeBatch?.source === 'sftp' && <>&nbsp;•&nbsp;Imported via SFTP</>}
               </div>
             </div>
@@ -718,11 +718,11 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
               size="sm"
               icon="solar:menu-dots-linear"
               tooltip="More"
-              onClick={() => showToast?.('Document actions — coming soon')}
+              onClick={() => showToast?.('Document actions: coming soon')}
             />
           </div>
 
-          {/* 2×2 field grid — DOS + Rendering Provider on the top row,
+          {/* 2×2 field grid: DOS + Rendering Provider on the top row,
               POS + Document Type on the bottom row. Each label carries a
               percent confidence badge with the source-page citation. */}
           <div className={styles.dosFieldGrid}>
@@ -794,7 +794,7 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
             </PctFieldBlock>
           </div>
 
-          {/* ICD Codes section — full-width search then list of rows. */}
+          {/* ICD Codes section: full-width search then list of rows. */}
           <div className={styles.dosIcdSection}>
             <span className={styles.dosSectionLabel}>ICD Codes</span>
             <IcdSearch
@@ -830,7 +830,7 @@ export function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite
           {enc._duplicateOfMemberId && (
             <span className={styles.encDupWarn} title="Same DOS + Provider + POS already exists for this member">
               <Icon name="solar:danger-triangle-bold" size={11} color="var(--status-warning)" />
-              Possible duplicate — review before adding
+              Possible duplicate: review before adding
             </span>
           )}
         </div>
@@ -848,7 +848,7 @@ export function shortDateOrRaw(iso) {
   return `${p(d.getMonth() + 1)}/${p(d.getDate())}/${d.getFullYear()}`;
 }
 
-// Custom PDF glyph — mirrors the badge used on the upload drawer's
+// Custom PDF glyph: mirrors the badge used on the upload drawer's
 // document rows so both surfaces read consistently.
 export function PdfDocIcon() {
   return (
@@ -881,13 +881,13 @@ export function PctFieldBlock({ label, required, confidence, sourcePage, onCite,
   );
 }
 
-// Confidence percentage badge — meter icon + "44%" in tier tint.
+// Confidence percentage badge: meter icon + "44%" in tier tint.
 // Cutoffs match the AI's tier reporter: ≥85 High (green), ≥60 Medium
 // (amber), else Low (red). No value → dashed placeholder so the field
 // still balances with its siblings.
 export function ConfPct({ score, sourcePage, onCite }) {
   if (typeof score !== 'number' || score === 0) {
-    return <span className={styles.confPctEmpty}>—</span>;
+    return <span className={styles.confPctEmpty}>-</span>;
   }
   const tier = score >= 85 ? 'high' : score >= 60 ? 'medium' : 'low';
   const cls = [
@@ -922,7 +922,7 @@ export function ConfPct({ score, sourcePage, onCite }) {
 }
 
 /**
- * FieldBlock — label + confidence pill + input slot. The pill shows
+ * FieldBlock: label + confidence pill + input slot. The pill shows
  * the AI's High/Medium/Low confidence tier for this field and, when
  * the encounter has a sourcePage, doubles as a citation affordance:
  * hover reveals "Source · Page N", click scrolls the left-pane PDF
@@ -945,12 +945,12 @@ export function FieldBlock({ label, required, confidence, sourcePage, onCite, ch
 }
 
 /**
- * ConfPill — replaces the old percent-based gauge with a plain
+ * ConfPill: replaces the old percent-based gauge with a plain
  * High/Medium/Low label, mirroring how the AI's underlying tier model
  * actually reports confidence (the percent number was always derived
  * from the same tier mapping anyway, so showing it was misleading
  * precision). When a sourcePage is available the pill becomes a
- * button with a hover tooltip ("Source · Page N — Click to view")
+ * button with a hover tooltip ("Source · Page N: Click to view")
  * and clicking it fires `onCite` which scrolls the left-pane preview
  * to that page and highlights the cited encounter row.
  */
@@ -964,7 +964,7 @@ export function ConfPill({ score, sourcePage, onCite }) {
     setPos({ left: r.left, top: r.bottom + 6 });
   }, [hover]);
   if (typeof score !== 'number' || score === 0) {
-    return <span className={styles.confPillEmpty}>—</span>;
+    return <span className={styles.confPillEmpty}>-</span>;
   }
   const tier = score >= 85 ? 'high' : score >= 60 ? 'medium' : 'low';
   const label = tier === 'high' ? 'High' : tier === 'medium' ? 'Medium' : 'Low';

@@ -7,7 +7,7 @@
   overflow: hidden;
 }
 
-/* Templates + problems bar — sits above the scroll area so it stays
+/* Templates + problems bar: sits above the scroll area so it stays
    pinned without needing position: sticky and without stealing scroll
    from the content column. */
 .stickyTop {
@@ -35,7 +35,7 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 
-/* Applied-template strip — templates in apply order on one row; "View More"
+/* Applied-template strip: templates in apply order on one row; "View More"
    appears on the right only when the row overflows. */
 .templatePriorityBar {
   display: flex;
@@ -60,7 +60,7 @@
   gap: var(--space-1);
   padding: var(--space-1) var(--space-3);
 }
-/* Collapsed strip keeps chips on a single line — anything past the row
+/* Collapsed strip keeps chips on a single line, anything past the row
    width clips out and stays hidden until the user hits "View All". */
 .priorityChipsCollapsed {
   flex-wrap: nowrap;
@@ -184,7 +184,7 @@
   margin-left: auto;
 }
 
-/* ── Care Note (Figma 2562:60104) — always shows the latest plan-level
+/* ── Care Note (Figma 2562:60104), always shows the latest plan-level
  *    note; the "+" opens the edit / add drawer, and every save is
  *    appended to the audit log as a change entry. ── */
 .careNoteSection {
@@ -258,7 +258,7 @@
   font-size: var(--font-sm);
   color: var(--neutral-200);
 }
-/* Change log inside the Add Note drawer — the shared ActivityLog
+/* Change log inside the Add Note drawer, the shared ActivityLog
    renders every past note (newest first) so users can trace edits. */
 .noteTimeline {
   display: flex;
@@ -754,7 +754,7 @@
   color: var(--neutral-300);
 }
 
-/* Figma SNP-Story 8430:288488 — per-section dashed empty card. */
+/* Figma SNP-Story 8430:288488, per-section dashed empty card. */
 .sectionEmpty {
   display: flex;
   flex-direction: column;
@@ -792,7 +792,7 @@
   gap: var(--space-4);
   margin-top: var(--space-3);
 }
-/* Left-aligned primary-first footer (Save · Cancel) — avoids shadcn
+/* Left-aligned primary-first footer (Save · Cancel): avoids shadcn
    DialogFooter’s default sm:justify-end fighting caller overrides. */
 .templateDialogFooter {
   display: flex;

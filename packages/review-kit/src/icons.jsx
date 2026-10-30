@@ -1,4 +1,4 @@
-// Clean outline icon set — one confident 1.75px stroke, round caps and joins,
+// Clean outline icon set: one confident 1.75px stroke, round caps and joins,
 // no fills, no overlapping shapes. Drawn on a 24x24 canvas at currentColor so
 // they pick up the host theme. Hosts can replace any slot via the `icons` prop.
 const base = {
@@ -13,7 +13,7 @@ const base = {
   'aria-hidden': true,
 };
 
-// Pick / select — a corner-marked frame with an arrow in it.
+// Pick / select: a corner-marked frame with an arrow in it.
 export const PickIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M4 9V6a2 2 0 0 1 2-2h3" />
@@ -23,7 +23,7 @@ export const PickIcon = (p) => (
   </svg>
 );
 
-// Screenshot — a clean camera outline.
+// Screenshot: a clean camera outline.
 export const CameraIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M4 9a2 2 0 0 1 2-2h2l1.5-2h5l1.5 2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
@@ -31,7 +31,7 @@ export const CameraIcon = (p) => (
   </svg>
 );
 
-// Upload — tray with an arrow pointing up.
+// Upload: tray with an arrow pointing up.
 export const UploadIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M12 15V4" />
@@ -40,21 +40,21 @@ export const UploadIcon = (p) => (
   </svg>
 );
 
-// Close — a clean X.
+// Close: a clean X.
 export const CloseIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M6 6l12 12M18 6 6 18" />
   </svg>
 );
 
-// Minimize — a single bar.
+// Minimize: a single bar.
 export const CollapseIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M5 12h14" />
   </svg>
 );
 
-// Chevron — a clean arrow, rotatable.
+// Chevron: a clean arrow, rotatable.
 export const ChevronIcon = ({ direction = 'left', ...p }) => (
   <svg
     {...base}
@@ -68,7 +68,7 @@ export const ChevronIcon = ({ direction = 'left', ...p }) => (
   </svg>
 );
 
-// Grip handle — six solid dots.
+// Grip handle: six solid dots.
 export const GripIcon = (p) => (
   <svg {...base} {...p} fill="currentColor" stroke="none">
     <circle cx="9" cy="7" r="1.3" />
@@ -80,7 +80,7 @@ export const GripIcon = (p) => (
   </svg>
 );
 
-// Pen — clean pencil outline.
+// Pen: clean pencil outline.
 export const PenIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M4 20l1-4.5L15.8 4.7a1.4 1.4 0 0 1 2 0l1.5 1.5a1.4 1.4 0 0 1 0 2L8.5 19z" />
@@ -88,7 +88,7 @@ export const PenIcon = (p) => (
   </svg>
 );
 
-// Bold — a clean B shape, no overlapping fills.
+// Bold: a clean B shape, no overlapping fills.
 export const BoldIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M7 5h6a3.5 3.5 0 0 1 0 7H7z" />
@@ -96,7 +96,7 @@ export const BoldIcon = (p) => (
   </svg>
 );
 
-// Italic — slant with serif bars.
+// Italic: slant with serif bars.
 export const ItalicIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M10 5h8" />
@@ -105,7 +105,7 @@ export const ItalicIcon = (p) => (
   </svg>
 );
 
-// Underline — U with a baseline.
+// Underline: U with a baseline.
 export const UnderlineIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M7 4v7a5 5 0 0 0 10 0V4" />
@@ -113,7 +113,7 @@ export const UnderlineIcon = (p) => (
   </svg>
 );
 
-// Strike — bar with soft terminals.
+// Strike: bar with soft terminals.
 export const StrikeIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M4 12h16" />
@@ -122,7 +122,7 @@ export const StrikeIcon = (p) => (
   </svg>
 );
 
-// Bullet list — solid dots + bars.
+// Bullet list: solid dots + bars.
 export const BulletListIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M10 6h10M10 12h10M10 18h10" />
@@ -132,7 +132,7 @@ export const BulletListIcon = (p) => (
   </svg>
 );
 
-// Ordered list — simple 1 / 2 markers + bars.
+// Ordered list: simple 1 / 2 markers + bars.
 export const OrderedListIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M10 6h10M10 12h10M10 18h10" />
@@ -141,7 +141,7 @@ export const OrderedListIcon = (p) => (
   </svg>
 );
 
-// Link — two chain segments.
+// Link: two chain segments.
 export const LinkIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
@@ -149,7 +149,7 @@ export const LinkIcon = (p) => (
   </svg>
 );
 
-// Code — angle brackets.
+// Code: angle brackets.
 export const CodeIcon = (p) => (
   <svg {...base} {...p}>
     <path d="m8.5 7.5-5 4.5 5 4.5" />
@@ -157,7 +157,7 @@ export const CodeIcon = (p) => (
   </svg>
 );
 
-// Plus — clean +.
+// Plus: clean +.
 export const PlusIcon = (p) => (
   <svg {...base} {...p}>
     <path d="M12 5v14M5 12h14" />

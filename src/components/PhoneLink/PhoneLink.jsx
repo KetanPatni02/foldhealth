@@ -10,14 +10,14 @@ import styles from './PhoneLink.module.css';
  * from. `onDial` runs when they press Call Now, so the caller can log it.
  *
  * Props:
- *  - number  string — display format, e.g. "(626) 555-0190"
- *  - label   string — who is being called, for the accessible name
- *  - onDial  () => void — optional
+ *  - number  string: display format, e.g. "(626) 555-0190"
+ *  - label   string: who is being called, for the accessible name
+ *  - onDial  () => void: optional
  */
 export function PhoneLink({ number, label, onDial }) {
   const openNumberCallPopover = useAppStore(s => s.openNumberCallPopover);
   const btnRef = useRef(null);
-  if (!number) return <span className={styles.empty}>—</span>;
+  if (!number) return <span className={styles.empty}>-</span>;
   return (
     <button
       ref={btnRef}

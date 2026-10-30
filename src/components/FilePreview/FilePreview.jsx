@@ -8,7 +8,7 @@ import { openSafeUrl } from '../../lib/openSafeUrl';
 import { useStorageUrl, parseStorageUrl } from '../../lib/storageUrl';
 
 /**
- * FilePreview — inline viewer for a document URL (object URL, Supabase
+ * FilePreview: inline viewer for a document URL (object URL, Supabase
  * Storage public URL, or bundled /charts asset). Routes by file type so a
  * preview NEVER turns into a browser download:
  *
@@ -16,7 +16,7 @@ import { useStorageUrl, parseStorageUrl } from '../../lib/storageUrl';
  *   - pdf (incl. blob:)   → <iframe>
  *   - docx                → rendered to HTML client-side via mammoth
  *   - anything else (doc, xls, csv, tiff, …) → fallback card with an
- *     explicit "Open in new tab" action — the browser may download there,
+ *     explicit "Open in new tab" action: the browser may download there,
  *     but only on a deliberate click, never on preview open.
  *
  * Extension is resolved from `ext` → `name` → the URL's pathname, so

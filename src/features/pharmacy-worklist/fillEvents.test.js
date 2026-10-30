@@ -17,7 +17,7 @@ describe('Recent Fill outcomes', () => {
     expect(setsRecentFill(PICKUP)).toBe(true);
     expect(setsRecentFill('Confirmed medication pickup')).toBe(true);
     expect(setsRecentFill(APPROVAL)).toBe(false);
-    expect(setsRecentFill('Pharmacy · Pending — Refill approval')).toBe(false);
+    expect(setsRecentFill('Pharmacy · Pending: Refill approval')).toBe(false);
     expect(setsRecentFill('UTC')).toBe(false);
   });
 

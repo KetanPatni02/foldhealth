@@ -30,7 +30,7 @@ export default {
     sectionLabelVariant: {
       control: 'select',
       options: ['uppercase', 'title'],
-      description: 'Section label casing — comm panels use uppercase, Population uses title case.',
+      description: 'Section label casing: comm panels use uppercase, Population uses title case.',
     },
     showHeader: {
       control: 'boolean',

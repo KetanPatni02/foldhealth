@@ -70,7 +70,7 @@ export function DiagPanelViewCards(p) {
           </div>
         )}
 
-        {/* Section header — the DOS badge expands an inline per-DOS panel
+        {/* Section header: the DOS badge expands an inline per-DOS panel
             with toggles (Paper 1ZV3). Toggling a DOS off hides its rows.
             In bulk mode a select-all checkbox precedes the title with a
             tri-state (none/some/all) that mirrors row selection. */}
@@ -105,8 +105,8 @@ export function DiagPanelViewCards(p) {
           <div className={styles.dosPanel}>
             {dosList.map(d => {
               const enabled = !disabledDos.has(d.date);
-              const provider = d.provider || member.rp || '—';
-              const pos = d.pos || d.posDesc || member.pos || member.posDesc || '—';
+              const provider = d.provider || member.rp || '-';
+              const pos = d.pos || d.posDesc || member.pos || member.posDesc || '-';
               const vt = d.vt || member.vt || 'HCC';
               // Same D/C/M classifier the worklist letter badge uses, so this
               // panel and the worklist agree on where each DOS came from.
@@ -159,7 +159,7 @@ export function DiagPanelViewCards(p) {
             regardless of scroll position. */}
 
         <div className={styles.cardsFlow}>
-          {/* Skeleton state — replaces the ICD cards while the diagnosis-gap
+          {/* Skeleton state: replaces the ICD cards while the diagnosis-gap
               fetch is in flight, so switching between members doesn't flash
               the previous record's ICDs before the new data lands. */}
           {diagnosisGapsLoading ? (
@@ -227,7 +227,7 @@ export function DiagPanelViewCards(p) {
           ))}
         </div>
 
-        {/* Overridden ICDs + Closed ICDs sections removed per request — code
+        {/* Overridden ICDs + Closed ICDs sections removed per request, code
             kept commented out rather than deleted.
         <div className={styles.icdSections}>
           <IcdSection

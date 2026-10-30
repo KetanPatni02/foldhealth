@@ -113,7 +113,7 @@ function AssigneeCell({ patient, platformUsers, updatePatient }) {
 
 function AgentAssignedCell({ patient }) {
   if (!patient.agentAssigned) {
-    return <span style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-200)' }}>—</span>;
+    return <span style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-200)' }}>-</span>;
   }
   return (
     <div className={styles.agentCell}>
@@ -142,7 +142,7 @@ export const WORKLIST_MIDDLE_COLUMNS = [
     renderCell: (p) => (
       p.lace
         ? <Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} />
-        : <span>—</span>
+        : <span>-</span>
     ),
   },
   {
@@ -181,17 +181,17 @@ export const WORKLIST_MIDDLE_COLUMNS = [
   {
     key: 'nextOutreach',
     label: 'Next Outreach',
-    renderCell: (p) => <span className={styles.dateText}>{p.nextOutreach || '—'}</span>,
+    renderCell: (p) => <span className={styles.dateText}>{p.nextOutreach || '-'}</span>,
   },
   {
     key: 'startDate',
     label: 'Start Date',
-    renderCell: (p) => <span className={styles.dateText}>{p.startDate || '—'}</span>,
+    renderCell: (p) => <span className={styles.dateText}>{p.startDate || '-'}</span>,
   },
   {
     key: 'lastAdmission',
     label: 'Last Admission',
-    renderCell: (p) => <span className={styles.dateText}>{p.lastAdmission || '—'}</span>,
+    renderCell: (p) => <span className={styles.dateText}>{p.lastAdmission || '-'}</span>,
   },
   {
     key: 'assignee',

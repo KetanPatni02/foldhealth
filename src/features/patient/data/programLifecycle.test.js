@@ -26,7 +26,7 @@ describe('plannedEndDate', () => {
     expect(plannedEndDate('07/28/2026', 90)).toBe('10/26/2026');
     expect(plannedEndDate('12/15/2026', 30)).toBe('01/14/2027');
     expect(plannedEndDate('07/28/2026', null)).toBeNull();
-    expect(plannedEndDate('—', 90)).toBeNull();
+    expect(plannedEndDate('-', 90)).toBeNull();
   });
 });
 

@@ -10,7 +10,7 @@ export default {
     docs: {
       description: {
         component:
-          'Pill-style secondary tab row. The active tab becomes a white pill with a hairline border. Controlled — the parent owns the active key. Use for a secondary switch inside a tab; use TabStrip for top-level tabs.',
+          'Pill-style secondary tab row. The active tab becomes a white pill with a hairline border. Controlled, the parent owns the active key. Use for a secondary switch inside a tab; use TabStrip for top-level tabs.',
       },
     },
   },

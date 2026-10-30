@@ -122,7 +122,7 @@ export function WorklistTable() {
   const patientsLoading = useAppStore(s => s.patientsLoading);
   const patientsError = useAppStore(s => s.patientsError);
   const fetchPatients = useAppStore(s => s.fetchPatients);
-  // `fetchPatients` was only wired to the ErrorState retry — the initial load
+  // `fetchPatients` was only wired to the ErrorState retry, the initial load
   // came from SubNav prefetching `patients` on every Population route. SubNav
   // fetches counts only now, so this table owns its own data. Store-guarded
   // single-fire, so the retry path still works and costs nothing extra.
@@ -138,7 +138,7 @@ export function WorklistTable() {
   const activeFilters = useAppStore(s => s.activeFilters);
   const [expandedSections, setExpandedSections] = useState({});
 
-  // Patients are fetched once by SubNav on mount — no per-tab fetch effect
+  // Patients are fetched once by SubNav on mount, no per-tab fetch effect
   // here (the store's `patientsDidFetch` guard would short-circuit anyway,
   // but skipping the call avoids the effect-churn entirely).
   const toggleExpand = (key) => setExpandedSections(s => ({ ...s, [key]: !s[key] }));
@@ -190,7 +190,7 @@ export function WorklistTable() {
     else clearSelected();
   };
 
-  // Column prefs — WorklistTable is bespoke (doesn't ride WorklistShell), so
+  // Column prefs: WorklistTable is bespoke (doesn't ride WorklistShell), so
   // we call useWorklistColumns directly for the middle-column band. The
   // sticky checkbox / Members / Actions columns bracket it.
   const columnPrefs = useWorklistColumns('tcm-worklist', WORKLIST_MIDDLE_COLUMNS);

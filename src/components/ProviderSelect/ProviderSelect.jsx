@@ -25,7 +25,7 @@ const initialsOf = (name) => String(name || '').replace(/^Dr\.?\s+/i, '').trim()
   .slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
 /**
- * ProviderSelect — searchable provider picker (Figma New Care Gap Workflow
+ * ProviderSelect: searchable provider picker (Figma New Care Gap Workflow
  * 19:47455). Each row: radio, provider avatar, name + source badge
  * ("Fold Provider" / "EHR Provider"), a "specialty • address" line, and an
  * optional contact line (e.g. "eFax : (619) 555-4321").

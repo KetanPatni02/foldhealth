@@ -13,7 +13,7 @@ export function ScheduleDrawerPatientSection({
   setReasonForVisit,
   // Callers that already own the patient context (e.g. the HEDIS Care Gap
   // drawer opens for one specific member) pass `locked` so the search
-  // fallback + Remove button are suppressed — users can't accidentally
+  // fallback + Remove button are suppressed, users can't accidentally
   // swap the patient the appointment is being scheduled for.
   locked = false,
 }) {

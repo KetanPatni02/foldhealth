@@ -6,9 +6,9 @@ import styles from './SearchListPopover.module.css';
 const EMPTY_OPTIONS = [];
 
 /**
- * SearchListPopover — an anchored, portaled search + single-select list. Same
+ * SearchListPopover: an anchored, portaled search + single-select list. Same
  * chrome as the app's other filter popovers (bordered search field on top, a
- * scrollable list of rows) but rows are plain selectable items — no checkboxes.
+ * scrollable list of rows) but rows are plain selectable items, no checkboxes.
  *
  * @param {object}   props
  * @param {DOMRect}  props.anchorRect

@@ -105,7 +105,7 @@ const PRIORITIES = ['high', 'medium', 'low'];
 const progressBand = goalProgressBand;
 const progressTone = goalProgressTone;
 
-// Progress slider fill / thumb color per band — fed to the slider via
+// Progress slider fill / thumb color per band, fed to the slider via
 // the `--slider-tone` CSS variable so the CSS module can flip the fill
 // without changing markup. Mirrors the InterventionPreviewDrawer.
 function progressSliderColor(pct) {
@@ -159,7 +159,7 @@ function sparkNum(v) {
 
 function Sparkline({ values }) {
   const nums = values.map(sparkNum).filter(n => !Number.isNaN(n));
-  if (nums.length < 2) return <span className={styles.sparkEmpty}>—</span>;
+  if (nums.length < 2) return <span className={styles.sparkEmpty}>-</span>;
   const min = Math.min(...nums);
   const max = Math.max(...nums);
   const span = max - min || 1;
@@ -188,12 +188,12 @@ function Sparkline({ values }) {
   );
 }
 
-// Section head — matches the InterventionPreviewDrawer's Linked Goals
+// Section head: matches the InterventionPreviewDrawer's Linked Goals
 // treatment (barrierStyles.sectionHead / sectionToggle / sectionTitle /
 // sectionChevron), so every collapsible section in the goal drawer
 // reads with the same title weight, chevron placement, and hover
 // affordance. `muted` is preserved as a flag but the styling no longer
-// diverges — the visual language is now unified.
+// diverges: the visual language is now unified.
 const AccordionHead = function AccordionHead({
   title,
   open,
@@ -269,7 +269,7 @@ const INTERVENTION_KIND_ITEMS = [
 
 // Scope choices offered when the reviewer deletes a linked
 // intervention from the Goal Details drawer. Each key drives a
-// downstream delete surface (currently the same call for all — the
+// downstream delete surface (currently the same call for all, the
 // template-scoped / global deletes are not wired yet, so the picker
 // just captures the intent and toasts the chosen scope).
 const SCOPE_LABEL = {
@@ -322,7 +322,7 @@ function IntvDeleteScopePicker({ name, kindLabel = 'intervention', onCancel, onC
 }
 
 /**
- * Goal Details — Figma SNP-Story 2632:81504.
+ * Goal Details: Figma SNP-Story 2632:81504.
  * Every edit (status, progress, readings, automations, notes, interventions,
  * barriers) writes through the care-plan store into Supabase.
  */
@@ -376,7 +376,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       || (s.allPatients || []).find(x => x.id === patientId);
     return p?.initials;
   });
-  // Patient record for GoalLinkedInterventionsList — memoised so
+  // Patient record for GoalLinkedInterventionsList: memoised so
   // Zustand's default reference-equality doesn't tear us down on
   // every render (returning a fresh object literal inside a selector
   // triggers an infinite update loop → white screen).
@@ -660,7 +660,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   // Full-detail edit via the shared Goals Library drawer. Its onSave returns the
   // whole goal shape (title/priority/target/duration/…); merge onto the live
   // goal so unrelated fields (subtitle, icon, status, progress) are preserved.
-  // `interventions` from the drawer is ignored — care-plan interventions are
+  // `interventions` from the drawer is ignored: care-plan interventions are
   // managed separately and the goal row mapper drops the field.
   const handleSaveGoalEdit = async (values) => {
     setEditGoalOpen(false);
@@ -825,7 +825,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const legacySubtitle = [[live.measure, targetText].filter(Boolean).join(' '), formatGoalDuration(live)].filter(Boolean).join(' • ');
   const showSubtitle = !!live.subtitle && live.subtitle !== buildGoalSubtitle(live) && live.subtitle !== legacySubtitle;
   // Goal type / category (Vitals, Exercise, Diet, Labs, Assessment,
-  // Others) — same field the plan-level Goals table renders as a
+  // Others): same field the plan-level Goals table renders as a
   // right-aligned Type badge. Falls back to `type` for older records.
   const goalTypeLabel = live.category || live.type || null;
 
@@ -1467,7 +1467,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                   toggleInterventionLink(item.id, false);
                 }
               }
-              /* Delete opens the scope picker below — the user chooses
+              /* Delete opens the scope picker below, the user chooses
                  whether the removal applies to this goal on this
                  template, every linked template, or the whole plan.
                  Same picker handles both interventions and barriers;
@@ -1529,7 +1529,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           onCancel={() => setConfirm(null)}
           onConfirm={async (scope) => {
             /* Backend for template-scoped and global deletes is not
-               wired yet — every scope hits the plain delete store
+               wired yet: every scope hits the plain delete store
                action for its kind. The toast makes the user's chosen
                scope visible so QA can verify the picker fires
                end-to-end. */

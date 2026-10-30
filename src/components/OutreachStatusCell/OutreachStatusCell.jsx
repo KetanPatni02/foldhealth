@@ -11,10 +11,10 @@ const TONE = {
 };
 
 /**
- * OutreachStatusCell — the worklist "Outreach" cell (TOC / SNP / AWV look):
+ * OutreachStatusCell: the worklist "Outreach" cell (TOC / SNP / AWV look):
  * phone icon, last attempt's result + date, and one dot per attempt.
  *
- * outreach: null renders the muted "—" cell. Otherwise
+ * outreach: null renders the muted "-" cell. Otherwise
  *   { status: 'Attended' | 'Note' | 'Failed' | …, tone?: 'success' | 'warning' | 'error',
  *     failed?: boolean (when no tone), date,
  *     dots: Array<'success' | 'warning' | 'error' | 'none'>, kind?: 'call' | 'letter' }
@@ -28,7 +28,7 @@ export function OutreachStatusCell({ outreach, title, recent, onViewAll }) {
     return (
       <span className={styles.none}>
         <Icon name="solar:phone-calling-linear" size={16} color="var(--neutral-200)" />
-        <span className={styles.dash}>—</span>
+        <span className={styles.dash}>-</span>
       </span>
     );
   }

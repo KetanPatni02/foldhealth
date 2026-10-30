@@ -68,7 +68,7 @@ const SnpWorklistTable     = lz(() => import('../features/snp-worklist/SnpWorkli
 const AllPatientsTable     = lz(() => import('../features/all-patients/AllPatientsTable'), 'AllPatientsTable');
 const PopulationGroupsView = lz(() => import('../features/population-groups/PopulationGroupsView'), 'PopulationGroupsView');
 
-// Drawers and overlays — only mounted when their state is truthy, so lazy here
+// Drawers and overlays: only mounted when their state is truthy, so lazy here
 // keeps them out of the entry chunk entirely.
 const DetailDrawer         = lz(() => import('../components/DetailDrawer/DetailDrawer'),                   'DetailDrawer');
 const LiveDrawer           = lz(() => import('../components/LiveDrawer/LiveDrawer'),                       'LiveDrawer');
@@ -137,7 +137,7 @@ function PopulationView() {
   const isPharmacy = activeSubnavList === 'Pharmacy';
   const isCmp = activeSubnavList === 'CMP';
 
-  // Dynamic group rule builder — full-page takeover, no subnav
+  // Dynamic group rule builder: full-page takeover, no subnav
   if (pgRuleBuilder) {
     return (
       <div className={styles.main}>
@@ -151,7 +151,7 @@ function PopulationView() {
     );
   }
 
-  // Patient detail view — full-page, no subnav. With a program open "in
+  // Patient detail view: full-page, no subnav. With a program open "in
   // right panel" the page is two cards (see PatientDetailView), so this
   // wrapper drops its own card chrome and the TopBar gives way to the
   // patient card's breadcrumb header.
@@ -242,7 +242,7 @@ function PopulationView() {
 }
 
 function SettingsView() {
-  // New Care Plan is a full-screen takeover: no TopBar, no Settings sub-nav —
+  // New Care Plan is a full-screen takeover: no TopBar, no Settings sub-nav,
   // just the app rail beside the card (Figma Care-Plan-Creation 14108:294859).
   const carePlanCreateOpen = useAppStore(s => s.carePlanCreateOpen);
   const carePlanTemplateScreen = useAppStore(s => s.carePlanTemplateScreen);
@@ -331,7 +331,7 @@ export function AppLayout() {
   useEffect(() => {
     // getSession(), not getUser(): getUser() is a network round trip that
     // re-validates the token against the auth server, and this effect used to
-    // block on it before it could do anything — the profile read behind it did
+    // block on it before it could do anything, the profile read behind it did
     // not start until ~4 s into a cold load. getSession() reads the locally
     // persisted session (including user_metadata) with no request at all.
     // Skipping server validation is safe here because everything below is
@@ -346,8 +346,8 @@ export function AppLayout() {
         || [meta.first_name, meta.last_name].filter(Boolean).join(' ')
         || null;
       // Derive the parts from full_name when the provider only gave us a
-      // single name. This used to run one way only — full_name FROM the parts
-      // — so an OAuth signup (Google et al. supply just a full name) wrote
+      // single name. This used to run one way only, full_name FROM the parts,
+      // so an OAuth signup (Google et al. supply just a full name) wrote
       // first_name/last_name NULL, and every later login refreshed the row
       // without ever filling them in. That is where 25 of the 27 broken
       // profiles came from. The DB trigger in
@@ -372,7 +372,7 @@ export function AppLayout() {
       // Write first, ask questions only if it missed. This was a
       // `select id` → then `update` or `insert`, i.e. two serialized round
       // trips on every single page load to do what is almost always one
-      // UPDATE — the row already exists, because handle_new_user() inserts it
+      // UPDATE: the row already exists, because handle_new_user() inserts it
       // from an auth.users trigger at signup. `.select('id')` on the update
       // reports what it actually touched, so the INSERT fallback still covers
       // rows that predate that trigger. Common path: one request. Same
@@ -394,7 +394,7 @@ export function AppLayout() {
         // Identity fields only. `role` / `admin_role` / `clinical_roles` are
         // authorization fields and must be owned by the database (the
         // handle_new_user() trigger and column defaults), never chosen by the
-        // client — otherwise a forged request could self-assign privileges.
+        // client: otherwise a forged request could self-assign privileges.
         await supabase.from('profiles').insert({
           ...identity,
           ...names,
@@ -418,7 +418,7 @@ export function AppLayout() {
       useAppStore.getState().openBuilder(agent);
       return undefined;
     }
-    // Agent list may not be loaded yet — wait for it
+    // Agent list may not be loaded yet, wait for it
     const unsub = useAppStore.subscribe((state) => {
       if (state.agents?.length && state._pendingAgentId) {
         const a = state.agents.find(ag => String(ag.id) === String(state._pendingAgentId));
@@ -487,7 +487,7 @@ export function AppLayout() {
         if (mode === 'analytics' && subTab) useAppStore.getState().setFormAnalyticsTab(subTab);
       } else {
         // Form is gone (deleted, or a stale/typo'd id). Reset builder state AND
-        // leave the form-edit URL — otherwise onFormBuilderRoute stays true and
+        // leave the form-edit URL: otherwise onFormBuilderRoute stays true and
         // the takeover would show the loading fallback indefinitely.
         useAppStore.getState().showToast?.('Form not found');
         useAppStore.setState({ editingFormId: null, formBuilderForm: null });
@@ -533,7 +533,7 @@ export function AppLayout() {
 
   // Reload-safe form-builder detection. On a refresh of
   // #/settings/content/forms/{id}/{mode}, `editingFormId` is null until the
-  // hydration effect below has fetched the form and called openFormBuilder —
+  // hydration effect below has fetched the form and called openFormBuilder,
   // an async gap during which the content list would otherwise render, so the
   // editor "flashed back to the list and returned". Reading the URL
   // synchronously here lets the builder takeover win on the very first paint.
@@ -546,7 +546,7 @@ export function AppLayout() {
 
   // Email Builder is a full-screen takeover when editing a campaign. Wins over
   // the CampaignBuilder so "Edit Template" from inside the campaign builder
-  // pushes the email builder on top — closing it falls back to the campaign
+  // pushes the email builder on top, closing it falls back to the campaign
   // builder (campaignBuilderId stays set).
   if (editingCampaignId || editingComponent) {
     return (
@@ -574,7 +574,7 @@ export function AppLayout() {
     );
   }
 
-  // Shareable form fill-view (#/f/{id}) — focused takeover for respondents.
+  // Shareable form fill-view (#/f/{id}): focused takeover for respondents.
   if (formViewId) {
     return (
       <div className={styles.app}>
@@ -586,12 +586,12 @@ export function AppLayout() {
     );
   }
 
-  // Form Builder is a focused full-screen takeover (no app sidebar — it has its
+  // Form Builder is a focused full-screen takeover (no app sidebar: it has its
   // own header + close action that returns to #/settings/content/forms).
   // Rendered whenever the URL is a form-edit route, not only once the store's
   // editingFormId is set, so a reload never flashes the content list first.
   // While the form is still loading (reload, before fetchFormById resolves)
-  // show the neutral fallback rather than an empty "Untitled Form" — the
+  // show the neutral fallback rather than an empty "Untitled Form", the
   // not-found path redirects to the list, so this can't spin forever.
   if (editingFormId || onFormBuilderRoute) {
     return (

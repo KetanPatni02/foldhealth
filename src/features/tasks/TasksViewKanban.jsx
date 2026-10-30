@@ -311,7 +311,7 @@ export function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick })
       </div>
       <DragOverlay dropAnimation={{
         duration: 200,
-        // ease-out-quart — smooth deceleration, no overshoot.
+        // ease-out-quart: smooth deceleration, no overshoot.
         easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
       }}>
         {activeTask && (

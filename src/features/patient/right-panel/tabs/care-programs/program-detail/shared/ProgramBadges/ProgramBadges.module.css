@@ -1,6 +1,6 @@
 .strip { display: inline-flex; align-items: center; gap: 6px; }
 
-/* Program badge pill — ring + code (Figma 1837-16118). */
+/* Program badge pill: ring + code (Figma 1837-16118). */
 .badge,
 .badgeMore {
   display: inline-flex;

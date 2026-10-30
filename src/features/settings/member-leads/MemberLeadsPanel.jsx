@@ -40,7 +40,7 @@ const ASSIGNED_BAR_COLOR = {
   error:   'var(--status-error)',
 };
 
-// Create-New menu options — clicking any opens ConfigureTeamDrawer with the
+// Create-New menu options: clicking any opens ConfigureTeamDrawer with the
 // matching `kind` so the Team Type / Assign-To dimensions adapt.
 const CREATE_NEW_OPTIONS = [
   { kind: 'care-program', label: 'Care Program Team' },
@@ -144,7 +144,7 @@ export function MemberLeadsPanel() {
       ) : (
         <div className={styles.empty}>
           <Icon name="solar:gallery-edit-linear" size={32} color="var(--neutral-200)" />
-          <p>{TABS.find(t => t.key === activeTab)?.label} — coming soon</p>
+          <p>{TABS.find(t => t.key === activeTab)?.label}, coming soon</p>
         </div>
       )}
 
@@ -220,7 +220,7 @@ function CareTeamTable({ searchVal = '', onEdit }) {
 
   // Deep-clone a team's members so the duplicate doesn't share Assign-To
   // row objects with the source. Returns a brand-new team ready for the
-  // store. Keeps members, allocatedTins, teamType, kind, createdFor — just
+  // store. Keeps members, allocatedTins, teamType, kind, createdFor, just
   // mints a new id/timestamp and appends "(Copy)" to the name.
   const duplicateTeam = (src) => {
     const now = (() => {
@@ -298,7 +298,7 @@ function CareTeamTable({ searchVal = '', onEdit }) {
                       {t.users.length === 0 ? (
                         <div className={hoverStyles.userRowRole}>No members yet.</div>
                       ) : t.users.map((u, i) => (
-                        // Neutral grey chip — this badge shows capacity USED
+                        // Neutral grey chip: this badge shows capacity USED
                         // on this team, not remaining capacity, so the tone
                         // scale (red/yellow/green) was misleading. Keep it
                         // informational only.

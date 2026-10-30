@@ -3,14 +3,14 @@ import { Icon } from '../../../../components/Icon/Icon';
 import { Tooltip } from '../../../../components/Tooltip/Tooltip';
 import styles from './PatientP360Banner.module.css';
 
-// Enrolled care-program badges — first MAX_VISIBLE codes, then a "+N"
+// Enrolled care-program badges: first MAX_VISIBLE codes, then a "+N"
 // overflow whose hover popover lists the rest (one program per line).
 // `codes` comes from the real patient_care_programs enrollment (deduped in
 // PatientP360Banner), so every patient shows their true programs; none
-// enrolled renders '—'.
+// enrolled renders '-'.
 const MAX_VISIBLE_PROGRAMS = 2;
 export function ProgramBadgeList({ codes, badgeClass, overflowClass }) {
-  if (!codes?.length) return <span className={styles.expandLabel}>—</span>;
+  if (!codes?.length) return <span className={styles.expandLabel}>-</span>;
   const visible = codes.slice(0, MAX_VISIBLE_PROGRAMS);
   const overflow = codes.slice(MAX_VISIBLE_PROGRAMS);
   return (
@@ -33,7 +33,7 @@ export function ExpandedDemographics({ p, className }) {
     <div className={className ?? styles.expandCol}>
       <h4 className={styles.expandTitle}>Patient Demographic Details</h4>
       <div className={styles.expandRows}>
-        <div className={styles.expandRow}><Icon name="solar:map-point-linear" size={14} color="var(--neutral-200)" /><span>{p.location || '—'}{p.location_count > 0 && <span className={styles.moreCount}> +{p.location_count}</span>}</span></div>
+        <div className={styles.expandRow}><Icon name="solar:map-point-linear" size={14} color="var(--neutral-200)" /><span>{p.location || '-'}{p.location_count > 0 && <span className={styles.moreCount}> +{p.location_count}</span>}</span></div>
         <div className={styles.expandRow}><Icon name="solar:translation-2-linear" size={14} color="var(--neutral-200)" /><span>{(p.languages || []).join(' • ')}</span></div>
         <div className={styles.expandRow}><Icon name="solar:letter-linear" size={14} color="var(--neutral-200)" /><span>{(p.emails || []).join(' • ')}</span></div>
         <div className={styles.expandItem}><span className={styles.expandLabel}>Plan Numbers (Primary):</span><span>{(p.plan_numbers_primary || []).join(' • ')}</span></div>
@@ -77,8 +77,8 @@ export function ExpandedHealthStatus({ p, className, movedMetrics = false, progr
           <div className={styles.conditionBadges}>{(p.chronic_conditions || []).map(c => <span key={c} className={styles.conditionBadge}>{c}</span>)}</div>
         </div>
         <div className={styles.expandItem}>
-          <span className={styles.expandLabel}>Recent Vitals ({v.date || '—'}):</span>
-          <div className={styles.vitalsGrid}><span>BP: {v.bp || '—'}</span><span>Weight: {v.weight || '—'}</span><span>Pulse: {v.pulse || '—'}</span><span>HbA1c: {v.hba1c || '—'}</span></div>
+          <span className={styles.expandLabel}>Recent Vitals ({v.date || '-'}):</span>
+          <div className={styles.vitalsGrid}><span>BP: {v.bp || '-'}</span><span>Weight: {v.weight || '-'}</span><span>Pulse: {v.pulse || '-'}</span><span>HbA1c: {v.hba1c || '-'}</span></div>
         </div>
         <div className={styles.expandItem}>
           <span className={styles.expandLabel}>Opted out of (Communication):</span>
@@ -123,7 +123,7 @@ export function ExpandedFamily({ p, className }) {
   );
 }
 
-/* Quick-view-style expanded panel — a metrics strip over a 2-column layout.
+/* Quick-view-style expanded panel: a metrics strip over a 2-column layout.
    Shared by the drawer variant AND the full banner's responsive expansion so
    both surface the same detail view. */
 export function QuickViewExpanded({ p, programCodes }) {
@@ -145,7 +145,7 @@ export function QuickViewExpanded({ p, programCodes }) {
         </div>
         <div className={`${styles.drawerMetricItem} ${styles.drawerMetricTop}`}>
           <span className={styles.drawerMetricLabel}>Next Appt.</span>
-          <span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span>
+          <span className={styles.nextApptValue}>{p.next_appointment_date || '-'}</span>
         </div>
         <div className={`${styles.drawerMetricItem} ${styles.drawerMetricBottom}`}>
           <span className={styles.drawerMetricLabel}>Last Contact</span>

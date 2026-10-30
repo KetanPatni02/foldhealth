@@ -21,7 +21,7 @@ export function useLocationNames() {
   return locations.length ? locations.map(l => l.name) : LOCATION_OPTIONS_FALLBACK;
 }
 
-/* Tag input helper — renders removable badges inside an input-like container */
+/* Tag input helper: renders removable badges inside an input-like container */
 export function TagInput({ value = [], onChange, placeholder, inputId }) {
   const [inputVal, setInputVal] = useState('');
   const addTag = () => {

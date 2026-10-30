@@ -1,12 +1,12 @@
 /**
- * Analytics + breadcrumb tracking — single fan-out helper.
+ * Analytics + breadcrumb tracking: single fan-out helper.
  *
  * One `track(name, props?)` call fires to both:
  *   1. Vercel Analytics  → Custom Events in the Vercel dashboard
  *   2. Sentry            → breadcrumb attached to any future error
  *
  * Naming convention:
- *   `feature.action` — lowercase, dot-separated, past-tense verb.
+ *   `feature.action`, lowercase, dot-separated, past-tense verb.
  *   Sub-noun allowed when needed: `email.block_added`, `agent.flow_saved`.
  *   No spaces, no colons, no PascalCase.
  *
@@ -38,7 +38,7 @@ export function attachSentry(s) {
   sentry = s;
 }
 
-// Auto-attached to every event. Kept narrow — just enough context to slice
+// Auto-attached to every event. Kept narrow, just enough context to slice
 // dashboards by current location without leaking domain data.
 function defaultProps() {
   try {
@@ -56,7 +56,7 @@ function defaultProps() {
 export function track(name, props = {}) {
   const payload = { ...defaultProps(), ...props };
 
-  // Both transports are wrapped — an analytics outage must never throw
+  // Both transports are wrapped: an analytics outage must never throw
   // into product code.
   try {
     vercelTrack(name, payload);
@@ -128,7 +128,7 @@ export function trackPageview(path) {
 // ── Funnel tracking ─────────────────────────────────────────────────────────
 // Everything `track` does (Vercel + Sentry breadcrumb), plus a durable row in
 // Supabase's funnel_events so steps can be stitched into per-session paths.
-// Vercel alone can't answer "did THIS user finish or drop off" — its events
+// Vercel alone can't answer "did THIS user finish or drop off", its events
 // are anonymous aggregates. Same PHI policy: opaque IDs only, never names,
 // emails, phone numbers, or freeform text.
 

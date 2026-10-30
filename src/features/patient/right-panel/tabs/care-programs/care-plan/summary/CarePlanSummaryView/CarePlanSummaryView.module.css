@@ -65,10 +65,10 @@
   flex-direction: column;
   gap: var(--space-2);
 }
-/* Read-only section header — mirrors the CarePlanView's GBI section head
+/* Read-only section header: mirrors the CarePlanView's GBI section head
    (chevron + title + count pill) minus the Add affordance, since this
    is a consolidated snapshot across programs. */
-/* Editable roll-up: title toggle, divider, then Add — the CarePlanView
+/* Editable roll-up: title toggle, divider, then Add, the CarePlanView
    section head's layout. */
 .sectionHeadRow {
   display: flex;
@@ -123,7 +123,7 @@
   font-weight: 400;
 }
 
-/* Active Programs Summary — row of enrolled programs sitting above
+/* Active Programs Summary: row of enrolled programs sitting above
    the Goals section. Head hosts the chevron + hand-heart icon +
    title on the left and the Summarize AI action on the right. */
 .activeProgramsHead {
@@ -183,7 +183,7 @@
 }
 @keyframes summarySpin { to { transform: rotate(360deg); } }
 
-/* Ready state — mock summary card. Padding, gaps, font sizes, and
+/* Ready state: mock summary card. Padding, gaps, font sizes, and
    colors all lifted from the Figma spec (12586:317431 / 12583:315933):
    16px inner padding, 12px gap between intro / list / actions / footer,
    14px body font on --neutral-500 with a tight 1.35 leading. */
@@ -327,7 +327,7 @@
   border-bottom: none;
 }
 
-/* Column widths — first + last are pinned so the middle band scrolls.
+/* Column widths: first + last are pinned so the middle band scrolls.
    Text-heavy columns use min-width so wide viewports let them grow,
    narrow viewports let them shrink to fit the content. */
 .colPlan     { width: 84px; }
@@ -376,7 +376,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Program cell — the row's own program badge plus an optional "+N"
+/* Program cell: the row's own program badge plus an optional "+N"
    overflow badge when the same title also appears on other programs
    in the current filtered snapshot. */
 .programBadgeStack {

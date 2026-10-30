@@ -103,7 +103,7 @@ const utrAgeBucket = (days) => {
 };
 
 // A single per-row → bucket lookup used both for populating the FilterChip
-// option lists AND for evaluating each row against a selected filter — keeps
+// option lists AND for evaluating each row against a selected filter, keeps
 // the two branches consistent by construction.
 const BUCKET_FN = {
   gender:              (m) => memberGenderLabel(m.gender),
@@ -131,7 +131,7 @@ const MEMBER_OPTIONS = {
 };
 
 // Chip definitions for the shared FilterBar. The CCM_PRIMARY_KEYS chips are `primary`
-// (rendered by default, on one line — the shared FilterBar's autoFit packer
+// (rendered by default, on one line, the shared FilterBar's autoFit packer
 // hides overflow into More Filters); the rest are extended (hidden by
 // default, opt-in via More Filters).
 const CCM_PRIMARY_KEYS = new Set([
@@ -196,7 +196,7 @@ export function CcmWorklistTable() {
   const loading = useAppStore(s => s.ccmWorklistLoading);
   const fetchMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   // Search query + filter-bar visibility are both owned by the shared TabBar
-  // (via useAppStore.searchQuery / .showFilterBar) — the TOC pattern —
+  // (via useAppStore.searchQuery / .showFilterBar), the TOC pattern,
   // so the top-bar Filter icon toggles CCM's chip row the same way it
   // toggles TOC's <FilterBar />.
   const searchQuery = useAppStore(s => s.searchQuery);
@@ -300,7 +300,7 @@ export function CcmWorklistTable() {
     isTimeFilterActive(billableFilter) ||
     isTimeFilterActive(unloggedFilter);
 
-  // Column prefs — bespoke table, wire useWorklistColumns directly.
+  // Column prefs: bespoke table, wire useWorklistColumns directly.
   const columnPrefs = useWorklistColumns('ccm', CCM_MIDDLE_COLUMNS);
   const visibleMiddle = columnPrefs.visibleColumns;
   const orderedColumnsForRow = useMemo(() => (
@@ -314,12 +314,12 @@ export function CcmWorklistTable() {
   return (
     <div className={styles.wrap}>
       {/* The shared TabBar (rendered by AppLayout for CCM) sits above this
-          component and owns the title + right-side action icons — same
+          component and owns the title + right-side action icons, same
           chrome TOC uses. Below it we render just the filter chip row
           and the sticky-column table. */}
 
       {/* Filter chip row. Visible only when the TabBar's Filter icon has
-          been toggled on (showFilterBar) — same pattern TOC uses for its
+          been toggled on (showFilterBar): same pattern TOC uses for its
           FilterBar. All the bucket-based chips render from FILTER_KEYS;
           Billable Mins + Unlogged Mins slot in between memberStatus and
           unloggedUser to match the Figma order. */}

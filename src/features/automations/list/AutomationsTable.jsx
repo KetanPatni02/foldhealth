@@ -72,7 +72,7 @@ export function AutomationsTable({ automations, runsOf, actions, emptyState }) {
             <span className={styles.sub}>by {a.createdBy || 'Unknown'}</span>
           </div>
         </td>
-        <td className={`${styles.td} ${styles.muted} ${styles.clip}`} title={a.populationGroupName || undefined}>{a.populationGroupName || '—'}</td>
+        <td className={`${styles.td} ${styles.muted} ${styles.clip}`} title={a.populationGroupName || undefined}>{a.populationGroupName || '-'}</td>
         <td className={`${styles.td} ${styles.num}`}>{executionsIn90Days(runs).toLocaleString('en-US')}</td>
         <td className={`${styles.td} ${styles.muted}`}>{executionTypeOf(a.schedule)}</td>
         <td className={`${styles.td} ${styles.muted}`}>
