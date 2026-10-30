@@ -5,6 +5,7 @@ import { CARE_PLAN_INTERVENTION_LIBRARY } from '../../care-plan-library/data/car
 import { CARE_PLAN_BARRIER_STRUCTURED_LIBRARY } from '../../care-plan-library/data/carePlanBarrierStructuredSeed';
 import { CADENCE_KINDS, CADENCE_UNITS, COMPARATORS, protocolCounts } from './protocolSchema';
 import { foldProtocolRecord, foldStarterGbi, isFoldProtocol, unresolvedTitles } from './foldProtocols';
+import { categoriesProblem } from '../../care-plan-library/lib/templateCategories';
 
 const libraries = {
   goals: CARE_PLAN_GOAL_LIBRARY,
@@ -21,10 +22,20 @@ describe('Fold protocol content', () => {
     expect(unresolvedTitles(p, libraries)).toEqual([]);
   });
 
+  // A patient gets Common + one category, so links resolve within that.
   it.each(FOLD_PROTOCOL_CONTENT.map(p => [p.id, p]))('%s links interventions and barriers to its own goals', (_id, p) => {
-    const goals = new Set(p.goals.map(g => g.title));
-    for (const i of p.interventions) expect(goals.has(i.goalTitle), `${i.title} → ${i.goalTitle}`).toBe(true);
-    for (const b of p.barriers) for (const t of b.goalTitles) expect(goals.has(t), `${b.title} → ${t}`).toBe(true);
+    const sections = (p.categories || []).length ? p.categories : [{ goals: [], interventions: [], barriers: [] }];
+    for (const c of sections) {
+      const goals = new Set([...p.goals, ...c.goals].map(g => g.title));
+      for (const i of [...p.interventions, ...c.interventions]) expect(goals.has(i.goalTitle), `${i.title} → ${i.goalTitle}`).toBe(true);
+      for (const b of [...p.barriers, ...c.barriers]) for (const t of b.goalTitles) expect(goals.has(t), `${b.title} → ${t}`).toBe(true);
+    }
+  });
+
+  it.each(FOLD_PROTOCOL_CONTENT.filter(p => p.categories?.length).map(p => [p.id, p]))('%s categories are complete and distinct from Common', (_id, p) => {
+    expect(categoriesProblem(p.categories)).toBeNull();
+    const common = new Set(p.goals.map(g => g.title));
+    for (const c of p.categories) for (const g of c.goals) expect(common.has(g.title), g.title).toBe(false);
   });
 
   it.each(FOLD_PROTOCOL_CONTENT.map(p => [p.id, p]))('%s decision logic and cadence fit the protocol schema', (_id, p) => {
@@ -69,6 +80,13 @@ describe('foldProtocolRecord', () => {
 });
 
 describe('foldStarterGbi', () => {
+  it('carries the diabetes categories with their criteria', () => {
+    const gbi = foldStarterGbi(FOLD_PROTOCOL_CONTENT[0]);
+    expect(gbi.categories.map(c => c.id)).toEqual(['diabetes-a1c-9-plus', 'diabetes-a1c-7-to-9', 'diabetes-a1c-at-goal']);
+    expect(gbi.categories[0].criteria[0]).toMatchObject({ type: 'lab', lab: 'hba1c', op: '>=', value: 9 });
+    expect(foldStarterGbi(FOLD_PROTOCOL_CONTENT[1]).categories).toEqual([]);
+  });
+
   it('keeps titles, priorities and goal links only', () => {
     const gbi = foldStarterGbi({
       goals: [{ title: 'Improve A1C control', priority: 'high' }],
@@ -76,6 +94,7 @@ describe('foldStarterGbi', () => {
       barriers: [{ title: 'Hypoglycemia risk', goalTitles: ['Improve A1C control'] }],
     });
     expect(gbi).toEqual({
+      categories: [],
       goals: [{ title: 'Improve A1C control', priority: 'high' }],
       interventions: [{ title: 'A1C follow-up', goalTitle: 'Improve A1C control' }],
       barriers: [{ title: 'Hypoglycemia risk', goalTitles: ['Improve A1C control'] }],

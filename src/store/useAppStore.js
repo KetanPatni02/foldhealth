@@ -246,6 +246,8 @@ import { createTemplateVersionsSlice } from './slices/templateVersionsSlice';
 import { createIpaOverlaysSlice } from './slices/ipaOverlaysSlice';
 import { applyOverlay, blockedSignoffs } from '../features/settings/care-plan-library/lib/ipaOverlays';
 import { contentOf as templateContentOf } from '../features/settings/care-plan-library/lib/templateVersions';
+import { withCategory } from '../features/settings/care-plan-library/lib/templateCategories';
+import { buildRuleInputs } from '../features/automations/lib/clinicalCriteria';
 import { effectiveVersion as effectiveTemplateVersion, todayIso as todayIsoDate } from '../features/settings/care-plan-library/lib/templateVersions';
 import { createClinicalProtocolsSlice } from './slices/clinicalProtocolsSlice';
 
@@ -805,6 +807,24 @@ export const useAppStore = create((set, get) => ({
   // falls back to a local mock for patients with no rows yet.
   patientProblems: {},           // { [patientId]: Problem[] }
   patientProblemsLoadedFor: {},  // { [patientId]: true }: gates the skeleton
+  // What a template category's criteria read for a patient (buildRuleInputs):
+  // the problem list and dated lab results. Loaded once per patient per session.
+  patientCriteriaInputs: {},
+  fetchPatientCriteriaInputs: async (patientId) => {
+    if (!patientId) return null;
+    const cached = get().patientCriteriaInputs[patientId];
+    if (cached) return cached;
+    const [problems, events] = await Promise.all([
+      supabase.from('patient_problems').select('title, status').eq('patient_id', String(patientId)),
+      supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit').eq('patient_id', String(patientId)),
+    ]);
+    if (problems.error) console.warn('fetchPatientCriteriaInputs (problems):', problems.error.message);
+    if (events.error) console.warn('fetchPatientCriteriaInputs (events):', events.error.message);
+    const inputs = buildRuleInputs({ problems: problems.data || [], clinicalEvents: events.data || [] });
+    set(s => ({ patientCriteriaInputs: { ...s.patientCriteriaInputs, [patientId]: inputs } }));
+    return inputs;
+  },
+
   fetchPatientProblems: async (patientId) => {
     if (!patientId) return;
     const { data, error } = await supabase.from('patient_problems')
@@ -3216,8 +3236,13 @@ export const useAppStore = create((set, get) => ({
     set({ carePlanAuditSuppressed: true });
     try {
       for (const id of appliedIds) {
-        const template = templates.find(t => String(t.id) === String(id));
-        if (template) await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
+        const stored = templates.find(t => String(t.id) === String(id));
+        if (!stored) continue;
+        // With the category its active run went on with. One at a time: each
+        // template merges into the same plan, de-duplicating by title.
+        const run = (cur.templateInstances || []).find(i => String(i.templateId) === String(id) && i.status === 'active');
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop
+        await applyTemplateToPlan(get, patientId, program, withCategory(stored, run?.categoryId || null), libraryGoals);
       }
     } finally {
       set({ carePlanAuditSuppressed: false });
@@ -4140,7 +4165,9 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
-  applyPatientCarePlanTemplates: async (patientId, program, nextTemplateIds, priorityUpdates) => {
+  // `categoryPicks` ({ templateId: categoryId }) chooses the category a newly
+  // applied template goes on with: Common + that category. No pick = Common.
+  applyPatientCarePlanTemplates: async (patientId, program, nextTemplateIds, priorityUpdates, categoryPicks = {}) => {
     const key = carePlanKey(patientId, program.id);
     const cur = get().patientCarePlans[key];
     const prevIds = cur?.plan?.appliedTemplateIds || [];
@@ -4155,8 +4182,9 @@ export const useAppStore = create((set, get) => ({
     // One at a time: each template merges into the same plan's goals, so
     // concurrent applies would race on the de-duplication.
     for (const templateId of toAdd) {
-      const base = baseById.get(templateId);
-      if (!base) continue;
+      const stored = baseById.get(templateId);
+      if (!stored) continue;
+      const base = withCategory(stored, categoryPicks?.[templateId] || null);
       // react-doctor-disable-next-line react-doctor/async-await-in-loop
       const found = await get().overlayForPatient(templateId, patientId);
       const template = found
@@ -4445,7 +4473,7 @@ export const useAppStore = create((set, get) => ({
     const key = carePlanKey(patientId, program.id);
     const planId = get().patientCarePlans[key]?.plan?.id;
     if (!planId) return null;
-    const { data, error } = await supabase.from('patient_care_plan_template_instances').insert({
+    const row = {
       plan_id: planId,
       template_id: template.id,
       template_name: template.name || '',
@@ -4459,12 +4487,21 @@ export const useAppStore = create((set, get) => ({
       created_by: get().currentUserProfile?.name || null,
       // The IPA overlay it went on with, and who must sign because of it.
       ...(template.overlayId ? { overlay_id: template.overlayId, signoff_route: template.signoffRoute || null } : {}),
+      // The category it went on with (withCategory tags the template).
+      ...(template.category ? { category_id: template.category.id, category_name: template.category.name } : {}),
       // The version applied, so the plan keeps it when a newer one is published.
       ...(() => {
         const v = effectiveTemplateVersion(get().carePlanTemplateVersions?.[template.id] || [], todayIsoDate());
         return v ? { template_version_id: v.id, template_version_number: v.versionNumber } : {};
       })(),
-    }).select().single();
+    };
+    const insert = (r) => supabase.from('patient_care_plan_template_instances').insert(r).select().single();
+    let { data, error } = await insert(row);
+    // Before the categories migration the run saves without its category.
+    if (error && /category_/.test(error.message || '') && row.category_id) {
+      const { category_id: _ci, category_name: _cn, ...rowWithoutCategory } = row;
+      ({ data, error } = await insert(rowWithoutCategory));
+    }
     if (error) { console.warn('startCarePlanTemplateInstance:', error.message); return null; }
     const instance = mapTemplateInstanceRow(data);
     get().patchCarePlanTemplateInstances(key, list => [...list, instance]);
@@ -4490,17 +4527,19 @@ export const useAppStore = create((set, get) => ({
   // suggestion from the template's longest goal duration.
   renewPatientCarePlanTemplate: async (patientId, program, templateId, mode, endsOn = null) => {
     const key = carePlanKey(patientId, program.id);
-    const template = (get().carePlanTemplates || []).find(t => String(t.id) === String(templateId));
+    const stored = (get().carePlanTemplates || []).find(t => String(t.id) === String(templateId));
     const slice = get().patientCarePlans[key];
-    if (!template || !slice?.plan) return false;
+    if (!stored || !slice?.plan) return false;
     const libraryGoals = get().carePlanGoals || [];
     const now = new Date();
-    const fail = () => { get().showToast(`Could not ${mode} "${template.name}"`); return false; };
+    const fail = () => { get().showToast(`Could not ${mode} "${stored.name}"`); return false; };
 
     let current = (slice.templateInstances || [])
       .find(i => String(i.templateId) === String(templateId) && i.status === 'active');
-    if (!current) current = await get().startCarePlanTemplateInstance(patientId, program, template, null);
+    if (!current) current = await get().startCarePlanTemplateInstance(patientId, program, stored, null);
     if (!current) return fail();
+    // Applying again keeps the run's category.
+    const template = withCategory(stored, current.categoryId);
     const instances = supabase.from('patient_care_plan_template_instances');
 
     if (mode === 'extend') {
@@ -5476,6 +5515,8 @@ export const useAppStore = create((set, get) => ({
       row.patient_id = row.scope === 'patient' ? (values.patientId != null ? String(values.patientId) : null) : null;
     }
     if (values.renewal) row.renewal = values.renewal;
+    // Per-patient categories on top of the Common lists.
+    if (Array.isArray(values.categories)) row.categories = values.categories;
     // A draft revision of a published template, waiting for approval.
     if (!id && values.replacesTemplateId) row.replaces_template_id = values.replacesTemplateId;
     // The clinical protocol (and version) a new template was drafted from.
@@ -5507,6 +5548,10 @@ export const useAppStore = create((set, get) => ({
     if (error && /replaces_template_id/.test(error.message || '') && 'replaces_template_id' in row) {
       const { replaces_template_id: _rt, ...rowWithoutReplaces } = row;
       ({ data, error } = await run(rowWithoutReplaces));
+    }
+    if (error && /categories/.test(error.message || '') && 'categories' in row) {
+      const { categories: _c, ...rowWithoutCategories } = row;
+      ({ data, error } = await run(rowWithoutCategories));
     }
     if (error && /source_protocol/.test(error.message || '') && 'source_protocol' in row) {
       const { source_protocol: _spr, ...rowWithoutProtocol } = row;
@@ -5629,7 +5674,7 @@ export const useAppStore = create((set, get) => ({
         await get().ensureCarePlanTemplateVersion(fresh, { effectiveDate: todayIsoDate(), note: 'Approved' });
         return { published: get().carePlanTemplates.find(t => t.id === fresh.id) || fresh };
       }
-      const content = { name: d.name, conditions: d.conditions, goals: d.goals, interventions: d.interventions, barriers: d.barriers, renewal: d.renewal };
+      const content = { name: d.name, conditions: d.conditions, goals: d.goals, interventions: d.interventions, barriers: d.barriers, renewal: d.renewal, categories: d.categories || [] };
       if (get().carePlanTemplateVersioningReady) {
         // A revision is the template's next version, in effect today; plans
         // move to it at their next review (Publish version offers the rest).

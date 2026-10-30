@@ -155,6 +155,22 @@
   white-space: nowrap;
 }
 /* Why a recommended template is here — the matched patient problem(s). */
+/* A newly added template's category: the picker and why it's preset. Indented
+   past the checkbox so it reads as part of the row above. */
+.categoryRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0 var(--space-2) var(--space-2) calc(var(--space-2) * 2 + var(--space-4));
+}
+.categorySelect { max-width: 480px; }
+.categoryMatched,
+.categoryNote {
+  font-size: var(--font-sm);
+}
+.categoryMatched { color: var(--status-success); }
+.categoryNote { color: var(--neutral-300); }
+
 .rowReason {
   font-size: var(--font-sm);
   color: var(--primary-300);

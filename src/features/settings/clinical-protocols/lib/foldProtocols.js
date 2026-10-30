@@ -31,9 +31,7 @@ export function foldProtocolRecord(entry) {
   return { slug: entry.id, ...metadata, protocol };
 }
 
-/** The starter template's GBI set, by library title (resolved to ids by the seed). */
-export function foldStarterGbi(entry) {
-  return {
+const gbiOf = (entry) => ({
     goals: (entry.goals || []).map(g => ({ title: g.title, ...(g.priority ? { priority: g.priority } : {}) })),
     interventions: (entry.interventions || []).map(i => ({
       title: i.title,
@@ -46,6 +44,18 @@ export function foldStarterGbi(entry) {
       ...(b.priority ? { priority: b.priority } : {}),
       ...(b.goalTitles?.length ? { goalTitles: [...b.goalTitles] } : {}),
     })),
+});
+
+/**
+ * The starter template's Common GBI set and categories, items by library
+ * title (resolved to ids by the seed).
+ */
+export function foldStarterGbi(entry) {
+  return {
+    ...gbiOf(entry),
+    categories: (entry.categories || []).map(c => ({
+      id: c.id, name: c.name, match: c.match || 'all', criteria: c.criteria || [], ...gbiOf(c),
+    })),
   };
 }
 
@@ -55,9 +65,9 @@ const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
 export function unresolvedTitles(entry, { goals = [], interventions = [], barriers = [] } = {}) {
   const has = rows => new Set(rows.map(r => norm(r.title)));
   const lib = { goal: has(goals), intervention: has(interventions), barrier: has(barriers) };
-  return [
-    ...(entry.goals || []).map(g => ['goal', g.title]),
-    ...(entry.interventions || []).map(i => ['intervention', i.title]),
-    ...(entry.barriers || []).map(b => ['barrier', b.title]),
-  ].filter(([kind, title]) => !lib[kind].has(norm(title))).map(([kind, title]) => ({ kind, title }));
+  return [entry, ...(entry.categories || [])].flatMap(section => [
+    ...(section.goals || []).map(g => ['goal', g.title]),
+    ...(section.interventions || []).map(i => ['intervention', i.title]),
+    ...(section.barriers || []).map(b => ['barrier', b.title]),
+  ]).filter(([kind, title]) => !lib[kind].has(norm(title))).map(([kind, title]) => ({ kind, title }));
 }

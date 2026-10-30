@@ -34,35 +34,68 @@ const protocolValues = FOLD_PROTOCOL_CONTENT.map((entry) => {
    'active', 'fold', 'Fold clinical content', ${json(r.protocol)}, ${json({ fold: { slug: r.slug } })}, 'Fold', 'Fold', now())`;
 }).join(',\n');
 
-const resolved = (list, table, alias, entryJson) => `(SELECT coalesce(jsonb_agg(jsonb_strip_nulls(${entryJson}) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'${list}') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.${table} x WHERE ${titleKey('x.title')} = ${titleKey("e.j->>'title'")} ORDER BY x.created_at LIMIT 1) ${alias} ON true)`;
+// Session functions that turn a list of { title, priority?, goalTitle(s)? }
+// into template entries linked to the library by title (trimmed, case and
+// runs of spaces ignored), so a starter never invents a library item.
+const resolver = (fn, table, alias, entryJson) => `CREATE FUNCTION pg_temp.${fn}(items jsonb) RETURNS jsonb LANGUAGE sql AS $fn$
+  SELECT coalesce(jsonb_agg(jsonb_strip_nulls(${entryJson}) ORDER BY e.o), '[]'::jsonb)
+  FROM jsonb_array_elements(coalesce(items, '[]'::jsonb)) WITH ORDINALITY AS e(j, o)
+  LEFT JOIN LATERAL (SELECT * FROM public.${table} x WHERE ${titleKey('x.title')} = ${titleKey("e.j->>'title'")} ORDER BY x.created_at LIMIT 1) ${alias} ON true
+$fn$;`;
 
-const starter = (entry) => {
+const resolvers = [
+  resolver('fold_goals', 'care_plan_goals', 'g', `jsonb_build_object(
+    'id', g.id, 'title', coalesce(g.title, e.j->>'title'), 'subtitle', coalesce(g.description, ''),
+    'category', coalesce(g.category, 'Other'), 'priority', coalesce(e.j->>'priority', g.priority, 'medium'))`),
+  resolver('fold_interventions', 'care_plan_intervention_templates', 'i', `jsonb_build_object(
+    'id', i.id, 'kind', coalesce(i.kind, e.j->>'kind', 'internal-task'), 'title', coalesce(i.title, e.j->>'title'),
+    'config', coalesce(i.config, '{}'::jsonb) || jsonb_build_object('priority', coalesce(e.j->>'priority', i.config->>'priority', 'medium')),
+    'goalTitle', e.j->'goalTitle')`),
+  resolver('fold_barriers', 'care_plan_barriers', 'b', `jsonb_build_object(
+    'id', b.id, 'title', coalesce(b.title, e.j->>'title'), 'description', coalesce(b.description, ''),
+    'priority', coalesce(e.j->>'priority', 'medium'), 'goalTitles', e.j->'goalTitles')`),
+  `CREATE FUNCTION pg_temp.fold_categories(cats jsonb) RETURNS jsonb LANGUAGE sql AS $fn$
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'id', c->>'id', 'name', c->>'name', 'match', coalesce(c->>'match', 'all'), 'criteria', coalesce(c->'criteria', '[]'::jsonb),
+    'goals', pg_temp.fold_goals(c->'goals'), 'interventions', pg_temp.fold_interventions(c->'interventions'),
+    'barriers', pg_temp.fold_barriers(c->'barriers')) ORDER BY o), '[]'::jsonb)
+  FROM jsonb_array_elements(coalesce(cats, '[]'::jsonb)) WITH ORDINALITY AS x(c, o)
+$fn$;`,
+].join('\n\n');
+
+const srcOf = (entry) => {
   const r = foldProtocolRecord(entry);
   return `WITH src AS (
   SELECT ${protocolId(r.slug)} AS pid, ${lit(r.title)}::text AS name, ${lit(r.version)}::text AS version,
          ${textArray(r.conditions)} AS conditions, ${json(foldStarterGbi(entry))} AS gbi
-)
-INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, status, scope, created_by, updated_by, source_protocol)
+)`;
+};
+
+const starter = (entry) => `${srcOf(entry)}
+INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, categories, status, scope, created_by, updated_by, source_protocol)
 SELECT
-  src.name,
-  src.conditions,
-  ${resolved('goals', 'care_plan_goals', 'g', `jsonb_build_object(
-       'id', g.id, 'title', coalesce(g.title, e.j->>'title'), 'subtitle', coalesce(g.description, ''),
-       'category', coalesce(g.category, 'Other'), 'priority', coalesce(e.j->>'priority', g.priority, 'medium'))`)},
-  ${resolved('interventions', 'care_plan_intervention_templates', 'i', `jsonb_build_object(
-       'id', i.id, 'kind', coalesce(i.kind, e.j->>'kind', 'internal-task'), 'title', coalesce(i.title, e.j->>'title'),
-       'config', coalesce(i.config, '{}'::jsonb) || jsonb_build_object('priority', coalesce(e.j->>'priority', i.config->>'priority', 'medium')),
-       'goalTitle', e.j->'goalTitle')`)},
-  ${resolved('barriers', 'care_plan_barriers', 'b', `jsonb_build_object(
-       'id', b.id, 'title', coalesce(b.title, e.j->>'title'), 'description', coalesce(b.description, ''),
-       'priority', coalesce(e.j->>'priority', 'medium'), 'goalTitles', e.j->'goalTitles')`)},
+  src.name, src.conditions,
+  pg_temp.fold_goals(src.gbi->'goals'), pg_temp.fold_interventions(src.gbi->'interventions'), pg_temp.fold_barriers(src.gbi->'barriers'),
+  pg_temp.fold_categories(src.gbi->'categories'),
   'published', 'org', 'Fold', 'Fold',
   jsonb_build_object('id', src.pid, 'title', src.name, 'version', src.version, 'organization', 'Fold')
 FROM src
 WHERE NOT EXISTS (SELECT 1 FROM public.care_plan_templates t WHERE t.source_protocol->>'id' = src.pid::text);`;
-};
+
+// A starter seeded before its content had categories takes them, as long as
+// no patient has it yet: changing a template in use goes through a version.
+const addCategories = (entry) => `${srcOf(entry)}
+UPDATE public.care_plan_templates t SET
+  goals = pg_temp.fold_goals(src.gbi->'goals'),
+  interventions = pg_temp.fold_interventions(src.gbi->'interventions'),
+  barriers = pg_temp.fold_barriers(src.gbi->'barriers'),
+  categories = pg_temp.fold_categories(src.gbi->'categories'),
+  updated_by = 'Fold', updated_at = now()
+FROM src
+WHERE t.created_by = 'Fold'
+  AND t.source_protocol->>'id' = src.pid::text
+  AND t.categories = '[]'::jsonb
+  AND NOT EXISTS (SELECT 1 FROM public.patient_care_plan_template_instances i WHERE i.template_id = t.id);`;
 
 const sql = `-- Generated by scripts/genFoldProtocolsSeed.mjs from
 -- src/features/settings/clinical-protocols/data/foldProtocolContent.js. Do not edit by hand.
@@ -72,10 +105,17 @@ const sql = `-- Generated by scripts/genFoldProtocolsSeed.mjs from
 -- clinical protocol (organization "Fold", source_kind 'fold'), and its goals,
 -- interventions and barriers a published starter template linked to it.
 -- Idempotent: protocols are upserted by a fixed id; a starter template is only
--- added when no template links to its protocol yet. The care_pathways table is
+-- added when no template links to its protocol yet, and a starter no patient
+-- uses yet takes its categories (Common + per-patient groups, see
+-- care_plan_template_categories_migration.sql). The care_pathways table is
 -- left in place but no longer read.
 
 BEGIN;
+
+ALTER TABLE public.care_plan_templates
+  ADD COLUMN IF NOT EXISTS categories jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+${resolvers}
 
 -- Fold protocols are their own source kind.
 ALTER TABLE public.clinical_protocols DROP CONSTRAINT IF EXISTS clinical_protocols_source_kind_check;
@@ -114,6 +154,9 @@ WHERE t.source_protocol IS NULL
 
 -- One starter template per Fold protocol.
 ${FOLD_PROTOCOL_CONTENT.map(starter).join('\n\n')}
+
+-- Categories for starters seeded before their content had them.
+${FOLD_PROTOCOL_CONTENT.filter(e => e.categories?.length).map(addCategories).join('\n\n')}
 
 COMMIT;
 

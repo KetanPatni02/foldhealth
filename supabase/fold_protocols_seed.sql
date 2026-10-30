@@ -6,10 +6,48 @@
 -- clinical protocol (organization "Fold", source_kind 'fold'), and its goals,
 -- interventions and barriers a published starter template linked to it.
 -- Idempotent: protocols are upserted by a fixed id; a starter template is only
--- added when no template links to its protocol yet. The care_pathways table is
+-- added when no template links to its protocol yet, and a starter no patient
+-- uses yet takes its categories (Common + per-patient groups, see
+-- care_plan_template_categories_migration.sql). The care_pathways table is
 -- left in place but no longer read.
 
 BEGIN;
+
+ALTER TABLE public.care_plan_templates
+  ADD COLUMN IF NOT EXISTS categories jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+CREATE FUNCTION pg_temp.fold_goals(items jsonb) RETURNS jsonb LANGUAGE sql AS $fn$
+  SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+    'id', g.id, 'title', coalesce(g.title, e.j->>'title'), 'subtitle', coalesce(g.description, ''),
+    'category', coalesce(g.category, 'Other'), 'priority', coalesce(e.j->>'priority', g.priority, 'medium'))) ORDER BY e.o), '[]'::jsonb)
+  FROM jsonb_array_elements(coalesce(items, '[]'::jsonb)) WITH ORDINALITY AS e(j, o)
+  LEFT JOIN LATERAL (SELECT * FROM public.care_plan_goals x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) g ON true
+$fn$;
+
+CREATE FUNCTION pg_temp.fold_interventions(items jsonb) RETURNS jsonb LANGUAGE sql AS $fn$
+  SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+    'id', i.id, 'kind', coalesce(i.kind, e.j->>'kind', 'internal-task'), 'title', coalesce(i.title, e.j->>'title'),
+    'config', coalesce(i.config, '{}'::jsonb) || jsonb_build_object('priority', coalesce(e.j->>'priority', i.config->>'priority', 'medium')),
+    'goalTitle', e.j->'goalTitle')) ORDER BY e.o), '[]'::jsonb)
+  FROM jsonb_array_elements(coalesce(items, '[]'::jsonb)) WITH ORDINALITY AS e(j, o)
+  LEFT JOIN LATERAL (SELECT * FROM public.care_plan_intervention_templates x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) i ON true
+$fn$;
+
+CREATE FUNCTION pg_temp.fold_barriers(items jsonb) RETURNS jsonb LANGUAGE sql AS $fn$
+  SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+    'id', b.id, 'title', coalesce(b.title, e.j->>'title'), 'description', coalesce(b.description, ''),
+    'priority', coalesce(e.j->>'priority', 'medium'), 'goalTitles', e.j->'goalTitles')) ORDER BY e.o), '[]'::jsonb)
+  FROM jsonb_array_elements(coalesce(items, '[]'::jsonb)) WITH ORDINALITY AS e(j, o)
+  LEFT JOIN LATERAL (SELECT * FROM public.care_plan_barriers x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) b ON true
+$fn$;
+
+CREATE FUNCTION pg_temp.fold_categories(cats jsonb) RETURNS jsonb LANGUAGE sql AS $fn$
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'id', c->>'id', 'name', c->>'name', 'match', coalesce(c->>'match', 'all'), 'criteria', coalesce(c->'criteria', '[]'::jsonb),
+    'goals', pg_temp.fold_goals(c->'goals'), 'interventions', pg_temp.fold_interventions(c->'interventions'),
+    'barriers', pg_temp.fold_barriers(c->'barriers')) ORDER BY o), '[]'::jsonb)
+  FROM jsonb_array_elements(coalesce(cats, '[]'::jsonb)) WITH ORDINALITY AS x(c, o)
+$fn$;
 
 -- Fold protocols are their own source kind.
 ALTER TABLE public.clinical_protocols DROP CONSTRAINT IF EXISTS clinical_protocols_source_kind_check;
@@ -60,28 +98,13 @@ WHERE t.source_protocol IS NULL
 -- One starter template per Fold protocol.
 WITH src AS (
   SELECT md5($fold$fold-protocol:diabetes$fold$)::uuid AS pid, $fold$Type 2 Diabetes$fold$::text AS name, $fold$2026.1$fold$::text AS version,
-         ARRAY[$fold$Diabetes$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Improve A1C control"},{"title":"Maintain glucose within target range"},{"title":"Reduce episodes of hypoglycemia"},{"title":"Monitor blood glucose consistently"},{"title":"Improve diabetes medication adherence"},{"title":"Complete routine diabetes monitoring"},{"title":"Improve renal risk monitoring"}],"interventions":[{"title":"Diabetes education","goalTitle":"Improve A1C control"},{"title":"A1C follow-up","goalTitle":"Improve A1C control"},{"title":"Diabetes nutrition coaching","goalTitle":"Improve A1C control"},{"title":"Glucose monitoring support","goalTitle":"Monitor blood glucose consistently"},{"title":"Glucose pattern review","goalTitle":"Maintain glucose within target range"},{"title":"Hypoglycemia education","goalTitle":"Reduce episodes of hypoglycemia"},{"title":"Hypoglycemia review","goalTitle":"Reduce episodes of hypoglycemia"},{"title":"Medication adherence education","goalTitle":"Improve diabetes medication adherence"},{"title":"Diabetes monitoring checklist","goalTitle":"Complete routine diabetes monitoring"},{"title":"Renal monitoring","goalTitle":"Improve renal risk monitoring"}],"barriers":[{"title":"Limited progress toward A1C target","goalTitles":["Improve A1C control"]},{"title":"Diabetes self-management complexity","goalTitles":["Improve A1C control","Monitor blood glucose consistently"]},{"title":"Glucose-monitoring difficulty","goalTitles":["Monitor blood glucose consistently"]},{"title":"Hypoglycemia risk","goalTitles":["Reduce episodes of hypoglycemia"]},{"title":"Medication adherence difficulty","goalTitles":["Improve diabetes medication adherence"]},{"title":"Lab access issue","goalTitles":["Complete routine diabetes monitoring","Improve renal risk monitoring"]}]}$fold$::jsonb AS gbi
+         ARRAY[$fold$Diabetes$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Reduce episodes of hypoglycemia"},{"title":"Improve diabetes medication adherence"},{"title":"Complete routine diabetes monitoring"},{"title":"Improve renal risk monitoring"}],"interventions":[{"title":"Hypoglycemia education","goalTitle":"Reduce episodes of hypoglycemia"},{"title":"Hypoglycemia review","goalTitle":"Reduce episodes of hypoglycemia"},{"title":"Medication adherence education","goalTitle":"Improve diabetes medication adherence"},{"title":"Diabetes monitoring checklist","goalTitle":"Complete routine diabetes monitoring"},{"title":"Renal monitoring","goalTitle":"Improve renal risk monitoring"}],"barriers":[{"title":"Hypoglycemia risk","goalTitles":["Reduce episodes of hypoglycemia"]},{"title":"Medication adherence difficulty","goalTitles":["Improve diabetes medication adherence"]},{"title":"Lab access issue","goalTitles":["Complete routine diabetes monitoring","Improve renal risk monitoring"]}],"categories":[{"id":"diabetes-a1c-9-plus","name":"A1C 9% or above","match":"all","criteria":[{"type":"lab","lab":"hba1c","op":">=","value":9,"withinDays":180}],"goals":[{"title":"Improve A1C control","priority":"high"},{"title":"Monitor blood glucose consistently"},{"title":"Maintain glucose within target range"}],"interventions":[{"title":"Diabetes education","goalTitle":"Improve A1C control"},{"title":"A1C follow-up","goalTitle":"Improve A1C control"},{"title":"Diabetes nutrition coaching","goalTitle":"Improve A1C control"},{"title":"Glucose monitoring support","goalTitle":"Monitor blood glucose consistently"},{"title":"Glucose pattern review","goalTitle":"Maintain glucose within target range"}],"barriers":[{"title":"Limited progress toward A1C target","priority":"high","goalTitles":["Improve A1C control"]},{"title":"Diabetes self-management complexity","goalTitles":["Improve A1C control","Monitor blood glucose consistently"]},{"title":"Glucose-monitoring difficulty","goalTitles":["Monitor blood glucose consistently"]}]},{"id":"diabetes-a1c-7-to-9","name":"A1C 7% to 8.9%","match":"all","criteria":[{"type":"lab","lab":"hba1c","op":">=","value":7,"withinDays":180}],"goals":[{"title":"Improve A1C control"},{"title":"Monitor blood glucose consistently"}],"interventions":[{"title":"Diabetes education","goalTitle":"Improve A1C control"},{"title":"A1C follow-up","goalTitle":"Improve A1C control"},{"title":"Diabetes nutrition coaching","goalTitle":"Improve A1C control"},{"title":"Glucose monitoring support","goalTitle":"Monitor blood glucose consistently"}],"barriers":[{"title":"Limited progress toward A1C target","goalTitles":["Improve A1C control"]},{"title":"Glucose-monitoring difficulty","goalTitles":["Monitor blood glucose consistently"]}]},{"id":"diabetes-a1c-at-goal","name":"A1C below 7% (at goal)","match":"all","criteria":[{"type":"lab","lab":"hba1c","op":"<","value":7,"withinDays":365}],"goals":[{"title":"Maintain glucose within target range"}],"interventions":[{"title":"Glucose pattern review","goalTitle":"Maintain glucose within target range"}],"barriers":[]}]}$fold$::jsonb AS gbi
 )
-INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, status, scope, created_by, updated_by, source_protocol)
+INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, categories, status, scope, created_by, updated_by, source_protocol)
 SELECT
-  src.name,
-  src.conditions,
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', g.id, 'title', coalesce(g.title, e.j->>'title'), 'subtitle', coalesce(g.description, ''),
-       'category', coalesce(g.category, 'Other'), 'priority', coalesce(e.j->>'priority', g.priority, 'medium'))) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'goals') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_goals x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) g ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', i.id, 'kind', coalesce(i.kind, e.j->>'kind', 'internal-task'), 'title', coalesce(i.title, e.j->>'title'),
-       'config', coalesce(i.config, '{}'::jsonb) || jsonb_build_object('priority', coalesce(e.j->>'priority', i.config->>'priority', 'medium')),
-       'goalTitle', e.j->'goalTitle')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'interventions') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_intervention_templates x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) i ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', b.id, 'title', coalesce(b.title, e.j->>'title'), 'description', coalesce(b.description, ''),
-       'priority', coalesce(e.j->>'priority', 'medium'), 'goalTitles', e.j->'goalTitles')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'barriers') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_barriers x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) b ON true),
+  src.name, src.conditions,
+  pg_temp.fold_goals(src.gbi->'goals'), pg_temp.fold_interventions(src.gbi->'interventions'), pg_temp.fold_barriers(src.gbi->'barriers'),
+  pg_temp.fold_categories(src.gbi->'categories'),
   'published', 'org', 'Fold', 'Fold',
   jsonb_build_object('id', src.pid, 'title', src.name, 'version', src.version, 'organization', 'Fold')
 FROM src
@@ -89,28 +112,13 @@ WHERE NOT EXISTS (SELECT 1 FROM public.care_plan_templates t WHERE t.source_prot
 
 WITH src AS (
   SELECT md5($fold$fold-protocol:heart-failure$fold$)::uuid AS pid, $fold$Heart Failure$fold$::text AS name, $fold$2026.1$fold$::text AS version,
-         ARRAY[$fold$Heart failure$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Improve heart failure symptom control"},{"title":"Monitor daily weight for heart failure"},{"title":"Improve recognition of warning signs"},{"title":"Maintain sodium consumption"},{"title":"Improve overall medication adherence"},{"title":"Complete post-discharge follow-up"},{"title":"Prevent avoidable readmission"}],"interventions":[{"title":"Daily weight monitoring","goalTitle":"Monitor daily weight for heart failure"},{"title":"Heart-failure symptom review","goalTitle":"Improve heart failure symptom control"},{"title":"Escalation coordination","goalTitle":"Improve heart failure symptom control"},{"title":"Warning-sign education","goalTitle":"Improve recognition of warning signs"},{"title":"Nutrition risk counseling","goalTitle":"Maintain sodium consumption"},{"title":"Medication adherence education","goalTitle":"Improve overall medication adherence"},{"title":"Refill support","goalTitle":"Improve overall medication adherence"},{"title":"Medication review","goalTitle":"Improve overall medication adherence"},{"title":"Post-discharge outreach","goalTitle":"Complete post-discharge follow-up"},{"title":"Readmission-risk review","goalTitle":"Prevent avoidable readmission"}],"barriers":[{"title":"Weight-monitoring inconsistency","goalTitles":["Monitor daily weight for heart failure"]},{"title":"Scale or equipment access","goalTitles":["Monitor daily weight for heart failure"]},{"title":"Difficulty recognizing cardiac symptoms","goalTitles":["Improve recognition of warning signs","Improve heart failure symptom control"]},{"title":"Difficulty following fluid/sodium plan","goalTitles":["Maintain sodium consumption"]},{"title":"Medication adherence difficulty","goalTitles":["Improve overall medication adherence"]},{"title":"High readmission risk","goalTitles":["Prevent avoidable readmission"]}]}$fold$::jsonb AS gbi
+         ARRAY[$fold$Heart failure$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Improve heart failure symptom control"},{"title":"Monitor daily weight for heart failure"},{"title":"Improve recognition of warning signs"},{"title":"Maintain sodium consumption"},{"title":"Improve overall medication adherence"},{"title":"Complete post-discharge follow-up"},{"title":"Prevent avoidable readmission"}],"interventions":[{"title":"Daily weight monitoring","goalTitle":"Monitor daily weight for heart failure"},{"title":"Heart-failure symptom review","goalTitle":"Improve heart failure symptom control"},{"title":"Escalation coordination","goalTitle":"Improve heart failure symptom control"},{"title":"Warning-sign education","goalTitle":"Improve recognition of warning signs"},{"title":"Nutrition risk counseling","goalTitle":"Maintain sodium consumption"},{"title":"Medication adherence education","goalTitle":"Improve overall medication adherence"},{"title":"Refill support","goalTitle":"Improve overall medication adherence"},{"title":"Medication review","goalTitle":"Improve overall medication adherence"},{"title":"Post-discharge outreach","goalTitle":"Complete post-discharge follow-up"},{"title":"Readmission-risk review","goalTitle":"Prevent avoidable readmission"}],"barriers":[{"title":"Weight-monitoring inconsistency","goalTitles":["Monitor daily weight for heart failure"]},{"title":"Scale or equipment access","goalTitles":["Monitor daily weight for heart failure"]},{"title":"Difficulty recognizing cardiac symptoms","goalTitles":["Improve recognition of warning signs","Improve heart failure symptom control"]},{"title":"Difficulty following fluid/sodium plan","goalTitles":["Maintain sodium consumption"]},{"title":"Medication adherence difficulty","goalTitles":["Improve overall medication adherence"]},{"title":"High readmission risk","goalTitles":["Prevent avoidable readmission"]}],"categories":[]}$fold$::jsonb AS gbi
 )
-INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, status, scope, created_by, updated_by, source_protocol)
+INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, categories, status, scope, created_by, updated_by, source_protocol)
 SELECT
-  src.name,
-  src.conditions,
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', g.id, 'title', coalesce(g.title, e.j->>'title'), 'subtitle', coalesce(g.description, ''),
-       'category', coalesce(g.category, 'Other'), 'priority', coalesce(e.j->>'priority', g.priority, 'medium'))) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'goals') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_goals x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) g ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', i.id, 'kind', coalesce(i.kind, e.j->>'kind', 'internal-task'), 'title', coalesce(i.title, e.j->>'title'),
-       'config', coalesce(i.config, '{}'::jsonb) || jsonb_build_object('priority', coalesce(e.j->>'priority', i.config->>'priority', 'medium')),
-       'goalTitle', e.j->'goalTitle')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'interventions') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_intervention_templates x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) i ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', b.id, 'title', coalesce(b.title, e.j->>'title'), 'description', coalesce(b.description, ''),
-       'priority', coalesce(e.j->>'priority', 'medium'), 'goalTitles', e.j->'goalTitles')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'barriers') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_barriers x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) b ON true),
+  src.name, src.conditions,
+  pg_temp.fold_goals(src.gbi->'goals'), pg_temp.fold_interventions(src.gbi->'interventions'), pg_temp.fold_barriers(src.gbi->'barriers'),
+  pg_temp.fold_categories(src.gbi->'categories'),
   'published', 'org', 'Fold', 'Fold',
   jsonb_build_object('id', src.pid, 'title', src.name, 'version', src.version, 'organization', 'Fold')
 FROM src
@@ -118,28 +126,13 @@ WHERE NOT EXISTS (SELECT 1 FROM public.care_plan_templates t WHERE t.source_prot
 
 WITH src AS (
   SELECT md5($fold$fold-protocol:copd$fold$)::uuid AS pid, $fold$COPD$fold$::text AS name, $fold$2026.1$fold$::text AS version,
-         ARRAY[$fold$COPD$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Improve COPD symptom control"},{"title":"Reduce respiratory exacerbations"},{"title":"Improve inhaler technique"},{"title":"Improve inhaler adherence"},{"title":"Monitor oxygen saturation for COPD"},{"title":"Reduce tobacco exposure"},{"title":"Complete immunization review"}],"interventions":[{"title":"Respiratory symptom monitoring","goalTitle":"Improve COPD symptom control"},{"title":"Respiratory action-plan education","goalTitle":"Reduce respiratory exacerbations"},{"title":"Exacerbation prevention","goalTitle":"Reduce respiratory exacerbations"},{"title":"Inhaler education","goalTitle":"Improve inhaler technique"},{"title":"Inhaler teach-back","goalTitle":"Improve inhaler technique"},{"title":"Medication adherence education","goalTitle":"Improve inhaler adherence"},{"title":"Oxygen-use support","goalTitle":"Monitor oxygen saturation for COPD"},{"title":"Tobacco-use counseling","goalTitle":"Reduce tobacco exposure"},{"title":"Tobacco cessation resources","goalTitle":"Reduce tobacco exposure"},{"title":"Immunization review","goalTitle":"Complete immunization review"}],"barriers":[{"title":"Respiratory symptom burden","goalTitles":["Improve COPD symptom control"]},{"title":"Difficulty following action plan","goalTitles":["Reduce respiratory exacerbations"]},{"title":"Incorrect inhaler technique","goalTitles":["Improve inhaler technique"]},{"title":"Inhaler adherence difficulty","goalTitles":["Improve inhaler adherence"]},{"title":"Oxygen equipment issue","goalTitles":["Monitor oxygen saturation for COPD"]},{"title":"Tobacco cessation difficulty","goalTitles":["Reduce tobacco exposure"]}]}$fold$::jsonb AS gbi
+         ARRAY[$fold$COPD$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Improve COPD symptom control"},{"title":"Reduce respiratory exacerbations"},{"title":"Improve inhaler technique"},{"title":"Improve inhaler adherence"},{"title":"Monitor oxygen saturation for COPD"},{"title":"Reduce tobacco exposure"},{"title":"Complete immunization review"}],"interventions":[{"title":"Respiratory symptom monitoring","goalTitle":"Improve COPD symptom control"},{"title":"Respiratory action-plan education","goalTitle":"Reduce respiratory exacerbations"},{"title":"Exacerbation prevention","goalTitle":"Reduce respiratory exacerbations"},{"title":"Inhaler education","goalTitle":"Improve inhaler technique"},{"title":"Inhaler teach-back","goalTitle":"Improve inhaler technique"},{"title":"Medication adherence education","goalTitle":"Improve inhaler adherence"},{"title":"Oxygen-use support","goalTitle":"Monitor oxygen saturation for COPD"},{"title":"Tobacco-use counseling","goalTitle":"Reduce tobacco exposure"},{"title":"Tobacco cessation resources","goalTitle":"Reduce tobacco exposure"},{"title":"Immunization review","goalTitle":"Complete immunization review"}],"barriers":[{"title":"Respiratory symptom burden","goalTitles":["Improve COPD symptom control"]},{"title":"Difficulty following action plan","goalTitles":["Reduce respiratory exacerbations"]},{"title":"Incorrect inhaler technique","goalTitles":["Improve inhaler technique"]},{"title":"Inhaler adherence difficulty","goalTitles":["Improve inhaler adherence"]},{"title":"Oxygen equipment issue","goalTitles":["Monitor oxygen saturation for COPD"]},{"title":"Tobacco cessation difficulty","goalTitles":["Reduce tobacco exposure"]}],"categories":[]}$fold$::jsonb AS gbi
 )
-INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, status, scope, created_by, updated_by, source_protocol)
+INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, categories, status, scope, created_by, updated_by, source_protocol)
 SELECT
-  src.name,
-  src.conditions,
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', g.id, 'title', coalesce(g.title, e.j->>'title'), 'subtitle', coalesce(g.description, ''),
-       'category', coalesce(g.category, 'Other'), 'priority', coalesce(e.j->>'priority', g.priority, 'medium'))) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'goals') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_goals x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) g ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', i.id, 'kind', coalesce(i.kind, e.j->>'kind', 'internal-task'), 'title', coalesce(i.title, e.j->>'title'),
-       'config', coalesce(i.config, '{}'::jsonb) || jsonb_build_object('priority', coalesce(e.j->>'priority', i.config->>'priority', 'medium')),
-       'goalTitle', e.j->'goalTitle')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'interventions') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_intervention_templates x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) i ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', b.id, 'title', coalesce(b.title, e.j->>'title'), 'description', coalesce(b.description, ''),
-       'priority', coalesce(e.j->>'priority', 'medium'), 'goalTitles', e.j->'goalTitles')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'barriers') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_barriers x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) b ON true),
+  src.name, src.conditions,
+  pg_temp.fold_goals(src.gbi->'goals'), pg_temp.fold_interventions(src.gbi->'interventions'), pg_temp.fold_barriers(src.gbi->'barriers'),
+  pg_temp.fold_categories(src.gbi->'categories'),
   'published', 'org', 'Fold', 'Fold',
   jsonb_build_object('id', src.pid, 'title', src.name, 'version', src.version, 'organization', 'Fold')
 FROM src
@@ -147,28 +140,13 @@ WHERE NOT EXISTS (SELECT 1 FROM public.care_plan_templates t WHERE t.source_prot
 
 WITH src AS (
   SELECT md5($fold$fold-protocol:ckd$fold$)::uuid AS pid, $fold$Chronic Kidney Disease$fold$::text AS name, $fold$2026.1$fold$::text AS version,
-         ARRAY[$fold$Chronic kidney disease$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Maintain kidney function monitoring"},{"title":"Maintain individualized renal-protection plan"},{"title":"Maintain blood pressure within target"},{"title":"Improve overall medication adherence"},{"title":"Improve completion of recommended labs"},{"title":"Improve understanding of condition"}],"interventions":[{"title":"Lab tracking","goalTitle":"Maintain kidney function monitoring"},{"title":"Renal monitoring","goalTitle":"Maintain kidney function monitoring"},{"title":"Lab completion follow-up","goalTitle":"Improve completion of recommended labs"},{"title":"Renal risk-factor support","goalTitle":"Maintain individualized renal-protection plan"},{"title":"Medication review","goalTitle":"Maintain individualized renal-protection plan"},{"title":"Blood pressure monitoring","goalTitle":"Maintain blood pressure within target"},{"title":"Medication adherence education","goalTitle":"Improve overall medication adherence"},{"title":"Chronic kidney disease education","goalTitle":"Improve understanding of condition"}],"barriers":[{"title":"Kidney-monitoring complexity","goalTitles":["Maintain kidney function monitoring"]},{"title":"Lab access issue","goalTitles":["Improve completion of recommended labs"]},{"title":"Polypharmacy","goalTitles":["Maintain individualized renal-protection plan"]},{"title":"Difficulty controlling condition","goalTitles":["Maintain blood pressure within target"]},{"title":"Medication adherence difficulty","goalTitles":["Improve overall medication adherence"]},{"title":"Limited health literacy","goalTitles":["Improve understanding of condition"]}]}$fold$::jsonb AS gbi
+         ARRAY[$fold$Chronic kidney disease$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Maintain kidney function monitoring"},{"title":"Maintain individualized renal-protection plan"},{"title":"Maintain blood pressure within target"},{"title":"Improve overall medication adherence"},{"title":"Improve completion of recommended labs"},{"title":"Improve understanding of condition"}],"interventions":[{"title":"Lab tracking","goalTitle":"Maintain kidney function monitoring"},{"title":"Renal monitoring","goalTitle":"Maintain kidney function monitoring"},{"title":"Lab completion follow-up","goalTitle":"Improve completion of recommended labs"},{"title":"Renal risk-factor support","goalTitle":"Maintain individualized renal-protection plan"},{"title":"Medication review","goalTitle":"Maintain individualized renal-protection plan"},{"title":"Blood pressure monitoring","goalTitle":"Maintain blood pressure within target"},{"title":"Medication adherence education","goalTitle":"Improve overall medication adherence"},{"title":"Chronic kidney disease education","goalTitle":"Improve understanding of condition"}],"barriers":[{"title":"Kidney-monitoring complexity","goalTitles":["Maintain kidney function monitoring"]},{"title":"Lab access issue","goalTitles":["Improve completion of recommended labs"]},{"title":"Polypharmacy","goalTitles":["Maintain individualized renal-protection plan"]},{"title":"Difficulty controlling condition","goalTitles":["Maintain blood pressure within target"]},{"title":"Medication adherence difficulty","goalTitles":["Improve overall medication adherence"]},{"title":"Limited health literacy","goalTitles":["Improve understanding of condition"]}],"categories":[]}$fold$::jsonb AS gbi
 )
-INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, status, scope, created_by, updated_by, source_protocol)
+INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, categories, status, scope, created_by, updated_by, source_protocol)
 SELECT
-  src.name,
-  src.conditions,
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', g.id, 'title', coalesce(g.title, e.j->>'title'), 'subtitle', coalesce(g.description, ''),
-       'category', coalesce(g.category, 'Other'), 'priority', coalesce(e.j->>'priority', g.priority, 'medium'))) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'goals') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_goals x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) g ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', i.id, 'kind', coalesce(i.kind, e.j->>'kind', 'internal-task'), 'title', coalesce(i.title, e.j->>'title'),
-       'config', coalesce(i.config, '{}'::jsonb) || jsonb_build_object('priority', coalesce(e.j->>'priority', i.config->>'priority', 'medium')),
-       'goalTitle', e.j->'goalTitle')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'interventions') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_intervention_templates x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) i ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', b.id, 'title', coalesce(b.title, e.j->>'title'), 'description', coalesce(b.description, ''),
-       'priority', coalesce(e.j->>'priority', 'medium'), 'goalTitles', e.j->'goalTitles')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'barriers') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_barriers x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) b ON true),
+  src.name, src.conditions,
+  pg_temp.fold_goals(src.gbi->'goals'), pg_temp.fold_interventions(src.gbi->'interventions'), pg_temp.fold_barriers(src.gbi->'barriers'),
+  pg_temp.fold_categories(src.gbi->'categories'),
   'published', 'org', 'Fold', 'Fold',
   jsonb_build_object('id', src.pid, 'title', src.name, 'version', src.version, 'organization', 'Fold')
 FROM src
@@ -176,28 +154,13 @@ WHERE NOT EXISTS (SELECT 1 FROM public.care_plan_templates t WHERE t.source_prot
 
 WITH src AS (
   SELECT md5($fold$fold-protocol:hypertension$fold$)::uuid AS pid, $fold$Hypertension$fold$::text AS name, $fold$2026.1$fold$::text AS version,
-         ARRAY[$fold$Hypertension$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Maintain blood pressure within target"},{"title":"Monitor blood pressure consistently"},{"title":"Improve medication adherence for hypertension"},{"title":"Follow DASH eating pattern"},{"title":"Maintain sodium consumption"},{"title":"Reduce cardiovascular risk through activity"}],"interventions":[{"title":"Blood pressure monitoring","goalTitle":"Monitor blood pressure consistently"},{"title":"BP technique education","goalTitle":"Monitor blood pressure consistently"},{"title":"BP trend follow-up","goalTitle":"Maintain blood pressure within target"},{"title":"BP care-plan review","goalTitle":"Maintain blood pressure within target"},{"title":"Hypertension education","goalTitle":"Maintain blood pressure within target"},{"title":"Medication adherence education","goalTitle":"Improve medication adherence for hypertension"},{"title":"Refill support","goalTitle":"Improve medication adherence for hypertension"},{"title":"Nutrition coaching","goalTitle":"Follow DASH eating pattern"},{"title":"Nutrition risk counseling","goalTitle":"Maintain sodium consumption"},{"title":"Activity coaching","goalTitle":"Reduce cardiovascular risk through activity"}],"barriers":[{"title":"Persistent abnormal readings","goalTitles":["Maintain blood pressure within target"]},{"title":"Inconsistent self-monitoring","goalTitles":["Monitor blood pressure consistently"]},{"title":"Difficulty using monitoring equipment","goalTitles":["Monitor blood pressure consistently"]},{"title":"Medication adherence difficulty","goalTitles":["Improve medication adherence for hypertension"]},{"title":"Nutrition challenges","goalTitles":["Follow DASH eating pattern","Maintain sodium consumption"]},{"title":"Limited physical activity","goalTitles":["Reduce cardiovascular risk through activity"]}]}$fold$::jsonb AS gbi
+         ARRAY[$fold$Hypertension$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Maintain blood pressure within target"},{"title":"Monitor blood pressure consistently"},{"title":"Improve medication adherence for hypertension"},{"title":"Follow DASH eating pattern"},{"title":"Maintain sodium consumption"},{"title":"Reduce cardiovascular risk through activity"}],"interventions":[{"title":"Blood pressure monitoring","goalTitle":"Monitor blood pressure consistently"},{"title":"BP technique education","goalTitle":"Monitor blood pressure consistently"},{"title":"BP trend follow-up","goalTitle":"Maintain blood pressure within target"},{"title":"BP care-plan review","goalTitle":"Maintain blood pressure within target"},{"title":"Hypertension education","goalTitle":"Maintain blood pressure within target"},{"title":"Medication adherence education","goalTitle":"Improve medication adherence for hypertension"},{"title":"Refill support","goalTitle":"Improve medication adherence for hypertension"},{"title":"Nutrition coaching","goalTitle":"Follow DASH eating pattern"},{"title":"Nutrition risk counseling","goalTitle":"Maintain sodium consumption"},{"title":"Activity coaching","goalTitle":"Reduce cardiovascular risk through activity"}],"barriers":[{"title":"Persistent abnormal readings","goalTitles":["Maintain blood pressure within target"]},{"title":"Inconsistent self-monitoring","goalTitles":["Monitor blood pressure consistently"]},{"title":"Difficulty using monitoring equipment","goalTitles":["Monitor blood pressure consistently"]},{"title":"Medication adherence difficulty","goalTitles":["Improve medication adherence for hypertension"]},{"title":"Nutrition challenges","goalTitles":["Follow DASH eating pattern","Maintain sodium consumption"]},{"title":"Limited physical activity","goalTitles":["Reduce cardiovascular risk through activity"]}],"categories":[]}$fold$::jsonb AS gbi
 )
-INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, status, scope, created_by, updated_by, source_protocol)
+INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, categories, status, scope, created_by, updated_by, source_protocol)
 SELECT
-  src.name,
-  src.conditions,
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', g.id, 'title', coalesce(g.title, e.j->>'title'), 'subtitle', coalesce(g.description, ''),
-       'category', coalesce(g.category, 'Other'), 'priority', coalesce(e.j->>'priority', g.priority, 'medium'))) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'goals') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_goals x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) g ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', i.id, 'kind', coalesce(i.kind, e.j->>'kind', 'internal-task'), 'title', coalesce(i.title, e.j->>'title'),
-       'config', coalesce(i.config, '{}'::jsonb) || jsonb_build_object('priority', coalesce(e.j->>'priority', i.config->>'priority', 'medium')),
-       'goalTitle', e.j->'goalTitle')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'interventions') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_intervention_templates x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) i ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', b.id, 'title', coalesce(b.title, e.j->>'title'), 'description', coalesce(b.description, ''),
-       'priority', coalesce(e.j->>'priority', 'medium'), 'goalTitles', e.j->'goalTitles')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'barriers') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_barriers x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) b ON true),
+  src.name, src.conditions,
+  pg_temp.fold_goals(src.gbi->'goals'), pg_temp.fold_interventions(src.gbi->'interventions'), pg_temp.fold_barriers(src.gbi->'barriers'),
+  pg_temp.fold_categories(src.gbi->'categories'),
   'published', 'org', 'Fold', 'Fold',
   jsonb_build_object('id', src.pid, 'title', src.name, 'version', src.version, 'organization', 'Fold')
 FROM src
@@ -205,32 +168,34 @@ WHERE NOT EXISTS (SELECT 1 FROM public.care_plan_templates t WHERE t.source_prot
 
 WITH src AS (
   SELECT md5($fold$fold-protocol:dyslipidemia$fold$)::uuid AS pid, $fold$Dyslipidemia$fold$::text AS name, $fold$2026.1$fold$::text AS version,
-         ARRAY[$fold$Hyperlipidemia$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Improve lipid management"},{"title":"Improve overall medication adherence"},{"title":"Reduce saturated fat intake"},{"title":"Reduce cardiovascular risk through activity"},{"title":"Improve weight management"}],"interventions":[{"title":"Lipid-management follow-up","goalTitle":"Improve lipid management"},{"title":"Lab tracking","goalTitle":"Improve lipid management"},{"title":"Medication adherence education","goalTitle":"Improve overall medication adherence"},{"title":"Refill support","goalTitle":"Improve overall medication adherence"},{"title":"Nutrition coaching","goalTitle":"Reduce saturated fat intake"},{"title":"Activity plan","goalTitle":"Reduce cardiovascular risk through activity"},{"title":"Activity coaching","goalTitle":"Reduce cardiovascular risk through activity"},{"title":"Weight-management coaching","goalTitle":"Improve weight management"}],"barriers":[{"title":"Limited understanding of lipid management","goalTitles":["Improve lipid management"]},{"title":"Medication side effects","goalTitles":["Improve overall medication adherence"]},{"title":"Medication adherence difficulty","goalTitles":["Improve overall medication adherence"]},{"title":"Nutrition challenges","goalTitles":["Reduce saturated fat intake"]},{"title":"Limited physical activity","goalTitles":["Reduce cardiovascular risk through activity"]},{"title":"Weight-management difficulty","goalTitles":["Improve weight management"]}]}$fold$::jsonb AS gbi
+         ARRAY[$fold$Hyperlipidemia$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Improve lipid management"},{"title":"Improve overall medication adherence"},{"title":"Reduce saturated fat intake"},{"title":"Reduce cardiovascular risk through activity"},{"title":"Improve weight management"}],"interventions":[{"title":"Lipid-management follow-up","goalTitle":"Improve lipid management"},{"title":"Lab tracking","goalTitle":"Improve lipid management"},{"title":"Medication adherence education","goalTitle":"Improve overall medication adherence"},{"title":"Refill support","goalTitle":"Improve overall medication adherence"},{"title":"Nutrition coaching","goalTitle":"Reduce saturated fat intake"},{"title":"Activity plan","goalTitle":"Reduce cardiovascular risk through activity"},{"title":"Activity coaching","goalTitle":"Reduce cardiovascular risk through activity"},{"title":"Weight-management coaching","goalTitle":"Improve weight management"}],"barriers":[{"title":"Limited understanding of lipid management","goalTitles":["Improve lipid management"]},{"title":"Medication side effects","goalTitles":["Improve overall medication adherence"]},{"title":"Medication adherence difficulty","goalTitles":["Improve overall medication adherence"]},{"title":"Nutrition challenges","goalTitles":["Reduce saturated fat intake"]},{"title":"Limited physical activity","goalTitles":["Reduce cardiovascular risk through activity"]},{"title":"Weight-management difficulty","goalTitles":["Improve weight management"]}],"categories":[]}$fold$::jsonb AS gbi
 )
-INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, status, scope, created_by, updated_by, source_protocol)
+INSERT INTO public.care_plan_templates (name, conditions, goals, interventions, barriers, categories, status, scope, created_by, updated_by, source_protocol)
 SELECT
-  src.name,
-  src.conditions,
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', g.id, 'title', coalesce(g.title, e.j->>'title'), 'subtitle', coalesce(g.description, ''),
-       'category', coalesce(g.category, 'Other'), 'priority', coalesce(e.j->>'priority', g.priority, 'medium'))) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'goals') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_goals x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) g ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', i.id, 'kind', coalesce(i.kind, e.j->>'kind', 'internal-task'), 'title', coalesce(i.title, e.j->>'title'),
-       'config', coalesce(i.config, '{}'::jsonb) || jsonb_build_object('priority', coalesce(e.j->>'priority', i.config->>'priority', 'medium')),
-       'goalTitle', e.j->'goalTitle')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'interventions') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_intervention_templates x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) i ON true),
-  (SELECT coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-       'id', b.id, 'title', coalesce(b.title, e.j->>'title'), 'description', coalesce(b.description, ''),
-       'priority', coalesce(e.j->>'priority', 'medium'), 'goalTitles', e.j->'goalTitles')) ORDER BY e.o), '[]'::jsonb)
-     FROM jsonb_array_elements(src.gbi->'barriers') WITH ORDINALITY AS e(j, o)
-     LEFT JOIN LATERAL (SELECT * FROM public.care_plan_barriers x WHERE lower(regexp_replace(btrim(x.title), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(e.j->>'title'), '\s+', ' ', 'g')) ORDER BY x.created_at LIMIT 1) b ON true),
+  src.name, src.conditions,
+  pg_temp.fold_goals(src.gbi->'goals'), pg_temp.fold_interventions(src.gbi->'interventions'), pg_temp.fold_barriers(src.gbi->'barriers'),
+  pg_temp.fold_categories(src.gbi->'categories'),
   'published', 'org', 'Fold', 'Fold',
   jsonb_build_object('id', src.pid, 'title', src.name, 'version', src.version, 'organization', 'Fold')
 FROM src
 WHERE NOT EXISTS (SELECT 1 FROM public.care_plan_templates t WHERE t.source_protocol->>'id' = src.pid::text);
+
+-- Categories for starters seeded before their content had them.
+WITH src AS (
+  SELECT md5($fold$fold-protocol:diabetes$fold$)::uuid AS pid, $fold$Type 2 Diabetes$fold$::text AS name, $fold$2026.1$fold$::text AS version,
+         ARRAY[$fold$Diabetes$fold$]::text[] AS conditions, $fold${"goals":[{"title":"Reduce episodes of hypoglycemia"},{"title":"Improve diabetes medication adherence"},{"title":"Complete routine diabetes monitoring"},{"title":"Improve renal risk monitoring"}],"interventions":[{"title":"Hypoglycemia education","goalTitle":"Reduce episodes of hypoglycemia"},{"title":"Hypoglycemia review","goalTitle":"Reduce episodes of hypoglycemia"},{"title":"Medication adherence education","goalTitle":"Improve diabetes medication adherence"},{"title":"Diabetes monitoring checklist","goalTitle":"Complete routine diabetes monitoring"},{"title":"Renal monitoring","goalTitle":"Improve renal risk monitoring"}],"barriers":[{"title":"Hypoglycemia risk","goalTitles":["Reduce episodes of hypoglycemia"]},{"title":"Medication adherence difficulty","goalTitles":["Improve diabetes medication adherence"]},{"title":"Lab access issue","goalTitles":["Complete routine diabetes monitoring","Improve renal risk monitoring"]}],"categories":[{"id":"diabetes-a1c-9-plus","name":"A1C 9% or above","match":"all","criteria":[{"type":"lab","lab":"hba1c","op":">=","value":9,"withinDays":180}],"goals":[{"title":"Improve A1C control","priority":"high"},{"title":"Monitor blood glucose consistently"},{"title":"Maintain glucose within target range"}],"interventions":[{"title":"Diabetes education","goalTitle":"Improve A1C control"},{"title":"A1C follow-up","goalTitle":"Improve A1C control"},{"title":"Diabetes nutrition coaching","goalTitle":"Improve A1C control"},{"title":"Glucose monitoring support","goalTitle":"Monitor blood glucose consistently"},{"title":"Glucose pattern review","goalTitle":"Maintain glucose within target range"}],"barriers":[{"title":"Limited progress toward A1C target","priority":"high","goalTitles":["Improve A1C control"]},{"title":"Diabetes self-management complexity","goalTitles":["Improve A1C control","Monitor blood glucose consistently"]},{"title":"Glucose-monitoring difficulty","goalTitles":["Monitor blood glucose consistently"]}]},{"id":"diabetes-a1c-7-to-9","name":"A1C 7% to 8.9%","match":"all","criteria":[{"type":"lab","lab":"hba1c","op":">=","value":7,"withinDays":180}],"goals":[{"title":"Improve A1C control"},{"title":"Monitor blood glucose consistently"}],"interventions":[{"title":"Diabetes education","goalTitle":"Improve A1C control"},{"title":"A1C follow-up","goalTitle":"Improve A1C control"},{"title":"Diabetes nutrition coaching","goalTitle":"Improve A1C control"},{"title":"Glucose monitoring support","goalTitle":"Monitor blood glucose consistently"}],"barriers":[{"title":"Limited progress toward A1C target","goalTitles":["Improve A1C control"]},{"title":"Glucose-monitoring difficulty","goalTitles":["Monitor blood glucose consistently"]}]},{"id":"diabetes-a1c-at-goal","name":"A1C below 7% (at goal)","match":"all","criteria":[{"type":"lab","lab":"hba1c","op":"<","value":7,"withinDays":365}],"goals":[{"title":"Maintain glucose within target range"}],"interventions":[{"title":"Glucose pattern review","goalTitle":"Maintain glucose within target range"}],"barriers":[]}]}$fold$::jsonb AS gbi
+)
+UPDATE public.care_plan_templates t SET
+  goals = pg_temp.fold_goals(src.gbi->'goals'),
+  interventions = pg_temp.fold_interventions(src.gbi->'interventions'),
+  barriers = pg_temp.fold_barriers(src.gbi->'barriers'),
+  categories = pg_temp.fold_categories(src.gbi->'categories'),
+  updated_by = 'Fold', updated_at = now()
+FROM src
+WHERE t.created_by = 'Fold'
+  AND t.source_protocol->>'id' = src.pid::text
+  AND t.categories = '[]'::jsonb
+  AND NOT EXISTS (SELECT 1 FROM public.patient_care_plan_template_instances i WHERE i.template_id = t.id);
 
 COMMIT;
 
