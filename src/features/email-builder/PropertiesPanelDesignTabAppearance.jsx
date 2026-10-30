@@ -94,7 +94,7 @@ export function DesignTabAppearance({ ctx }) {
                   update(['data', 'style', 'backgroundPosition'], 'center');
                   update(['data', 'style', 'backgroundRepeat'], 'no-repeat');
                 }
-                // Cache raw SVG markup so the user can tint it — mirrors
+                // Cache raw SVG markup so the user can tint it, mirrors
                 // the Image-block path. URLs that aren't SVG (or fail to
                 // fetch for CORS) just don't get a Tint control surfaced.
                 if (typeof v === 'string' && /\.svg(\?|#|$)/i.test(v)) {
@@ -165,7 +165,7 @@ export function DesignTabAppearance({ ctx }) {
         </>
       )}
 
-      {/* ── Preview text (root only — the inbox preheader snippet) ── */}
+      {/* ── Preview text (root only: the inbox preheader snippet) ── */}
       {isLayout && (
         <>
           <SectionHeading>Preview text</SectionHeading>
@@ -183,7 +183,7 @@ export function DesignTabAppearance({ ctx }) {
         </>
       )}
 
-      {/* ── Color Variables (root only — global tokens) ── */}
+      {/* ── Color Variables (root only: global tokens) ── */}
       {isLayout && (
         <>
           <SectionHeading>Color Variables</SectionHeading>

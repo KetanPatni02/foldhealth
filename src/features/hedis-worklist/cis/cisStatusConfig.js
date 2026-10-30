@@ -28,7 +28,7 @@ export const DOSE_BADGE = {
   [CIS_DOSE_STATUS.cannotMeet]: { tone: 'error', icon: 'solar:close-circle-linear' },
 };
 
-export const fmtDate = (d) => (d ? d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '—');
+export const fmtDate = (d) => (d ? d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '-');
 
 /** A planned dose can't be dated before its earliest allowed date. */
 export const isLocked = (r) => r.kind === 'planned' && !!r.earliest && r.earliest > new Date();

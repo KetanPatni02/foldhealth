@@ -7,9 +7,9 @@ import { MEASURE_NAMES } from '../../hedis-worklist/ClinicalNotePanel.utils';
 import styles from './NoteTemplatePreviewDrawer.module.css';
 
 /**
- * NoteTemplatePreviewDrawer — read-only preview of a Note Template's
- * clinician-facing form. Reuses TemplateAnswersForm — the exact same
- * renderer the Non-Visit / Normal Note authoring drawer uses — so what
+ * NoteTemplatePreviewDrawer: read-only preview of a Note Template's
+ * clinician-facing form. Reuses TemplateAnswersForm, the exact same
+ * renderer the Non-Visit / Normal Note authoring drawer uses, so what
  * an admin sees here matches what a clinician sees in the Clinical Note
  * flow. Local answers state is throwaway; nothing is persisted.
  */

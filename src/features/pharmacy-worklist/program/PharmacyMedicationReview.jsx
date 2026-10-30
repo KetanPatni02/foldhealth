@@ -53,11 +53,11 @@ function ContactCard({ title, person }) {
       <header className={styles.cardTitle}>{title}{person?.name ? <span className={styles.cardName}>{person.name}</span> : null}</header>
       <dl className={styles.cardGrid}>
         <div className={styles.halfCell}><dt>Primary Phone</dt><dd><PhoneLink number={person?.phone} label={person?.name} /></dd></div>
-        {person?.fax !== undefined && <div className={styles.halfCell}><dt>Fax</dt><dd className={styles.noWrap}>{person.fax || '—'}</dd></div>}
-        <div className={styles.fullRow}><dt>Address</dt><dd>{person?.address1 || '—'}</dd></div>
-        <div><dt>City</dt><dd>{person?.city || '—'}</dd></div>
-        <div><dt>State</dt><dd>{person?.state || '—'}</dd></div>
-        <div><dt>Zip Code</dt><dd>{person?.zip || '—'}</dd></div>
+        {person?.fax !== undefined && <div className={styles.halfCell}><dt>Fax</dt><dd className={styles.noWrap}>{person.fax || '-'}</dd></div>}
+        <div className={styles.fullRow}><dt>Address</dt><dd>{person?.address1 || '-'}</dd></div>
+        <div><dt>City</dt><dd>{person?.city || '-'}</dd></div>
+        <div><dt>State</dt><dd>{person?.state || '-'}</dd></div>
+        <div><dt>Zip Code</dt><dd>{person?.zip || '-'}</dd></div>
       </dl>
     </section>
   );
@@ -212,11 +212,11 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
         <div className={styles.detailRow}>
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Dose Form</span>
-            <span className={styles.fieldValue}>{med.doseForm || '—'}</span>
+            <span className={styles.fieldValue}>{med.doseForm || '-'}</span>
           </div>
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Route</span>
-            <span className={styles.fieldValue}>{med.route || '—'}</span>
+            <span className={styles.fieldValue}>{med.route || '-'}</span>
           </div>
         </div>
         <div className={styles.detailRow}>
@@ -496,9 +496,9 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                         </span>
                     </span>
                   </span>
-                  <span className={styles.cValue}>{d.lastFill || '—'}</span>
+                  <span className={styles.cValue}>{d.lastFill || '-'}</span>
                   <span className={styles.cStack} onClick={e => e.stopPropagation()}>
-                    {dc ? (d.recentFill || '—') : (
+                    {dc ? (d.recentFill || '-') : (
                       <RecentFillChip
                         date={d.recentFill}
                         label={`${d.name} recent fill date`}
@@ -511,8 +511,8 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                       </span>
                     )}
                   </span>
-                  <span className={`${styles.cValue} ${riskClass(d.measure, fillDueTone(d.nextFill))}`}>{d.nextFill || '—'}</span>
-                  <span className={`${styles.cValue} ${riskClass(d.measure, pdcTone(d.pdc))}`}>{d.pdc == null ? '—' : `${d.pdc}%`}</span>
+                  <span className={`${styles.cValue} ${riskClass(d.measure, fillDueTone(d.nextFill))}`}>{d.nextFill || '-'}</span>
+                  <span className={`${styles.cValue} ${riskClass(d.measure, pdcTone(d.pdc))}`}>{d.pdc == null ? '-' : `${d.pdc}%`}</span>
                   <span className={styles.cActions} onClick={e => e.stopPropagation()}>
                     {/* Always there: opens the drug at its Notes; the count and the
                         tooltip say what is already written. */}
@@ -606,8 +606,8 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
               {!compact && <span className={styles.gapCardMeta}>
                 <Badge size="S" tone={GAP_STATUS_TONE[x.st.gap]} label={x.st.gap} />
                 <SubStatus label={x.st.label} />
-                <span className={styles.groupMeta}>{x.pdcProjected != null ? 'Projected PDC' : 'PDC'} <b className={riskClass(x.code, pdcTone(effectivePdc(x)))}>{effectivePdc(x) == null ? '—' : `${effectivePdc(x)}%`}</b></span>
-                <span className={styles.groupMeta}>Next due <b className={riskClass(x.code, fillDueTone(x.nextFillDue))}>{x.nextFillDue || '—'}</b></span>
+                <span className={styles.groupMeta}>{x.pdcProjected != null ? 'Projected PDC' : 'PDC'} <b className={riskClass(x.code, pdcTone(effectivePdc(x)))}>{effectivePdc(x) == null ? '-' : `${effectivePdc(x)}%`}</b></span>
+                <span className={styles.groupMeta}>Next due <b className={riskClass(x.code, fillDueTone(x.nextFillDue))}>{x.nextFillDue || '-'}</b></span>
               </span>}
             </button>
 
@@ -668,7 +668,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                               </td>
                               <td>{d.lastFill}</td>
                               {d.status === 'Discontinued' ? (
-                                <td>{d.recentFill || '—'}</td>
+                                <td>{d.recentFill || '-'}</td>
                               ) : (
                                 <td className={styles.dateCell} onClick={e => e.stopPropagation()}>
                                   <DatePicker
@@ -680,14 +680,14 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                                 </td>
                               )}
                               <td className={riskClass(d.measure, fillDueTone(d.nextFill))}>{d.nextFill}</td>
-                              <td className={riskClass(d.measure, pdcTone(d.pdc))}>{d.pdc == null ? '—' : `${d.pdc}%`}</td>
+                              <td className={riskClass(d.measure, pdcTone(d.pdc))}>{d.pdc == null ? '-' : `${d.pdc}%`}</td>
                               {!compact && <>
-                                <td>{d.mpr ?? '—'}</td>
+                                <td>{d.mpr ?? '-'}</td>
                                 <td>{d.daysSupply}</td>
                                 <td>{d.qty}</td>
-                                <td>{d.nonAdherenceReason ? <Badge size="S" tone="grey" label={d.nonAdherenceReason} /> : '—'}</td>
-                                <td>{d.prescriber?.name || '—'}</td>
-                                <td>{d.pharmacy?.name || '—'}</td>
+                                <td>{d.nonAdherenceReason ? <Badge size="S" tone="grey" label={d.nonAdherenceReason} /> : '-'}</td>
+                                <td>{d.prescriber?.name || '-'}</td>
+                                <td>{d.pharmacy?.name || '-'}</td>
                               </>}
                               <td className={styles.openCell}>
                                 <DownChevronIcon size={14} className={`${styles.chevron} ${styles.chevronRight}`} />

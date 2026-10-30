@@ -23,7 +23,7 @@ export function CalendarContent({ onSlotClick, onEventClick, onRangeUpdate, cale
   useEffect(() => {
     (async () => {
       try {
-        // Load everything in parallel — awaiting these one by one made the
+        // Load everything in parallel: awaiting these one by one made the
         // initial "Loading calendar..." state last the sum of all fetches.
         const [temporalMod, calMod, reactMod, eventsMod] = await Promise.all([
           import('temporal-polyfill'),
@@ -49,7 +49,7 @@ export function CalendarContent({ onSlotClick, onEventClick, onRangeUpdate, cale
           calendars: DEFAULT_CALENDARS,
           isDark: initialDark,
           // Our toolbar tabs own the view. Without this, schedule-x measures
-          // the wrapper on mount — 0px if it mounts mid-layout — decides the
+          // the wrapper on mount, 0px if it mounts mid-layout, decides the
           // calendar is "small" and silently hijacks week view into day view.
           isResponsive: false,
           dayBoundaries: { start: '00:00', end: '23:00' },
@@ -59,7 +59,7 @@ export function CalendarContent({ onSlotClick, onEventClick, onRangeUpdate, cale
             onClickDateTime: (dateTime, e) => { if (slotClickRef.current) slotClickRef.current(dateTime, e); },
             onClickDate: (date, e) => { if (slotClickRef.current) slotClickRef.current(date, e); },
             onEventClick: (event) => { if (eventClickRef.current && event.id !== '__selection__') eventClickRef.current(event); },
-            // Fires on every navigation and view change — the hook uses it to
+            // Fires on every navigation and view change, the hook uses it to
             // repaint the past-day overlays, the now-line and the title
             // instead of guessing with a timeout after each nav click.
             onRangeUpdate: () => { if (rangeUpdateRef.current) rangeUpdateRef.current(); },
@@ -69,7 +69,7 @@ export function CalendarContent({ onSlotClick, onEventClick, onRangeUpdate, cale
         // Publish the plugin only once createCalendar has succeeded. The
         // plugin's events facade is built in its beforeRender hook, so a
         // plugin exposed before a failed init looks usable but throws on
-        // first use — and the events effect below would crash the tree
+        // first use: and the events effect below would crash the tree
         // before the `error` branch could render.
         calendarRef.current = app;
         internalPluginRef.current = eventsPlugin;
@@ -105,7 +105,7 @@ export function CalendarContent({ onSlotClick, onEventClick, onRangeUpdate, cale
     const T = globalThis.Temporal;
     if (!ep || !T) return;
 
-    // Use UTC for event positioning — times are stored as wall-clock strings
+    // Use UTC for event positioning: times are stored as wall-clock strings
     // and should always appear at the literal time position on the calendar
     // Guard the conversion, not the insert: apptToEvent parses the stored
     // date/time strings via Temporal, which throws on a malformed row. One bad

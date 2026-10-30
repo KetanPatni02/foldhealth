@@ -19,7 +19,7 @@ export default {
     lastAssignees: {
       control: 'object',
       description:
-        '{ coder, support, qa } — name of the last assignee per role. Used to seed the Assignee picker with the reviewer the DOS row was last routed to.',
+        '{ coder, support, qa }, name of the last assignee per role. Used to seed the Assignee picker with the reviewer the DOS row was last routed to.',
       table: { type: { summary: '{ coder?: string, support?: string, qa?: string }' } },
     },
     onConfirm: {

@@ -119,7 +119,7 @@ export function UploadDocumentDrawerPickerBody(p) {
                     key={s.id}
                     file={s}
                     onRemove={() => removeStaged(s.id)}
-                    onPreview={() => showToast?.(`Preview ${s.name} — coming soon`)}
+                    onPreview={() => showToast?.(`Preview ${s.name}, coming soon`)}
                   />
                 ))}
               </div>

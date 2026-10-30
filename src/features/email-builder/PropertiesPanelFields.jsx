@@ -999,7 +999,7 @@ export function BorderControl({ style, onUpdate }) {
             </>
           ) : (
             <>
-              {/* Side enable toggles — clicking a side enables/disables its
+              {/* Side enable toggles: clicking a side enables/disables its
                   border. Compact icon set top/right/bottom/left. */}
               <div className={styles.fieldCol}>
                 <span className={styles.fieldLabel}>Sides</span>

@@ -22,7 +22,7 @@ export function DiagPanelViewToolbar(p) {
     <>
       {/* ── Toolbar: bulk | inline search | + ICD, filter, docs, comments,
           history, more (Paper 1WXT). In addIcdMode the toolbar collapses
-          to a single dedicated search row — all sibling actions hide so
+          to a single dedicated search row, all sibling actions hide so
           the user's focus stays on adding an ICD. Exit via the X inside
           the search field. */}
       <div className={styles.toolbar}>
@@ -45,7 +45,7 @@ export function DiagPanelViewToolbar(p) {
           </div>
         ) : (
           <>
-            {/* Bulk select is an ICD coding action — Support can't code,
+            {/* Bulk select is an ICD coding action, Support can't code,
                 so hide the entry entirely (matches row-level gating). */}
             {hccUserRole !== 'Support' && (
               <>

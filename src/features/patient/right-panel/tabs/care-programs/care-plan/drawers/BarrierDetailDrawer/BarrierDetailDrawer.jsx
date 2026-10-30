@@ -43,7 +43,7 @@ function fmtDate(iso) {
 }
 
 /**
- * BarrierDetailDrawer — Barriers surface (Figma 2937:267306). Mirrors
+ * BarrierDetailDrawer: Barriers surface (Figma 2937:267306). Mirrors
  * the Goal Details drawer shape: editable title, status/delete/Update
  * header, metadata line, collapsible Linked Goals and Linked Templates
  * with link + unlink actions per row.
@@ -52,7 +52,7 @@ function fmtDate(iso) {
  * tracks its own set of conditions on `patient_care_plans.conditions`;
  * a barrier applying to a condition is represented in the store by
  * matching the condition's label against the barrier's title/context.
- * A `plan.conditions` mutation for linking is out of scope here — the
+ * A `plan.conditions` mutation for linking is out of scope here, the
  * drawer surfaces the current linkage set and lets the user delink /
  * link additional plan conditions via the same `+` popover.
  */
@@ -121,12 +121,12 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   );
 
   // A barrier is transitively linked to every care-plan template
-  // (chronic condition) that any of its linked goals binds to — a goal
+  // (chronic condition) that any of its linked goals binds to, a goal
   // authored under a plan template drags that template into the
   // barrier's linked set. Dedupe by label so a barrier linked to two
   // goals under the same template only shows the template once.
   // Applied templates this barrier came from: the same title match the plan's
-  // template chips filter by — the template lists this barrier, or one of the
+  // template chips filter by: the template lists this barrier, or one of the
   // goals it's linked to. (Template names often equal a condition's name, so
   // listing conditions here used to look right without being right.)
   const carePlanTemplates = useAppStore(s => s.carePlanTemplates) ?? NO_ITEMS;
@@ -147,7 +147,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   const [description, setDescription] = useState(barrier.description || '');
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [status, setStatus] = useState(barrier.status || 'Not Started');
-  // Typeahead — surface library barriers matching the current input so
+  // Typeahead: surface library barriers matching the current input so
   // the user can pick an existing entry instead of re-typing / creating
   // a near-duplicate. Guarded by focus so the list only shows while the
   // input is active.
@@ -161,7 +161,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
       const name = (b?.title || '').trim();
       if (!name) continue;
       const key = name.toLowerCase();
-      if (key === q) continue; // exact match — nothing to switch to
+      if (key === q) continue; // exact match, nothing to switch to
       if (!key.includes(q)) continue;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -183,7 +183,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   const [confirmDeleteBarrier, setConfirmDeleteBarrier] = useState(false);
   const [open, setOpen] = useState({ goals: true, templates: true });
   const toggle = (k) => setOpen(o => ({ ...o, [k]: !o[k] }));
-  // Barrier's audit rows (this and every clone) — the set is used by
+  // Barrier's audit rows (this and every clone): the set is used by
   // both the change-log derivation for the Add / Update Note editor
   // and the Activity Log feed below.
   const barrierIdSet = useMemo(
@@ -204,7 +204,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   });
 
   // Title + status changes are staged locally and committed via the
-  // header "Update" button — auto-save was rolling too many tiny writes
+  // header "Update" button: auto-save was rolling too many tiny writes
   // to Supabase for each keystroke / dropdown click. Note edits still
   // save via their own "Add Note" / "Update Note" button.
   const persistedTitle = (liveBarrier.title || '').trim();
@@ -299,7 +299,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
         : (row.goalId ? [row.goalId] : []);
       const nextRowGoalIds = rowGoalIds.filter(gid => gid !== goalIdToRemove);
       if (rowGoalIds.length > 0 && nextRowGoalIds.length === 0) {
-        // Row's only link was this goal — delete the row entirely.
+        // Row's only link was this goal, delete the row entirely.
         await deletePatientCarePlanBarrier(patientId, program.id, row.id);
       } else {
         await savePatientCarePlanBarrier(patientId, program, {
@@ -342,7 +342,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
         )}
       >
         <div className={styles.body}>
-          {/* Status bar — Select on the left, delete-barrier on the right.
+          {/* Status bar: Select on the left, delete-barrier on the right.
               Matches the InterventionPreviewDrawer/GoalPreviewDrawer status
               row so all three drawers read as the same primitive. */}
           <div className={styles.statusBar}>
@@ -365,7 +365,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
             )}
           </div>
 
-          {/* Barrier title — editable Input while active, or a read-only
+          {/* Barrier title: editable Input while active, or a read-only
               summary card once the barrier is closed. The card
               carries the barrier glyph, the plan-scoped meta line, and a
               small linked-goals chip so users still see the link count
@@ -544,7 +544,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
           </section>
           )}
 
-          {/* Linked Templates — derived transitively from the linked
+          {/* Linked Templates: derived transitively from the linked
               goals' chronic-condition bindings. A goal authored under a
               plan template (e.g. Hypertension, Diabetes) drags that
               template into the barrier's linked set; deduped by label. */}
@@ -612,7 +612,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
             program={program}
           />}
 
-          {/* Activity Log — shared block with TabStrip (All / Since
+          {/* Activity Log: shared block with TabStrip (All / Since
               Last Visit) + Filter chip, matches the Goal preview
               drawer 1:1. Status changes, edits, goal link / unlink,
               template link / unlink, and notes all render through the

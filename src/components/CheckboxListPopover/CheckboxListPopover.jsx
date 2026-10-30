@@ -6,7 +6,7 @@ import styles from './CheckboxListPopover.module.css';
 const EMPTY_SELECTED = [];
 
 /**
- * Fold Health CheckboxListPopover — anchored, portaled multi-select.
+ * Fold Health CheckboxListPopover: anchored, portaled multi-select.
  *
  * Use as the popover behind a filter chip: pass an array of options, the
  * currently selected values, and an onChange to receive the new array.
@@ -56,8 +56,8 @@ export function CheckboxListPopover({
   };
 
   // With an active search query, the Select All / Clear All controls and the
-  // header checkbox state operate on the *visible* (filtered) rows — not the
-  // whole list — so they never touch options the user can't see.
+  // header checkbox state operate on the *visible* (filtered) rows: not the
+  // whole list: so they never touch options the user can't see.
   const q = query.trim().toLowerCase();
   const visible = searchable && q
     ? options.filter(o => `${labelOf(o)} ${sectionOf?.(o) || ''}`.toLowerCase().includes(q))

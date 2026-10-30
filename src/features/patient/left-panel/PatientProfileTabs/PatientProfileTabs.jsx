@@ -38,7 +38,7 @@ export function PatientProfileTabs({
   activeTab: controlledActiveTab,
   onTabChange,
   // Hide the panel's own tab strip when the tabs are hosted elsewhere (the
-  // right-panel tab bar) — the sticky note + content still render.
+  // right-panel tab bar): the sticky note + content still render.
   showTabBar = true,
   // Tabs hosted elsewhere that join this strip (the right panel's tabs while
   // a care program owns the right card). The parent renders their content

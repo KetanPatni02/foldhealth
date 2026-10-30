@@ -34,7 +34,7 @@
   line-height: 1;
 }
 
-/* Press feedback — subtle scale-down on active. Applies to every button type
+/* Press feedback: subtle scale-down on active. Applies to every button type
    through the shared base class. AUDIT: 0.95–0.98 range; 0.97 is our default. */
 .btn:active:not(:disabled) {
   transform: scale(0.97);
@@ -188,7 +188,7 @@
 
 /* ── Split-button (dropdown) mode ──
  * Rendered when Button is called with `menuItems`. The WRAPPER owns
- * every visual — background, border, border-radius, color — so the
+ * every visual, background, border, border-radius, color, so the
  * pill reads as one cohesive shape. The two inner <button>s are
  * transparent click regions that only paint a hover tint on the
  * hovered half, and a 1px divider lives between them. */
@@ -208,7 +208,7 @@
  * has to carry a size class (which would double-paint padding/height). */
 .splitWrapper:has(.sizeXL) { border-radius: 8px; }
 
-/* Halves are transparent inside the wrapper — no bg / no border / no
+/* Halves are transparent inside the wrapper, no bg / no border / no
  * radius of their own. Higher specificity (.splitWrapper .splitMain =
  * 2 classes) beats the base `.btn` variant rules. */
 .splitWrapper .splitMain,
@@ -229,7 +229,7 @@
   border-bottom-right-radius: inherit;
 }
 
-/* Hover tint on the individual half — currentColor mix lets one rule
+/* Hover tint on the individual half, currentColor mix lets one rule
  * work on every variant (light overlay on filled bgs, subtle darken on
  * outlined ones). */
 .splitWrapper .splitMain:hover:not(:disabled),
@@ -240,7 +240,7 @@
 /* Wrapper chrome comes from the same `.toned` + variant rules as a plain
  * button; only hover differs (it lives on the halves, above). */
 
-/* Divider — the ONE interior seam. Uses currentColor at low alpha so
+/* Divider: the ONE interior seam. Uses currentColor at low alpha so
  * it automatically tints per variant (white-ish on filled bgs, purple
  * on tertiary, green on success, etc.) with no per-variant override. */
 .splitDivider {
@@ -251,7 +251,7 @@
   background: color-mix(in srgb, currentColor 25%, transparent);
 }
 
-/* Disabled — the wrapper flattens to the same neutral surface the
+/* Disabled: the wrapper flattens to the same neutral surface the
  * base `.btn:disabled` uses, and inner halves inherit through
  * `color: inherit` without needing their own :disabled rule. */
 .splitWrapper:has(:disabled) {

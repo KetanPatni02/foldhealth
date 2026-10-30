@@ -24,7 +24,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   // The dropdown's scrim is aria-hidden, so Escape is the keyboard dismiss path.
-  // Before this there was none at all — the only way out was a mouse click on
+  // Before this there was none at all, the only way out was a mouse click on
   // the scrim, which a keyboard user cannot reach.
   useEffect(() => {
     if (!showProfileDropdown) return undefined;
@@ -72,14 +72,14 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   useEffect(() => { if (patient?.id) fetchP360Profile(patient.id); }, [patient?.id, fetchP360Profile]);
   useEffect(() => { fetchOrgFeatures(); }, [fetchOrgFeatures]);
 
-  // Real enrolled care programs (patient_care_programs) — the "Programs:"
+  // Real enrolled care programs (patient_care_programs): the "Programs:"
   // badges must reflect actual enrollment, not the static p360 mock field.
   // The fetch is per-patient-guarded in the store, so this is a no-op when
   // the Care Programs tab (or a previous banner mount) already hydrated it.
   const carePrograms = useAppStore(s => (patient?.id ? s.careProgramsByPatient[patient.id] : undefined));
   const fetchCareProgramsForPatient = useAppStore(s => s.fetchCareProgramsForPatient);
   useEffect(() => { if (patient?.id) fetchCareProgramsForPatient(patient.id); }, [patient?.id, fetchCareProgramsForPatient]);
-  // Unique codes in enrollment order — SNP can be enrolled multiple times
+  // Unique codes in enrollment order: SNP can be enrolled multiple times
   // (one row per trigger) but reads as a single badge.
   const programCodes = useMemo(
     () => [...new Set((carePrograms || []).map(cp => cp.code))],
@@ -107,7 +107,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
               )}
             </div>
             <div className={styles.meta}>
-              {display.gender} • {display.dob || '—'} ({display.age})
+              {display.gender} • {display.dob || '-'} ({display.age})
               {bannerSize !== 'wide' && (
                 <>
                   <span className={styles.metaDot}>•</span>
@@ -143,7 +143,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
                   {(p.insurance_profiles || FALLBACK_P360.insurance_profiles).map(prof => (
                     <button type="button" key={prof.id} aria-pressed={selectedProfileId === prof.id} className={`${styles.profileOption} ${selectedProfileId === prof.id ? styles.profileOptionSelected : ''}`} onClick={() => { setSelectedProfileId(prof.id); setShowProfileDropdown(false); }}>
                       <div className={styles.profileOptionHeader}>
-                        {/* Central Profile IS the FoldHealth identity — its id is the
+                        {/* Central Profile IS the FoldHealth identity, its id is the
                             patient's real Fold ID, not the mock's sample Athena id.
                             Other insurer profiles keep their sample member ids. */}
                         <div><div className={styles.profileOptionName}>{prof.name}</div><div className={styles.profileOptionSub}>{prof.id === 'central' ? `Fold ID: ${formatFoldId(patient.memberId)}` : prof.subtitle}</div></div>
@@ -177,7 +177,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
               </div>
               <div className={styles.metricCol}>
                 <span className={styles.metricLabel}>Next Appt.</span>
-                <div className={styles.metricValueRow}><span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span></div>
+                <div className={styles.metricValueRow}><span className={styles.nextApptValue}>{p.next_appointment_date || '-'}</span></div>
               </div>
             </>
           )}
@@ -225,7 +225,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
             setMoreMenuRect(null);
             if (runPatientRowAction(key, patient)) return;
             if (key === 'Edit Details') { openPatientEdit('basic', patient); return; }
-            showToast(`${key} — coming soon`);
+            showToast(`${key}: coming soon`);
           }}
         />
       )}

@@ -164,7 +164,7 @@ export function IcdCardBody({
             </div>
           )}
 
-          {/* Footer actions — only rendered in the inline RHS flow (when the
+          {/* Footer actions: only rendered in the inline RHS flow (when the
               parent passes `onSave`). The batch/panel flow relies on its own
               header-level Save instead. */}
           {onSave && (

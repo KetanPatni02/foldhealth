@@ -313,7 +313,7 @@ export function GoalWizardReviewStep({
       <div className={s.successContainer}>
         <div className={s.reviewRow}>
           <div className={s.reviewLabel}>Goal Name</div>
-          <div className={s.reviewValue}>{name || '—'}</div>
+          <div className={s.reviewValue}>{name || '-'}</div>
         </div>
         <div className={s.reviewRow} style={{ display: 'flex', gap: 24 }}>
           <div style={{ flex: 1 }}>

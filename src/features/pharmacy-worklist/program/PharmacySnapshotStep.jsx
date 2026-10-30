@@ -16,9 +16,9 @@ import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacySnapshotStep.module.css';
 
 // Days supply and quantity in one cell: "90 days • Qty 90".
-const supplyLabel = (d) => [d.daysSupply != null && `${d.daysSupply} days`, d.qty != null && `Qty ${d.qty}`].filter(Boolean).join(' • ') || '—';
+const supplyLabel = (d) => [d.daysSupply != null && `${d.daysSupply} days`, d.qty != null && `Qty ${d.qty}`].filter(Boolean).join(' • ') || '-';
 
-const addressOf = (o) => [o.address1, o.city, o.state, o.zip].filter(Boolean).join(', ') || '—';
+const addressOf = (o) => [o.address1, o.city, o.state, o.zip].filter(Boolean).join(', ') || '-';
 
 // The gap's prescribers or pharmacies, one each (a gap's drugs may come
 // from different ones), from its active medications.
@@ -33,7 +33,7 @@ function contactsOf(meds, key) {
 
 // One line per contact, or a dash.
 function ContactLines({ contacts, render }) {
-  if (!contacts.length) return '—';
+  if (!contacts.length) return '-';
   return <span className={styles.detailLines}>{contacts.map(c => <span key={c.name}>{render(c)}</span>)}</span>;
 }
 
@@ -44,19 +44,19 @@ function GapDetails({ gap: g }) {
   const open = isActiveGap(g.status);
   const prescribers = contactsOf(g.medications, 'prescriber');
   const pharmacies = contactsOf(g.medications, 'pharmacy');
-  const phone = (c) => (c.phone ? <PhoneLink number={c.phone} label={c.name} /> : '—');
+  const phone = (c) => (c.phone ? <PhoneLink number={c.phone} label={c.name} /> : '-');
   const items = [
     ['Claim', g.recon ? (
       <Tooltip label={g.recon.detail} placement="bottom">
         <span className={g.recon.rework && open ? styles.toneError : ''}>{g.recon.status}</span>
       </Tooltip>
     ) : 'Nothing to reconcile'],
-    ['Start Date', g.startDate || '—'],
+    ['Start Date', g.startDate || '-'],
     ['Prior-Year PDC', <PriorYearPdc key="py" years={g.priorYearPdc} nonCompliant={g.priorYearNonCompliant} year={new Date().getFullYear() - 1} />],
     ['Savability', <SavabilityBadge key="sv" value={g.savability} />],
-    ['Allowable Gap Days', g.allowableGapDays == null ? '—' : <span className={g.allowableGapDays <= 0 ? styles.toneError : ''}>{g.allowableGapDays} days</span>],
+    ['Allowable Gap Days', g.allowableGapDays == null ? '-' : <span className={g.allowableGapDays <= 0 ? styles.toneError : ''}>{g.allowableGapDays} days</span>],
     ['Attempts This Cycle', g.attempts],
-    ['Last Pickup Confirmed', g.pickupConfirmed || '—'],
+    ['Last Pickup Confirmed', g.pickupConfirmed || '-'],
     ['Prescriber', <ContactLines key="rx" contacts={prescribers} render={c => c.name} />],
     ['Prescriber Phone', <ContactLines key="rxp" contacts={prescribers} render={phone} />],
     ['Pharmacy', <ContactLines key="ph" contacts={pharmacies} render={c => c.name} />],
@@ -102,7 +102,7 @@ function Pdc({ gap: g }) {
 function FailDate({ gap: g }) {
   const d = daysFromToday(g.failDate);
   if (isActiveGap(g.status) && d != null && d <= 14) return <FailDateValue gap={alertSources(g)} />;
-  return <Projected on={g.failDateSource === 'Projected'}><span>{g.failDate || '—'}</span></Projected>;
+  return <Projected on={g.failDateSource === 'Projected'}><span>{g.failDate || '-'}</span></Projected>;
 }
 
 // The same as the worklist: the date, with a due line under it when due.
@@ -265,8 +265,8 @@ export function PharmacyGapsCard({ member, onSetStatus, compact = false, titleEx
                       {g.medications.map(d => (
                         <tr key={d.id}>
                           <td className={styles.medName}>{d.name} {d.strength} {d.unit}</td>
-                          <td>{d.lastFill || '—'}</td>
-                          <td>{d.recentFill || '—'}</td>
+                          <td>{d.lastFill || '-'}</td>
+                          <td>{d.recentFill || '-'}</td>
                           <td><DueDate date={d.nextFill} alert={open && d.status !== 'Discontinued'} /></td>
                           <td>{supplyLabel(d)}</td>
                           <td className={d.status === 'Discontinued' ? styles.muted : ''}>{medicationStatus(d, member.healthPlan)}</td>
@@ -356,7 +356,7 @@ export function PharmacyContacts({ member }) {
                     <span className={styles.address}>{addressOf(p)}</span>
                   </td>
                   <td><PhoneLink number={p.phone} label={p.name} onDial={dial(p.name, p.phone)} /></td>
-                  <td>{p.fax || '—'}</td>
+                  <td>{p.fax || '-'}</td>
                   <td><NamesCount names={p.drugs} label="medication" /></td>
                 </tr>
               ))}

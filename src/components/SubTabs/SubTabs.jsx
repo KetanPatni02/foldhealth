@@ -1,20 +1,20 @@
 import styles from './SubTabs.module.css';
 
 /**
- * SubTabs — the pill-style secondary tab row (the Care Programs sub-tab
+ * SubTabs: the pill-style secondary tab row (the Care Programs sub-tab
  * pattern). A row of buttons where the active one becomes a white pill with a
  * hairline border. Distinct from the underline `TabStrip` used for the app's
  * top-level tabs; use this for a secondary switch inside a tab.
  *
  * Props:
- *  - tabs      (string | {key,label,count})[] — tab definitions. A bare string
+ *  - tabs      (string | {key,label,count})[]: tab definitions. A bare string
  *                                          is both the key and the label; `count`
  *                                          shows a small bordered number badge.
- *  - activeKey string                    — the selected tab's key.
- *  - onChange  (key) => void             — called with a tab's key on click.
- *  - leading   ReactNode                 — optional content rendered before the
+ *  - activeKey string: the selected tab's key.
+ *  - onChange  (key) => void: called with a tab's key on click.
+ *  - leading   ReactNode: optional content rendered before the
  *                                          tabs (e.g. a search toggle + divider).
- *  - size      'M' | 'S'                  — S: 24px tall, 13px text, for a switch
+ *  - size      'M' | 'S', S: 24px tall, 13px text, for a switch
  *                                          inside a drawer tab
  *  - className string
  */

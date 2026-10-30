@@ -1,8 +1,8 @@
 // Single source of truth for the ConfigureTeamDrawer's team-type and
 // Assign-To dropdowns. The mapping mirrors the Phase 2 Auto-Assignment
-// spec (Risk Adjustment / Coder Workflow) — Coder → Reviewer (TIN fallback),
+// spec (Risk Adjustment / Coder Workflow): Coder → Reviewer (TIN fallback),
 // Reviewer → Reviewer 2 (vendor fallback), Coder pool routed by TIN + vendor.
-// "Reviewer 3" does not exist — Reviewer 2 is the terminal review stage.
+// "Reviewer 3" does not exist: Reviewer 2 is the terminal review stage.
 import { ASTRANA_STAFF, staffForRole, ROLE_LABEL } from '../../hcc/assignment/astranaStaff';
 import { PHARMACY_ROUTING_VALUES } from '../../pharmacy-worklist/pharmacyRules';
 
@@ -51,7 +51,7 @@ export const KIND_BADGE_VARIANT = {
 // In the real system a TIN identifies a provider group; the dropdown shows
 // the TIN number, the number of providers in it, and how much of its total
 // load is already assigned to teams. The assignedPct is mocked here until a
-// backend ships — the engine reads this same map at auto-assignment time.
+// backend ships: the engine reads this same map at auto-assignment time.
 export const TIN_DATA = [
   { tin: '12-3456789', providers: 18, assignedPct: 35 },
   { tin: '98-7654321', providers: 24, assignedPct: 0  },

@@ -101,7 +101,7 @@ function TcocTab({ data, highCost, showToast, editing = false, resetTick = 0 }) 
   const hcRows = safeTableRows(highCost);
 
   const renderCostByProvider = () => (
-    <Card title="Cost by Setting — Provider Hierarchy" flush>
+    <Card title="Cost by Setting: Provider Hierarchy" flush>
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead>

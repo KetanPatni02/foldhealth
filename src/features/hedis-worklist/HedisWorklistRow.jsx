@@ -164,7 +164,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
       <div className={styles.gapItems}>
         {(ctx.visibleGaps || []).map((g, i) => {
           const assignee = g.assignee ?? member.assignee;
-          // Gap-level overrides carry name only — derive initials from words
+          // Gap-level overrides carry name only: derive initials from words
           // so the avatar always has content. Member-level overrides keep the
           // curated `assigneeInitials` (handles edge cases like "Dr." prefixes).
           const initials = (g.assignee && g.assignee !== member.assignee)
@@ -273,7 +273,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
     renderCell: (member) => (
       member.riskLevel
         ? <Badge size="M" variant={RISK_BADGE_VARIANT[member.riskLevel]} label={member.riskLevel} />
-        : <span className={styles.muted}>—</span>
+        : <span className={styles.muted}>-</span>
     ),
   },
   {
@@ -286,7 +286,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
       ).length;
       return count > 0
         ? <span className={styles.numText}>{count}</span>
-        : <span className={styles.muted}>—</span>;
+        : <span className={styles.muted}>-</span>;
     },
   },
 ];
@@ -353,7 +353,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
       ].filter(Boolean).join(' ')}
       onClick={() => onOpenGap?.(member, primaryGap.code)}
     >
-      {/* Checkbox — wrapped in `.checkAlign` so it aligns to the avatar's
+      {/* Checkbox: wrapped in `.checkAlign` so it aligns to the avatar's
           vertical centre even on multi-gap rows where the td top-aligns
           to the first gap row. Same pattern the HCC worklist uses. */}
       <td className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`} onClick={e => e.stopPropagation()}>
@@ -362,7 +362,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
         </div>
       </td>
 
-      {/* Member — entire cell clickable for patient quick view. The
+      {/* Member: entire cell clickable for patient quick view. The
           onClick stops propagation so the row's own onClick (which
           opens the Care Gap drawer) doesn't also fire. */}
       <td
@@ -418,7 +418,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
         );
       })}
 
-      {/* Actions — HEDIS rows expose Call, Add Care Gaps and More. The eye affordance
+      {/* Actions: HEDIS rows expose Call, Add Care Gaps and More. The eye affordance
           was removed because the gap pills in-row already open the Care
           Gap Details drawer, so a duplicate view button in the actions
           column added noise without a distinct outcome. */}
@@ -443,7 +443,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
           <ActionButton
             icon="solar:menu-dots-linear"
             tooltip="More"
-            onClick={e => { e.stopPropagation(); showToast('More actions — coming soon'); }}
+            onClick={e => { e.stopPropagation(); showToast('More actions: coming soon'); }}
           />
         </div>
       </td>

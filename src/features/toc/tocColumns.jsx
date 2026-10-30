@@ -66,7 +66,7 @@ function initialsFrom(name) {
     .filter(Boolean)
     .slice(0, 2)
     .map(w => w[0]?.toUpperCase() || '')
-    .join('') || '—';
+    .join('') || '-';
 }
 
 function programSubStatus(p) {
@@ -110,7 +110,7 @@ export function resolveCareTeamName(p, field, salt = '') {
   return hashPick(`${p.id}${salt}`, pool);
 }
 
-/** Sort fields for useTableSort — dates as UTC timestamps, acuity as rank. */
+/** Sort fields for useTableSort: dates as UTC timestamps, acuity as rank. */
 export function enrichTocRow(p) {
   return {
     ...p,
@@ -163,7 +163,7 @@ function RoleAssignee({ name, initials, field, patient, ctx, pickerTitle }) {
 
 function OutreachByCell({ patient }) {
   const { name, isAgent } = resolveLastOutreachBy(patient);
-  if (!name) return <span className={styles.dash}>—</span>;
+  if (!name) return <span className={styles.dash}>-</span>;
   return (
     <span className={styles.person}>
       {isAgent ? (
@@ -177,7 +177,7 @@ function OutreachByCell({ patient }) {
 }
 
 function DateCell({ value }) {
-  return <span className={value ? styles.date : styles.dash}>{value || '—'}</span>;
+  return <span className={value ? styles.date : styles.dash}>{value || '-'}</span>;
 }
 
 function sampleTags(p) {
@@ -191,7 +191,7 @@ function sampleTags(p) {
 
 function TagCell({ patient }) {
   const { tags, tagsMore } = sampleTags(patient);
-  if (!tags.length) return <span className={styles.dash}>—</span>;
+  if (!tags.length) return <span className={styles.dash}>-</span>;
   return (
     <span className={styles.tagCell}>
       {tags.map(t => (
@@ -208,7 +208,7 @@ function TagCell({ patient }) {
 }
 
 /**
- * TOC worklist middle columns — matches Agent Worklist Figma 3044:70430.
+ * TOC worklist middle columns: matches Agent Worklist Figma 3044:70430.
  * Sticky Members / Actions stay in QueueRow.
  */
 export const TOC_MIDDLE_COLUMNS = [
@@ -295,7 +295,7 @@ export const TOC_MIDDLE_COLUMNS = [
             <Badge size="M" tone="primary" label={String(taskCount)} />
           </button>
         )
-        : <span className={styles.dash}>—</span>;
+        : <span className={styles.dash}>-</span>;
     },
   },
   {

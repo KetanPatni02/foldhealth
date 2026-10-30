@@ -10,7 +10,7 @@ import styles from './EmailComposer.module.css';
 const DEFAULT_NOTICE = 'Do not send PHI via email or text without verifying and obtaining consent.';
 
 /**
- * EmailComposer — Subject line, "Compose email with UnityAI" bar, and the
+ * EmailComposer: Subject line, "Compose email with UnityAI" bar, and the
  * message box (PHI notice, body, signature, toolbar) from the Communications
  * email compose design (Figma Communications 1:24499). Controlled: the host
  * owns subject / body and decides what Generate does.

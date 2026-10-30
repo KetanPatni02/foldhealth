@@ -12,7 +12,7 @@ import { useTasksView } from './useTasksView';
 import { TasksViewContent } from './TasksViewContent';
 import styles from './TasksView.module.css';
 
-// Local to this file — TasksViewIcons.jsx is a components-only file, and
+// Local to this file: TasksViewIcons.jsx is a components-only file, and
 // keeping VIEW_TOGGLE_ITEMS there mixes a JSX-carrying constant with the
 // component exports and trips react-refresh HMR.
 const VIEW_TOGGLE_ITEMS = [
@@ -26,7 +26,7 @@ export { TaskListSection } from './TasksViewListSection';
 
 export function TasksView() {
   const view = useTasksView();
-  // Standalone linked-note preview + Edit surface — driven by the store
+  // Standalone linked-note preview + Edit surface, driven by the store
   // slice `previewNoteFromHover` (set by the paperclip hover card's
   // "View note" action). This lives at the TasksView root so it opens
   // WITHOUT dragging the Task Details drawer in behind it.

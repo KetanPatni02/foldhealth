@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 
 /* Page sizes step in fives, never below ten, and always round UP: a partly
-   visible row at the bottom is the goal — it signals there's more to scroll
-   to — whereas rounding down would leave a band of empty space. MAX guards
+   visible row at the bottom is the goal, it signals there's more to scroll
+   to: whereas rounding down would leave a band of empty space. MAX guards
    against a mis-measure (e.g. a 1px row height) blowing the size up. */
 const STEP_ROWS = 5;
 const MIN_ROWS = 10;
@@ -14,7 +14,7 @@ function quantize(rows) {
   return Math.max(MIN_ROWS, Math.min(MAX_ROWS, stepped));
 }
 
-/** Nearest scrollable ancestor — the box whose height the rows must fit in. */
+/** Nearest scrollable ancestor: the box whose height the rows must fit in. */
 function findScroller(node) {
   let el = node.parentElement;
   while (el) {
@@ -26,7 +26,7 @@ function findScroller(node) {
 }
 
 /**
- * useAutoPageSize — sizes a table's page to the space actually available,
+ * useAutoPageSize: sizes a table's page to the space actually available,
  * so a tall screen fills with rows instead of white space.
  *
  * Rather than measuring the gap between the table body and the pagination
@@ -54,7 +54,7 @@ function findScroller(node) {
  *
  * @param anchorRef  ref to the pagination element (used to find the table)
  * @param enabled    false to leave the page size alone (user picked one)
- * @param perPage    current page size — re-measures when it changes
+ * @param perPage    current page size: re-measures when it changes
  * @param totalItems re-measure trigger: the first paint is usually a loading
  *                   skeleton with no <tbody> to measure, and the container
  *                   doesn't resize when real rows replace it, so without this
@@ -87,10 +87,10 @@ export function useAutoPageSize({ anchorRef, enabled, perPage, totalItems, onFit
     const measure = () => {
       const tbody = findTbody();
       const rowCount = tbody?.children.length || 0;
-      if (!tbody || rowCount === 0) return; // loading / empty — keep current size
+      if (!tbody || rowCount === 0) return; // loading / empty, keep current size
 
       const scroller = findScroller(tbody);
-      if (!scroller || scroller.clientHeight < 1) return; // hidden — nothing to measure
+      if (!scroller || scroller.clientHeight < 1) return; // hidden, nothing to measure
 
       // Average across rendered rows so tables with mixed row heights (a
       // two-line member cell next to a one-line one) don't over- or
@@ -157,7 +157,7 @@ export function useAutoPageSize({ anchorRef, enabled, perPage, totalItems, onFit
     if (observed) ro.observe(observed);
 
     // Mutations: rows frequently appear without any prop this hook can see
-    // changing — a loading skeleton swapping to a real table leaves the row
+    // changing: a loading skeleton swapping to a real table leaves the row
     // count and container size untouched. Without this the first (empty)
     // measurement would be the last one, and the page would keep whatever
     // size it happened to start with.

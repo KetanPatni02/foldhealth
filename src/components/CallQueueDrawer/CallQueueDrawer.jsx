@@ -107,7 +107,7 @@ const TABS = ['Ongoing Call', 'In Queue', 'Call Log'];
 
 /* ── Shared components ── */
 
-// Presentational only — the enclosing <tr> owns the row's click behaviour.
+// Presentational only: the enclosing <tr> owns the row's click behaviour.
 function MemberCell({ initials, name, subtitle, selected }) {
   return (
     <div className={`${styles.memberCell} ${selected ? styles.memberCellSelected : ''}`}>
@@ -489,7 +489,7 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
           </div>
 
           <div className={styles.dateGroupContent}>
-            {/* The expander is the inner button, not the header row — the row
+            {/* The expander is the inner button, not the header row, the row
                 also holds an ActionButton, and nesting controls is invalid. */}
             <div className={styles.dateGroupHeader}>
               <button

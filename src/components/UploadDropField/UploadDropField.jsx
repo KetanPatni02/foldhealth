@@ -4,7 +4,7 @@ import { Dropzone } from '../Dropzone/Dropzone';
 import styles from './UploadDropField.module.css';
 
 /**
- * UploadDropField — the shared HCC document upload field with three states:
+ * UploadDropField: the shared HCC document upload field with three states:
  *   Dropzone → uploading progress card → uploaded file card.
  *
  * Used by both the Upload Document drawer and the Document Available details

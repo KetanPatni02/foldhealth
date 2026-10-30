@@ -24,7 +24,7 @@ const fmtDate = (d) => (d
   : '');
 
 /**
- * DocumentPickerDrawer — pick existing patient documents to attach
+ * DocumentPickerDrawer: pick existing patient documents to attach
  * (Figma New Care Gap Workflow 19:57753). Search, Type and Last Update
  * filters; rows with checkbox, name, "type • Added on: date", a per-row Add
  * and a preview. Header "Add Selected" adds every checked document.

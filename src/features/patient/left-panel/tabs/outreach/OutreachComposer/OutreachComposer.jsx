@@ -26,7 +26,7 @@ const RELATIVE_TIME_LABEL = (iso) => {
 };
 
 /**
- * OutreachComposer — chat-style replacement for the old OutreachTabForm.
+ * OutreachComposer: chat-style replacement for the old OutreachTabForm.
  *
  * Collapses the previous form (Log For radio + Type + Datetime + Call
  * Details block + Programs multi-select + Outreach Outcome radio +
@@ -89,7 +89,7 @@ export function OutreachComposer({
   // The composer starts in a quiet one-row idle state: scoped chip,
   // placeholder note, Save hint. Any click or focus inside expands it
   // into the full meta row + tray. Once there's a note or an outcome
-  // on a chip, the expand sticks — collapsing on blur would hide the
+  // on a chip, the expand sticks, collapsing on blur would hide the
   // work the user just did.
   const hasContent = (sharedPanel.note || '').trim().length > 0
     || selectedProgs.some(p => (getPanel(p)?.outcomes || []).length > 0);
@@ -422,7 +422,7 @@ export function OutreachComposer({
       {/* ── Action tray + Save / Discard (expanded only) ──
          * One row at every reasonable composer width. Grouped action
          * clusters are set apart by the shared Fold divider rule (1 px
-         * tall, --neutral-150) — per the house convention noted in
+         * tall, --neutral-150), per the house convention noted in
          * CLAUDE.md: "always place a divider between distinct groups
          * of action buttons." */}
       {!hideFooter && expanded && (

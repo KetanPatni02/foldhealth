@@ -53,7 +53,7 @@
 }
 @keyframes summarySpin { to { transform: rotate(360deg); } }
 
-/* Ready state — mock summary card. Padding, gaps, font sizes, and
+/* Ready state: mock summary card. Padding, gaps, font sizes, and
    colors all lifted from the Figma spec (12586:317431 / 12583:315933):
    16px inner padding, 12px gap between intro / list / actions / footer,
    14px body font on --neutral-500 with a tight 1.35 leading. */

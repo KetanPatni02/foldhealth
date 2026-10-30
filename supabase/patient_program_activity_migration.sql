@@ -1,4 +1,4 @@
--- Program Activity Log — per-patient activity entries across every care
+-- Program Activity Log: per-patient activity entries across every care
 -- program. The UI groups these by date, then by program, into collapsible
 -- cards (Care Management → Program Activity Log).
 create table if not exists patient_program_activity (

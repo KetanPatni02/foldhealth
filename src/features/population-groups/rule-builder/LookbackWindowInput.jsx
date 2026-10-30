@@ -4,7 +4,7 @@ import { LOOKBACK_UNITS } from './fieldCatalog';
 import styles from './ruleBuilder.module.css';
 
 /**
- * LookbackWindowInput — shared "In the last N {days|weeks|months|years}"
+ * LookbackWindowInput: shared "In the last N {days|weeks|months|years}"
  * temporal window control used by coded-term, observation, and event-count
  * condition editors. Renders a toggle, number input, and unit selector.
  */

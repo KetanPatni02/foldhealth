@@ -93,7 +93,7 @@ export function findPharmacyMember(members, patientId) {
   return (members || []).find(m => m.id === pid || String(m.memberId) === pid || m.patientId === pid) || null;
 }
 
-/** Pharmacy (Med Adherence) worklist — one row per member. Backed by pharmacy_worklist_members. */
+/** Pharmacy (Med Adherence) worklist: one row per member. Backed by pharmacy_worklist_members. */
 export function createPharmacyWorklistSlice(set, get) {
   // Keys already tried this session (in flight, or failed), so a re-render
   // can't start a second create or retry a failing insert on every update.
@@ -264,7 +264,7 @@ export function createPharmacyWorklistSlice(set, get) {
         ...m,
         measures: m.measures.map(y => (y.code !== code ? y : withManualRecentFill(y, medId, date || null))),
       }), ['measures'], {
-        t: 'note', title: `${code} recent fill edited · ${med.name}`, note: `${med.recentFill || '—'} → ${date || '—'}`,
+        t: 'note', title: `${code} recent fill edited · ${med.name}`, note: `${med.recentFill || '-'} → ${date || '-'}`,
       });
     },
 
@@ -409,14 +409,14 @@ export function createPharmacyWorklistSlice(set, get) {
         return { ...next, interventionLog: [entry, ...(m.interventionLog || [])] };
       }, logReason ? ['measures', 'intervention_log'] : ['measures'], {
         t: 'note', title: `Medication updated · ${med?.name || ''}`,
-        note: Object.entries(patch).map(([k, v]) => `${MED_FIELD_LABEL[k] || k}: ${Array.isArray(v) ? v.join(', ') : (v || '—')}`).join(' · '),
+        note: Object.entries(patch).map(([k, v]) => `${MED_FIELD_LABEL[k] || k}: ${Array.isArray(v) ? v.join(', ') : (v || '-')}`).join(' · '),
       });
     },
 
-    // Outreach logged from the program's Outreach step — one call-history row
+    // Outreach logged from the program's Outreach step: one call-history row
     // per outreach. Pickup outcomes ripple into the record: the measure turns
     // pickup-confirmed and each medication's fill dates move (applyPickup);
-    // "Pending — Pick up" marks the measure pending pickup.
+    // "Pending: Pick up" marks the measure pending pickup.
     logPharmacyOutreach: (memberRowId, entry, { pickupCodes = [], pendingCodes = [], recentFillCodes = [], recentFillOutcome = null } = {}) => {
       if (pickupCodes.length) recordPickups(memberRowId, pickupCodes, entry.date, `${entry.contact || 'Pharmacy'} call`);
       update(memberRowId, m => {

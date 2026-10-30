@@ -108,7 +108,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
   );
 
   const renderRafPractice = () => (
-    <Card title="RAF Breakup by Practice — Recapture Opportunity" flush>
+    <Card title="RAF Breakup by Practice: Recapture Opportunity" flush>
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead>
@@ -139,7 +139,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
 
   const renderHccPerf = () => (
     <Card
-      title="HCC Performance — Closure Rates"
+      title="HCC Performance: Closure Rates"
       actions={<Button variant="ghost" size="sm" onClick={() => showToast?.('Opening HCC Suspect Worklist')}>Full Workbook &rarr;</Button>}
     >
       <div className={s.g2}>

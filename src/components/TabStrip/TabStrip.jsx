@@ -4,31 +4,31 @@ import { Badge } from '../Badge/Badge';
 import styles from './TabStrip.module.css';
 
 /**
- * TabStrip — the visual tab row used by the app's top-level TabBar and by
+ * TabStrip: the visual tab row used by the app's top-level TabBar and by
  * drawers that need the same tab pattern (Activity / Documents in the HCC
- * Activity History drawer, etc.). Just the pattern — no store wiring.
+ * Activity History drawer, etc.). Just the pattern, no store wiring.
  *
  * The active state renders via a single sliding underline (measured against
  * the active tab's offset + width) so switching tabs reads as one line
  * moving between them, matching SectionTitleBar's motion.
  *
  * Props:
- *  - items       {key, label, icon?, notif?, count?}[]  — tab definitions.
+ *  - items       {key, label, icon?, notif?, count?}[]: tab definitions.
  *                  `notif` renders a pulsing dot; `count` renders a Badge.
- *  - activeKey   string                 — currently-selected key.
- *  - onChange    (key) => void          — called when a tab is clicked.
- *  - fullWidth   boolean (default true) — bleed to the drawer/container edges.
- *  - embedded    boolean (default false) — skip the outer bar chrome
+ *  - activeKey   string: currently-selected key.
+ *  - onChange    (key) => void: called when a tab is clicked.
+ *  - fullWidth   boolean (default true): bleed to the drawer/container edges.
+ *  - embedded    boolean (default false): skip the outer bar chrome
  *                  (background, border-bottom, padding, fullWidth bleed) so
  *                  the row can drop inside another header (SectionTitleBar).
- *  - trailing    ReactNode              — optional content pinned to the far
+ *  - trailing    ReactNode: optional content pinned to the far
  *                                          right (edit button, action group).
  *                                          Sits on the same row as the tabs
  *                                          past a flex spacer.
- *  - className   string                 — extra class on the row.
- *  - balanceTabs boolean (default false) — each tab grows equally to fill the
+ *  - className   string: extra class on the row.
+ *  - balanceTabs boolean (default false): each tab grows equally to fill the
  *                                          row (email builder side panels).
- *  - embeddedBaseline boolean (default false) — when embedded, draw the bar's
+ *  - embeddedBaseline boolean (default false): when embedded, draw the bar's
  *                  bottom hairline on the strip so the active underline meets it.
  *                  Use instead of a duplicate border on the parent wrapper.
  */

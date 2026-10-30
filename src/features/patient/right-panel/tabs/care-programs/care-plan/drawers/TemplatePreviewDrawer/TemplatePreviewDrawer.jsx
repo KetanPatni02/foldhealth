@@ -41,7 +41,7 @@ export function TemplatePreviewDrawer({ template, onClose }) {
       id: entry.id || `goal-${i}`,
       icon: goalCategoryIcon(payload.category),
       currentValue: 'No Data',
-      trend: '—',
+      trend: '-',
       progress: '0%',
     };
   }), [goals, libraryGoals]);

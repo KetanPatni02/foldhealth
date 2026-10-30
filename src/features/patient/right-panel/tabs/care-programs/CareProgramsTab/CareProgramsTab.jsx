@@ -35,6 +35,7 @@ import { CP_FILTERS } from '../../../../data/programActivityMock';
 import styles from './CareProgramsTab.module.css';
 import { nextEnrollment } from '../../../../data/programLifecycle';
 import { useConsentedEnrollment } from './useConsentedEnrollment';
+import { isEmptyDash } from '../../../../../../lib/emptyDash';
 
 // Programs move to the "Past" section once completed or closed.
 
@@ -250,7 +251,7 @@ export function CareProgramsTab({ header }) {
     if (status === 'Paused') { if (program.status !== 'Paused') setPausing(program); return; }
     if (program.status === 'Paused') { resumeCareProgramInstance(patientId, program, { status }); return; }
     const patch = { status, statusColor: statusColorFor(status) };
-    if (status === 'Enrolled' && (!program.startDate || program.startDate === '—')) {
+    if (status === 'Enrolled' && (!program.startDate || isEmptyDash(program.startDate))) {
       patch.startDate = todayStr();
     }
     updateCareProgram(patientId, program.id, patch);

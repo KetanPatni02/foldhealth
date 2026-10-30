@@ -17,7 +17,7 @@ const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'O
 
 // The member's saved outreach (call history) in the Outreach Activity feed's
 // shape, month-grouped, so the feed shows what was actually logged for this
-// member — and still shows it after leaving and reopening the step.
+// member: and still shows it after leaving and reopening the step.
 function toLogGroups(callHistory) {
   const groups = [];
   (callHistory || []).forEach((c) => {
@@ -35,9 +35,9 @@ function toLogGroups(callHistory) {
       author: c.by,
       title: verification ? `Pharmacy verification · ${c.contact} (locked)` : (c.title ? `${c.title} · ${c.contact}` : `Outgoing Call · ${c.contact}`),
       programs: c.measures || [],
-      // Stored as "Side effects — Experienced" (outcome matching relies on
+      // Stored as "Side effects: Experienced" (outcome matching relies on
       // it); shown as "Side effects: Experienced".
-      outcome: c.outcome?.replaceAll(' — ', ': '),
+      outcome: c.outcome?.replaceAll(' \u2014 ', ': '),
       outcomeColor: OUTREACH_TONE_COLOR[outreachTone(c.result)],
       note: c.note,
     });

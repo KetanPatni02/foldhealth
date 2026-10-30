@@ -20,13 +20,13 @@ import { openSafeUrl } from '../../lib/openSafeUrl';
 
 // Render a comment body with the signed-in user's @-mentions painted in the
 // mention style (secondary-300, weight 500). Other users' mentions stay
-// plain text — highlighting them here would compete visually with the row's
+// plain text: highlighting them here would compete visually with the row's
 // primary meaning. Match is case-insensitive so `@fold demo` still fires
 // when the account name is `Fold Demo`.
 function renderCommentBodyWithMentions(text, meName) {
   if (!text) return null;
   if (!meName) return text;
-  // Same shape as the extraction regex in TaskDetailDrawer.handleAddComment —
+  // Same shape as the extraction regex in TaskDetailDrawer.handleAddComment,
   // `@` followed by one or two whitespace-separated word groups.
   const re = /@(\w+(?:\s+\w+)?)/g;
   const meLower = meName.toLowerCase();
@@ -50,7 +50,7 @@ function renderCommentBodyWithMentions(text, meName) {
   return parts;
 }
 
-// Icon config per entry type — reuses HCC's ACT_ICON (colored rail bubble)
+// Icon config per entry type: reuses HCC's ACT_ICON (colored rail bubble)
 // so ActivityLog matches the DiagPanel timeline visually. Types unique to
 // this surface (call/sms, note/clinical_note, task, appointment, …) get
 // their own routing here.
@@ -130,7 +130,7 @@ const statusTone = (label) => STATUS_TONE[label] || 'grey';
  * Shared per-record activity feed.
  *
  * Entries are either group headers (`{ t: 'group', label }`) or log entries.
- * `t` selects which variant renders — outreach entries get the full
+ * `t` selects which variant renders: outreach entries get the full
  * OutreachTab card treatment (with call details + transcript); status
  * changes render just the transition pills; clinical notes and tasks render
  * a nested "View Details" card; comments render as an inline paragraph;
@@ -207,7 +207,7 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
     );
   }
 
-  // Flatten to render list — mark the first/last item in each visible
+  // Flatten to render list: mark the first/last item in each visible
   // group so the icon rail can drop its top/bottom connectors, matching
   // the HCC timeline's continuous-line look.
   const items = (() => {
@@ -352,7 +352,7 @@ export function MetaLine({ entry }) {
 }
 
 /**
- * ViewMoreButton — the shared expand trigger. Hidden until the row is
+ * ViewMoreButton: the shared expand trigger. Hidden until the row is
  * hovered or focused, pinned once open. Exported so a `render` body uses the
  * same affordance as the built-in variants.
  */
@@ -628,7 +628,7 @@ function DetailCardEntryBody({ entry, variant, onOpenTask, onOpenNote }) {
               </div>
             </div>
           ) : variant === 'appointment' ? (
-            // Figma 1230:74055 — leading calendar icon + title over a
+            // Figma 1230:74055, leading calendar icon + title over a
             // "date, time · provider" subtitle, trailing status badge and
             // an arrow-out icon that later opens the appointment drawer.
             <div className={styles.detailCardRow}>
@@ -659,7 +659,7 @@ function DetailCardEntryBody({ entry, variant, onOpenTask, onOpenNote }) {
   );
 }
 
-/* Note-variant card body — the shared Clinical Note affordance. Extracted
+/* Note-variant card body: the shared Clinical Note affordance. Extracted
    so the eye / edit / task-arrow buttons can hook into the store's task
    opener and PDF viewer instead of being visual-only. Exported so the
    HEDIS Clinical Notes tab can render the same card without the
@@ -675,7 +675,7 @@ function deriveReviewTaskTitle(dc) {
 
 export function ClinicalNoteCardActions({ dc, draftLock = null, onOpenTask, onOpenNote }) {
   // Prefer the caller-provided `onOpenTask` (drawer wires the upstream
-  // openTaskFromActivity signal — that's the fix from 3e0aa74 that stamps
+  // openTaskFromActivity signal: that's the fix from 3e0aa74 that stamps
   // pendingOpenTaskId for TasksView). Fall back to openTaskFromNotification
   // for surfaces without a specific handler.
   const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
@@ -706,13 +706,13 @@ export function ClinicalNoteCardActions({ dc, draftLock = null, onOpenTask, onOp
     || 'medium';
   const openTask = (taskId) => (onOpenTask ? onOpenTask(taskId) : openTaskFromNotification?.(taskId));
   // `onOpenNote` gets the whole detailCard so the drawer can reopen the
-  // note in its left workspace (matches "Add Note") — used by the eye
+  // note in its left workspace (matches "Add Note"): used by the eye
   // affordance so authors can edit their submission before it's signed.
   const openNote = (dcArg) => onOpenNote?.(dcArg);
   const openClinicalNoteDrawer = useAppStore(s => s.openClinicalNoteDrawer);
   const showToast = useAppStore(s => s.showToast);
   // Draft rows key on the pencil, which reopens the note (edit path).
-  // Submitted / Signed rows key on the eye — for a Pending Review note we
+  // Submitted / Signed rows key on the eye, for a Pending Review note we
   // reopen the linked sign-off task so the reviewer lands back in the
   // ClinicalNotePanel with the exact same fields they filled out,
   // matching Figma 511:105429. Signed notes without a review task fall
@@ -733,7 +733,7 @@ export function ClinicalNoteCardActions({ dc, draftLock = null, onOpenTask, onOp
     if (dc.pdfDataUrl) {
       openSafeUrl(dc.pdfDataUrl);
     } else {
-      showToast?.('Reopen note — coming soon');
+      showToast?.('Reopen note: coming soon');
     }
   };
   const handleOpenTask = () => {
@@ -743,7 +743,7 @@ export function ClinicalNoteCardActions({ dc, draftLock = null, onOpenTask, onOp
   return (
     <>
       {/* subMeta (pre-title form-type label) and the "Linked Score Groups"
-           link are no longer part of the note-card design — dropped at the
+           link are no longer part of the note-card design, dropped at the
            render layer so historical entries with those fields still
            persisted don't show them. */}
       <div className={styles.detailCardRow}>
@@ -752,7 +752,7 @@ export function ClinicalNoteCardActions({ dc, draftLock = null, onOpenTask, onOp
             <span className={styles.detailCardTitle}>{dc.title}</span>
             {dc.chip && (
               // Wrap in a Tooltip so hover reveals the exact set of gaps
-              // the note bundles — prefer human-readable HEDIS measure
+              // the note bundles: prefer human-readable HEDIS measure
               // names (dc.gapNames) e.g. "Colorectal Cancer Screening,
               // Breast Cancer Screening"; fall back to raw codes for
               // older activity entries.

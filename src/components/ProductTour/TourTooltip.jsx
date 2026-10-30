@@ -4,7 +4,7 @@ import { Button } from '../Button/Button';
 import styles from './ProductTour.module.css';
 
 /**
- * Custom tooltip for React Joyride — uses Fold Health design system.
+ * Custom tooltip for React Joyride: uses Fold Health design system.
  *
  * Receives TooltipRenderProps from Joyride:
  * - continuous, index, step, size (total steps)

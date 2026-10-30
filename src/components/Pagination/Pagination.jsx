@@ -10,15 +10,15 @@ import { useAutoPageSize } from './useAutoPageSize';
 import styles from './Pagination.module.css';
 
 /**
- * Pagination — page navigator + per-page selector + go-to input.
+ * Pagination: page navigator + per-page selector + go-to input.
  *
  * Two usage modes:
  *
- * 1. Store-driven (default) — used by the TCM Worklist + HCC worklist.
+ * 1. Store-driven (default): used by the TCM Worklist + HCC worklist.
  *    Reads currentPage / perPage / searchQuery / etc. from useAppStore
  *    and derives the total item count from the active subnav.
  *
- * 2. Controlled — pass currentPage / perPage / totalItems / onPageChange /
+ * 2. Controlled: pass currentPage / perPage / totalItems / onPageChange /
  *    onPerPageChange. The store reads are skipped and the caller owns state.
  *    Used by APCM Billing (and any future feature that paginates from
  *    local state).
@@ -66,7 +66,7 @@ export function Pagination({
   const allPatients = useAppStore(s => s.allPatients);
 
   // Derive the total count based on what's actually being shown. If the caller
-  // passed `totalItems`, use it as-is — they know better than this generic
+  // passed `totalItems`, use it as-is, they know better than this generic
   // pipeline what's currently rendered.
   const totalItemsComputed = useMemo(() => {
     if (isAllPatients) {
@@ -152,7 +152,7 @@ export function Pagination({
     if (pageSizePrefLoaded && !autoPageSize && perPage !== manualPageSize) {
       setPerPage(manualPageSize);
     }
-    // Runs on mount and when the preference changes — deliberately not on
+    // Runs on mount and when the preference changes, deliberately not on
     // every perPage change, which would fight the user mid-interaction.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSizePrefLoaded, autoPageSize, manualPageSize]);
@@ -212,7 +212,7 @@ export function Pagination({
     return pages;
   };
 
-  // Worklist-specific early returns — only apply in store-driven mode.
+  // Worklist-specific early returns: only apply in store-driven mode.
   // Don't show pagination for queue with empty state.
   if (!controlled && activeTab === 'toc-queue' && totalItems === 0) return null;
   // Don't show pagination for outreach status grouped view (uses collapsible sections).

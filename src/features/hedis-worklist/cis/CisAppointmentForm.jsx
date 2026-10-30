@@ -11,7 +11,7 @@ import { appointmentForDose, apptDate, doseKey } from './cisAppointments';
 import styles from './CisAppointmentForm.module.css';
 
 /**
- * Care Gap drawer — "Schedule Vaccine Reminder" pane body (CIS-CMB10):
+ * Care Gap drawer: "Schedule Vaccine Reminder" pane body (CIS-CMB10):
  * a visit booked with the child's own provider. Pass the object returned by
  * `useCisAppointmentForm()` as `form`, evaluateCis() output as `result`,
  * and the member's appointments so doses already booked can't be picked

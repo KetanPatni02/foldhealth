@@ -5,16 +5,16 @@ import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import styles from './MenuPopover.module.css';
 
 /**
- * MenuPopover — shared action-list popover. Standardises every "click a
+ * MenuPopover: shared action-list popover. Standardises every "click a
  * trigger → see a list of actions" surface in the app (worklist row
  * actions, Upload toolbar, DOS status menu, etc.) so they all look and
  * feel identical.
  *
  * The popover is portal-rendered so it never gets clipped by a parent's
  * overflow. Anchor positioning takes one of two shapes:
- *   anchorRect — a DOMRect (or { top, bottom, left, right }) from the
+ *   anchorRect: a DOMRect (or { top, bottom, left, right }) from the
  *                trigger's getBoundingClientRect(). Cheapest for portals.
- *   anchorRef  — a React ref to the trigger element; the popover reads
+ *   anchorRef: a React ref to the trigger element; the popover reads
  *                its rect on mount. Use when the parent already has a ref.
  *
  * @param {object}   props
@@ -40,7 +40,7 @@ import styles from './MenuPopover.module.css';
  *                                          'left'  = left edge aligns with left edge of anchor.
  */
 // Keep items whose label / hint matches; a section header survives when
-// any of its items do (or when the header itself matches — then the whole
+// any of its items do (or when the header itself matches, then the whole
 // section shows). Dividers drop out while filtering.
 function filterItems(items, q) {
   const out = [];

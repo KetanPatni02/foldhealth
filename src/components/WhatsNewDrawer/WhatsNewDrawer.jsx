@@ -16,7 +16,7 @@ const KIND_VARIANT = {
 const DATE_FMT = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
 /**
- * WhatsNewDrawer — in-house changelog, opened from Help → "What's New".
+ * WhatsNewDrawer: in-house changelog, opened from Help → "What's New".
  * Entries live in Supabase (changelog_entries), written automatically by
  * the changelog GitHub Action on every push to main. Opening the drawer
  * marks everything as seen (clears the unread badge in the Help popover).
@@ -50,7 +50,7 @@ export function WhatsNewDrawer({ onClose }) {
       ) : groups.length === 0 ? (
         <div className={styles.empty}>
           <Icon name="solar:gift-linear" size={32} color="var(--neutral-200)" />
-          <p>No updates published yet — check back soon.</p>
+          <p>No updates published yet: check back soon.</p>
         </div>
       ) : (
         groups.map(([day, items]) => (

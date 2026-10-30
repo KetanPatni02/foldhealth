@@ -15,13 +15,13 @@ function handlePastePlainText(e) {
 }
 
 /**
- * CommentComposer — shared comment field + Comment/Cancel actions used by
+ * CommentComposer: shared comment field + Comment/Cancel actions used by
  * the TaskDetailDrawer and the DiagPanel Comments tab. Starts as a
  * single-line placeholder and expands to a taller field on focus with
  * primary / secondary action buttons.
  *
  * The input is a contenteditable div (not a <textarea>) so accepted
- * @mentions render as inline Badge chips right inside the text — matching
+ * @mentions render as inline Badge chips right inside the text, matching
  * the look of the DOS-source / mention pill. Chips are contenteditable=
  * "false" atoms: arrow keys jump over them, backspace at the boundary
  * removes the whole chip, and the composer serializes them back to
@@ -30,7 +30,7 @@ function handlePastePlainText(e) {
  *
  * Props:
  *  - onSubmit(text, mentions)
- *                    Fires on Comment. `text` is the serialized body —
+ *                    Fires on Comment. `text` is the serialized body,
  *                    mention chips become "@Name " tokens. `mentions` is the
  *                    structured list of chips actually left in the editor,
  *                    `[{ id, name }]`, where `id` is a profiles.id (null when
@@ -68,8 +68,8 @@ function serialize(root) {
 }
 
 // Build the DOM node for a mention chip. Rendering imperatively (rather
-// than via <Badge/>) keeps the chip out of React's reconciliation path —
-// which would otherwise fight the contenteditable's own DOM mutations —
+// than via <Badge/>) keeps the chip out of React's reconciliation path,
+// which would otherwise fight the contenteditable's own DOM mutations,
 // and lets us reuse Badge's CSS module classes for pixel-identical styling.
 //
 // The chip carries the picked profile id alongside the name. The id is the
@@ -120,7 +120,7 @@ function collectMentions(root) {
 // Detect the "@query" fragment before the caret inside the editor. Walks
 // the current selection's text node backwards to the last "@" and returns
 // { range, query } if that "@" is at start-of-input or preceded by
-// whitespace — otherwise null.
+// whitespace: otherwise null.
 function detectMention(editor) {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return null;
@@ -175,14 +175,14 @@ export function CommentComposer({
   // comment" flow). Rendered into the contenteditable on mount with
   // `@Name` fragments re-hydrated into real mention chips so the
   // reader sees the same orange pill they saw in the read-only view.
-  // Later prop changes are ignored — this is a one-shot mount seed;
+  // Later prop changes are ignored: this is a one-shot mount seed;
   // key the component off the comment id if you want a fresh seed.
   initialValue,
   // Copy overrides for the Comment / Cancel actions, so the same
   // composer can label its primary CTA as "Save" in the edit flow.
   submitLabel,
   cancelLabel,
-  // Fires when the Cancel button is clicked — parent can use this to
+  // Fires when the Cancel button is clicked, parent can use this to
   // close the composer (e.g. leaving the "Edit comment" state).
   onCancel,
   // Optional mention roster ({ id, name, initials, roleLabel?, realProfile?,
@@ -255,7 +255,7 @@ export function CommentComposer({
     }
   }, [autoFocus, inStatusMode]);
 
-  // Seed the editor with `initialValue` on mount — split by mention
+  // Seed the editor with `initialValue` on mount: split by mention
   // regex, wrap `@Name` fragments in real chips so the edit view
   // matches the read-only rendering. Deliberately one-shot: later
   // prop changes are ignored (edit sessions get re-seeded by keying
@@ -360,7 +360,7 @@ export function CommentComposer({
   const submit = () => {
     const body = text.trim();
     if (!body) return;
-    // Second arg is additive — callers that only want the body ignore it.
+    // Second arg is additive: callers that only want the body ignore it.
     onSubmit?.(body, collectMentions(editorRef.current));
     resetEditor();
     setExpanded(false);

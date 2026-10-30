@@ -258,7 +258,7 @@ const Section = forwardRef(function Section({ title, count, open, onToggle, chil
 });
 
 /**
- * Add Allergies — the PAMI/Hx Allergies section's `+` opens this. Mirrors Add
+ * Add Allergies: the PAMI/Hx Allergies section's `+` opens this. Mirrors Add
  * Problems and Add Medications: type an allergen, describe it, and the list
  * below splits by status.
  */

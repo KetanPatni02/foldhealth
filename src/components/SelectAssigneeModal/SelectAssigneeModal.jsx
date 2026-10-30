@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../Shadcn
 import styles from './SelectAssigneeModal.module.css';
 
 /**
- * SelectAssigneeModal — centred "pick one person" dialog.
+ * SelectAssigneeModal: centred "pick one person" dialog.
  * Matches Figma SNP-Story 2632:134826.
  *
  * The roster is the platform user list (Supabase `profiles`), so any surface

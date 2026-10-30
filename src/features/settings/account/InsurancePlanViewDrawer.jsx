@@ -10,7 +10,7 @@ function InfoField({ label, value, wide }) {
   return (
     <div className={`${styles.infoField} ${wide ? styles.infoFieldWide : ''}`}>
       <span className={styles.infoLabel}>{label}</span>
-      <span className={styles.infoValue}>{value || '—'}</span>
+      <span className={styles.infoValue}>{value || '-'}</span>
     </div>
   );
 }

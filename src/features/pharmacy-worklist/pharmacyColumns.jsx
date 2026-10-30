@@ -216,15 +216,15 @@ export const PHARMACY_MIDDLE_COLUMNS = [
     key: 'healthPlan', label: 'Health Plan / IPA', optional: true, sortKey: 'healthPlan', sortType: 'alpha',
     renderCell: (m) => (
       <span className={styles.stack}>
-        <span className={styles.cellText}>{m.healthPlan || '—'}</span>
+        <span className={styles.cellText}>{m.healthPlan || '-'}</span>
         <span className={styles.subText}>{m.ipa || ''}</span>
       </span>
     ),
   },
   { key: 'language', label: 'Language', optional: true, renderCell: (m) => <span className={styles.cellText}>{(m.language || 'en').toUpperCase()}</span> },
-  { key: 'bookOfBusiness', label: 'Book of Business', optional: true, sortKey: 'bookOfBusiness', sortType: 'alpha', renderCell: (m) => <span className={styles.cellText}>{m.bookOfBusiness || '—'}</span> },
+  { key: 'bookOfBusiness', label: 'Book of Business', optional: true, sortKey: 'bookOfBusiness', sortType: 'alpha', renderCell: (m) => <span className={styles.cellText}>{m.bookOfBusiness || '-'}</span> },
   { key: 'barrier', label: 'Barrier', optional: true, renderCell: (m) => (m.activeBarriers?.length ? <span className={styles.cellText}>{m.activeBarriers.join(', ')}</span> : <Dash />) },
-  { key: 'daysInQueue', label: 'Days in Queue', optional: true, sortKey: 'daysInQueue', sortType: 'number', renderCell: (m) => <span className={styles.cellText}>{m.daysInQueue ?? '—'}</span> },
+  { key: 'daysInQueue', label: 'Days in Queue', optional: true, sortKey: 'daysInQueue', sortType: 'number', renderCell: (m) => <span className={styles.cellText}>{m.daysInQueue ?? '-'}</span> },
   {
     key: 'excluded', label: 'Excluded / Safe for Year', optional: true,
     renderCell: (m) => {

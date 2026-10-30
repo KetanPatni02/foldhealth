@@ -31,12 +31,12 @@
   overflow: hidden;
 }
 
-/* Banner + tags + actions — never scroll */
+/* Banner + tags + actions: never scroll */
 .stickyTop {
   flex-shrink: 0;
 }
 
-/* PatientProfileTabs wrapper — takes remaining height, scrolls */
+/* PatientProfileTabs wrapper: takes remaining height, scrolls */
 .tabsPanel {
   flex: 1;
   min-height: 0;

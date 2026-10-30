@@ -124,7 +124,7 @@ export function GoalDetailDrawer() {
           </div>
         </div>
 
-        {/* Steps — Required */}
+        {/* Steps: Required */}
         <div className={s.detailSectionHeader}>
           <Icon name="solar:clipboard-list-linear" size={14} color="var(--neutral-300)" />
           <span>Required Steps ({requiredSteps.length})</span>
@@ -154,7 +154,7 @@ export function GoalDetailDrawer() {
           ))}
         </div>
 
-        {/* Steps — Optional */}
+        {/* Steps: Optional */}
         {optionalSteps.length > 0 && (
           <>
             <div className={s.detailSectionHeader}>

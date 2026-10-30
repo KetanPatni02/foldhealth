@@ -246,7 +246,7 @@ export interface ReviewDockHeaderAction {
 
 export declare function ReviewDock(props: ReviewDockProps): ReactElement | null;
 
-/** A single row in the Feedback drawer. The host owns the shape — these are
+/** A single row in the Feedback drawer. The host owns the shape, these are
  *  the fields the drawer renders when present. */
 export interface FeedbackItem {
   id: string;

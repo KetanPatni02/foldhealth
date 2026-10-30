@@ -6,7 +6,7 @@ import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { Link } from '../../../../../../../../components/Link/Link';
 import { Select } from '../../../../../../../../components/Select/Select';
 import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
-import { TemplateScopeBadge } from '../../../../../../../settings/care-plan-library/shared';
+import { EpisodeBadge, TemplateScopeBadge } from '../../../../../../../settings/care-plan-library/shared';
 import { availableForPatient, inLibrary, matchesScopeFilter, scopeFilterOptions } from '../../lib/templateScope';
 import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
@@ -17,7 +17,7 @@ import { describeCriteria, hasCategories, matchCategory } from '../../../../../.
 import { TemplatePreviewDrawer } from '../TemplatePreviewDrawer';
 import styles from './ApplyTemplatesDrawer.module.css';
 
-// Figma 2349:336796 — the picker lists PROBLEMS with the parent template as
+// Figma 2349:336796, the picker lists PROBLEMS with the parent template as
 // the subtitle line and a three-button priority selector on the right.
 // `onApply` carries both the selected ids and the priority map through
 // `applyPatientCarePlanTemplates` to `patient_care_plans.applied_template_priorities`,
@@ -36,7 +36,7 @@ const conditionTextOf = (t) => {
   const items = (Array.isArray(t.conditions) ? t.conditions : []).filter(Boolean);
   return items.length ? items.join(', ') : '';
 };
-// Sort/compare key — the first (primary) condition, lowercased. Templates with
+// Sort/compare key: the first (primary) condition, lowercased. Templates with
 // no condition sort last regardless of direction.
 const conditionSortKey = (t) => {
   const first = (Array.isArray(t.conditions) ? t.conditions : []).filter(Boolean)[0];
@@ -119,7 +119,7 @@ export function ApplyTemplatesDrawer({
     [...appliedTemplateIds, ...preselectedIds].forEach(id => { if (!seed[id]) seed[id] = DEFAULT_PRIORITY; });
     return seed;
   });
-  // Condition filter chip — an OR set of conditions to keep. Empty = all.
+  // Condition filter chip: an OR set of conditions to keep. Empty = all.
   const [conditionFilter, setConditionFilter] = useState([]);
   // The filter row is revealed by the toolbar Filter button rather than always
   // occupying space next to search. It opens automatically if a condition
@@ -132,7 +132,7 @@ export function ApplyTemplatesDrawer({
   const [previewTemplate, setPreviewTemplate] = useState(null);
 
 
-  // Grouping key — the templates already applied to the plan. Kept off the
+  // Grouping key: the templates already applied to the plan. Kept off the
   // live `selected` set so toggling a row in-session doesn't make it jump
   // groups; it stays where it was when the drawer opened, exactly like the
   // Barriers drawer's "Already Added" group.
@@ -223,7 +223,7 @@ export function ApplyTemplatesDrawer({
     [rows, recommendedSet, favoriteSet, appliedSet],
   );
   // When nothing is recommended, starred, or applied there is only one flat
-  // list — drop the group labels so the drawer reads as a simple table.
+  // list: drop the group labels so the drawer reads as a simple table.
   const flat = recRows.length === 0 && favRows.length === 0 && addedRows.length === 0;
 
   const toggle = (id) => {
@@ -309,11 +309,12 @@ export function ApplyTemplatesDrawer({
               {templateNameOf(t)}
             </button>
             <TemplateScopeBadge template={t} />
+            <EpisodeBadge template={t} />
           </span>
           {reasonText && <span className={styles.rowReason} title={reasonText}>{reasonText}</span>}
         </span>
         <span className={styles.conditionCell} title={condition || undefined}>
-          {condition || <span className={styles.conditionEmpty}>—</span>}
+          {condition || <span className={styles.conditionEmpty}>-</span>}
         </span>
         {showPriority && (
           <div

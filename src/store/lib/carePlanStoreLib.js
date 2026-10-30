@@ -178,6 +178,12 @@ function mapCarePlanTemplateRow(row) {
     // What adding it again does; before the renewal column, condition
     // templates extend and the rest reinstate.
     renewal: row.renewal || defaultRenewalFor(row.conditions),
+    // Episodic templates (care_plan_episodic_templates migration): one event,
+    // `episodeDays` long (null: until closed), optionally pausing the
+    // patient's other plans while it runs.
+    episodic: !!row.episodic,
+    episodeDays: row.episode_days ?? null,
+    episodePausesOngoing: row.episode_pauses_ongoing !== false,
     // Bulk import (care_plan_template_import migration): the upload it came
     // from, the published template a draft revision replaces, and who approved it.
     importBatchId: row.import_batch_id || null,
@@ -236,6 +242,10 @@ function mapTemplateInstanceRow(row) {
     // The template category this run applied (Common + that category).
     categoryId: row.category_id || null,
     categoryName: row.category_name || '',
+    // An episode: the plans it paused (resumed when it ends) and how it ended.
+    episodic: !!row.episodic,
+    pausedPlanIds: row.paused_plan_ids || [],
+    closeReason: row.close_reason || null,
   };
 }
 
@@ -248,7 +258,7 @@ function partitionRetired(rows) {
   return [live, retired];
 }
 
-// Standalone (goal-independent) reusable intervention — the Interventions
+// Standalone (goal-independent) reusable intervention: the Interventions
 // Library tab. Distinct from the goal-linked care_plan_interventions rows.
 function mapCarePlanInterventionTemplateRow(row) {
   return {
@@ -496,7 +506,7 @@ function patientCarePlanBarrierToRow(b, planId) {
 }
 
 // Sync a barrier's goal set in the join table. Returns the goal ids that ended
-// up recorded — before the join-table migration that is the legacy column only.
+// up recorded: before the join-table migration that is the legacy column only.
 async function linkBarrierGoals(barrierId, goalIds) {
   const del = await supabase.from('patient_care_plan_barrier_goals').delete().eq('barrier_id', barrierId);
   const missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
@@ -524,7 +534,7 @@ function mapPatientCarePlanRow(row) {
     // A recommendation's templates awaiting approval (care_plan_recommended_templates
     // migration): [{ id, name, why, automation }].
     recommendedTemplates: Array.isArray(row.recommended_templates) ? row.recommended_templates : [],
-    // { [templateId]: 'low' | 'medium' | 'high' } — categorizes the applied
+    // { [templateId]: 'low' | 'medium' | 'high' }: categorizes the applied
     // templates on the sticky-top strip. Empty until Alok Kumar runs the
     // care_plan_applied_template_priorities migration.
     appliedTemplatePriorities: row.applied_template_priorities && typeof row.applied_template_priorities === 'object'
@@ -559,7 +569,7 @@ function carePlanKey(patientId, programId) {
 // readout share one source of truth.
 
 // Derive an audit entry from a goal/intervention save by diffing against its
-// previous state — a create, a status change, a progress change, a rename,
+// previous state: a create, a status change, a progress change, a rename,
 // or a generic edit. Progress is its own action so the Goal Details activity
 // feed can render the "changed the Progress" row with from → to badges.
 // A template's contents as they sit on the plan. There is no template_id on
@@ -684,7 +694,7 @@ function configChanges(base, prevConfig, nextConfig) {
     .map(k => ({
       ...base,
       action: 'updated',
-      detail: `${CONFIG_LABEL[k]}: ${configValue(a[k]) || '—'} → ${configValue(b[k]) || '—'}`,
+      detail: `${CONFIG_LABEL[k]}: ${configValue(a[k]) || '-'} → ${configValue(b[k]) || '-'}`,
     }));
 }
 
@@ -713,7 +723,7 @@ function auditForSave(entityType, next, prev) {
     const to = field.read(next) ?? '';
     if (String(from) === String(to)) continue;
     const fmt = field.format || (v => String(v ?? ''));
-    changes.push({ ...base, action: field.action, detail: `${fmt(from) || '—'} → ${fmt(to) || '—'}` });
+    changes.push({ ...base, action: field.action, detail: `${fmt(from) || '-'} → ${fmt(to) || '-'}` });
   }
   changes.push(...configChanges(base, prev.config, next.config));
   // A save that changed nothing we can name leaves no history line: an

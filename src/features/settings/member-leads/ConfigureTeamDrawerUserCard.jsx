@@ -13,7 +13,7 @@ export function UserCard({ member, teamType, showBillableCheck = false, priorUti
   const dims = ASSIGN_TO_DIMENSIONS[teamType] || [];
   const capacity = Number(member.capacityPct) || 0;
   const totalAssigned = (member.assignTo || []).reduce((sum, r) => sum + (Number(r.pct) || 0), 0);
-  // Allow negative — over-allocation is a real state admins need to see.
+  // Allow negative: over-allocation is a real state admins need to see.
   const remaining = capacity - totalAssigned;
   const isOver = remaining < 0;
   const isGlobalOver = priorUtilization > 100;

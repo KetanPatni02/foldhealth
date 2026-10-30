@@ -175,7 +175,7 @@ export function DesignTabLayout({ ctx }) {
           />
         )}
 
-        {/* Block-level horizontal alignment — controls where the rendered
+        {/* Block-level horizontal alignment: controls where the rendered
             element sits inside its parent (works for Image/Avatar/Button
             via wrapper text-align, and for Container/ColumnsContainer via
             an inline-block alignment passed to the renderer). Distinct

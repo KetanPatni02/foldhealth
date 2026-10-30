@@ -28,7 +28,7 @@ export default {
     decision: {
       control: 'select',
       options: ['pass', 'fail'],
-      description: 'Which decision is being confirmed — controls copy + button color.',
+      description: 'Which decision is being confirmed: controls copy + button color.',
       table: { type: { summary: "'pass' | 'fail'" }, defaultValue: { summary: 'fail' } },
     },
     standardReasons: {

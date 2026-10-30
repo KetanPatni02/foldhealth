@@ -27,7 +27,7 @@ function matchesFilters(task, section, filters, query) {
 }
 
 /**
- * TOC worklist AI Tasks drawer — PatientBanner + a flush SectionTitleBar,
+ * TOC worklist AI Tasks drawer: PatientBanner + a flush SectionTitleBar,
  * then the profile Tasks tab list. Tasks persist to Supabase per patient.
  */
 export function AiTasksDrawer() {

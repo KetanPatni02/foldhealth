@@ -13,18 +13,18 @@ import tabStripStyles from '../TabStrip/TabStrip.module.css';
 import styles from './SectionTitleBar.module.css';
 
 /**
- * Fold Health SectionTitleBar — shared header bar sitting between SubNav and
+ * Fold Health SectionTitleBar: shared header bar sitting between SubNav and
  * page content across the demo platform.
  *
  * Four left-side variants:
- *   • variant="tabs"              — Tab strip; auto-collapses to a "More ▾"
+ *   • variant="tabs", Tab strip; auto-collapses to a "More ▾"
  *                                    dropdown when the tabs don't fit next to
  *                                    the right-side actions.
- *   • variant="titleOnly"         — Just a title. No tabs, no dropdown, no
+ *   • variant="titleOnly", Just a title. No tabs, no dropdown, no
  *                                    toggle.
- *   • variant="titleWithDropdown" — Static title + attached dropdown chip
+ *   • variant="titleWithDropdown", Static title + attached dropdown chip
  *                                    (e.g. `HCC List  Due Date ⌄`).
- *   • variant="titleWithToggle"   — Static title + segmented toggle
+ *   • variant="titleWithToggle", Static title + segmented toggle
  *                                    (e.g. `SNP List  Enrolled | Eligible`).
  *
  * Right-side actions are opt-in via the `actions` array so each page picks
@@ -44,7 +44,7 @@ export function SectionTitleBar({
   // Title (used by titleOnly, titleWithDropdown, titleWithToggle)
   title,
 
-  // TitleWithDropdown variant — uses shared FilterChip (see CLAUDE.md).
+  // TitleWithDropdown variant: uses shared FilterChip (see CLAUDE.md).
   // `dropdownValue` accepts either a single string or a string[] to stay
   // aligned with FilterChip's array-shaped onChange contract. When the
   // picker is never-empty (Measurement Year, etc.) pass `dropdownNoClear`
@@ -66,7 +66,7 @@ export function SectionTitleBar({
   toggleActive,
   onToggleChange,
 
-  // Right side actions — e.g. ['search', 'filter', 'history']
+  // Right side actions: e.g. ['search', 'filter', 'history']
   actions = [],
 
   // Right side handlers
@@ -88,7 +88,7 @@ export function SectionTitleBar({
   uploadLabel = 'Upload Record',
   uploadHasDropdown = false,
 
-  // Primary action button — renders after the icon cluster. Used across
+  // Primary action button: renders after the icon cluster. Used across
   // tasks / campaigns / settings for the "New X / Invite / Add" secondary
   // button. Pass `rightExtras` for anything more complex (Toggle, menus).
   primaryActionLabel,
@@ -101,7 +101,7 @@ export function SectionTitleBar({
   // Rendered after the primary action, e.g. a help button.
   trailingExtras,
   leftExtras,
-  // Rendered at the very start of the left cluster — used by every worklist
+  // Rendered at the very start of the left cluster, used by every worklist
   // to inject the shared SubnavToggle so a "collapse sidebar" handle appears
   // consistently before the title.
   leadingElement,
@@ -355,7 +355,7 @@ function TabsSection({ tabs, activeTab, onTabChange, barRef, rightRef }) {
 
   return (
     <div className={styles.tabsRow}>
-      {/* Hidden measurer — renders every tab at its natural width using
+      {/* Hidden measurer: renders every tab at its natural width using
           TabStrip's own tab-item class so widths match what TabStrip will
           actually paint. Drives the overflow calc without a second mount. */}
       <div

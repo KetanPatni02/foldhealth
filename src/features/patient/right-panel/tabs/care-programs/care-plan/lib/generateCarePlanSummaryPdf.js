@@ -15,7 +15,7 @@ import { matchesShareConditionFilter } from './carePlanShareFilters';
  *   Last       Open Interventions: those on no goal, by problem
  *
  * Every page after the first repeats a patient strip under the header. A
- * field with no value prints "—": nothing is filled in.
+ * field with no value prints "-": nothing is filled in.
  */
 const PAGE = { w: 595, h: 842 };
 const M = 24;
@@ -33,7 +33,7 @@ const C = {
   white: [255, 255, 255],
 };
 
-const DASH = '—';
+const DASH = '-';
 const KIND_LABEL = Object.fromEntries(CARE_PLAN_INTERVENTION_KINDS.map(i => [i.key, i.label]));
 
 function fmtDate(value) {

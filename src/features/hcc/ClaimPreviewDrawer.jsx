@@ -45,7 +45,7 @@ export function ClaimPreviewDrawer() {
 
   if (!open || !member) return null;
 
-  // "View Gaps" hand-off — closes this drawer and opens the DiagPanel for
+  // "View Gaps" hand-off: closes this drawer and opens the DiagPanel for
   // the member, pinned to this DOS. Gap context lives in the DiagPanel;
   // the button below is the explicit entry point from this claim view.
   const viewGaps = () => {
@@ -72,7 +72,7 @@ export function ClaimPreviewDrawer() {
         </>
       )}
       banner={(
-        // Full-bleed banner slot — hugs the drawer edges (no side padding),
+        // Full-bleed banner slot: hugs the drawer edges (no side padding),
         // treated as its own entity above the padded Claim Details body.
         <PatientBanner
           initials={member.in}
@@ -153,18 +153,18 @@ export function ClaimPreviewDrawer() {
   );
 }
 
-// ── Small composition helpers (kept local — single-use UI) ─────────────
+// ── Small composition helpers (kept local: single-use UI) ─────────────
 
 function ClaimField({ label, value }) {
   return (
     <div className={styles.claimField}>
       <span className={styles.claimFieldLabel}>{label}</span>
-      <span className={styles.claimFieldValue}>{value || '—'}</span>
+      <span className={styles.claimFieldValue}>{value || '-'}</span>
     </div>
   );
 }
 
-// ── Mock claim shape — replace with a real fetch when the claims service
+// ── Mock claim shape: replace with a real fetch when the claims service
 // lands. Uses the shared `deriveClaimId` so the number rendered here
 // matches the one shown in the DOS-source badge tooltip.
 function buildClaim(member, dosDate) {

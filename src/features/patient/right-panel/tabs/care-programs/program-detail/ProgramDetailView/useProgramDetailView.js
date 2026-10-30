@@ -20,6 +20,7 @@ import {
 import { showsProgramCarePlan } from '../../care-plan/lib/carePlanMode';
 import { deriveStepStatus, programProgressOf, STEP_STATUS } from './stepStatus';
 import { useProgramActivityLog } from '../shared/useProgramActivityLog';
+import { isEmptyDash } from '../../../../../../../lib/emptyDash';
 
 const EMPTY_LIST = [];
 const EMPTY_MAP = {};
@@ -230,7 +231,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
       resumeCareProgramInstance(patientId, cur, { status: newStatus });
       return;
     }
-    if (newStatus === 'Enrolled' && (!cur.startDate || cur.startDate === '—')) {
+    if (newStatus === 'Enrolled' && (!cur.startDate || isEmptyDash(cur.startDate))) {
       const d = new Date();
       patch.startDate = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
     }

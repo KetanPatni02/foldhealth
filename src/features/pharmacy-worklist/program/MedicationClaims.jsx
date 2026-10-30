@@ -30,7 +30,7 @@ const MATCH_BADGE = {
 // Claim fields still waiting on Astrana's feed definition.
 const PENDING_FIELDS = 'Status values, transaction type, claim ID and sequence, fill and reversal dates, BIN / PCN / group, the negative-value rule and deleted-claim handling are pending confirmation from Astrana.';
 
-const money = (n) => (n == null ? '—' : `${n < 0 ? '-' : ''}$${Math.abs(Number(n)).toFixed(2)}`);
+const money = (n) => (n == null ? '-' : `${n < 0 ? '-' : ''}$${Math.abs(Number(n)).toFixed(2)}`);
 const total = (c) => (c.planPaid == null && c.copay == null ? null : (c.planPaid || 0) + (c.copay || 0));
 const byDate = (a, b) => (parseMdy(a.date) ?? 0) - (parseMdy(b.date) ?? 0);
 // Within one claim group, the order things happened: when each transaction
@@ -76,7 +76,7 @@ function ClaimField({ label, children }) {
   return (
     <div className={styles.claimField}>
       <span className={styles.claimFieldLabel}>{label}</span>
-      <span className={styles.claimFieldValue}>{children ?? '—'}</span>
+      <span className={styles.claimFieldValue}>{children ?? '-'}</span>
     </div>
   );
 }
@@ -162,9 +162,9 @@ function ClaimDetail({ med, claim, memberMeds, onBack, onOpen, flush }) {
               <span className={styles.rowMeta}>{d.generic}</span>
             </span>
             <span><MeasureCode code={d.measure} /></span>
-            <span>{c.qty ?? '—'}</span>
-            <span>{c.daysSupply ?? '—'}</span>
-            <span>{d.doseForm || '—'}</span>
+            <span>{c.qty ?? '-'}</span>
+            <span>{c.daysSupply ?? '-'}</span>
+            <span>{d.doseForm || '-'}</span>
           </div>
         ))}
       </Section>

@@ -78,7 +78,7 @@ function bindScenarios(scenarios, patients) {
       age: p?.age ?? sc.fallbackAge,
       payer: p?.coverageType || sc.fallbackPayer,
       provider: p?.pcp || sc.fallbackProvider,
-      // Member-cell identity — mirrors the toc worklist row.
+      // Member-cell identity: mirrors the toc worklist row.
       gender: p?.gender || 'F',
       memberId: p?.memberId || '',
       language: p?.language || 'en',
@@ -140,7 +140,7 @@ function AdherenceCard({ onOpen }) {
   );
 }
 
-// Member cell — identical structure to the toc worklist row (Avatar + name
+// Member cell: identical structure to the toc worklist row (Avatar + name
 // link + (gender•age) DOB tooltip + FoldId • language badge), composing the
 // shared WorklistRow member-cell classes.
 function MemberCell({ item, onOpen, showToast }) {
@@ -301,7 +301,7 @@ export function TodayView() {
 
   return (
     <div className={styles.today}>
-      {/* Fixed top region — greeting + Panel Pulse in a bordered container,
+      {/* Fixed top region: greeting + Panel Pulse in a bordered container,
           then the full-width tab strip flush to the table. Only the table
           below scrolls. */}
       <div className={styles.headerRegion}>
@@ -339,12 +339,12 @@ export function TodayView() {
       </div>
       </div>
 
-      {/* Program lens — full-width tab strip, flush to the table below */}
+      {/* Program lens: full-width tab strip, flush to the table below */}
       <div className={styles.tabBar}>
         <TabStrip items={LENS_TABS} activeKey={lens} onChange={setLens} fullWidth={false} />
       </div>
 
-      {/* Scrolling table — Member | Programs | Next Best Action | Status | Actions */}
+      {/* Scrolling table: Member | Programs | Next Best Action | Status | Actions */}
       <div className={styles.tableRegion}>
         <WorklistShell
           header={null}

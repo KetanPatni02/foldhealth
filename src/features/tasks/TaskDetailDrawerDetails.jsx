@@ -22,7 +22,7 @@ export function TaskDetailDrawerDetails({
   // The sign-off task is linked to a clinical_notes row via review_task_id.
   // Surface it right below the description so the reviewer can jump into
   // the note preview without needing to navigate back to the care gap.
-  // Ensure the slice is populated for this member on drawer open — the
+  // Ensure the slice is populated for this member on drawer open, the
   // tasks page path never touched CareGapDetailDrawer, so the slice
   // starts empty here even when the note exists on the server.
   const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
@@ -44,7 +44,7 @@ export function TaskDetailDrawerDetails({
   const linkedNote = useAppStore(s => {
     const isSignOffTask = task?.pool === 'HEDIS Sign-Off';
     // Sign-off tasks are only ever created when a note is submitted
-    // for review — a draft cannot own a sign-off task. Filter drafts
+    // for review: a draft cannot own a sign-off task. Filter drafts
     // out of the pool so a stale single-gap draft can't shadow the
     // consolidated submitted note this task actually represents.
     const eligible = (list) => (isSignOffTask
@@ -111,7 +111,7 @@ export function TaskDetailDrawerDetails({
               options={assigneeNames}
               onSelect={v => {
                 const picked = (taskProfiles || []).find(p => p.name === v);
-                // Same claim semantics as the row cell — an owner and a pool
+                // Same claim semantics as the row cell, an owner and a pool
                 // are mutually exclusive.
                 updateTask(task.id, { assigned_to: v, assigned_to_id: picked?.id || null, pool: null });
                 showToast(`Assigned to ${v}`);
@@ -121,17 +121,17 @@ export function TaskDetailDrawerDetails({
               )}
             >
               <Avatar variant="assignee" initials={assigneeInitials} size="S" />
-              <span>{task.assigned_to || '—'}</span>
+              <span>{task.assigned_to || '-'}</span>
             </DetailDropdown>
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Task Pool</span>
             <DetailDropdown
-              value={task.pool || '— None —'}
-              options={['— None —', ...taskPools.map(p => p.name)]}
+              value={task.pool || 'None'}
+              options={['None', ...taskPools.map(p => p.name)]}
               onSelect={v => {
-                const next = v === '— None —' ? null : v;
-                // A pooled task is unclaimed by definition — both the "My Task
+                const next = v === 'None' ? null : v;
+                // A pooled task is unclaimed by definition, both the "My Task
                 // Pool" tab and the Claim button require no assignee. Pooling
                 // without dropping the assignee left the task invisible in
                 // both places. Mirrors the Add Task drawer, which already
@@ -267,10 +267,10 @@ export function TaskDetailDrawerDetails({
 
 function LinkedNoteCard({ note, task, setEditingNote, setPreviewNote }) {
   // A Pending-Review note has two audiences from this row:
-  //   • the assigned reviewer — should drop straight into the editable
+  //   • the assigned reviewer: should drop straight into the editable
   //     ClinicalNotePanel so they can revise + sign; matches the CareGap
   //     drawer's reviewer path.
-  //   • everyone else (the author, other viewers) — should see the
+  //   • everyone else (the author, other viewers), should see the
   //     read-only preview, since they cannot sign on the reviewer's behalf.
   // We compare the note's `reviewerName` against the signed-in user's
   // display name; the CareGap flow uses the same equality check.
@@ -285,7 +285,7 @@ function LinkedNoteCard({ note, task, setEditingNote, setPreviewNote }) {
   const authorLine = note.status === 'signed'
     ? `Signed by ${note.signedByName || note.reviewerName || 'Provider'}${note.signedAt ? ` · ${fmtDate(note.signedAt)}` : ''}`
     : note.status === 'submitted'
-      ? `Submitted for Review to ${note.reviewerName || '—'}`
+      ? `Submitted for Review to ${note.reviewerName || '-'}`
       : `Save as Draft by ${note.authorName || 'You'}`;
   const metaWhen = note.updatedAt || note.createdAt;
   return (

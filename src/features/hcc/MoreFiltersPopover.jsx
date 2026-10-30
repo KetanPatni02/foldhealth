@@ -8,7 +8,7 @@ import styles from './MoreFiltersPopover.module.css';
 
 /**
  * Controls which filter chips are visible in the FilterChipBar. Mirrors the
- * prototype's MoreFiltersPopup — a searchable two-section list of all available
+ * prototype's MoreFiltersPopup: a searchable two-section list of all available
  * filters (Primary / Extended) with checkbox toggles.
  *
  * Props:
@@ -40,13 +40,13 @@ export function MoreFiltersPopover({ anchorRect, visibleKeys, onToggle, onClear,
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Live set — used to render each row's checkbox state so toggling is
+  // Live set: used to render each row's checkbox state so toggling is
   // immediate.
   const visibleSet = useMemo(() => new Set(visibleKeys), [visibleKeys]);
-  // Ordering snapshot — captured once when the popover opens (this component
+  // Ordering snapshot: captured once when the popover opens (this component
   // is mounted on demand by FilterChipBar and unmounts on close, so
   // useState's lazy init runs exactly once per open). If a user unchecks a
-  // row we DON'T want it to leap out from under the cursor — the change is
+  // row we DON'T want it to leap out from under the cursor, the change is
   // only reflected in position on the NEXT open.
   const [initialVisible] = useState(() => new Set(visibleKeys));
   // Layout: [all checked, in MORE_FILTER_ITEMS order] then [primary unchecked]

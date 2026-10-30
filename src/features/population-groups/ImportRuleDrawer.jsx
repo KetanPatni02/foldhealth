@@ -16,7 +16,7 @@ const CATEGORY_ICONS = {
 };
 
 /**
- * Import Rule drawer — shows pre-built rule templates the customer can pick
+ * Import Rule drawer: shows pre-built rule templates the customer can pick
  * to bootstrap a new Dynamic population group. The chosen template's rule
  * tree is handed back to the caller via `onImport(template)`.
  */

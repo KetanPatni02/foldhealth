@@ -3,7 +3,6 @@ import { Input } from '../../../../../components/Input/Input';
 import { Select } from '../../../../../components/Select/Select';
 import { Textarea } from '../../../../../components/Textarea/Textarea';
 import { Button } from '../../../../../components/Button/Button';
-import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
 import { RadioOptionGroup } from '../../../../../components/RadioOptionGroup/RadioOptionGroup';
 import { CloseButton } from '../../../../../components/CloseButton/CloseButton';
 import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
@@ -17,12 +16,13 @@ import { ApplyTemplatesDrawer } from '../../../../patient/right-panel/tabs/care-
 import { useAppStore } from '../../../../../store/useAppStore';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import {
-  CarePlanSections, CategoryCriteriaCard, ChronicConditionSelect, CommonSectionNote, COMMON,
-  TemplateCategoryBar, TemplateRenewalChoice, TemplateScopeChoice, useTemplateCategories,
+  CarePlanSections, CategoryCriteriaCard, ChronicConditionSelect, CommonSectionNote, COMMON, EpisodeSettings,
+  TemplateCategoryBar, TemplateRenewalChoice, TemplateScopeChoice, TemplateTypeChoice, useTemplateCategories,
 } from '../../shared';
 import { categoriesProblem } from '../../lib/templateCategories';
 import { LIBRARY_SCOPE_CHOICES } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateScope';
 import { defaultRenewalFor } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
+import { DEFAULT_EPISODE_DAYS } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/episodeTemplates';
 import { CARE_PLAN_NAME_MAX } from '../../lib/carePlanLimits';
 import {
   goalPayloadFromTemplateEntry,
@@ -57,13 +57,8 @@ const BUILD_MODES = [
 // The protocol picker's first option opens the upload drawer instead of picking.
 const UPLOAD_PROTOCOL = '__upload';
 
-const TEMPLATE_TYPES = [
-  { value: 'general', label: 'General' },
-  { value: 'chronic', label: 'For Chronic Conditions' },
-];
-
 /**
- * New Care Plan — full-pane template creation (Figma Care-Plan-Creation
+ * New Care Plan: full-pane template creation (Figma Care-Plan-Creation
  * 14108:294857). Left column holds the plan's identity (name, description,
  * template type); the right column is where goals accrue, empty until the
  * first one is added.
@@ -78,6 +73,8 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [templateType, setTemplateType] = useState('general');
+  // An episodic template's length and whether it pauses the patient's other plans.
+  const [episode, setEpisode] = useState({ days: DEFAULT_EPISODE_DAYS, pausesOngoing: true });
   // Follows the template type (conditions extend, events reinstate) until
   // someone picks one.
   const [renewalPick, setRenewalPick] = useState(null);
@@ -90,7 +87,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const [barriers, setBarriers] = useState([]);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [picker, setPicker] = useState(null); // 'goals' | 'interventions' | 'barriers'
-  // { list, item, rect } — which row's menu is open.
+  // { list, item, rect }, which row's menu is open.
   const [rowMenu, setRowMenu] = useState(null);
   // Common + categories: the three lists above hold whichever is on screen.
   const cats = useTemplateCategories([], { goals, interventions, barriers }, { setGoals, setInterventions, setBarriers });
@@ -156,7 +153,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
     icon: 'solar:flag-linear',
     status: 'Not Started',
     currentValue: 'No Data',
-    trend: '—',
+    trend: '-',
     progress: '0%',
   })), [goals]);
 
@@ -319,6 +316,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
       categories: snap.categories,
       scope,
       renewal,
+      episode: templateType === 'episodic' ? episode : null,
       sourceProtocol: drafted
         ? { id: drafted.id, title: drafted.title, version: drafted.version, organization: drafted.organization }
         : null,
@@ -436,20 +434,14 @@ export function CarePlanCreateView({ onClose, onSave }) {
           {/* Same shape as the Edit Care Plan pane: a labelled field, not a
               section heading. */}
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Template Type</span>
-            <div className={styles.radioGroup} role="radiogroup" aria-label="Template Type">
-              {TEMPLATE_TYPES.map(t => (
-                <RadioButton
-                  key={t.value}
-                  name="templateType"
-                  value={t.value}
-                  label={t.label}
-                  checked={templateType === t.value}
-                  onChange={() => setTemplateType(t.value)}
-                />
-              ))}
-            </div>
+            <TemplateTypeChoice value={templateType} onChange={setTemplateType} />
           </div>
+
+          {templateType === 'episodic' && (
+            <div className={styles.field}>
+              <EpisodeSettings value={episode} onChange={setEpisode} />
+            </div>
+          )}
 
           <div className={styles.field}>
             <TemplateScopeChoice value={scope} onChange={setScope} choices={LIBRARY_SCOPE_CHOICES} />
@@ -459,7 +451,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
             <TemplateRenewalChoice value={renewal} onChange={setRenewalPick} />
           </div>
 
-          {/* A chronic-conditions template needs to say which conditions —
+          {/* A chronic-conditions template needs to say which conditions,
               same picker the goal drawer and the template editor use. */}
           {templateType === 'chronic' && (
             <div className={styles.field}>

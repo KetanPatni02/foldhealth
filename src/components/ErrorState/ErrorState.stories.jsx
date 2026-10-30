@@ -7,7 +7,7 @@ export default {
   parameters: {
     docs: {
       description: {
-        component: 'Full-panel error placeholder — icon, title, message, and optional retry button.',
+        component: 'Full-panel error placeholder: icon, title, message, and optional retry button.',
       },
     },
   },
@@ -29,7 +29,7 @@ export default {
     },
     onRetry: {
       action: 'onRetry',
-      description: 'Retry click handler — button hidden when omitted.',
+      description: 'Retry click handler: button hidden when omitted.',
       table: { type: { summary: '() => void' } },
     },
   },

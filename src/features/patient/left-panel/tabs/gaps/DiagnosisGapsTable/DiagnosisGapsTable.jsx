@@ -22,7 +22,7 @@ function groupByHcc(icds) {
     title: g.title,
     status: 'Open',
     icdCount: g.icds.length,
-    lastDocumented: g.lastDocumented || '—',
+    lastDocumented: g.lastDocumented || '-',
   }));
 }
 

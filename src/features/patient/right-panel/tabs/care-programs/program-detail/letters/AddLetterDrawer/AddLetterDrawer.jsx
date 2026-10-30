@@ -40,7 +40,7 @@ function LetterThumb() {
 }
 
 /**
- * Add Letter drawer — browse the letters library and add templates to the
+ * Add Letter drawer: browse the letters library and add templates to the
  * program. Figma 2334-319071. Built on the shared Drawer.
  */
 const AddButton = ({ letter, added, onAdd }) => (
@@ -124,7 +124,7 @@ export function AddLetterDrawer({ letters = EMPTY_LETTERS, addedIds, onAdd, onPr
                   </span>
                 </span>
               </td>
-              <td className={styles.dateCol}>{l.lastSent || '—'}</td>
+              <td className={styles.dateCol}>{l.lastSent || '-'}</td>
               <td className={styles.actionsCol}>
                 <span className={styles.actions}>
                   <AddButton letter={l} added={isAdded(l.id)} onAdd={onAdd} />

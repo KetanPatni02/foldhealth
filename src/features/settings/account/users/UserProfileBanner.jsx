@@ -4,7 +4,7 @@ import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import styles from './UserProfileBanner.module.css';
 
 /**
- * UserProfileBanner — the warm-gradient header used by the View + Edit user
+ * UserProfileBanner: the warm-gradient header used by the View + Edit user
  * drawers. Renders the avatar, name (with a verified check when active),
  * email, and the Call / Chat / Meet / More action cluster on the right.
  *
@@ -13,10 +13,10 @@ import styles from './UserProfileBanner.module.css';
  *
  * Props
  * -----
- *  - user     { initials, name, email, status } — display data.
- *  - onCall / onChat / onMeet / onMore  — optional click handlers per action.
- *  - subtitle — the line under the name (default: the email), e.g. a role.
- *  - actions  — false leaves the action cluster out (a banner for context only).
+ *  - user     { initials, name, email, status }, display data.
+ *  - onCall / onChat / onMeet / onMore, optional click handlers per action.
+ *  - subtitle: the line under the name (default: the email), e.g. a role.
+ *  - actions: false leaves the action cluster out (a banner for context only).
  */
 export function UserProfileBanner({ user, onCall, onChat, onMeet, onMore, subtitle, actions = true }) {
   const isActive = user.status === 'Active';

@@ -6,7 +6,7 @@ import { Button } from '../../../components/Button/Button';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import styles from './DiagPanel.module.css';
 // Record-level Reject reasons. Multi-select; a comment is ALWAYS required
-// (no "optional" branch, unlike Insufficient) — reject is terminal and
+// (no "optional" branch, unlike Insufficient), reject is terminal and
 // downstream reviewers need the specific reason on the audit trail.
 const REJECT_RECORD_REASONS = [
   'All documents belong to wrong patient',
@@ -19,7 +19,7 @@ const REJECT_RECORD_REASONS = [
 
 /**
  * Modal shown when a reviewer picks "Rejected" in the DosStatusMenu.
- * Same shape as InsufficientDosDialog on ChartDetailDrawer — white card,
+ * Same shape as InsufficientDosDialog on ChartDetailDrawer, white card,
  * multi-select reasons, MANDATORY comment. Confirm applies the reject.
  */
 export function RejectRecordDialog({ onCancel, onConfirm }) {

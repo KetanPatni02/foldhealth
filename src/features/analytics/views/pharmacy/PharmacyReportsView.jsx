@@ -21,7 +21,7 @@ const GROUP_BY_OPTIONS = Object.values(OUTCOME_GROUP_LABELS);
 const GROUP_BY_KEY = Object.fromEntries(Object.entries(OUTCOME_GROUP_LABELS).map(([k, v]) => [v, k]));
 const ISSUE_TONE = { 'Claim not matched': 'error', 'Non–Part D claim': 'error', 'Held for review': 'warning' };
 
-const pctText = (n) => (n == null ? '—' : `${n}%`);
+const pctText = (n) => (n == null ? '-' : `${n}%`);
 const uniq = (list) => [...new Set(list.filter(Boolean))].toSorted();
 
 function Kpis({ items }) {
@@ -176,7 +176,7 @@ function DataQualityTab({ report }) {
                   <td className={local.groupCell}>{r.member}</td>
                   <td>{r.code}</td>
                   <td><Badge size="S" tone={ISSUE_TONE[r.issue]} label={r.issue} /></td>
-                  <td>{r.date || '—'}</td>
+                  <td>{r.date || '-'}</td>
                   <td className={local.detail}>{r.detail}</td>
                 </tr>
               )) : <EmptyState message="No claim feed issues for these members" icon="solar:check-circle-linear" colSpan={5} />}

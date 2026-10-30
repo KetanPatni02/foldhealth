@@ -8,12 +8,12 @@ import { derivedPatch, isFieldVisible, userSelectOptions } from '../../../../../
 import styles from './TemplateAnswersForm.module.css';
 
 /**
- * TemplateAnswersForm — renders a Note Template's `schema.items` as a
+ * TemplateAnswersForm: renders a Note Template's `schema.items` as a
  * flat form and reports the answers back as `{ [key]: value }`.
  *
  * Deliberately decoupled from the Care Gap Visit workspace's own
  * `GenericEvidenceForm`, which routes updates through
- * `useClinicalNotePanel`. This component owns nothing — it just paints
+ * `useClinicalNotePanel`. This component owns nothing, it just paints
  * the fields the caller hands it and pushes answers up via `onChange`.
  *
  * Field descriptor shape (matches `GAP_TEMPLATES` and the Form Builder):

@@ -11,7 +11,7 @@ export default {
     docs: {
       description: {
         component:
-          'Loading-state placeholders — the directory exports several compositions (`CardSkeleton`, `SimpleTableSkeleton`, `TableSkeleton`) rather than one primitive. Pick the shape closest to the layout you\'re replacing.',
+          'Loading-state placeholders: the directory exports several compositions (`CardSkeleton`, `SimpleTableSkeleton`, `TableSkeleton`) rather than one primitive. Pick the shape closest to the layout you\'re replacing.',
       },
     },
   },

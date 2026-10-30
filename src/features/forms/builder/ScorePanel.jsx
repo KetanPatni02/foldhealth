@@ -1,5 +1,5 @@
 /**
- * Score tab — manage the form's scores and their interpretation bands. Forms
+ * Score tab: manage the form's scores and their interpretation bands. Forms
  * can hold several scores: validated instruments register locked scores on
  * drop, and the user can add custom scores over any scorable fields.
  *
@@ -109,7 +109,7 @@ export function ScorePanel({ fields, scoring, onChange }) {
             {locked ? (
               <div className={styles.lockedBanner}>
                 <Icon name="solar:lock-keyhole-minimalistic-linear" size={14} color="var(--status-success)" />
-                Validated &amp; locked — cutoffs can’t be edited.
+                Validated &amp; locked, cutoffs can’t be edited.
               </div>
             ) : null}
             <label className={styles.propLabel} htmlFor={`${uid}-score-name`}>Score name</label>
@@ -134,7 +134,7 @@ export function ScorePanel({ fields, scoring, onChange }) {
 
       {/* Interpretations */}
       <section className={styles.scoreCol}>
-        <div className={styles.scoreColHead}>Result — Interpretations</div>
+        <div className={styles.scoreColHead}>Result: Interpretations</div>
         {!selected ? (
           <div className={styles.scoreEmpty}>
             <Icon name="solar:ranking-linear" size={28} color="var(--neutral-150)" />

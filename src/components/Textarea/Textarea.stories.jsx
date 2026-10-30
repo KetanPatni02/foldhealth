@@ -29,9 +29,9 @@ export default {
     supportingText: { control: 'boolean', description: 'Show the helper line below the field. Accepts a string to override the default copy.' },
     mandatory: { control: 'boolean' },
     richText: { control: 'boolean', description: 'Reveals the toolbar footer. Only when richText is on can attachment / speech-to-text / bottomButton surface.' },
-    attachment: { control: 'boolean', description: 'Paperclip button — only visible when richText is on.' },
-    speechToText: { control: 'boolean', description: 'Speech-to-text mic — only visible when richText is on.' },
-    bottomButton: { control: 'boolean', description: 'Publish CTA — only visible when richText is on. Pass `{ label, onClick, variant, disabled }` in code to customize.' },
+    attachment: { control: 'boolean', description: 'Paperclip button: only visible when richText is on.' },
+    speechToText: { control: 'boolean', description: 'Speech-to-text mic: only visible when richText is on.' },
+    bottomButton: { control: 'boolean', description: 'Publish CTA: only visible when richText is on. Pass `{ label, onClick, variant, disabled }` in code to customize.' },
     maxLength: { control: 'number' },
   },
 };

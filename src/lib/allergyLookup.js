@@ -3,9 +3,9 @@
 // Two independent sources, because allergens split cleanly in two and no
 // single terminology covers both well:
 //
-//  • Drug allergies — RxNorm ingredients via the NLM Clinical Table Search
+//  • Drug allergies: RxNorm ingredients via the NLM Clinical Table Search
 //    Service. Public, no key, fast.
-//  • Everything else (foods, environmental, latex …) — SNOMED CT via the NLM
+//  • Everything else (foods, environmental, latex …), SNOMED CT via the NLM
 //    UMLS terminology service, which needs a personal API key.
 //
 // They are queried in parallel and merged, and a failure in one never takes
@@ -14,7 +14,7 @@
 // does not re-ask for a term the user has already typed through.
 
 // RxNorm is public and keyless, so the client calls it directly. SNOMED goes
-// through our own backend, which holds UMLS_API_KEY — a key in the bundle is
+// through our own backend, which holds UMLS_API_KEY, a key in the bundle is
 // a key anyone can read.
 const RXNORM_URL = 'https://clinicaltables.nlm.nih.gov/api/drug_ingredients/v3/search';
 import { apiFetch } from './apiFetch';

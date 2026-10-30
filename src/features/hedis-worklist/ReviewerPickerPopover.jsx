@@ -1,7 +1,7 @@
 import { SelectAssigneeModal } from '../../components/SelectAssigneeModal/SelectAssigneeModal';
 
 /**
- * ReviewerPickerPopover — "Send for Review" reviewer chooser.
+ * ReviewerPickerPopover: "Send for Review" reviewer chooser.
  *
  * Thin wrapper around the shared SelectAssigneeModal so the picker looks
  * and behaves identically to every other assignee chooser in the app

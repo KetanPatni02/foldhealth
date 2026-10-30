@@ -49,7 +49,7 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
 
 // Two-tab TCM switch (Worklist / Agent Queue) rendered through SectionTitleBar
 // variant 3. Falls back to a title-only header for single-list subnav routes
-// (TOC, All Patients, HCC, CCM) — SectionTitleBar drops the segmented toggle
+// (TOC, All Patients, HCC, CCM), SectionTitleBar drops the segmented toggle
 // when only one item is supplied.
 export function TabBar() {
   const activeTab = useAppStore(s => s.activeTab);
@@ -135,7 +135,7 @@ export function TabBar() {
         leftExtras={queueTabDot && toggleItems.length > 1 && (
           <span
             className={styles.notifDot}
-            title="Agent invoked — view queue"
+            title="Agent invoked: view queue"
             aria-label="Agent Queue has new activity"
           />
         )}
@@ -169,7 +169,7 @@ export function TabBar() {
                 <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
               </>
             )}
-            {/* Saved Filters dropdown — writes to whichever list this TabBar
+            {/* Saved Filters dropdown: writes to whichever list this TabBar
                 is currently rendering (TOC / SNP / High Utilizers / DM),
                 falling back to TCM when no subnav list is active. */}
             <SavedFiltersChip list={activeSubnavList || 'TCM'} />

@@ -641,7 +641,7 @@ export function outreachSummary(callHistory) {
       time: clockTime(c.time),
       by: c.by || null,
       title: `${c.title || 'Outgoing Call'} (${ordinal(list.length - i)} Outreach)`,
-      outcome: c.outcome?.replaceAll(' — ', ': ') || null,
+      outcome: c.outcome?.replaceAll(' \u2014 ', ': ') || null,
       tone: outreachTone(c.result),
     })),
   };

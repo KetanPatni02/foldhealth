@@ -42,7 +42,7 @@ function Facts({ kind, item, onPickDate }) {
   if (kind === 'goal') {
     return (
       <dl className={styles.facts}>
-        <div><dt>Started</dt><dd>{fmtDate(item.createdAt) || '—'}</dd></div>
+        <div><dt>Started</dt><dd>{fmtDate(item.createdAt) || '-'}</dd></div>
         <div>
           <dt>Target date</dt>
           <dd>
@@ -64,15 +64,15 @@ function Facts({ kind, item, onPickDate }) {
   if (kind === 'intervention') {
     return (
       <dl className={styles.facts}>
-        <div><dt>Type</dt><dd>{KIND_LABEL[item.kind] || '—'}</dd></div>
+        <div><dt>Type</dt><dd>{KIND_LABEL[item.kind] || '-'}</dd></div>
         <div><dt>Assigned to</dt><dd>{item.assignee?.name && item.assignee.name !== 'Unassigned' ? item.assignee.name : 'Unassigned'}</dd></div>
-        <div><dt>Started</dt><dd>{fmtDate(item.createdAt) || '—'}</dd></div>
+        <div><dt>Started</dt><dd>{fmtDate(item.createdAt) || '-'}</dd></div>
       </dl>
     );
   }
   return (
     <dl className={styles.facts}>
-      <div><dt>Started</dt><dd>{fmtDate(item.createdAt) || '—'}</dd></div>
+      <div><dt>Started</dt><dd>{fmtDate(item.createdAt) || '-'}</dd></div>
       <div><dt>Linked goals</dt><dd>{(item.goalIds?.length || (item.goalId ? 1 : 0)) || 'None'}</dd></div>
     </dl>
   );

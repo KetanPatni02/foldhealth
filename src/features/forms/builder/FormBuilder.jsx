@@ -1,8 +1,8 @@
 /**
  * Full-screen form builder. Three modes via the header segmented control:
- *   • Edit Form — palette (drag) → canvas (drop/reorder) → properties
- *   • Score     — define scores + bands over the scorable fields
- *   • Preview   — fill the form for real, with live scoring
+ *   • Edit Form: palette (drag) → canvas (drop/reorder) → properties
+ *   • Score: define scores + bands over the scorable fields
+ *   • Preview: fill the form for real, with live scoring
  *
  * The working copy (name / fields / scoring) lives in local state; Save pushes
  * it to Supabase via store.saveForm. Opened/closed through editingFormId.
@@ -681,7 +681,7 @@ function Properties({ field, onPatch, settings, onSettingsChange }) {
         <div className={styles.propsBody}>
           <div className={styles.lockedBanner}>
             <Icon name="solar:lock-keyhole-minimalistic-linear" size={14} color="var(--status-success)" />
-            {validated ? <>Validated &amp; locked — items and scoring can’t be edited.</> : 'Locked: questions and options can’t be edited.'}
+            {validated ? <>Validated &amp; locked, items and scoring can’t be edited.</> : 'Locked: questions and options can’t be edited.'}
           </div>
           <label className={styles.propLabel} htmlFor={`${uid}-locked-label`}>Label</label>
           <Input id={`${uid}-locked-label`} className={styles.ctl} value={field.text || ''} disabled readOnly />
@@ -766,7 +766,7 @@ function Properties({ field, onPatch, settings, onSettingsChange }) {
                 <Input
                   className={styles.optScore}
                   type="number"
-                  placeholder="—"
+                  placeholder="-"
                   value={o.score ?? ''}
                   onChange={(e) => setOpt(i, { score: e.target.value === '' ? undefined : Number(e.target.value) })}
                 />
@@ -808,7 +808,7 @@ export function FormBuilder() {
       return;
     }
     const ok = await copyToClipboard(formShareLink(form.id));
-    showToast?.(ok ? 'Shareable form link copied' : 'Could not copy — link: ' + formShareLink(form.id));
+    showToast?.(ok ? 'Shareable form link copied' : 'Could not copy: link: ' + formShareLink(form.id));
   };
 
   const [name, setName] = useState(form?.name || 'Untitled Form');
@@ -821,7 +821,7 @@ export function FormBuilder() {
   const [activeDrag, setActiveDrag] = useState(null);
 
   // Skip the auto-save that the very next render would otherwise trigger right
-  // after we (re)load a form's state — we only want to persist real user edits.
+  // after we (re)load a form's state: we only want to persist real user edits.
   const skipAutoSave = useRef(true);
 
   // Re-sync when a different form is opened.

@@ -19,7 +19,7 @@ export function TaskDetailDrawerActivity({
               size="S"
             />
           </div>
-          {/* Sticky tab strip — pins the All/Comments/History row to the
+          {/* Sticky tab strip: pins the All/Comments/History row to the
               top of the drawer body while the log scrolls beneath. The
               Toggle above stays in normal flow and scrolls away. Wrap
               bleeds to the drawer edges + matches SectionTitleBar's 48px
@@ -38,10 +38,10 @@ export function TaskDetailDrawerActivity({
             />
           </div>
 
-          {/* Comment input — supports @mentions */}
+          {/* Comment input: supports @mentions */}
           <CommentComposer onSubmit={handleAddComment} />
 
-          {/* Activity log — real audit entries, rendered by the shared
+          {/* Activity log: real audit entries, rendered by the shared
               ActivityLog primitive so date • time • by meta line and the
               typed entry variants (comment / status change / assignee change)
               match the HCC / HEDIS drawers. */}

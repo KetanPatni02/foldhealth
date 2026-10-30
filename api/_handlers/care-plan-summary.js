@@ -2,7 +2,7 @@
  * POST /api/care-plan-summary
  *
  * Server-side AI summary (OpenAI; see _lib/aiJson.js). Keeps the AI keys
- * off the client — the browser posts the plan data, this function builds the
+ * off the client: the browser posts the plan data, this function builds the
  * prompt, calls the model, and returns a structured summary
  * the UI renders as { intro, points:[{title, body}], actions:[string] }.
  *

@@ -7,7 +7,7 @@ export default {
   tags: ['autodocs'],
   parameters: {
     docs: {
-      description: { component: 'Fold Health custom `Select` — matches Input tokens, supports single- and multi-select, searchable menus, section headers, and leading icons. Every optional label/helper slot is exposed through a Figma-style `show*` boolean paired with its value.' },
+      description: { component: 'Fold Health custom `Select`, matches Input tokens, supports single- and multi-select, searchable menus, section headers, and leading icons. Every optional label/helper slot is exposed through a Figma-style `show*` boolean paired with its value.' },
     },
   },
   argTypes: {
@@ -25,7 +25,7 @@ export default {
     variant: {
       control: 'select',
       options: ['default', 'error'],
-      description: 'Visual state — error swaps border/background to the error tokens.',
+      description: 'Visual state: error swaps border/background to the error tokens.',
       table: { type: { summary: "'default' | 'error'" }, defaultValue: { summary: 'default' } },
     },
     disabled: {
@@ -51,7 +51,7 @@ export default {
     },
     multiple: {
       control: 'boolean',
-      description: 'Multi-select mode — value becomes `string[]`; menu stays open on pick.',
+      description: 'Multi-select mode: value becomes `string[]`; menu stays open on pick.',
       table: { type: { summary: 'boolean' }, defaultValue: { summary: 'false' } },
     },
     value: {
@@ -64,13 +64,13 @@ export default {
       description: 'Fires with the new value on pick.',
       table: { type: { summary: '(next: string | string[]) => void' } },
     },
-    // Label row — mirrors src/components/Input's toggle+value pattern
+    // Label row: mirrors src/components/Input's toggle+value pattern
     showLabel: { control: 'boolean', description: 'Storybook-only toggle for the Title slot. Renders `label` when true.' },
     label: { control: 'text', description: 'Text above the trigger.' },
     required: { control: 'boolean', description: 'Adds the 4×4 red dot next to the label.' },
     showInfo: { control: 'boolean', description: 'Info icon next to the label (`infoText` sets its tooltip).' },
     infoText: { control: 'text', description: 'Tooltip for the info icon.' },
-    // Leading icon — same toggle+string pair Input uses
+    // Leading icon: same toggle+string pair Input uses
     showLeadingIcon: { control: 'boolean', description: 'Storybook-only toggle for the leading icon slot.' },
     leadingIcon: { control: 'text', description: 'Solar icon name (e.g. `solar:user-linear`) rendered inside the trigger.' },
     // Below the field

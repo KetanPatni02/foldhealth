@@ -16,7 +16,8 @@ import { WorklistShell } from '../../../../../components/WorklistShell/WorklistS
 import { Drawer } from '../../../../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../../../../components/ConfirmDialog/ConfirmDialog';
 import { FilterChip } from '../../../../../components/FilterChip/FilterChip';
-import { TemplateScopeBadge, TemplateScopeChoice } from '../../shared';
+import { EpisodeBadge, TemplateScopeBadge, TemplateScopeChoice } from '../../shared';
+import { episodeOf } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/episodeTemplates';
 import { LIBRARY_SCOPE_CHOICES, inLibrary, matchesScopeFilter, scopeFilterOptions, templateScopeOf } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateScope';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../../components/ShadcnDialog/ShadcnDialog';
 import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
@@ -71,7 +72,7 @@ const OVERLAY_COLUMNS = [
   { key: 'actions', label: 'Actions', sticky: 'right', width: 132 },
 ];
 
-// The intervention kinds a template can carry — same vocabulary as the goal
+// The intervention kinds a template can carry, same vocabulary as the goal
 // drawer's Add-Intervention menu (Figma 14109:303516).
 const INTERVENTION_KINDS = [
   { value: 'send-form', label: 'Send Form' },
@@ -89,7 +90,7 @@ function filterByTitleAndDescription(list, query) {
 }
 
 function formatRelative(iso) {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   if (days <= 0) return 'Today';
   if (days === 1) return 'Yesterday';
@@ -99,7 +100,7 @@ function formatRelative(iso) {
 
 // Matches Figma's "MM/DD/YYYY | hh:mm AM/PM" cell format for Created On /
 // Last Update columns.
-/* Created On / Last Update both show who above when — the person is the more
+/* Created On / Last Update both show who above when, the person is the more
    useful of the two at a glance, so it leads. */
 function StampCell({ name, children }) {
   return (
@@ -113,19 +114,19 @@ function StampCell({ name, children }) {
 // Titles across the library share one ceiling.
 
 function formatDateTime(iso) {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   const date = d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return `${date}, ${time}`;
 }
 
-// Figma 14106:280383 — checkbox, Template Name, Chronic Conditions,
+// Figma 14106:280383, checkbox, Template Name, Chronic Conditions,
 // Created On, Last Update, Actions. Sortable columns get a `sortKey`/
 // `sortType` so WorklistShell's HeaderCell renders the sort arrows.
 const SELECT_COLUMN = { key: 'select', label: '', showCheckbox: true, width: 44, sticky: 'left', left: 0 };
 // Matches the tab strip's 16px inset so the first column starts under
-// "Plan Template" — the checkbox takes it in bulk mode, the name otherwise.
+// "Plan Template", the checkbox takes it in bulk mode, the name otherwise.
 const FIRST_COL_TH = { paddingLeft: 'var(--space-5)' };
 const SELECT_COLUMN_COLLAPSED_TH = {
   width: 0,
@@ -146,7 +147,7 @@ const TEMPLATE_COLUMNS = [
 // Drafts add Approve to the row actions.
 const DRAFT_COLUMNS = TEMPLATE_COLUMNS.map(c => (c.key === 'actions' ? { ...c, width: 168 } : c));
 
-// Figma 14181:316571 — checkbox, Goals Title, Type, Linked Items, Target
+// Figma 14181:316571, checkbox, Goals Title, Type, Linked Items, Target
 // Value, Duration, Chronic Conditions, Created On, Actions. Widths are the
 // design's min/max column bounds.
 const GOAL_COLUMNS = [
@@ -194,7 +195,7 @@ function simpleDraftFrom(kind, item) {
   return { kind, id: item.id, title: item.title, description: item.description };
 }
 
-// Kebab "More Action" menu on a template row — Figma only breaks Delete out
+// Kebab "More Action" menu on a template row: Figma only breaks Delete out
 // into this overflow menu; Edit/Duplicate get their own always-visible
 // ActionButtons.
 function TemplateRowMenu({ onDuplicate, onCustomize, onDelete }) {
@@ -254,7 +255,7 @@ export function CarePlanLibraryPanel() {
   const setActiveTab = useAppStore(s => s.setCarePlanTab);
   const [searchValue, setSearchValue] = useState('');
   // Search is per-tab in intent (searching goals shouldn't leave stale text
-  // filtering templates when you switch back) — clear it on tab switch
+  // filtering templates when you switch back), clear it on tab switch
   // itself rather than via an effect.
   const handleTabChange = (key) => { setActiveTab(key); setSearchValue(''); exitBulkMode(); };
 
@@ -325,7 +326,7 @@ export function CarePlanLibraryPanel() {
 
   const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
-  // A single draft/delete-target slot, discriminated by `kind` — only one
+  // A single draft/delete-target slot, discriminated by `kind`, only one
   // drawer or confirm dialog is ever open at a time regardless of tab.
   const [draft, setDraft] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind, id, name }
@@ -360,7 +361,7 @@ export function CarePlanLibraryPanel() {
       templateSort.key === 'updatedAt' ? t.updatedAt :
       t.name
     );
-    // Favorites float to the top — same list as the patient care-plan template picker.
+    // Favorites float to the top: same list as the patient care-plan template picker.
     return base.toSorted((a, b) => {
       const favDiff = Number(favoriteSet.has(b.id)) - Number(favoriteSet.has(a.id));
       if (favDiff) return favDiff;
@@ -443,7 +444,7 @@ export function CarePlanLibraryPanel() {
     setDraft(blankSimpleDraft('barrier'));
   };
 
-  // A template has no read-only state — name and pencil both open the editor.
+  // A template has no read-only state, name and pencil both open the editor.
   const openEditTemplate = (t) => setCarePlanTemplateScreen({ mode: 'edit', template: t });
   const openEditSimple = (kind, item) => setDraft(simpleDraftFrom(kind, item));
   const openEditIntervention = (item) => setDraft({
@@ -486,6 +487,8 @@ export function CarePlanLibraryPanel() {
       goals: t.goals.map(g => ({ ...g })),
       interventions: t.interventions.map(i => ({ ...i })),
       barriers: (t.barriers || []).map(b => ({ ...b })),
+      renewal: t.renewal,
+      episode: episodeOf(t),
     });
     if (saved) {
       setTemplateSort({ key: 'createdAt', dir: 'desc' });
@@ -522,6 +525,7 @@ export function CarePlanLibraryPanel() {
         <span className={styles.nameWithScope}>
           <button type="button" className={styles.nameLink} onClick={() => openEditTemplate(t)}>{t.name}</button>
           <TemplateScopeBadge template={t} />
+          <EpisodeBadge template={t} />
           {t.status === 'draft' && t.replacesTemplateId && (
             <Tooltip label={`Replaces the published "${templates.find(x => x.id === t.replacesTemplateId)?.name || 'template'}" when approved`}>
               <Badge tone="info" size="S" label="Revision" />
@@ -545,7 +549,7 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdConditions}>
         {(t.conditions || []).length
           ? <BadgeRow items={t.conditions} maxLines={2} />
-          : '—'}
+          : '-'}
       </td>
       <td className={styles.tdUpdated}><StampCell name={t.createdBy}>{formatDateTime(t.createdAt)}</StampCell></td>
       <td className={styles.tdUpdated}><StampCell name={t.updatedBy}>{formatDateTime(t.updatedAt)}</StampCell></td>
@@ -609,13 +613,13 @@ export function CarePlanLibraryPanel() {
         </span>
       </td>
       <td className={styles.tdType}>
-        {g.type ? <Badge tone="grey" size="S" label={g.type} /> : '—'}
+        {g.type ? <Badge tone="grey" size="S" label={g.type} /> : '-'}
       </td>
-      <td className={styles.tdMuted}>{formatGoalDuration(g) || '—'}</td>
+      <td className={styles.tdMuted}>{formatGoalDuration(g) || '-'}</td>
       <td className={styles.tdConditions}>
         {(g.conditions || []).length
           ? <BadgeRow items={g.conditions} maxLines={2} />
-          : '—'}
+          : '-'}
       </td>
       <td className={styles.tdMuted}><StampCell name={g.createdBy}>{formatDateTime(g.createdAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
@@ -680,7 +684,7 @@ export function CarePlanLibraryPanel() {
         <td className={nameTdClass}>
           <button type="button" className={styles.nameLink} onClick={() => setOverlayEditor({ overlay: o })}>{t.name}</button>
         </td>
-        <td className={styles.tdMuted}>{ipaById.get(o.ipaId)?.name || '—'}</td>
+        <td className={styles.tdMuted}>{ipaById.get(o.ipaId)?.name || '-'}</td>
         <td><Badge tone={o.status === 'active' ? 'success' : 'grey'} size="S" label={o.status === 'active' ? 'Active' : 'Draft'} /></td>
         <td className={styles.tdMuted}>{changes}</td>
         <td className={styles.tdUpdated}><StampCell name={o.updatedBy}>{formatDateTime(o.updatedAt)}</StampCell></td>
@@ -730,7 +734,7 @@ export function CarePlanLibraryPanel() {
     </tr>
   );
 
-  // An empty library renders the ring state alone — no header row, no table —
+  // An empty library renders the ring state alone, no header row, no table,
   // mirroring the Insurance Plans tab. A search that matches nothing keeps the
   // table, since the columns are still meaningful there.
   const emptyPane = (label) => (
@@ -1064,7 +1068,7 @@ export function CarePlanLibraryPanel() {
             kind={draft.interventionKind}
             title={draft.id ? 'Edit Intervention' : 'Add Intervention'}
             intervention={draft.id ? interventionDrawerValues(draft) : undefined}
-            // Only a new intervention can switch type — an existing one's kind
+            // Only a new intervention can switch type, an existing one's kind
             // decides which fields it has.
             onKindChange={draft.id
               ? undefined

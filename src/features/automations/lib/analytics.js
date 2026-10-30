@@ -17,9 +17,9 @@ export function graphCounts(graph) {
   };
 }
 
-/** "2:15 hrs" / "45 mins" / "—". */
+/** "2:15 hrs" / "45 mins" / "-". */
 export function formatDurationMinutes(mins) {
-  if (mins == null || Number.isNaN(mins)) return '—';
+  if (mins == null || Number.isNaN(mins)) return '-';
   const m = Math.round(mins);
   if (m < 60) return `${m} min${m === 1 ? '' : 's'}`;
   const h = Math.floor(m / 60);

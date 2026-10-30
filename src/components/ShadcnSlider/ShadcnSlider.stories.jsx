@@ -15,7 +15,7 @@ export default {
   argTypes: {
     value: {
       control: 'object',
-      description: 'Current value(s) — one entry per thumb.',
+      description: 'Current value(s): one entry per thumb.',
       table: { type: { summary: 'number[]' } },
     },
     defaultValue: {

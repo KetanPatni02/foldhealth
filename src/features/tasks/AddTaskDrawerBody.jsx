@@ -82,7 +82,7 @@ export function AddTaskDrawerBody({
   // Only care-plan-scoped mounts opt in to the schedule block + Linked
   // Goals section. The plain Tasks-list drawer keeps its original layout.
   showScheduleFields = false,
-  // Care-plan kind — 'patient-task' (default) or 'internal-task'. Internal
+  // Care-plan kind: 'patient-task' (default) or 'internal-task'. Internal
   // tasks hide Task Pool / Repeat / Subtasks and keep the Assigned To
   // picker limited to platform users (no members).
   taskKind,
@@ -199,11 +199,11 @@ export function AddTaskDrawerBody({
       <span className={styles.detailLabel}>Task Pool</span>
       <DetailDropdown
         value={pool}
-        options={['— Direct assign —', ...(taskPools || []).map(p => p.name)]}
-        onSelect={v => setPool(v === '— Direct assign —' ? '' : v)}
+        options={['Direct assign', ...(taskPools || []).map(p => p.name)]}
+        onSelect={v => setPool(v === 'Direct assign' ? '' : v)}
       >
         <span style={{ color: pool ? 'var(--neutral-400)' : 'var(--neutral-200)' }}>
-          {pool || '— Direct assign —'}
+          {pool || 'Direct assign'}
         </span>
       </DetailDropdown>
     </div>
@@ -346,7 +346,7 @@ export function AddTaskDrawerBody({
 
       <div className={styles.drawerDetails}>
         {!showScheduleFields && taskPoolRow}
-        {/* Assigned To — kept visible whether a pool is picked or not.
+        {/* Assigned To: kept visible whether a pool is picked or not.
             When a pool is chosen, useAddTaskDrawer.handleSave nulls the
             direct-assignee at save time; showing the field lets the user
             see (and change) their intent explicitly. */}
@@ -356,14 +356,14 @@ export function AddTaskDrawerBody({
             value={assignedTo}
             options={assigneeChoices}
             onSelect={setAssignedTo}
-            // Only Internal Task lets the user reassign — Patient Task
+            // Only Internal Task lets the user reassign, Patient Task
             // runs on the member and the assignee stays locked to them.
             disabled={!isInternalTask}
             renderOption={opt => {
               const label = typeof opt === 'string' ? opt : opt.label;
               const val = typeof opt === 'string' ? opt : opt.value;
               const initials = (val || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-              // A member (patient) can be the assignee too — match by name
+              // A member (patient) can be the assignee too, match by name
               // against the memberOptions list so their picker row renders
               // with the patient avatar variant, consistent with the Member
               // row and the InterventionDrawer's assignee list.
@@ -459,14 +459,14 @@ export function AddTaskDrawerBody({
         </div>
         {!showScheduleFields && labelsRow}
 
-        {/* Care-plan tail — Task Pool and Labels sit ABOVE Creation Date
+        {/* Care-plan tail: Task Pool and Labels sit ABOVE Creation Date
             per the task-drawer ordering ask. Task Pool is hidden for
             internal tasks (they never route through a pool). */}
         {showScheduleFields && !isInternalTask && taskPoolRow}
         {showScheduleFields && labelsRow}
 
         {showScheduleFields && (<>
-        {/* Creation Date — badge in immediate mode, count+unit input when
+        {/* Creation Date: badge in immediate mode, count+unit input when
             day/week is chosen. Mirrors the intervention drawer. */}
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>
@@ -709,7 +709,7 @@ export function AddTaskDrawerBody({
         </>)}
       </div>
 
-      {/* Subtasks — same collapsible section + row treatment as Linked
+      {/* Subtasks: same collapsible section + row treatment as Linked
           Goals so both compound sections read consistently. Each row is
           inline-editable (click title, input, blur commits). Hidden for
           internal tasks (only patient tasks carry subtasks). */}
@@ -885,7 +885,7 @@ export function AddTaskDrawerBody({
         </div>
       )}
 
-      {/* Linked Goals — collapsible section matching the intervention +
+      {/* Linked Goals: collapsible section matching the intervention +
           barrier drawers, so plan-authored tasks carry the same linkage
           affordance. Only rendered when the caller opts into the
           care-plan schedule fields AND supplies goals. */}

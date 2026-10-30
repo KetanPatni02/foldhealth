@@ -65,11 +65,11 @@ export default defineConfig([globalIgnores([
     'no-restricted-syntax': ['warn',
       {
         selector: "JSXAttribute[name.name='style'] Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
-        message: 'Inline hex color — use a design token via CSS Modules (var(--…)), not a raw hex in style={{}}.',
+        message: 'Inline hex color: use a design token via CSS Modules (var(--…)), not a raw hex in style={{}}.',
       },
       {
         selector: "JSXAttribute[name.name='style'] TemplateElement[value.raw=/#[0-9a-fA-F]{3,8}\\b/]",
-        message: 'Inline hex color — use a design token via CSS Modules (var(--…)), not a raw hex in style={{}}.',
+        message: 'Inline hex color: use a design token via CSS Modules (var(--…)), not a raw hex in style={{}}.',
       },
       {
         selector: "JSXOpeningElement[name.name='Icon'] JSXAttribute[name.name='name'] Literal[value=/-outline/]",
@@ -87,17 +87,17 @@ export default defineConfig([globalIgnores([
         selector: "JSXOpeningElement[name.name='Icon'] JSXAttribute[name.name='name'] Literal[value=/^(?!solar:|custom:)[a-z]+:/]",
         message: 'Use Solar (solar:*-linear) icons or a registered custom:* icon. Third-party icon sets are not part of the design system.',
       },
-      // Filter badges must be consistent app-wide — use the shared
+      // Filter badges must be consistent app-wide, use the shared
       // src/components/FilterChip. The `.+` prefix matches re-implementations
       // (TaskFilterChip, MyFilterChip, …) while excluding the canonical
       // FilterChip itself. See CONTRIBUTING.md → Filter badges.
       {
         selector: "FunctionDeclaration[id.name=/.+FilterChip$/]",
-        message: 'Do not re-implement a filter chip — use the shared src/components/FilterChip so filter badges stay identical app-wide. See CONTRIBUTING.md.',
+        message: 'Do not re-implement a filter chip, use the shared src/components/FilterChip so filter badges stay identical app-wide. See CONTRIBUTING.md.',
       },
       {
         selector: "VariableDeclarator[id.name=/.+FilterChip$/][init.callee]",
-        message: 'Do not re-implement a filter chip — use the shared src/components/FilterChip so filter badges stay identical app-wide. See CONTRIBUTING.md.',
+        message: 'Do not re-implement a filter chip, use the shared src/components/FilterChip so filter badges stay identical app-wide. See CONTRIBUTING.md.',
       },
       // Variant / tone / size vocabulary (docs/components/library-contract.mdx).
       // The components still accept the old names at runtime, so these only
@@ -116,7 +116,7 @@ export default defineConfig([globalIgnores([
       },
       {
         selector: "Property[key.name='fontSize'][value.type='Literal'][value.raw=/^\\d/]",
-        message: 'Inline fontSize in px — use a rem-based CSS variable (var(--font-…)) via CSS Modules, not a raw number in style={{}}. See src/tokens/tokens.css.',
+        message: 'Inline fontSize in px: use a rem-based CSS variable (var(--font-…)) via CSS Modules, not a raw number in style={{}}. See src/tokens/tokens.css.',
       },
     ],
   },

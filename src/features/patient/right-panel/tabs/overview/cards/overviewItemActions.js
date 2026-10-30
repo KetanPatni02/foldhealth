@@ -99,7 +99,7 @@ export function openOverviewGap(gap, ctx) {
     return false;
   }
   const member = findWorklistMember(ctx.hedisMembers, ctx.patient);
-  const gapCode = String(gap.code || '').split(/\s|—|-/)[0].trim();
+  const gapCode = String(gap.code || '').split(/\s|\u2014|-/)[0].trim();
   if (!member || !gapCode) {
     ctx.showToast?.("This care gap isn't on the HEDIS worklist");
     return false;

@@ -9,7 +9,7 @@ import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { JsaWorklistRow, JSA_MIDDLE_COLUMNS } from './JsaWorklistRow';
 
-// FilterBar chip definitions — all seven are primary so they show on wide
+// FilterBar chip definitions: all seven are primary so they show on wide
 // viewports; auto-fit trims the tail into More Filters on narrow screens.
 const JSA_FILTER_DEFS = [
   { key: 'progSubStatus', label: 'Program Sub Status', primary: true },
@@ -22,7 +22,7 @@ const JSA_FILTER_DEFS = [
 ];
 const JSA_MORE_FILTER_ITEMS = JSA_FILTER_DEFS.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary }));
 
-// WorklistShell column defs — sticky checkbox + sticky Members col on the
+// WorklistShell column defs: sticky checkbox + sticky Members col on the
 // left, all JSA data columns in the middle, sticky Actions on the right.
 // Same shape TOC uses (once it migrates); keeps the sticky-column scroll
 // behaviour consistent with HCC / TOC.
@@ -152,7 +152,7 @@ export function JsaWorklistTable() {
           <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
         </>
       }
-      onDownload={() => showToast('Export — coming soon')}
+      onDownload={() => showToast('Export: coming soon')}
     />
   );
 
@@ -175,7 +175,7 @@ export function JsaWorklistTable() {
           hiddenSet={ctx.hiddenSet}
           selected={selectedIds.includes(m.id)}
           onToggle={() => selectMember(m.id)}
-          onView={() => showToast(`Program details for ${m.name} — coming soon`)}
+          onView={() => showToast(`Program details for ${m.name}, coming soon`)}
           showToast={showToast}
         />
       )}

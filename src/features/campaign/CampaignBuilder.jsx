@@ -14,7 +14,7 @@ import { RadioButton } from '../../components/RadioButton/RadioButton';
 import { makeInitialDocument } from '../email-builder/initialDocument';
 import styles from './CampaignBuilder.module.css';
 
-// Static option lists — would come from Supabase audience / sender tables in
+// Static option lists: would come from Supabase audience / sender tables in
 // production. Audience options now load from the audience_segments table via
 // the store (with a fallback); sender/from lists stay static.
 const SENDER_OPTIONS = [
@@ -75,7 +75,7 @@ export function CampaignBuilder() {
   // Build a preview document on the fly when the campaign has no saved
   // template yet, so the user sees something instead of an empty pane.
   // Render it to HTML through the same renderer the production email uses
-  // (renderEmailHtml) — Reader on its own can't draw custom block types
+  // (renderEmailHtml): Reader on its own can't draw custom block types
   // (NavBar / Social / Table) and skips backgroundImage gradients, so the
   // preview was diverging visually from the actual email export.
   const previewHtml = useMemo(() => {
@@ -83,7 +83,7 @@ export function CampaignBuilder() {
       || makeInitialDocument({ name: campaign?.name || 'Untitled Campaign' });
     const html = renderPreviewHtml(doc);
     // Prepend a thin transparent scrollbar style so the preview iframe doesn't
-    // render with the OS-default dark scrollbar. Preview-only — does not
+    // render with the OS-default dark scrollbar. Preview-only, does not
     // affect the actual email HTML delivered to recipients. !important wins
     // against whatever the email template ships with.
     const scrollbarCss = `<style>
@@ -140,7 +140,7 @@ export function CampaignBuilder() {
             <div className={styles.aiRow}>
               <button
                 className={styles.aiBtn}
-                onClick={() => showToast('Write with AI — coming soon')}
+                onClick={() => showToast('Write with AI: coming soon')}
                 type="button"
               >
                 <Icon name="custom:ai" size={14} color="var(--primary-300)" />

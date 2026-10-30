@@ -49,7 +49,7 @@ export function SubNav({ collapsed, width = 200 }) {
   // fetchPatients + fetchCallDetails on mount, which meant every Population
   // route pulled every worklist table in full: opening the 9-row CCM list
   // transferred ~275 KB, ~40x what the screen renders, and HCC came to 38
-  // requests. The badges were the only reason — seven integers.
+  // requests. The badges were the only reason, seven integers.
   //
   // fetchWorklistCounts asks for just the id columns those integers need
   // (6.7 KB, measured). Each worklist's own view fetches its own rows, which
@@ -61,7 +61,7 @@ export function SubNav({ collapsed, width = 200 }) {
     fetchWorklistColumnPrefs();
   }, []);
 
-  // User-ordered worklists — store order or the default until the fetch
+  // User-ordered worklists: store order or the default until the fetch
   // resolves. Reconciled here as well (not just in the store) because the
   // localStorage-cached order may predate a newly added worklist.
   const orderedWorklists = useMemo(() => {
@@ -76,7 +76,7 @@ export function SubNav({ collapsed, width = 200 }) {
     return order.map(l => WORKLIST_BY_LABEL[l]);
   }, [worklistOrder]);
 
-  // HCC's data model has one row per coding record — a patient with multiple
+  // HCC's data model has one row per coding record, a patient with multiple
   // records repeats in `hccMembers` (Annette Brave = 4 rows, one per record).
   // The badge and worklist table both show unique patients, so we count fold
   // IDs the same way the table dedupes (see `dedupedMembers` in
@@ -101,7 +101,7 @@ export function SubNav({ collapsed, width = 200 }) {
     // list; `worklistCounts` covers the lists they have not opened. A slice
     // that is genuinely empty and a slice that is merely not fetched are
     // indistinguishable by length, so an empty list shows its counted value
-    // (also 0) — same answer either way.
+    // (also 0): same answer either way.
     const wc = worklistCounts;
     const pick = (slice, counted) => (slice.length > 0 ? slice.length : (counted ?? 0));
     const counts = {};
@@ -128,12 +128,12 @@ export function SubNav({ collapsed, width = 200 }) {
 
   // Unique patient count across every worklist. Different worklists use
   // different id spaces (p1, hcc-42, ccmw-001), so we key the union on a
-  // normalized memberId (# stripped, trimmed, lowercased) — that's the one
+  // normalized memberId (# stripped, trimmed, lowercased), that's the one
   // field every worklist shares. Patients missing a memberId fall back to
   // their row id so they still count once.
   const allPatientsCount = useMemo(() => {
     // Every slice is empty until the user opens a worklist, so the union has
-    // to come from `worklistCounts` — which computes it the same way, over
+    // to come from `worklistCounts`, which computes it the same way, over
     // the same normalized key, from the id-only queries. Once slices ARE
     // loaded we recompute locally so the badge tracks live edits; the union
     // still needs the counted value as its floor, because a locally-computed

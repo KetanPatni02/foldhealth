@@ -6,7 +6,7 @@ import { Tooltip } from '../Tooltip/Tooltip';
 import styles from './Button.module.css';
 
 // Custom icon elements (leadingIconElement / trailingIconElement) inherit the
-// button's text color unless the caller explicitly pinned one — the same
+// button's text color unless the caller explicitly pinned one, the same
 // `currentColor` guarantee the name-based leadingIcon/trailingIcon path has.
 // Without this, a fixed-color glyph goes invisible when a hover state
 // repaints the button background in that same color (e.g. tertiary's
@@ -63,7 +63,7 @@ function resolveButtonLook(variant = 'solid', tone, size = 'md') {
 }
 
 /**
- * Fold Health Button — single source-of-truth button control.
+ * Fold Health Button: single source-of-truth button control.
  *
  * Matches Figma Fold-Pixel-1.0 node 25:155 exactly.
  *
@@ -156,7 +156,7 @@ export const Button = forwardRef(function Button(
   const sizeClass = styles[SIZE_CLASS[size]];
   const iconSize = ICON_SIZE[size];
 
-  // Icon color follows the button's text color via `currentColor` — so
+  // Icon color follows the button's text color via `currentColor`, so
   // hover states (tertiary purple→white, success green→white, danger
   // red→white) and the disabled state re-tint the icon with the label,
   // no per-variant JS lookup needed.
@@ -202,7 +202,7 @@ export const Button = forwardRef(function Button(
 
 // ── Split-button body ─────────────────────────────────────────────────
 // Kept inside Button.jsx (rather than a sibling SplitButton file) so
-// callers reach for one API — `<Button menuItems={…} />` — and every
+// callers reach for one API, `<Button menuItems={…} />`, and every
 // variant / size / hover / disabled state stays defined in one place.
 // Renders two <button>s (main + chevron) inside a wrapper <span>, joined
 // by a 1px divider. The main button carries the primary `onClick`; the
@@ -235,13 +235,13 @@ const SplitButtonBody = forwardRef(function SplitButtonBody(
 
   const sizeClass = styles[SIZE_CLASS[size]];
   const iconSize = ICON_SIZE[size];
-  // Chevron glyph: 14px on sm, 18px on md, 24px on lg — sits slightly larger
+  // Chevron glyph: 14px on sm, 18px on md, 24px on lg, sits slightly larger
   // than the leading icon so the affordance still reads as the dominant hit
   // target on the right half.
   const chevronSize = { sm: 14, md: 18, lg: 24 }[size];
   const iconColor = 'currentColor';
 
-  // Wrapper carries only variant chrome — size lives on the inner halves.
+  // Wrapper carries only variant chrome: size lives on the inner halves.
   // Applying `sizeClass` on the wrapper double-paints padding/height and
   // throws off the icon/label alignment; wrapper radius adapts via :has().
   const wrapperCls = [
@@ -253,7 +253,7 @@ const SplitButtonBody = forwardRef(function SplitButtonBody(
   ].filter(Boolean).join(' ');
 
   // The wrapper owns the variant chrome (background, border, radius, color);
-  // the two halves are transparent click regions inside it — so the pill reads
+  // the two halves are transparent click regions inside it, so the pill reads
   // as one cohesive shape and only paints a hover tint on the hovered half.
   const mainCls = [styles.btn, sizeClass, styles.splitMain].filter(Boolean).join(' ');
   const chevronCls = [styles.btn, sizeClass, styles.iconOnly, styles.splitChevron]
@@ -261,7 +261,7 @@ const SplitButtonBody = forwardRef(function SplitButtonBody(
 
   const { onClick, ...restNoClick } = rest || {};
   // If the caller didn't supply a primary onClick, clicking the main half
-  // opens the menu too — matching the intent of "the whole pill is one
+  // opens the menu too: matching the intent of "the whole pill is one
   // picker trigger" (used by pickers that have no default action). When
   // they DO supply an onClick, classic split-button semantics apply:
   // main runs the primary action, chevron opens the menu.

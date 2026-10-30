@@ -1,8 +1,8 @@
-// DSF-A (PHQ-2) and DSF-B (PHQ-9) evidence forms — bespoke measure
+// DSF-A (PHQ-2) and DSF-B (PHQ-9) evidence forms: bespoke measure
 // components rendered by the same three CareGapDetail dispatch sites
 // that already wire EED / CBP / templated gaps. They plug into the
 // existing consolidated Clinical Note engine (`useClinicalNotePanel`)
-// via `v.updateGap(code, patch)` and `v.gapState[code]` — no new drawer
+// via `v.updateGap(code, patch)` and `v.gapState[code]`, no new drawer
 // state to plumb through.
 //
 // Scoring, item text, and interpretation cutoffs are read from the
@@ -10,7 +10,7 @@
 // clinical content stays in one source of truth. Verbatim care-plan
 // bullets come from ./dsfCarePlans.
 import { useEffect, useMemo } from 'react';
-// (No side effects here — derived flags like carePlanAcknowledged are
+// (No side effects here: derived flags like carePlanAcknowledged are
 // computed on the read side inside isMandatoryComplete instead of being
 // mirrored into the payload.)
 import { Alert } from '../../../components/Alert/Alert';
@@ -29,7 +29,7 @@ import { getItems, getResponseScale, isPhq2Positive, phq9Branch, phq9BandLabel, 
 import { DSF_CARE_PLANS } from './dsfCarePlans';
 import styles from './DsfEvidenceForms.module.css';
 
-// "Performed by" option row — Avatar + name + clinical role stacked
+// "Performed by" option row: Avatar + name + clinical role stacked
 // beneath, so the dropdown reads the same way as every other people-
 // picker in the app.
 function PerformedByRow({ initials, name, role }) {
@@ -149,7 +149,7 @@ function FieldError({ children }) {
 // PHQ-style questionnaire: each question is a numbered heading with
 // its response options stacked vertically underneath. The parent owns
 // state; this component just reads/writes an array of numbers. Point
-// values are intentionally hidden from the option labels — the score
+// values are intentionally hidden from the option labels, the score
 // interpretation lives in the summary card below the questionnaire.
 function LikertMatrix({ scoreKey, values, onChange, locked }) {
   const items = getItems(scoreKey);
@@ -185,11 +185,11 @@ function LikertMatrix({ scoreKey, values, onChange, locked }) {
   );
 }
 
-// The Care Plan outcome panel — reused for every DSF branch. The
+// The Care Plan outcome panel: reused for every DSF branch. The
 // bulleted body is static clinical guidance the reviewer follows in
 // the encounter; commit lives on the note-level Sign & Save (and the
-// PHQ-2 / PHQ-9 Save Score on their own cards). No per-panel checkbox
-// — an all-or-nothing tick on top of static reference text reads as
+// PHQ-2 / PHQ-9 Save Score on their own cards). No per-panel checkbox,
+// an all-or-nothing tick on top of static reference text reads as
 // clickwrap rather than a real attestation. Optional Outreach Notes
 // textarea captures any per-encounter commentary.
 function CarePlanOutcomePanel({ title, bullets, outreachNotes, onOutreachNotesChange }) {
@@ -334,7 +334,7 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
               • Positive + !saved → Save Score button + live badge.
               • Positive + saved  → badge only (Save is replaced by the
                 success info bar below).
-              • Negative          → badge only (no explicit save step —
+              • Negative          → badge only (no explicit save step,
                 Negative auto-completes without a gap).
             The scoring-bands info tooltip sits inside the badge itself
             so band context anchors to where the score is read. */}
@@ -416,7 +416,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
   const onUpdate = readOnly ? () => {} : (patch) => v.updateGap('DSF-B', patch);
   const err = (field) => submitted && !data[field];
   const performedByOptions = usePerformedByOptions(data.performedBy);
-  // When the note has no paired DSF-A, DSF-B is standalone — the
+  // When the note has no paired DSF-A, DSF-B is standalone, the
   // reviewer completed the PHQ-2 virtually and skipped creating the
   // Depression Screening care program. DSF-B has to collect its own
   // Location + Performed by; the paired flow keeps inheriting them
@@ -424,14 +424,14 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
   const hasPairedDsfA = !!v.activeGaps?.some(g => g.code === 'DSF-A');
   const phq9Values = data.phq9?.items || [null, null, null, null, null, null, null, null, null];
   const allAnswered = phq9Values.every(v2 => v2 !== null && v2 !== undefined);
-  // Always recompute from the current items — falling back to a stored
-  // Save Score gate — mirrors the PHQ-2 pattern. Users answer all 9
+  // Always recompute from the current items, falling back to a stored
+  // Save Score gate: mirrors the PHQ-2 pattern. Users answer all 9
   // items, then commit the score via an explicit Save Score button.
   // Save stamps `savedAt` (feeds the 30-day due-date math), locks the
   // Likert matrix, and reveals the band's care plan below.
   const phq9Saved = !!data.phq9?.savedAt;
   // Score + band are authoritative from the persisted payload once
-  // the note has been saved — the frozen totalScore / band survive
+  // the note has been saved: the frozen totalScore / band survive
   // re-opens even if items happen to hydrate late, and match the row
   // the review sign-off will commit. While the user is still editing
   // (pre-save) recompute live from the items array so the badge
@@ -444,7 +444,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
   const branch = phq9Saved && data.phq9?.band
     ? data.phq9.band
     : liveBranch;
-  // Reference vocabulary — see dsfScoring.phq9BandLabel. Renders as
+  // Reference vocabulary: see dsfScoring.phq9BandLabel. Renders as
   // "Minimal / None", "Mild", "Moderate", "Severe" so the DSF-B Badge
   // reads the same as the clinical scoring reference sheet.
   const bandLabel = phq9BandLabel(branch);
@@ -538,7 +538,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
         />
         {/* Footer row surfaces once PHQ-9 is fully answered OR the
             score was committed via Save Score (which stamps the band
-            on the payload — that survives a re-open even if items
+            on the payload: that survives a re-open even if items
             hydrate late):
               • !phq9Saved && !decline → Save Score button + live badge.
               • phq9Saved              → badge only.
