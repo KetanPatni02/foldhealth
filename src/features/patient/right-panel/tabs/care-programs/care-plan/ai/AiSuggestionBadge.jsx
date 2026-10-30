@@ -8,10 +8,12 @@ import styles from './AiSuggestionBadge.module.css';
 
 const KIND_LABEL = {
   condition: 'Condition', lab: 'Lab', lab_trend: 'Lab trend', event: 'Event', assessment: 'Assessment', barrier: 'Barrier',
+  description: 'Care manager', profile: 'Profile',
 };
 const KIND_ICON = {
   condition: 'solar:clipboard-heart-linear', lab: 'solar:test-tube-linear', lab_trend: 'solar:graph-up-linear',
   event: 'solar:hospital-linear', assessment: 'solar:document-text-linear', barrier: 'custom:barrier',
+  description: 'solar:pen-new-square-linear', profile: 'solar:user-id-linear',
 };
 
 /**

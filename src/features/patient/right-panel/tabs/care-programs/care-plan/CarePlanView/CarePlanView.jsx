@@ -803,17 +803,41 @@ export function CarePlanView({ patientId, program }) {
     }
   };
   const planIsEmpty = !live || (live.goals.length + live.interventions.length + (live.barriers || []).length) === 0;
-  const runIndividualizedPlan = async () => {
+  // When the record has nothing to plan from, the care manager describes the
+  // patient instead (the start card asks up front on an empty plan).
+  const loadCarePlanFacts = useAppStore(s => s.loadCarePlanFacts);
+  const [describeOpen, setDescribeOpen] = useState(false);
+  const [description, setDescription] = useState('');
+  useEffect(() => {
+    if (!planIsEmpty || !canEdit || viewedVersion || carePlanLoading) return undefined;
+    let active = true;
+    loadCarePlanFacts(patientId)
+      .then((facts) => { if (active && !facts.length) setDescribeOpen(true); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [patientId, planIsEmpty, canEdit, viewedVersion, carePlanLoading, loadCarePlanFacts]);
+
+  // `text`: the care manager's description; a click handler passes an event.
+  const runIndividualizedPlan = async (text) => {
     if (!canEdit || viewedVersion || aiDrafting) return;
+    const desc = typeof text === 'string' ? text : '';
     setAiDrafting(true);
     setAiError('');
     try {
-      const r = await recommendCarePlan(patientId, program);
+      const r = await recommendCarePlan(patientId, program, { description: desc });
       const n = r.recommended.length;
-      showToast(n
-        ? `Recommended ${r.counts} from ${n} matched ${n === 1 ? 'template' : 'templates'}`
-        : `No automation matched; UnityAI recommended ${r.counts}`);
+      showToast(desc
+        ? `UnityAI drafted ${r.counts} from your description`
+        : n
+          ? `Recommended ${r.counts} from ${n} matched ${n === 1 ? 'template' : 'templates'}`
+          : `No automation matched; UnityAI recommended ${r.counts}`);
+      setDescribeOpen(false);
+      setDescription('');
     } catch (err) {
+      if (err.code === 'no_record') {
+        setDescribeOpen(true);
+        return;
+      }
       setAiError(err.message || 'Could not draft the plan.');
       showToast(err.message || 'Could not draft the plan.');
     } finally {
@@ -1112,7 +1136,7 @@ export function CarePlanView({ patientId, program }) {
         />
       ))}
       {aiDrafting ? (
-        <IndividualizedPlanCard state="drafting" />
+        <IndividualizedPlanCard state="drafting" fromDescription={!!description.trim()} />
       ) : aiPending.length > 0 && canEdit ? (
         <IndividualizedPlanCard
           state="review"
@@ -1122,17 +1146,27 @@ export function CarePlanView({ patientId, program }) {
           onReviewAll={reviewAllAi}
           onDiscard={() => setAiDiscardOpen(true)}
         />
+      ) : describeOpen && canEdit && !viewedVersion ? (
+        <IndividualizedPlanCard
+          state="describe"
+          description={description}
+          onDescriptionChange={setDescription}
+          onDraft={runIndividualizedPlan}
+          error={aiError}
+          onUseTemplate={planIsEmpty ? handleTemplates : null}
+          onCancel={planIsEmpty ? null : () => setDescribeOpen(false)}
+        />
       ) : assessmentSuggestions.length > 0 && canEdit ? (
         <IndividualizedPlanCard
           state="suggested"
           suggestions={assessmentSuggestions}
           error={aiError}
           busy={aiBusy}
-          onDraft={runIndividualizedPlan}
+          onDraft={() => runIndividualizedPlan()}
           onDiscard={dismissAssessmentSuggestions}
         />
       ) : !carePlanLoading && planIsEmpty && canEdit && !viewedVersion ? (
-        <IndividualizedPlanCard state="start" error={aiError} onDraft={runIndividualizedPlan} onUseTemplate={handleTemplates} />
+        <IndividualizedPlanCard state="start" error={aiError} onDraft={() => runIndividualizedPlan()} onUseTemplate={handleTemplates} />
       ) : null}
       {!carePlanLoading && (viewData.goals.length + viewData.interventions.length + (viewData.barriers || []).length) > 0 && (
         <div className={styles.summaryStrip}>
