@@ -134,7 +134,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
   // unless they've been edited since.
   const draftTextRef = useRef({ name: '', description: '' });
   // The protocol the current draft followed: what the template is saved as based on.
-  const [draftedProtocol, setDraftedProtocol] = useState(null);
+  const draftedProtocolRef = useRef(null);
   const [saving, setSaving] = useState(false);
 
   const goalRows = useMemo(() => goals.map(g => ({
@@ -260,7 +260,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
       if (draft.name && replaceable(name, draftTextRef.current.name)) setName(draft.name);
       if (draft.summary && replaceable(description, draftTextRef.current.description)) setDescription(draft.summary);
       draftTextRef.current = { name: draft.name || '', description: draft.summary || '' };
-      setDraftedProtocol(protocol ? sourceProtocol : null);
+      draftedProtocolRef.current = protocol ? sourceProtocol : null;
       // Conditions the last draft added are replaced too; ones picked by hand stay.
       const kept = conditions.filter(c => !draftConditionsRef.current.has(c));
       const keptSet = new Set(kept);
@@ -287,7 +287,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
     if (name === draftTextRef.current.name) setName('');
     if (description === draftTextRef.current.description) setDescription('');
     draftTextRef.current = { name: '', description: '' };
-    setDraftedProtocol(null);
+    draftedProtocolRef.current = null;
     setDraftReview(null);
   };
 
@@ -296,20 +296,23 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const awaitingDraft = aiMode && (!draftReview || drafting);
   const canSave = name.trim().length > 0 && !saving && !drafting;
 
-  const payload = (savedGoals) => ({
-    name: name.trim(),
-    description: description.trim(),
-    templateType,
-    conditions,
-    goals: savedGoals,
-    interventions: withoutDraftMarks(interventions),
-    barriers: withoutDraftMarks(barriers),
-    scope,
-    renewal,
-    sourceProtocol: draftedProtocol
-      ? { id: draftedProtocol.id, title: draftedProtocol.title, version: draftedProtocol.version, organization: draftedProtocol.organization }
-      : null,
-  });
+  const payload = (savedGoals) => {
+    const drafted = draftedProtocolRef.current;
+    return {
+      name: name.trim(),
+      description: description.trim(),
+      templateType,
+      conditions,
+      goals: savedGoals,
+      interventions: withoutDraftMarks(interventions),
+      barriers: withoutDraftMarks(barriers),
+      scope,
+      renewal,
+      sourceProtocol: drafted
+        ? { id: drafted.id, title: drafted.title, version: drafted.version, organization: drafted.organization }
+        : null,
+    };
+  };
 
   // Goals UnityAI suggested that the library doesn't have are created there
   // first, so the template references real goals (and a retry won't create
