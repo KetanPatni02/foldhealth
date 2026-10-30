@@ -35,9 +35,9 @@ const COLUMNS = [
 ];
 
 const fmtDay = (iso) => {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 };
 
 /**
