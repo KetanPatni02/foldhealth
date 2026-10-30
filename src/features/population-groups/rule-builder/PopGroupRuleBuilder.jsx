@@ -27,7 +27,7 @@ const nextRuleId = () => `rb-${Date.now()}-${ruleSeq++}`;
 const EMPTY_QUERY = { combinator: 'and', rules: [] };
 
 /* ── Recursive tree helpers ──
-   Rules can nest ({ combinator, rules }) — the Figma's flagship example is a
+   Rules can nest ({ combinator, rules }), the Figma's flagship example is a
    tree of OR groups under a top-level AND. The rqb add/remove/update helpers
    are path-based; these id-based equivalents keep the editor working on
    leaves at any depth. */
@@ -132,7 +132,7 @@ function insertRelativeTo(node, targetId, moved, position) {
 }
 
 /* Drag-reorder: lift the dragged leaf out of the tree, then drop it
-   before/after the target leaf — cross-group moves fall out for free, and
+   before/after the target leaf: cross-group moves fall out for free, and
    removeRuleById already dissolves any group the move emptied. */
 function moveRuleById(node, dragId, targetId, position) {
   if (dragId === targetId) return node;
@@ -149,7 +149,7 @@ function countLeaves(node) {
   return (node.rules || []).reduce((n, child) => n + (isGroup(child) ? countLeaves(child) : 1), 0);
 }
 
-/* Six-dot grip — Solar has no drag-handle glyph, so this is the one custom
+/* Six-dot grip: Solar has no drag-handle glyph, so this is the one custom
    SVG in the builder (dots, so fill rather than stroke). */
 function GripIcon() {
   return (
@@ -161,8 +161,8 @@ function GripIcon() {
   );
 }
 
-/* One rule row. `readOnly` strips every actionable trigger — no chip click,
-   no AND/OR toggle, no add/remove — leaving the same visual anatomy. */
+/* One rule row. `readOnly` strips every actionable trigger: no chip click,
+   no AND/OR toggle, no add/remove, leaving the same visual anatomy. */
 function RuleNode({ rule, readOnly, combinator, onOpenEditor, onJoin, onRemove, drag }) {
   const field = FIELD_BY_KEY[rule.field];
   if (!field) return null;
@@ -239,15 +239,15 @@ function RuleNode({ rule, readOnly, combinator, onOpenEditor, onJoin, onRemove, 
 }
 
 /**
- * PopGroupRuleBuilder — full-page takeover for dynamic population groups.
+ * PopGroupRuleBuilder: full-page takeover for dynamic population groups.
  *
  * Three modes:
- *  - create — from the Create Group drawer: bare canvas + Cancel/Next
+ *  - create: from the Create Group drawer: bare canvas + Cancel/Next
  *    sub-bar (Figma 1:3915 / 9:44005).
- *  - view   — clicking a saved Dynamic group: read-only detail screen with
+ *  - view: clicking a saved Dynamic group: read-only detail screen with
  *    the summary rail, TabStrip (Qualified Members / Rule Design) and no
  *    actionable rule triggers (Figma 1:13951).
- *  - edit   — the Edit pencil (rail or table row): same editable canvas as
+ *  - edit: the Edit pencil (rail or table row): same editable canvas as
  *    create; Next saves and drops back to view, Cancel reverts.
  *
  * Query state is react-querybuilder's { combinator, rules } tree, mutated
@@ -268,14 +268,14 @@ export function PopGroupRuleBuilder() {
   const [mode, setMode] = useState(() => (session?.groupId ? (session.startInEdit ? 'edit' : 'view') : 'create'));
   const [editingRuleId, setEditingRuleId] = useState(null);
   const [pickerRect, setPickerRect] = useState(null);
-  // { ruleId, combinator } while an AND/OR click is waiting for a field pick —
+  // { ruleId, combinator } while an AND/OR click is waiting for a field pick,
   // the picker renders inline below that row (Figma 9:73965).
   const [pendingJoin, setPendingJoin] = useState(null);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('design');
   const [historyOpen, setHistoryOpen] = useState(false);
   const [activity, setActivity] = useState(null); // null = not fetched
-  // Live match preview while editing — collapsible right-side panel.
+  // Live match preview while editing: collapsible right-side panel.
   const [previewOpen, setPreviewOpen] = useState(true);
   // { dragId, overId, overPos } while a condition row is being dragged.
   const [dragging, setDragging] = useState(null);
@@ -307,7 +307,7 @@ export function PopGroupRuleBuilder() {
   const editingRule = editingRuleId ? findRuleById(query, editingRuleId) : null;
 
   /* One drag session: the grip starts it, any other leaf row is a drop
-     target — top half inserts before, bottom half after. */
+     target: top half inserts before, bottom half after. */
   const drag = isView ? null : {
     dragId: dragging?.dragId,
     overId: dragging?.overId,
@@ -348,7 +348,7 @@ export function PopGroupRuleBuilder() {
 
   const commitRule = (id, patch) => {
     // Editing through the generic panel replaces any authored `display`
-    // badges with the derived operator+value form, and clears `not` — the
+    // badges with the derived operator+value form, and clears `not`, the
     // editor expresses negation through the operator itself, so a leftover
     // flag would double-negate.
     setQuery(q => updateRuleById(q, id, { operator: patch.operator, value: patch.value, display: undefined, not: undefined }));
@@ -369,7 +369,7 @@ export function PopGroupRuleBuilder() {
   };
 
   /* Save the group. `status: 'active'` is the Next button (fully validated
-     rule); `status: 'draft'` is Save as Draft — incomplete conditions are
+     rule); `status: 'draft'` is Save as Draft: incomplete conditions are
      allowed, the group just parks with a Draft badge until finished. */
   const handleSave = async (status) => {
     if (saving) return;
@@ -400,12 +400,12 @@ export function PopGroupRuleBuilder() {
       : (groupId ? 'Population Group Updated Successfully' : 'Population Group Added Successfully'));
     if (mode === 'create') { closePgRuleBuilder(); return; }
     setSavedQuery(query);
-    setActivity(null); // stale — refetch next time the drawer opens
+    setActivity(null); // stale, refetch next time the drawer opens
     setEditingRuleId(null);
     setMode('view');
   };
 
-  /* Inline rename from the rail — persists against the SAVED rule (not the
+  /* Inline rename from the rail: persists against the SAVED rule (not the
      draft) so renaming mid-edit can't leak unsaved conditions. */
   const handleRename = async (name) => {
     const saved = await updatePopGroup(groupId, {
@@ -421,14 +421,14 @@ export function PopGroupRuleBuilder() {
     });
     if (!saved) return false;
     setPgRuleBuilderName(name);
-    setActivity(null); // rename is logged — refetch on next open
+    setActivity(null); // rename is logged, refetch on next open
     return true;
   };
 
   /* Recursively render a group's children: leaves as RuleNodes, subgroups as
      an indented block with a bracket carrying the group's combinator (the
      Figma's OR brackets). Combinator chips sit between siblings. */
-  /* AND↔OR flip for a group — the root chip and nested brackets share it. */
+  /* AND↔OR flip for a group: the root chip and nested brackets share it. */
   const toggleCombinator = (group) => {
     const next = (group.combinator || 'and') === 'and' ? 'or' : 'and';
     setQuery(q => (q.id === group.id || group === query
@@ -438,7 +438,7 @@ export function PopGroupRuleBuilder() {
 
   const renderChildren = (group, depth) => group.rules.map((child, index) => (
     <div key={child.id || index} className={styles.nodeStack}>
-      {/* Inside a bracketed group the bracket already names the combinator —
+      {/* Inside a bracketed group the bracket already names the combinator,
           chips between siblings only at the top level, like the Figma. In
           edit mode the chip is a toggle: clicking flips the join. */}
       {index > 0 && depth === 0 && (
@@ -474,7 +474,7 @@ export function PopGroupRuleBuilder() {
                   <ActionButton
                     icon="solar:link-broken-minimalistic-linear"
                     size="sm"
-                    tooltip="Ungroup — merge conditions into the parent"
+                    tooltip="Ungroup: merge conditions into the parent"
                     onClick={() => setQuery(q => ungroupById(q, child.id))}
                   />
                   <ActionButton
@@ -544,14 +544,14 @@ export function PopGroupRuleBuilder() {
         </Button>
       )}
       {countLeaves(query) === 0 && isView && (
-        <span className={styles.criteriaEmpty}>No conditions defined yet — use Edit to add some.</span>
+        <span className={styles.criteriaEmpty}>No conditions defined yet: use Edit to add some.</span>
       )}
     </div>
   );
 
   return (
     <div className={styles.view}>
-      {/* Sub-bar only while editing — the view state is read-only (Figma 1:13951 has no action bar). */}
+      {/* Sub-bar only while editing: the view state is read-only (Figma 1:13951 has no action bar). */}
       {!isView && (
         <div className={styles.subBar}>
           <div className={styles.subBarName}>
@@ -560,7 +560,7 @@ export function PopGroupRuleBuilder() {
           </div>
           <div className={styles.subBarActions}>
             <Button variant="outline" onClick={handleCancel}>Cancel</Button>
-            {/* Drafts can save with incomplete conditions — the group parks
+            {/* Drafts can save with incomplete conditions, the group parks
                 with a Draft badge; Next demands a fully valid rule. */}
             <Button variant="outline" disabled={countLeaves(query) === 0 || saving} onClick={() => handleSave('draft')}>
               Save as Draft

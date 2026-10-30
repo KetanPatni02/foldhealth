@@ -105,7 +105,7 @@ export function TasksCard({ dragHandleClassName }) {
       return {
         icon: 'solar:check-circle-linear',
         title: 'You\'re all caught up',
-        description: 'No open tasks right now — enjoy the calm.',
+        description: 'No open tasks right now: enjoy the calm.',
       };
     }
     return {

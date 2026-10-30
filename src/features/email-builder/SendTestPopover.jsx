@@ -21,7 +21,7 @@ const SENDER_LABELS = {
 };
 
 /**
- * SendTestPopover — pop-over launched by the "Test Mail" button in both
+ * SendTestPopover: pop-over launched by the "Test Mail" button in both
  * the EmailBuilder and CampaignBuilder. Renders the current email template
  * to HTML, posts it to `/api/send-test-email`, and surfaces Resend's actual
  * error message verbatim so failures are diagnosable.
@@ -80,7 +80,7 @@ export function SendTestPopover({ onClose, campaignId }) {
     const doc = liveDoc || campaign?.emailTemplate;
     if (!doc) {
       setStatus('error');
-      setErrorMsg('No email template found for this campaign yet — edit one first.');
+      setErrorMsg('No email template found for this campaign yet, edit one first.');
       return;
     }
     // Test sends resolve merge tags with sample data (so the author sees
@@ -132,7 +132,7 @@ export function SendTestPopover({ onClose, campaignId }) {
       setErrorMsg(failed[0].reason?.message || 'All sends failed');
     } else if (failed.length > 0) {
       setStatus('error');
-      setErrorMsg(`Sent ${results.length - failed.length}/${results.length} — ${failed[0].reason?.message}`);
+      setErrorMsg(`Sent ${results.length - failed.length}/${results.length}, ${failed[0].reason?.message}`);
     } else {
       setStatus('ok');
     }

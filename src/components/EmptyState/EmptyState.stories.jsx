@@ -7,7 +7,7 @@ export default {
   parameters: {
     docs: {
       description: {
-        component: 'Zero-state placeholder — icon, title, supporting copy, optional call-to-action.',
+        component: 'Zero-state placeholder: icon, title, supporting copy, optional call-to-action.',
       },
     },
   },

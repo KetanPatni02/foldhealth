@@ -119,7 +119,7 @@ function stampOf(row) {
 // glance. Entity buckets carry the same icons the plan's own rows use.
 const ENTITY_ICON = {
   goal: 'solar:flag-linear',
-  // ActivityLog's own task glyph — an intervention is a task on the plan.
+  // ActivityLog's own task glyph: an intervention is a task on the plan.
   intervention: 'solar:clipboard-check-linear',
   barrier: 'custom:barrier',
   plan: 'custom:care-plan',
@@ -445,7 +445,7 @@ function ChangeRow({ row }) {
 }
 
 /**
- * Care Plan version changes — the itemised view behind a History entry's
+ * Care Plan version changes: the itemised view behind a History entry's
  * open arrow. Where the History card counts what moved, this names it.
  *
  * @param {Array}  props.rows      Audit rows belonging to one signed version.

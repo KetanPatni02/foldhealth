@@ -39,7 +39,7 @@ export function AddTaskDrawer({ onClose, onSave }) {
       context: context.trim(),
       priority,
       status: 'Pending',
-      due: fmtDue(due) || '—',
+      due: fmtDue(due) || '-',
       overdue: false,
       subtasks: 0,
       attachments: 0,

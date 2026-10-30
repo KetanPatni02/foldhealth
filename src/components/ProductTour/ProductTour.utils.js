@@ -41,7 +41,7 @@ async function markDbTourSeen(userId, tourId) {
     await supabase
       .from(DB_TABLE)
       .upsert({ user_id: userId, tour_id: tourId, seen_at: new Date().toISOString() }, { onConflict: 'user_id,tour_id' });
-  } catch { /* silent — local fallback covers it */ }
+  } catch { /* silent: local fallback covers it */ }
 }
 
 export { getLocalSeenTours, markLocalTourSeen, getUserId, getDbSeenTours, markDbTourSeen };

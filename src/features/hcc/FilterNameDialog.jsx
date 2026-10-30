@@ -6,7 +6,7 @@ import styles from './FilterNameDialog.module.css';
 /**
  * Dialog used for both "Save Filter" (creating a new saved filter from the
  * currently-active hccFilters) and "Rename Filter" (editing an existing saved
- * filter's name). The dialog is presentational — the caller decides what to do
+ * filter's name). The dialog is presentational, the caller decides what to do
  * with the name in `onSubmit`.
  *
  * Props:

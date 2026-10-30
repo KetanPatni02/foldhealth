@@ -26,7 +26,7 @@ const ALIGNS = [
 ];
 
 /**
- * EmailEditor — the email text area from the Communications compose design
+ * EmailEditor: the email text area from the Communications compose design
  * (Figma 2906:39503): a PHI notice strip, a formatting bar (undo / redo,
  * font, size, bold, italic, underline, strikethrough, text color, lists,
  * alignment), the message, and a bar of insert actions supplied by the host

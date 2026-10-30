@@ -9,7 +9,7 @@ import { EHR_INSTANCES } from './data/mock';
 import styles from './EditLocationDrawer.module.css';
 
 // IANA timezones we support in the Timezone picker. Kept short and
-// US-centric — matches the seeded practice locations.
+// US-centric: matches the seeded practice locations.
 const TIMEZONE_OPTIONS = [
   { value: 'America/New_York',    label: 'America/New_York (ET)' },
   { value: 'America/Detroit',     label: 'America/Detroit (ET)' },
@@ -24,7 +24,7 @@ const TIMEZONE_OPTIONS = [
 const DAY_KEYS  = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
 const DAY_LABEL = { Su: 'S', M: 'M', T: 'T', W: 'W', Th: 'T', F: 'F', Sa: 'S' };
 
-// Blank slot row — Mon-Fri, empty times, no location scope. New drawers open
+// Blank slot row: Mon-Fri, empty times, no location scope. New drawers open
 // with one blank slot ready to fill; Edit drawers hydrate from businessHours.
 function blankSlot() {
   return { days: ['M', 'T', 'W', 'Th', 'F'], from: '', to: '', timezone: 'America/New_York', locationId: '' };
@@ -33,10 +33,10 @@ function blankSlot() {
 const EMPTY_ALL_LOCATIONS = [];
 
 /**
- * EditLocationDrawer — used for both "New Location" and "Edit Practice
+ * EditLocationDrawer: used for both "New Location" and "Edit Practice
  * Location". Two-step wizard:
- *   1. Practice location — EHR + address + timezone + phone
- *   2. Business hours    — day chips + time slots
+ *   1. Practice location: EHR + address + timezone + phone
+ *   2. Business hours: day chips + time slots
  *
  * Callers supply the initial `location` (null for New) and `onSubmit`; the
  * drawer builds the merged object and hands it back for persistence.
@@ -99,7 +99,7 @@ export function EditLocationDrawer({ location, allLocations = EMPTY_ALL_LOCATION
     onSubmit({ ...form, updatedAt: new Date().toISOString() });
   };
 
-  // Cancel lives on the drawer's shared CloseButton (top-right X) — no need
+  // Cancel lives on the drawer's shared CloseButton (top-right X): no need
   // for a duplicate CTA. Step 1 only ships Next; step 2 ships Previous +
   // Submit at the canonical size="L" variant pair.
   const drawerProps = step === 1
@@ -118,7 +118,7 @@ export function EditLocationDrawer({ location, allLocations = EMPTY_ALL_LOCATION
       bodyClassName={styles.drawerBody}
       {...drawerProps}
     >
-      {/* Stepper — reads active vs done off the current step. Step 1 flips to
+      {/* Stepper: reads active vs done off the current step. Step 1 flips to
           "done" (checkmark) as soon as the user advances past it. */}
       <div className={styles.stepper}>
         <span className={`${styles.step} ${step === 1 ? styles.stepActive : styles.stepDone}`}>

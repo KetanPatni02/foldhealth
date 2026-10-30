@@ -43,7 +43,7 @@ import styles from './AccountPanel.module.css';
 
 const ALL_TABS = ['Org', 'Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
 
-// Bridge the store's slug (`accountTab`, e.g. 'access-control' — also the URL
+// Bridge the store's slug (`accountTab`, e.g. 'access-control', also the URL
 // segment the router reads) and the display names in ALL_TABS.
 const tabKeyToName = (key) => ALL_TABS.find(t => t.toLowerCase().replace(/ /g, '-') === key) || 'Org';
 const tabNameToKey = (name) => name.toLowerCase().replace(/ /g, '-');
@@ -63,7 +63,7 @@ export function AccountPanel() {
   const [deletingPlanId, setDeletingPlanId] = useState(null);
 
   // Bulk-select for the Insurance Plans table. Resets when the account tab
-  // changes. Plans are local state, so bulk delete filters that state — same
+  // changes. Plans are local state, so bulk delete filters that state, same
   // as the single-row delete below.
   const planBulk = useBulkSelect(activeTab);
   const [bulkDeletePlansOpen, setBulkDeletePlansOpen] = useState(false);
@@ -114,7 +114,7 @@ export function AccountPanel() {
         // its three drawers. See src/features/settings/account/users/.
         <UsersTab tabsForBar={tabsForBar} activeTab={activeTab} setActiveTab={setActiveTab} />
       ) : isLocations ? (
-        // Locations tab — same shell + drawers pattern as Users.
+        // Locations tab: same shell + drawers pattern as Users.
         <LocationsTab tabsForBar={tabsForBar} activeTab={activeTab} setActiveTab={setActiveTab} />
       ) : isHolidays ? (
         // The same holidays as Settings → Calendar → Holiday configuration.
@@ -453,20 +453,20 @@ function InsurancePlansTab({
                     className={styles.insuranceLogoImg}
                   />
                 ) : (
-                  <span className={styles.insuranceLogoPlaceholder}>—</span>
+                  <span className={styles.insuranceLogoPlaceholder}>-</span>
                 )}
               </td>
               <td className={styles.insuranceTd}>
                 <span className={styles.insurancePlanName}>{plan.planName}</span>
               </td>
               <td className={styles.insuranceTd}>
-                <span className={styles.insurancePlanTypeBadge}>{plan.planType || '—'}</span>
+                <span className={styles.insurancePlanTypeBadge}>{plan.planType || '-'}</span>
               </td>
               <td className={styles.insuranceTd}>
-                <span className={styles.insuranceCellText}>{plan.groupNumber || '—'}</span>
+                <span className={styles.insuranceCellText}>{plan.groupNumber || '-'}</span>
               </td>
               <td className={styles.insuranceTd}>
-                <span className={styles.insuranceCellText}>{plan.ediPayerId || '—'}</span>
+                <span className={styles.insuranceCellText}>{plan.ediPayerId || '-'}</span>
               </td>
               <td className={styles.insuranceTd}>
                 <div className={styles.insuranceActions}>
@@ -495,7 +495,7 @@ function InsurancePlansTab({
 
 const DRAWER_TABS = ['User Details', 'Business Hours', 'Assigned Patients'];
 const EHR_SYSTEMS = ['Athena Health', 'Epic', 'Cerner', 'eClinicalWorks', 'Allscripts', 'NextGen', 'Greenway Health', 'DrChrono'];
-// US states + DC — licence states are a fixed set, so a multi-select reads
+// US states + DC: licence states are a fixed set, so a multi-select reads
 // cleaner than free-typed tags.
 const US_STATES = [
   'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware',
@@ -547,7 +547,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
   }), [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Per-user draft so an accidental close (or a reload) never loses typing.
-  // localStorage is per-viewer and best-effort — every access is guarded.
+  // localStorage is per-viewer and best-effort: every access is guarded.
   const draftKey = `foldEditUserDraft:${user.id}`;
   const clearDraft = () => { try { localStorage.removeItem(draftKey); } catch { /* ignore */ } };
 
@@ -678,7 +678,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
 
       {drawerTab === 'User Details' ? (
         <div className={styles.formScroll}>
-          {/* Administrative Roles — a radiogroup keeps an external group label
+          {/* Administrative Roles: a radiogroup keeps an external group label
               (aria-labelledby, no built-in control to own it), sized to match
               the DS label + 4px gap via .formField. */}
           <div className={styles.formField}>
@@ -725,7 +725,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
             />
           </div>
 
-          {/* Map User to EHR — each select carries its own built-in label. */}
+          {/* Map User to EHR: each select carries its own built-in label. */}
           <div className={styles.formGrid}>
             <Select
               label="EHR System"
@@ -840,8 +840,8 @@ export function EditUserDrawer({ user, onClose, onSave }) {
       )}
 
       {/* Unsaved-changes guard: shown when the user tries to close a dirty
-          form. Dismissing it (overlay / Esc) keeps the drawer open — the safe
-          default — so a stray click never discards work. */}
+          form. Dismissing it (overlay / Esc) keeps the drawer open, the safe
+          default: so a stray click never discards work. */}
       <Dialog open={confirmClose} onOpenChange={open => !open && setConfirmClose(false)}>
         <DialogContent>
           <DialogHeader>

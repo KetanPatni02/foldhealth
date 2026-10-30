@@ -49,7 +49,7 @@ function BulkSelectCloseIcon({ size = 20 }) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// EmailsBulkBar — floating action bar that appears when ≥ 1 email selected.
+// EmailsBulkBar: floating action bar that appears when ≥ 1 email selected.
 // Mirrors components/BulkBar visuals but trimmed to just count + Delete + close.
 // ────────────────────────────────────────────────────────────────────────────
 function EmailsBulkBar({ count, onDelete, onClear, onExit }) {
@@ -83,9 +83,9 @@ function EmailsBulkBar({ count, onDelete, onClear, onExit }) {
 // Compact "2h ago", "3d ago" formatter for the Last Updated column. Falls
 // back to the date itself once we're past a week.
 function formatRelative(iso) {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return '—';
+  if (Number.isNaN(then)) return '-';
   const seconds = Math.floor((Date.now() - then) / 1000);
   if (seconds < 60) return 'Just now';
   const mins = Math.floor(seconds / 60);
@@ -97,7 +97,7 @@ function formatRelative(iso) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-// Skeleton row that matches the live email row layout — 5 columns + action
+// Skeleton row that matches the live email row layout, 5 columns + action
 // cluster on the right. Reused for the initial load and per-page fetches.
 function EmailRowSkeleton() {
   return (
@@ -205,7 +205,7 @@ function RowMenu({ onPreview, onDuplicate, onDelete }) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Emails tab — column defs for WorklistShell. Sort headers are omitted for
+// Emails tab: column defs for WorklistShell. Sort headers are omitted for
 // now because the store fetches server-side and doesn't yet accept a sort
 // param; the shell falls back to plain `<th>`s when `sortKey` is unset.
 // ────────────────────────────────────────────────────────────────────────────
@@ -243,7 +243,7 @@ function EmailsTab({
   // an empty page (e.g. searching while on page 5 of unfiltered results).
   useEffect(() => { setPage(1); }, [searchVal, statusFilter]);
 
-  // Server-side fetch — runs on mount and whenever pagination/filter inputs
+  // Server-side fetch: runs on mount and whenever pagination/filter inputs
   // change. Supabase returns only the rows for the current page plus a total
   // count, so the table never holds the full dataset in memory.
   useEffect(() => {
@@ -288,7 +288,7 @@ function EmailsTab({
               if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); }
             }}
           >
-            {/* Leading slot — icon + checkbox stacked, cross-fading on
+            {/* Leading slot: icon + checkbox stacked, cross-fading on
                 bulk-mode toggle so the row never jumps. */}
             <div className={styles.nameLeading}>
               <span
@@ -323,7 +323,7 @@ function EmailsTab({
           {campaign.category ? (
             <Badge variant="ai-neutral" label={campaign.category} />
           ) : (
-            <span className={styles.cellMuted}>—</span>
+            <span className={styles.cellMuted}>-</span>
           )}
         </td>
         <td className={styles.tdSubject}>
@@ -332,7 +332,7 @@ function EmailsTab({
               {campaign.subjectLine}
             </span>
           ) : (
-            <span className={styles.cellMuted}>—</span>
+            <span className={styles.cellMuted}>-</span>
           )}
         </td>
         <td className={styles.tdDate}>
@@ -342,7 +342,7 @@ function EmailsTab({
           <span className={styles.cellText}>
             {campaign.local
               ? <span className={styles.cellMuted}>Not saved yet</span>
-              : campaign.updatedByName || <span className={styles.cellMuted}>—</span>}
+              : campaign.updatedByName || <span className={styles.cellMuted}>-</span>}
           </span>
         </td>
         <td className={styles.tdAction}>
@@ -399,7 +399,7 @@ function EmailsTab({
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Forms tab — same shape as EMAIL_COLUMNS; "Subject" swaps for "Responses"
+// Forms tab: same shape as EMAIL_COLUMNS; "Subject" swaps for "Responses"
 // (a numeric count of form submissions).
 // ────────────────────────────────────────────────────────────────────────────
 const FORM_COLUMNS = [
@@ -579,7 +579,7 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
           <Badge tone={FORM_TYPE_TONE[form.formType] || 'grey'} size="S" label={form.formType || 'Other'} />
         </td>
         <td className={styles.tdCategory}>
-          {form.category ? <Badge variant="ai-neutral" label={form.category} /> : <span className={styles.cellMuted}>—</span>}
+          {form.category ? <Badge variant="ai-neutral" label={form.category} /> : <span className={styles.cellMuted}>-</span>}
         </td>
         <td className={styles.tdSubject}>
           <span className={styles.cellText}>{form.responseCount ?? 0}</span>
@@ -588,7 +588,7 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
           <span className={styles.cellText}>{formatRelative(form.updatedAt)}</span>
         </td>
         <td className={styles.tdUpdatedBy}>
-          <span className={styles.cellText}>{form.updatedByName || <span className={styles.cellMuted}>—</span>}</span>
+          <span className={styles.cellText}>{form.updatedByName || <span className={styles.cellMuted}>-</span>}</span>
         </td>
         <td className={styles.tdAction}>
           <div className={styles.actionCell}>
@@ -625,7 +625,7 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Note Templates tab — Settings → Content → Notes (P2-1)
+// Note Templates tab: Settings → Content → Notes (P2-1)
 //
 // Reads `noteTemplatesById` (populated by fetchNoteTemplates from
 // public.forms where form_type='Note'). Table: name · gap code · field
@@ -741,7 +741,7 @@ function NoteTemplatesTab({ searchVal, showArchived }) {
                       )}
                     </div>
                   )
-                  : <span className={styles.cellMuted}>—</span>}
+                  : <span className={styles.cellMuted}>-</span>}
               </td>
               {/* Score Group is intentionally empty until the scoring
                   system is wired end-to-end. FormBuilder's Score tab is
@@ -749,7 +749,7 @@ function NoteTemplatesTab({ searchVal, showArchived }) {
                   we can bind `t.category` or a dedicated `score_group`
                   column here. */}
               <td className={styles.tdCategory}>
-                <span className={styles.cellMuted}>—</span>
+                <span className={styles.cellMuted}>-</span>
               </td>
               <td className={styles.tdCategory}>
                 <Badge tone={isActive ? 'success' : 'grey'} size="S" label={t.status || 'active'} />
@@ -848,7 +848,7 @@ function NoteTemplatesTab({ searchVal, showArchived }) {
 }
 
 /**
- * NoteRowActions — Preview and Edit inline; everything else in a
+ * NoteRowActions: Preview and Edit inline; everything else in a
  * 3-dot MenuPopover so the sticky Actions column stays compact and the
  * primary CTAs read at a glance.
  */
@@ -916,7 +916,7 @@ function NoteRowActions({
 }
 
 /**
- * NoteTemplateActivityDrawer — thin portaled aside listing the template's
+ * NoteTemplateActivityDrawer: thin portaled aside listing the template's
  * lifecycle events. Today the DB stores only `created_at` and
  * `updated_at` on `forms` (no per-edit audit table), so the drawer
  * surfaces those two anchors with the updater's name. A dedicated
@@ -1061,7 +1061,7 @@ function NoteTemplateInspector({ template, onClose, onEditFields, onSetDefault, 
 }
 
 function fmtWhen(iso) {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso);
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1412,7 +1412,7 @@ export function ContentSettings() {
         />
       ) : null}
 
-      {/* Floating bulk action bar — visible only when bulkMode + selections */}
+      {/* Floating bulk action bar: visible only when bulkMode + selections */}
       {bulkMode ? (
         <EmailsBulkBar
           count={selectedIds.size}

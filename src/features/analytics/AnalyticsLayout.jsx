@@ -103,7 +103,7 @@ export function AnalyticsLayout() {
   const isEditableView = EDITABLE_VIEWS.has(view);
   const editing = editingDashboard && isEditableView;
 
-  // Auto-exit edit mode when switching views — avoids stale state when the
+  // Auto-exit edit mode when switching views, avoids stale state when the
   // user navigates to a non-editable view while editing.
   useEffect(() => { setEditingDashboard(false); }, [view]);
 
@@ -141,7 +141,7 @@ export function AnalyticsLayout() {
   // When the user has opted into the floating sidebar shape, portal the
   // Analytics SideNav into the floating card's slot so the rail and the
   // Analytics nav read as one combined card (same shape Population uses).
-  // Everything else — state, callbacks, canvas scroll ref — stays in this
+  // Everything else, state, callbacks, canvas scroll ref, stays in this
   // layout; only the DOM moves.
   const sidebarShape = useAppStore(st => st.sidebarShape);
   const floatingSlot = useFloatingSubNavSlot();
@@ -171,7 +171,7 @@ export function AnalyticsLayout() {
     <div className={s.wrap}>
       {/* ── Body (nav + canvas) ── */}
       <div className={s.body}>
-        {/* Page Navigator — portaled into the floating NavBar when the user
+        {/* Page Navigator: portaled into the floating NavBar when the user
             is on the floating shape, otherwise rendered inline here. */}
         {floating ? createPortal(sideNavEl, floatingSlot) : sideNavEl}
 
@@ -219,7 +219,7 @@ export function AnalyticsLayout() {
                   label: (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 7, height: 7, borderRadius: '50%', background: d.dot, flexShrink: 0, display: 'inline-block' }} />
-                      {d.name} — {d.role}
+                      {d.name}, {d.role}
                     </span>
                   ),
                 }))}
@@ -276,7 +276,7 @@ export function AnalyticsLayout() {
               <div className={s.viewSub}>{meta.sub}</div>
             </div>
             <div className={s.filterBar}>
-              {/* Practice — FilterChip singleSelect. The 'all' sentinel used
+              {/* Practice: FilterChip singleSelect. The 'all' sentinel used
                   by the underlying store maps to an empty chip selection so
                   the chip reads "Practice ⌄" idle and
                   "Practice : Patel Family Medicine ✕" once picked. Options

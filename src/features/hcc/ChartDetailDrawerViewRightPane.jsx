@@ -65,7 +65,7 @@ export function ChartDetailDrawerViewRightPane(p) {
     docFilters, setDocFilter, moreOpen, setMoreOpen, moreWrapRef,
   } = p;
 
-  // Options fed to the Uploaded By chip — every unique uploader on this
+  // Options fed to the Uploaded By chip, every unique uploader on this
   // record's doc set. `addedBy` is a display string, so the option list
   // renders human-readable names ("Benjamin Cummings (Support Team)",
   // "You") and matches the same field on the doc row 1:1.
@@ -75,7 +75,7 @@ export function ChartDetailDrawerViewRightPane(p) {
 
   // Doc list feed for the toolbar's Search + FilterChip row. Search
   // matches the caption / doc name / doc type substring; each filter
-  // chip is multi-select — non-empty array narrows the list.
+  // chip is multi-select: non-empty array narrows the list.
   const q = (searchQuery || '').trim().toLowerCase();
   const statusOf = (d) => {
     const a = docActions?.[d.id];
@@ -101,7 +101,7 @@ export function ChartDetailDrawerViewRightPane(p) {
 
   return (
     <div className={styles.rightPane}>
-            {/* Shared PatientBanner — scoped to the right column (Figma
+            {/* Shared PatientBanner: scoped to the right column (Figma
                 ICD-Import 4481:112909). */}
             <PatientBanner
               initials={member?.in || (member?.name || 'P').split(' ').map(w => w[0]).slice(0, 2).join('')}
@@ -130,7 +130,7 @@ export function ChartDetailDrawerViewRightPane(p) {
                 onClick={onTeamPillClick}
                 role="button"
                 tabIndex={0}
-                aria-label={`Support Team — review ${Math.round(teamReviewProgress * 100)}% complete. Hover or click for details.`}
+                aria-label={`Support Team: review ${Math.round(teamReviewProgress * 100)}% complete. Hover or click for details.`}
                 aria-expanded={!!teamPillRect}
               >
                 <ProgressRing progress={teamReviewProgress} size={16} stroke={2} />
@@ -157,7 +157,7 @@ export function ChartDetailDrawerViewRightPane(p) {
                       </span>
                     ) : (
                       // name/role omitted so AssigneeChange's internal avatar-only
-                      // tooltip stays quiet — the outer RoleTooltip already carries
+                      // tooltip stays quiet: the outer RoleTooltip already carries
                       // the hover card.
                       <AssigneeChange
                         ref={dmRef}
@@ -196,7 +196,7 @@ export function ChartDetailDrawerViewRightPane(p) {
                 </button>
               </div>
             </div>
-            {/* Support-scoped review toolbar — same visual pattern as the
+            {/* Support-scoped review toolbar: same visual pattern as the
                 DiagPanel one, minus Coder-only actions (Bulk select and
                 Add ICD). Search filters the doc list; Comment / Timeline
                 swap the left pane; Filter narrows by Pass/Fail/Pending;
@@ -223,7 +223,7 @@ export function ChartDetailDrawerViewRightPane(p) {
             {showReviewBanner && (
               <div className={styles.passBanner}>
                 <Icon name="solar:info-circle-linear" size={16} color="var(--status-success)" />
-                <span>{reviewerName} Completed Document Review Task on {member?.date || '—'}.</span>
+                <span>{reviewerName} Completed Document Review Task on {member?.date || '-'}.</span>
               </div>
             )}
 
@@ -252,7 +252,7 @@ export function ChartDetailDrawerViewRightPane(p) {
                       placeholder="Select Type"
                     />
                   </div>
-                  {/* Visit Type — mirrors the HCC worklist's Visit Type column
+                  {/* Visit Type: mirrors the HCC worklist's Visit Type column
                       so a document uploaded here can be linked back to the
                       same encounter categories the DOS rows show. Optional. */}
                   <div className={styles.uploadField}>
@@ -292,8 +292,8 @@ export function ChartDetailDrawerViewRightPane(p) {
               {dosExpanded && dosList.length > 0 && (
                 <div className={styles.dosPanel}>
                   {dosList.map(d => {
-                    const provider = d.provider || m?.rp || '—';
-                    const pos = d.pos || d.posDesc || m?.pos || m?.posDesc || '—';
+                    const provider = d.provider || m?.rp || '-';
+                    const pos = d.pos || d.posDesc || m?.pos || m?.posDesc || '-';
                     const vt = d.vt || m?.vt || 'HCC';
                     return (
                       <div key={d.date} className={styles.dosPanelRow}>

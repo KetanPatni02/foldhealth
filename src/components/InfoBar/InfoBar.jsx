@@ -2,12 +2,12 @@ import { Icon } from '../Icon/Icon';
 import styles from './InfoBar.module.css';
 
 /**
- * InfoBar — pinned informational banner used above forms, drawers, and
+ * InfoBar: pinned informational banner used above forms, drawers, and
  * sync surfaces to explain what an action does or where its output goes.
  *
  * Canonical usage: place it flush against the top of a scroll region as
  * a persistent nudge (e.g. "All signed notes sync to the patient's
- * EHR."). Not a toast or a dismissible alert — the message stays put.
+ * EHR."). Not a toast or a dismissible alert, the message stays put.
  *
  * @param {object}   props
  * @param {node}     props.children       – message body (string or nodes)

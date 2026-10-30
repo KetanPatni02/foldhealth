@@ -3,7 +3,7 @@ import { CloseButton } from '../CloseButton/CloseButton';
 import styles from './IntroCard.module.css';
 
 /**
- * IntroCard — a dismissible explainer at the top of a section: what it is
+ * IntroCard: a dismissible explainer at the top of a section: what it is
  * and how it helps, with a few points that each pair an icon with a short
  * title and line. The host decides where dismissal is remembered and offers
  * a way to bring the card back (a help button).

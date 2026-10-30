@@ -20,7 +20,7 @@ function normTitle(value) {
 }
 
 /**
- * Add Barriers — barrier picker for the Care Plan GBI table.
+ * Add Barriers: barrier picker for the Care Plan GBI table.
  * Figma SNP-Story 7550:489275.
  */
 /**
@@ -40,7 +40,7 @@ export function AddBarriersDrawer({
   const saveCarePlanBarrier = useAppStore(s => s.saveCarePlanBarrier);
   // Plan picker: "Create New Barrier" authors a library barrier in the shared
   // BarrierDrawer (same as Add Goals → Create New Goal), then checks it.
-  // null | { title } — the prefill.
+  // null | { title }: the prefill.
   const [createDraft, setCreateDraft] = useState(null);
   const libraryDidFetch = useAppStore(s => s.carePlanLibraryDidFetch);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);

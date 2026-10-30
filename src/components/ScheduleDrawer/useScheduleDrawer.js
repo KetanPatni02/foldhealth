@@ -42,7 +42,7 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
   })();
 
   // `initialSelectedPatient` lets callers pre-populate the patient when
-  // context is already known (e.g. HEDIS Care Gap drawer — the drawer is
+  // context is already known (e.g. HEDIS Care Gap drawer, the drawer is
   // already scoped to one member so re-searching them is friction). Falls
   // back to `initialPatientId`'s patients.find lookup below.
   const [selectedPatient, setSelectedPatientState] = useState(initialSelectedPatient || null);

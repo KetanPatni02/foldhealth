@@ -26,7 +26,7 @@ const progTaskColumns = ({ hideAssignedTo, hideMember }) => [
 ];
 
 /**
- * ProgramTaskSection — one "Open"/"Completed" section: a title, then the shared
+ * ProgramTaskSection: one "Open"/"Completed" section: a title, then the shared
  * Tasks table in a WorklistShell, with the Task Title (+ check) pinned left and
  * the action column pinned right. Reuses TaskTableRow so rows look exactly like
  * the Tasks module. When the section has no tasks it shows the ring empty state
@@ -84,7 +84,7 @@ export function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAs
 }
 
 /**
- * TaskListSection — Open / Completed sections built from the shared Tasks
+ * TaskListSection: Open / Completed sections built from the shared Tasks
  * TaskRow, for embedding outside the full Tasks page (e.g. a care program).
  * "Open" = anything not completed. Both sections always render (each shows its
  * own empty state when it has no tasks).

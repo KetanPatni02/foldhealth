@@ -74,7 +74,7 @@ function ShiftIcon({ size = 13 }) {
   );
 }
 
-// Bare ↵ icon shown after a button label — inherits the label's color + size.
+// Bare ↵ icon shown after a button label, inherits the label's color + size.
 function EnterBadge() {
   return <EnterIcon size="1.05em" className={styles.enterBadge} />;
 }
@@ -149,7 +149,7 @@ function StartScreen({ start, formName, onStart, btnSize = 'md', pipe }) {
     <div className={styles.tfScreen}>
       <h1 className={styles.tfScreenTitle}>{pipe(start?.title || formName || 'Welcome')}</h1>
       {start?.description ? <p className={styles.tfScreenDesc}>{pipe(start.description)}</p> : null}
-      {/* ↵ badge sits inside the button — Typeform style */}
+      {/* ↵ badge sits inside the button, Typeform style */}
       <Button size={btnSize} onClick={onStart}>
         {start?.buttonLabel || 'Start'}<EnterBadge />
       </Button>
@@ -251,7 +251,7 @@ export function FormRenderer({
   }, []);
   const btnSize = compact || isNarrow ? 'lg' : 'md';
 
-  // Reset on a layout switch or a new/edited form — NOT on `total`, which now
+  // Reset on a layout switch or a new/edited form, NOT on `total`, which now
   // changes as branching reveals/hides questions mid-fill.
   useEffect(() => { setStarted(false); setPos(0); setSubmitted(false); setEndingId(null); setMissing(new Set()); }, [layout, fields]);
   useEffect(() => () => clearTimeout(advanceTimer.current), []);

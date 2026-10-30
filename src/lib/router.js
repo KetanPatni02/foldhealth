@@ -8,7 +8,7 @@ import { getFirstWorklistLabel, tabPatchForWorklist } from './worklistDefaults';
 // ── Parse hash into structured route ──
 export function parseHash() {
   // Strip any `?query` (e.g. hidden-field params like #/f/12?mrn=A123) before
-  // splitting into path segments — the query is read separately by the view.
+  // splitting into path segments: the query is read separately by the view.
   const raw = window.location.hash.replace(/^#\/?/, '').split('?')[0];
   const segments = raw.split('/').filter(Boolean);
   return {
@@ -32,7 +32,7 @@ export function buildHash(...parts) {
 }
 
 // Every store slice that can back a patient profile view. Order doesn't
-// matter — memberId is unique across the whole set post-unification.
+// matter: memberId is unique across the whole set post-unification.
 const PATIENT_SLICES = ['patients', 'hccMembers', 'awvMembers', 'jsaMembers', 'cmpMembers', 'pharmacyWorklistMembers', 'ccmWorklistMembers', 'snpWorklistMembers', 'hedisMembers', 'allPatients'];
 
 // ── Patient profile tab slugs ──
@@ -50,7 +50,7 @@ const CM_SUBTABS = ['Care Programs', 'Comprehensive Care Plan', 'Care Plan', 'Pr
 const SLUG_TO_CM_SUBTAB = Object.fromEntries(CM_SUBTABS.map(t => [tabSlug(t), t]));
 
 // The open program / step ride under the Care Programs sub-tab. 'summary' is
-// the legacy cross-program view — now the Comprehensive Care Plan sub-tab.
+// the legacy cross-program view: now the Comprehensive Care Plan sub-tab.
 function applyCareProgramsProgram(updates, programSeg, stepSeg) {
   if (programSeg === 'summary') {
     updates.careManagementTab = 'Comprehensive Care Plan';
@@ -106,7 +106,7 @@ function patientSubSegments(state) {
 }
 
 // Given a store row id, look up its memberId (Fold ID) across every slice.
-// Returns null when no row matches — the caller falls back to the raw id.
+// Returns null when no row matches, the caller falls back to the raw id.
 function findPatientMemberId(state, id) {
   if (!id) return null;
   for (const key of PATIENT_SLICES) {
@@ -135,7 +135,7 @@ export function stateToHash(state) {
     goalDetailId, goalWizardOpen, goalWizardEditId,
     chatGroupDetailId, agentRulesGroupId, businessHoursOpen } = state;
 
-  // Shareable form fill-view wins over everything — it's a focused takeover.
+  // Shareable form fill-view wins over everything, it's a focused takeover.
   if (state.formViewId) {
     return buildHash('f', String(state.formViewId));
   }
@@ -226,9 +226,9 @@ export function stateToHash(state) {
       if (v.screen === 'trace' && v.id && v.runMemberId) return buildHash('settings', 'automations', String(v.id), 'trace', String(v.runMemberId));
       return buildHash('settings', 'automations', v.tab === 'templates' ? 'templates' : null);
     }
-    // Sections without a panel yet still get a real path — clicking them
+    // Sections without a panel yet still get a real path, clicking them
     // used to fall through to the agents branch, which yanked the user to
-    // whatever agents tab was last active. ('agents' itself is excluded —
+    // whatever agents tab was last active. ('agents' itself is excluded,
     // its own branch below carries the internal tab in the URL.)
     const section = SETTINGS_NAV_TO_SECTION[settingsNavItem];
     if (section && section !== 'agents') return buildHash('settings', section);
@@ -264,7 +264,7 @@ export function stateToHash(state) {
     'pg:Dynamic': 'population-groups-dynamic'
   };
 
-  // Dynamic group rule/detail screen — survives refresh:
+  // Dynamic group rule/detail screen: survives refresh:
   // #/population/<pgSlug>/rule/<groupId>
   if (state.pgRuleBuilder?.groupId) {
     const listSlug = LIST_TO_URL[state.activeSubnavList];
@@ -274,13 +274,13 @@ export function stateToHash(state) {
 
   // Patient detail view
   if (state.selectedPatientId) {
-    // Prefer the fold/member id in the URL — it survives worklist ids
+    // Prefer the fold/member id in the URL, it survives worklist ids
     // being renamed and matches what the user sees in the UI.
     const memberId = findPatientMemberId(state, state.selectedPatientId);
     const listSlug = LIST_TO_URL[state.activeSubnavList];
     const patientKey = memberId || state.selectedPatientId;
     const subSegs = patientSubSegments(state);
-    // HEDIS keeps its own top-level path (`#/hedis`) — mirror that for the
+    // HEDIS keeps its own top-level path (`#/hedis`): mirror that for the
     // patient URL so it's not double-prefixed with `population`.
     if (state.activeSubnavList === 'HEDIS') {
       return buildHash('hedis', 'patient', patientKey, ...subSegs);
@@ -314,7 +314,7 @@ export function stateToHash(state) {
 // ── Settings section slugs ⇄ store nav keys ──
 // Single source so stateToHash / hashToState / the sub-nav can't drift.
 // Keys missing here (e.g. legacy raw-label keys) fall through to the
-// agents branch — same as before routing existed for them.
+// agents branch: same as before routing existed for them.
 const SETTINGS_SECTION_TO_NAV = {
   'member-leads': 'member/leads',
   'calendar': 'calendar',
@@ -485,7 +485,7 @@ export function hashToState(route, state = null) {
       updates.memberLeadsTab = route.tab || 'care-team';
       return updates;
     }
-    // Care Program Configuration — the open program type and its tab ride the URL.
+    // Care Program Configuration: the open program type and its tab ride the URL.
     if (route.section === 'care-program-config') {
       updates.settingsNavItem = 'care-program-config';
       updates.careProgramConfigId = route.tab || null;
@@ -499,7 +499,7 @@ export function hashToState(route, state = null) {
       updates.carePlanCreateOpen = false;
       return updates;
     }
-    // Care Plan Library — tab + create overlay rides the URL so refresh restores it.
+    // Care Plan Library: tab + create overlay rides the URL so refresh restores it.
     if (route.section === 'care-plan-library') {
       updates.settingsNavItem = 'care-plan-library';
       if (route.tab === 'create') {
@@ -557,7 +557,7 @@ export function hashToState(route, state = null) {
     return updates;
   }
 
-  // Population — patient detail or worklist/queue/hcc
+  // Population: patient detail or worklist/queue/hcc
   updates.activePage = 'population';
 
   const URL_TO_LIST = {
@@ -596,7 +596,7 @@ export function hashToState(route, state = null) {
     return updates;
   }
   // Dynamic group detail deep link: #/population/<pgSlug>/rule/<groupId>.
-  // The group row may not be fetched yet, so this only records the id —
+  // The group row may not be fetched yet, so this only records the id,
   // usePopulationGroupsView opens the builder once popGroups arrive.
   if (route.section && URL_TO_LIST[route.section] && route.tab === 'rule' && route.id) {
     updates.activePage = 'population';

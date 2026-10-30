@@ -29,7 +29,7 @@ import styles from './SettingsLayout.module.css';
 
 /**
  * SettingsSubNav lives inside the floating NavBar card when the user has
- * opted into the floating shape — same shape Population / Analytics /
+ * opted into the floating shape: same shape Population / Analytics /
  * Calls / Comms use. The feature's state (activeItem, click handler)
  * stays here; only the DOM moves via portal.
  */
@@ -134,7 +134,7 @@ export function SettingsLayout() {
     );
   }
 
-  // The New Care Plan screen owns the whole Settings area — no sub-nav.
+  // The New Care Plan screen owns the whole Settings area, no sub-nav.
   if (carePlanCreateOpen) {
     return (
       <div className={styles.layout}>

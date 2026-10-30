@@ -12,7 +12,7 @@ import { sanitizeRichText } from '../../lib/sanitizeHtml';
 //
 // Text storage model: props.text is an HTML string. Inline tags like
 // <strong>/<em>/<u>/<s>/<code>/<a> are preserved across edits so per-range
-// formatting works. Plain text without HTML still works — it's valid HTML.
+// formatting works. Plain text without HTML still works, it's valid HTML.
 // Newlines (\n) and <br> are both supported; we normalize to <br> on save.
 
 function paddingCss(padding) {
@@ -129,7 +129,7 @@ export function InlineEditable({ blockId, type, level, text, style, listStyle, o
 
   // Structural rebuild on list-style change. When the user toggles bullet
   // or numbered while the element is focused, the effect above bails out
-  // (to preserve caret) — but we still need to rewrite the HTML so the
+  // (to preserve caret): but we still need to rewrite the HTML so the
   // <p> ↔ <ul>/<ol> change actually takes hold. This runs only on
   // listStyle transitions, never on plain text edits.
   useEffect(() => {

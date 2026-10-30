@@ -61,9 +61,9 @@ function AddDomainDrawer({ onClose, onSave }) {
 
   const domainHint = useMemo(() => {
     const d = form.domain;
-    if (d.includes('http')) return { text: 'Remove https:// — root domain only', color: 'var(--status-error)' };
-    if (d.includes('/')) return { text: 'No paths — root domain only', color: 'var(--status-error)' };
-    return { text: 'Root domain only — no https://, no paths', color: 'var(--neutral-200)' };
+    if (d.includes('http')) return { text: 'Remove https://, root domain only', color: 'var(--status-error)' };
+    if (d.includes('/')) return { text: 'No paths: root domain only', color: 'var(--status-error)' };
+    return { text: 'Root domain only: no https://, no paths', color: 'var(--neutral-200)' };
   }, [form.domain]);
 
   const canSave = form.vendor.trim() && form.domain.trim() && !form.domain.includes('http') && !form.domain.includes('/');
@@ -129,7 +129,7 @@ function EditDomainDrawer({ domain, onClose, onSave }) {
 
   return (
     <Drawer
-      title={`Edit — ${domain.domain}`}
+      title={`Edit: ${domain.domain}`}
       onClose={onClose}
       headerRight={
         <Button disabled={!canSave} onClick={() => canSave && onSave(form)}>

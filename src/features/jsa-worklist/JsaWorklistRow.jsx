@@ -122,13 +122,13 @@ export const JSA_MIDDLE_COLUMNS = [
           name={member.assignee}
           initials={member.assigneeIn}
           showRole={false}
-          onClick={() => ctx.showToast(`Change assignee for ${member.name} — coming soon`)}
+          onClick={() => ctx.showToast(`Change assignee for ${member.name}, coming soon`)}
         />
       ) : (
         <AssigneeChange
           unassigned
           showRole={false}
-          onClick={() => ctx.showToast(`Assign owner for ${member.name} — coming soon`)}
+          onClick={() => ctx.showToast(`Assign owner for ${member.name}, coming soon`)}
         />
       )
     ),
@@ -138,14 +138,14 @@ export const JSA_MIDDLE_COLUMNS = [
     label: 'NP Appointment Date',
     sortKey: 'npAppt',
     width: 170,
-    renderCell: (member) => member.npAppt || '—',
+    renderCell: (member) => member.npAppt || '-',
   },
   {
     key: 'lastAwv',
     label: 'Last Annual Visit Date',
     sortKey: 'lastAwv',
     width: 180,
-    renderCell: (member) => member.lastAwv || '—',
+    renderCell: (member) => member.lastAwv || '-',
   },
   {
     key: 'ad',
@@ -230,7 +230,7 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
         />
       </td>
 
-      {/* Sticky-left Members cell — entire cell clickable for patient quick view */}
+      {/* Sticky-left Members cell: entire cell clickable for patient quick view */}
       <td
         className={`${styles.membersTd} ${styles.stickyLeft}`}
         style={{ left: 36, cursor: 'pointer' }}
@@ -275,7 +275,7 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
         </td>
       ))}
 
-      {/* Actions — sticky-right, L-size buttons with dividers, matches TOC */}
+      {/* Actions: sticky-right, L-size buttons with dividers, matches TOC */}
       <td className={`${styles.td} ${styles.stickyRight}`}>
         <div className={styles.actionsCell}>
           <ActionButton
@@ -297,7 +297,7 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
           <ActionButton
             icon="solar:menu-dots-linear"
             tooltip="More"
-            onClick={() => showToast(`More actions for ${member.name} — coming soon`)}
+            onClick={() => showToast(`More actions for ${member.name}, coming soon`)}
           />
         </div>
       </td>

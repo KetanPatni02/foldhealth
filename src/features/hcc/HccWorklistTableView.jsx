@@ -69,7 +69,7 @@ export function HccWorklistTableView({
               icon="custom:export"
               tooltip="Export"
               tooltipBelow
-              onClick={() => showToast('Export — coming soon')}
+              onClick={() => showToast('Export: coming soon')}
             />
             <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
             <UploadMenuButton
@@ -103,7 +103,7 @@ export function HccWorklistTableView({
       />
 
       <div className={styles.scrollWrap} ref={scrollWrapRef}>
-        {/* Empty states check the COMBINED list — if the secondary section
+        {/* Empty states check the COMBINED list, if the secondary section
             still has patients that match the search, don't tell the user
             there are no results. */}
         {combinedRows.length === 0 && searchQuery?.trim() && (
@@ -112,7 +112,7 @@ export function HccWorklistTableView({
             message={`No members match "${searchQuery.trim()}". Try a different search term.`}
           />
         )}
-        {/* Filters (chips or Due Date) scoped primary rows out — prompt the
+        {/* Filters (chips or Due Date) scoped primary rows out, prompt the
             user to adjust them. Only shown when the secondary section is
             also empty, otherwise the table still has meaningful content. */}
         {filtered.length === 0 && patientsWithoutGaps.length === 0 && !searchQuery?.trim() && filtersActive && !hccMembersLoading && (
@@ -170,7 +170,7 @@ export function HccWorklistTableView({
                     onSort={col.sortable ? ((field) => {
                       // Cycle asc → desc → cleared on the active column, or
                       // start fresh at asc when switching to a new column.
-                      // No popover — the header morphs its own icon to show
+                      // No popover: the header morphs its own icon to show
                       // the current direction.
                       if (sortKey === field) {
                         if (sortDir === 'asc') setSort(field, 'desc');

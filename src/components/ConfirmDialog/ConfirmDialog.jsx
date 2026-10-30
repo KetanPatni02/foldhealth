@@ -14,12 +14,12 @@ const VARIANT_DEFAULTS = {
   warning: { icon: 'solar:danger-triangle-linear', iconColor: 'var(--status-error)', button: { variant: 'soft', tone: 'danger' } },
   destructive: { icon: 'solar:danger-circle-bold', iconColor: 'var(--status-error)', button: { variant: 'soft', tone: 'danger' } },
   primary: { icon: 'solar:info-circle-linear', iconColor: 'var(--primary-300)', button: { variant: 'solid', tone: 'primary' } },
-  // `error` retained as an alias for existing callers — same look as `warning`.
+  // `error` retained as an alias for existing callers, same look as `warning`.
   error: { icon: 'solar:danger-triangle-linear', iconColor: 'var(--status-error)', button: { variant: 'soft', tone: 'danger' } },
 };
 
 /**
- * Reusable confirmation dialog — matches Fold Health design system.
+ * Reusable confirmation dialog: matches Fold Health design system.
  *
  * Pick a `variant` for the canonical look, or override individual props
  * (icon, iconColor, confirmLabel) when a specific caller needs it.

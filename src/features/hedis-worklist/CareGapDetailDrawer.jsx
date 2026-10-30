@@ -628,13 +628,13 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     else if (a.key === 'reminder') openReminderNew();
     else if (a.key === 'referral') openReferral();
     else if (a.key === 'lab') openLabOrder();
-    else showToast(`${a.label} — coming soon`);
+    else showToast(`${a.label}, coming soon`);
   };
 
   // A CIS-CMB10 gap opens on its Immunizations tab (the first tab there).
   const [activeTab, setActiveTab] = useState(gapCode === CIS_CODE ? 'Immunizations' : 'Activity Log');
   const [showClinicalNote, setShowClinicalNote] = useState(false);
-  // Single-slot left workspace — only one workspace mounts at a time
+  // Single-slot left workspace: only one workspace mounts at a time
   // ('task' | 'schedule' | null). Sharing the slot means widening the
   // drawer, mounting the banner inline, and running the collapse
   // animation all key off the same state instead of two parallel flags.
@@ -668,22 +668,22 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     if (dc.noteId) setSelectedNoteId(dc.noteId);
     else if (dc.id) setSelectedNoteId(dc.id);
     else setSelectedNoteId(null);
-    // Eye behavior per role/state — same underlying note record for
+    // Eye behavior per role/state: same underlying note record for
     // both users. NEVER creates a duplicate note; permissions are
     // decided by the current user's relationship to the note.
     //   • Draft                            → inline editable (author).
     //   • Signed                           → read-only preview (Amend
     //                                        flips to editor per audit
-    //                                        rules — existing behavior).
+    //                                        rules: existing behavior).
     //   • Pending Review AND current user
     //     is the assigned reviewer         → editable consolidated view
     //                                        directly (no extra Edit
-    //                                        click) — Provider path.
+    //                                        click): Provider path.
     //   • Pending Review AND current user
     //     is anyone else (author / NP)     → read-only preview with
     //                                        Edit affordance to flip
     //                                        into the editable
-    //                                        consolidated view — NP
+    //                                        consolidated view: NP
     //                                        path.
     if (dc.status === 'Draft') {
       setAmendNoteId(dc.noteId || null);
@@ -771,7 +771,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     });
   };
   const logAppointmentScheduled = (row) => {
-    // Match Figma 1230:74055 — Activity entry is a detail card with the
+    // Match Figma 1230:74055, Activity entry is a detail card with the
     // appointment type as title, a "date, time · provider" subtitle, and
     // the appointment's own status pill (default Scheduled).
     const subtitleBits = [];
@@ -824,10 +824,10 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       runLeftClose();
     },
     // hedisMemberId lets the Tasks tab filter reliably (member.name is
-    // fragile — two members can share a display name). extraFields is
+    // fragile: two members can share a display name). extraFields is
     // spread into the task payload by useAddTaskDrawer.
     extraFields: { hedisMemberId: member?.id, careGap: currentCode, measurementYear: selectedYear },
-    // These three fields have no columns in public.tasks — strip them
+    // These three fields have no columns in public.tasks, strip them
     // before the Supabase INSERT so the row is actually persisted (they
     // stay on the in-memory task object for the drawer's own use).
     dbOmit: ['hedisMemberId', 'careGap', 'measurementYear'],
@@ -854,7 +854,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     runLeftClose();
   };
   // Pre-populate the patient using the current gap's member. Passing the
-  // synthesized object (not just an id) skips the patients.find lookup —
+  // synthesized object (not just an id) skips the patients.find lookup,
   // HEDIS members don't share ids with the appointments' patients table.
   // Shared by this drawer's scheduler and the outreach form's scheduler.
   const schedulePatient = member && {
@@ -955,7 +955,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     },
     initialSelectedPatient: schedulePatient,
   });
-  // Inline single-gap Clinical Note hook — always mounted (React rules) but
+  // Inline single-gap Clinical Note hook: always mounted (React rules) but
   // only wired into the UI when leftWorkspace === 'clinical-note' /
   // 'clinical-note-consolidated' / 'clinical-note-preview'. selectedNoteId
   // hydrates the form from the exact note the eye affordance opened;
@@ -982,9 +982,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   });
 
   // Two-phase close so the drawer collapses with the same easing it opens
-  // with. Phase 1 (250ms) — drawer.width transitions 1280 → 700 while the
+  // with. Phase 1 (250ms): drawer.width transitions 1280 → 700 while the
   // left pane is still mounted; its flex space shrinks in lock-step so it
-  // reads as sliding back into the right pane. Phase 2 — actually unmount.
+  // reads as sliding back into the right pane. Phase 2, actually unmount.
   const [leftClosing, setLeftClosing] = useState(false);
   // DSF-B: incomplete-PHQ-9 exit modal. Set when the user tries to
   // leave a clinical-note workspace whose active DSF-B gap has some
@@ -996,11 +996,11 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   };
   // DSF-B guard used by the Close and Save-as-Draft paths.
   //
-  // `mode: 'close'` — fires only when PHQ-9 is partially answered.
+  // `mode: 'close'`, fires only when PHQ-9 is partially answered.
   //   Navigating away with nothing typed shouldn't nag the user, and a
   //   fully-answered PHQ-9 will get signed through the normal flow.
   //
-  // `mode: 'save-draft'` — fires whenever DSF-B is on this note and
+  // `mode: 'save-draft'`, fires whenever DSF-B is on this note and
   //   the user isn't declining follow-up. Save as Draft never signs
   //   the gap, so the note leaves DSF-B still open regardless of PHQ-9
   //   completeness. The popup reminds the user of the 30-day window.
@@ -1019,7 +1019,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       if (dsfb.decline) return null;
       if (answered === 0 || answered >= 9) return null;
     }
-    // Save-as-Draft path fires whenever DSF-B is on the note — a draft
+    // Save-as-Draft path fires whenever DSF-B is on the note, a draft
     // leaves the gap Open even when the user has ticked Decline, so the
     // 30-day sign-off reminder still applies.
     // 30-day window anchor is centralised in computeDsfbDueDateISO so
@@ -1067,7 +1067,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     clinicalNote.handleSaveDraft();
   };
   // DSF-B on the note keeps Save-as-Draft enabled even without dirty
-  // state — the popup nags the user about the 30-day sign-off window
+  // state: the popup nags the user about the 30-day sign-off window
   // whenever they try to park DSF-B as a draft.
   const canSaveDraftEffective = clinicalNote.hasChanges
     || !!detectPhq9Incomplete({ mode: 'save-draft' });
@@ -1176,7 +1176,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     </div>
   );
   // Clinical Notes tab is DB-driven (clinicalNotesByMember) so it shows the
-  // current state per note — a Pending Review note that is later Signed
+  // current state per note: a Pending Review note that is later Signed
   // updates in place instead of appearing as two rows. Activity Log keeps
   // both history entries; the Notes tab mirrors the DB's single row per
   // note, which is what the user expects ("should have updated the Below
@@ -1193,7 +1193,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       const chip = isMulti ? `${gapList.length} Gaps` : undefined;
       let subtitle = '';
       if (rawStatus === 'draft') {
-        subtitle = `Save as Draft by ${n.authorName || '—'}`;
+        subtitle = `Save as Draft by ${n.authorName || '-'}`;
       } else if (rawStatus === 'submitted') {
         subtitle = n.reviewerName ? `Submitted for Review to ${n.reviewerName}` : 'Submitted for Review';
       } else if (rawStatus === 'signed') {
@@ -1251,10 +1251,10 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     });
     return toActivityLogEntries(mapped);
   })();
-  // Count of actual note entries (excludes month-group headers) — used for
+  // Count of actual note entries (excludes month-group headers): used for
   // the tab label and empty-state gating.
   const clinicalNoteCount = clinicalNoteEntries.filter(e => e.t === 'clinical_note').length;
-  // Tasks tab lists every task tied to this HEDIS member — sign-off tasks
+  // Tasks tab lists every task tied to this HEDIS member, sign-off tasks
   // (created by createCareGapSignOffTask) always have hedisMemberId set;
   // manually created tasks land here via the `member` denormalized field.
   const memberTasks = (allTasks || []).filter(
@@ -1300,7 +1300,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       {showClinicalNote && (
         <ClinicalNotePanel member={member} gapCode={gap.code} year={selectedYear} onClose={() => setShowClinicalNote(false)} />
       )}
-      {/* The task detail no longer opens as its own standalone Drawer —
+      {/* The task detail no longer opens as its own standalone Drawer,
           it renders inline as the left workspace when leftWorkspace ===
           'task-detail' (see the leftPane branches below). */}
       {labOrderToCancel && (
@@ -1441,7 +1441,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
         onClose={onClose}
         noCloseDivider
         // Mirror the Diagnosis Gaps drawer sizing so both surfaces feel like
-        // one system — 700px closed, 1280px expanded (640 + 640 split). The
+        // one system: 700px closed, 1280px expanded (640 + 640 split). The
         // right pane stays fixed at 640px so the Care Gap content doesn't
         // reflow when a workspace (Add Task / Add Note / Schedule) opens;
         // the drawer simply expands leftward and collapses back.
@@ -1536,7 +1536,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   : `${codes[0]} Visit Note`;
                 // Editable mode: gap-specific title (COL Visit Note /
                 // Consolidated Clinical Note) with a small icon+text status
-                // subtitle underneath — same icon vocabulary the HCC
+                // subtitle underneath: same icon vocabulary the HCC
                 // worklist uses (solar:sun-bold for Action Needed / In
                 // Progress). Preview mode keeps its Signed / Submitted /
                 // Draft attribution subtitle instead.
@@ -1565,7 +1565,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   const when = previewNote.signedAt ? ` · ${formatPreviewDate(previewNote.signedAt)}` : '';
                   subtitle = `Signed by ${signer}${when}`;
                 } else if (previewNote?.status === 'submitted') {
-                  subtitle = `Submitted for Review to ${previewNote.reviewerName || '—'}`;
+                  subtitle = `Submitted for Review to ${previewNote.reviewerName || '-'}`;
                 } else if (previewNote?.status === 'draft') {
                   subtitle = `Draft · ${previewNote.authorName || 'You'} · ${formatPreviewDate(previewNote.updatedAt || previewNote.createdAt)}`;
                 }
@@ -1605,7 +1605,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 ) : leftWorkspace === 'clinical-note' ? (
                   (() => {
                     // The author revisiting their own Pending Review note
-                    // sees Update-and-Save instead of Sign & Save — pushes
+                    // sees Update-and-Save instead of Sign & Save, pushes
                     // the revised state back to the same reviewer via
                     // handleSubmitForReview (which re-notifies). Signing is
                     // still available from the chevron menu as an escape
@@ -1753,7 +1753,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   // there's no CTA to render alongside the close button.
                   null
                 ) : leftWorkspace === 'measure-info' ? (
-                  // Measure Details is a read-only reference pane — no
+                  // Measure Details is a read-only reference pane, no
                   // CTA next to the close button.
                   null
                 ) : (
@@ -1924,10 +1924,10 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
             goPrev={goPrev} goNext={goNext} canPrev={canPrev} canNext={canNext}
           />
 
-          {/* Shared TabStrip — same underline motion the HCC drawer uses.
+          {/* Shared TabStrip: same underline motion the HCC drawer uses.
               Counts are baked into `label` as "(N)" so we skip the Badge
               default that `count` renders. `fullWidth={false}` because
-              this drawer's `.drawerBody` already has `padding: 0` — the
+              this drawer's `.drawerBody` already has `padding: 0`, the
               default bleed would apply a -24px margin and push the row
               past the drawer's own edges. */}
           <TabStrip
@@ -2036,12 +2036,12 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 onCancelOrder={setLabOrderToCancel}
               />
             ) : shownTab === 'Clinical Notes' ? (
-              // Flat column-headed list per Figma 1030:78586 — no timeline
+              // Flat column-headed list per Figma 1030:78586, no timeline
               // rail, no month grouping. Card affordances are shared with
               // the Activity Log via ClinicalNoteCardActions.
               <ClinicalNotesTab entries={clinicalNoteEntries} onOpenNote={openNoteInWorkspace} onOpenTask={handleOpenTaskInPlace} />
             ) : shownTab === 'Tasks' ? (
-              // Same layout as the P360 patient profile's Tasks tab —
+              // Same layout as the P360 patient profile's Tasks tab,
               // Pending / Overdue / Completed sections, checkbox rows,
               // priority + due columns, so a task looks identical in
               // both the drawer here and the P360 view.
@@ -2095,7 +2095,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
             ) : (
               <div className={styles.emptyTab}>
                 <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-200)" />
-                <p className={styles.emptyTabTitle}>{shownTab} — coming soon</p>
+                <p className={styles.emptyTabTitle}>{shownTab}: coming soon</p>
               </div>
             )}
           </div>

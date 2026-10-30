@@ -17,14 +17,14 @@ import { INTERVENTION_KIND_ORDER, KIND_LABELS } from '../shared/interventionKind
 import { CARE_PLAN_INTERVENTION_ICONS } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanInterventionMenu';
 import styles from './AddInterventionsDrawer.module.css';
 
-// Rows shown under "Recently Used" — the newest in the library. There is no
+// Rows shown under "Recently Used", the newest in the library. There is no
 // per-user usage log, so recency stands in for it.
 const RECENT_COUNT = 5;
 
 const TAB_TO_KIND = Object.fromEntries(INTERVENTION_KIND_ORDER.map(k => [KIND_LABELS[k], k]));
 
 /**
- * Add Interventions — the library picker behind a goal's Interventions "+".
+ * Add Interventions: the library picker behind a goal's Interventions "+".
  * Same shape as Add Goals: filter by type, search, tick what you want. The
  * tab you are on decides which kind "New Intervention" starts on.
  *

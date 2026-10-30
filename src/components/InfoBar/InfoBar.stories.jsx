@@ -10,7 +10,7 @@ export default {
     docs: {
       description: {
         component:
-          'A pinned informational banner that sits above a form or scroll region and explains what an action does or where its output lands. Not dismissible — the message stays put. Use for `signed notes sync to the EHR`, `this view is read-only`, `changes require sign-off`, etc.',
+          'A pinned informational banner that sits above a form or scroll region and explains what an action does or where its output lands. Not dismissible, the message stays put. Use for `signed notes sync to the EHR`, `this view is read-only`, `changes require sign-off`, etc.',
       },
     },
   },
@@ -57,7 +57,7 @@ export const Error = {
   args: {
     tone: 'error',
     icon: 'solar:danger-circle-linear',
-    children: 'We could not sync this note to the EHR — try again in a moment.',
+    children: 'We could not sync this note to the EHR, try again in a moment.',
   },
 };
 
@@ -65,7 +65,7 @@ export const AllTones = () => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 520 }}>
     {TONES.map(t => (
       <InfoBar key={t} tone={t}>
-        {t.toUpperCase()} — All signed notes sync to the patient&apos;s EHR.
+        {t.toUpperCase()}: All signed notes sync to the patient&apos;s EHR.
       </InfoBar>
     ))}
   </div>
@@ -73,7 +73,7 @@ export const AllTones = () => (
 AllTones.parameters = {
   docs: {
     description: {
-      story: 'Every tone side by side — same layout, different tint.',
+      story: 'Every tone side by side: same layout, different tint.',
     },
   },
 };

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Design-system guardrails — CHANGED-LINES-ONLY enforcement.
+ * Design-system guardrails: CHANGED-LINES-ONLY enforcement.
  *
  * The repo carries thousands of pre-existing hardcoded values, so we never
  * lint whole files. Instead we run ESLint (JS/JSX) + Stylelint (CSS) on the
@@ -15,7 +15,7 @@
  * Exit 1 if any design-system violation falls on a changed line.
  *
  * Blocking ESLint rules: only design-system rules (see DS_ESLINT_RULES).
- * Generic lint noise (unused vars, hooks deps, …) never blocks here — that's
+ * Generic lint noise (unused vars, hooks deps, …) never blocks here, that's
  * what `bun run lint` is for.
  * Blocking Stylelint rules: all of them (the stylelint config is DS-only).
  */
@@ -78,7 +78,7 @@ function changedLines() {
       map.get(file).add(newLine);
       newLine += 1;
     } else if (line.startsWith('-') && !line.startsWith('---')) {
-      // removed line — does not advance the new-file counter
+      // removed line: does not advance the new-file counter
     } else if (!line.startsWith('\\')) {
       newLine += 1; // shouldn't occur with --unified=0, but stay safe
     }
@@ -168,7 +168,7 @@ function main() {
     process.exit(0);
   }
 
-  console.error('\n✖ Design-system guardrails failed — fix these on the lines you changed:\n');
+  console.error('\n✖ Design-system guardrails failed: fix these on the lines you changed:\n');
   const byFile = new Map();
   for (const v of violations) {
     if (!byFile.has(v.file)) byFile.set(v.file, []);

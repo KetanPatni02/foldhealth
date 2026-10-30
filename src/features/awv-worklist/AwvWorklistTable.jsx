@@ -24,7 +24,7 @@ const AWV_FILTER_DEFS = [
 ];
 const AWV_MORE_FILTER_ITEMS = AWV_FILTER_DEFS.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary, group: fd.group }));
 
-// WorklistShell column defs — sticky checkbox + sticky Members col on the
+// WorklistShell column defs: sticky checkbox + sticky Members col on the
 // left, AWV middle columns from AwvWorklistRow (each carries `renderCell`
 // so hide/reorder in the Show Columns popover ripples through the body),
 // sticky Actions on the right.
@@ -155,7 +155,7 @@ export function AwvWorklistTable() {
           <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
         </>
       }
-      onDownload={() => showToast('Export — coming soon')}
+      onDownload={() => showToast('Export: coming soon')}
     />
   );
 

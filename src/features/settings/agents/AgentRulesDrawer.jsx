@@ -7,7 +7,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { useAppStore } from '../../../store/useAppStore';
 import { Switch } from '../../../components/Switch/Switch';
-import { defaultRules, customRules, groupSettings } from '../../../data/chatGroups'; // Rules defaults — TODO: move to store
+import { defaultRules, customRules, groupSettings } from '../../../data/chatGroups'; // Rules defaults, TODO: move to store
 
 const RULE_BADGE_VARIANT = { safety: 'status-failed', system: 'ai-care', custom: 'status-completed' };
 const RULE_TYPE_LABEL = { safety: 'Safety', system: 'System', custom: 'Custom' };
@@ -63,7 +63,7 @@ export function AgentRulesDrawer() {
         <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-200)" />
         <button type="button" style={{ cursor: 'pointer', color: 'var(--primary-300)', font: 'inherit' }} onClick={() => setAgentRulesGroupId(null)}>{group.name}</button>
         <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-200)" />
-        <span style={{ color: 'var(--neutral-400)', fontWeight: 500 }}>Care Assistant — Rules</span>
+        <span style={{ color: 'var(--neutral-400)', fontWeight: 500 }}>Care Assistant: Rules</span>
       </div>
 
       {/* Agent Header Card */}
@@ -283,7 +283,7 @@ export function AgentRulesDrawer() {
       }}>
         <Icon name="solar:danger-triangle-linear" size={20} color="var(--status-warning)" />
         <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-400)', lineHeight: 1.6 }}>
-          <strong>Key Constraints:</strong> Emergency (#1) and Crisis (#2) always fire first — cannot be reordered, disabled, or overridden. Default Fallback (#10) always fires last. Each message matches at most one rule (first match wins). Custom rules are inserted above #10. Changes take effect immediately for new messages.
+          <strong>Key Constraints:</strong> Emergency (#1) and Crisis (#2) always fire first: cannot be reordered, disabled, or overridden. Default Fallback (#10) always fires last. Each message matches at most one rule (first match wins). Custom rules are inserted above #10. Changes take effect immediately for new messages.
         </div>
       </div>
     </Drawer>

@@ -3,7 +3,7 @@ import { Switch } from '../Switch/Switch';
 import styles from './PermissionCard.module.css';
 
 /**
- * PermissionCard — a titled card of on/off permissions (Figma "Platform
+ * PermissionCard: a titled card of on/off permissions (Figma "Platform
  * Access" / "Settings Access", Simplifying Implementation 55:42415).
  *
  * Header: icon, title and an "Allow All" switch that is on only when every

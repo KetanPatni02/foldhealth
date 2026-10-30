@@ -8,7 +8,7 @@ import { toSQL, toJsonLogic } from './formatQueryBridge';
 import styles from './ruleBuilder.module.css';
 
 /**
- * RuleSummaryPanel — the 320px left rail of the dynamic group detail screen
+ * RuleSummaryPanel: the 320px left rail of the dynamic group detail screen
  * (Figma 1:13951): group identity + description, qualified-member count, and
  * the Applied Filtration Criteria card with the Unity footer.
  */
@@ -17,11 +17,11 @@ export function RuleSummaryPanel({ session, query, qualifiedCount, onEdit, onRen
   const [nameDraft, setNameDraft] = useState(session.name);
   const nameInputRef = useRef(null);
   // The shared Input doesn't reliably forward autoFocus, and without focus a
-  // blur can never fire — so commit would silently never run. Focus by ref.
+  // blur can never fire: so commit would silently never run. Focus by ref.
   useEffect(() => { if (editingName) nameInputRef.current?.focus(); }, [editingName]);
 
   const startRename = () => { setNameDraft(session.name); setEditingName(true); };
-  // Enter commits directly and blur commits too — the guard keeps the pair
+  // Enter commits directly and blur commits too, the guard keeps the pair
   // from double-saving when Enter's blur follows the explicit commit.
   const committingRef = useRef(false);
   const commitRename = async () => {

@@ -7,7 +7,7 @@ import { Button } from '../Button/Button';
 import styles from './ReasonDialog.module.css';
 
 /**
- * ReasonDialog — captures a mandatory reason for a manual compliance
+ * ReasonDialog: captures a mandatory reason for a manual compliance
  * decision (pass or fail). Spec: every Support override carries a
  * reason for HCC submission audits.
  *

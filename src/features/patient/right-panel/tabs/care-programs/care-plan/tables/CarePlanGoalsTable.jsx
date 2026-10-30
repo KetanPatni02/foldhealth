@@ -69,9 +69,9 @@ export function CarePlanGoalsTable({
   onTargetDateChange,
   // Notes icon → open the goal drawer at its Note section.
   onOpenNotes,
-  // (goal, title) => void — saves an in-place title edit.
+  // (goal, title) => void: saves an in-place title edit.
   onTitleChange,
-  // (goal) => boolean — whether the goal has a current (undeleted) note.
+  // (goal) => boolean: whether the goal has a current (undeleted) note.
   hasNote,
   linked,
   template = false,

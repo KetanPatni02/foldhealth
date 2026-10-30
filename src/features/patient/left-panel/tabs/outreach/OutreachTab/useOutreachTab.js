@@ -32,10 +32,10 @@ export function useOutreachTab({
   defaultFormOpen = false,
   scopedProgram = null,
   initialLogGroups = INITIAL_LOG_GROUPS,
-  // Optional override — TOC / HEDIS drawers pass the row's patient so
+  // Optional override: TOC / HEDIS drawers pass the row's patient so
   // ScheduleDrawer doesn't depend on the profile-tab selectedPatientId.
   patientId: patientIdProp,
-  // Patient name — used to source this patient's open HCC gaps for the
+  // Patient name: used to source this patient's open HCC gaps for the
   // "HCC Gaps" mode (same data the Diagnosis Gaps panel shows).
   memberName,
   // Called after a save with the new log entries, so a host can mirror them

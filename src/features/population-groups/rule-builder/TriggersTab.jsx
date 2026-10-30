@@ -28,7 +28,7 @@ const ACTION_TYPES = [
 ];
 
 /**
- * TriggersTab — lists automation triggers for a population group and lets
+ * TriggersTab: lists automation triggers for a population group and lets
  * users create/edit/delete them. Each trigger watches for a membership
  * event and fires an action (invoke agent, send notification, add tag, etc.).
  */

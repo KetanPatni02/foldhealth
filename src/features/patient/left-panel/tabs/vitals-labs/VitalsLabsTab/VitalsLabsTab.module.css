@@ -1,6 +1,6 @@
 .wrapper {
   /* Grow to content and let the profile panel (.scrollContent) own the single
-     vertical scroll — a height:100% + overflow-y:auto here would nest a second
+     vertical scroll: a height:100% + overflow-y:auto here would nest a second
      scroller inside the panel's, giving the tab a double scrollbar. */
   background: var(--neutral-0);
   padding: 12px;

@@ -21,7 +21,7 @@ const PROFILE_VIEWS = [
   { key: 'preferences',  label: 'Preferences' },
 ];
 
-/** Collapsible section wrapper — matches the Figma section pattern:
+/** Collapsible section wrapper: matches the Figma section pattern:
  * title + optional edit button on the right, and a grid of label/value
  * cells below that flow into 2 columns on wider layouts. */
 function Section({ title, actionIcon = 'solar:pen-linear', onEdit, children }) {
@@ -36,7 +36,7 @@ function Section({ title, actionIcon = 'solar:pen-linear', onEdit, children }) {
           aria-expanded={!collapsed}
         >
           <span className={styles.sectionTitle}>{title}</span>
-          {/* Shared DownChevronIcon — rotated -90° when collapsed so a single
+          {/* Shared DownChevronIcon: rotated -90° when collapsed so a single
               chevron primitive covers both expanded (down) and collapsed
               (right) states without two separate icon glyphs. */}
           <DownChevronIcon
@@ -67,7 +67,7 @@ function Field({ label, value, children }) {
   );
 }
 
-/** Contact card for family/caregiver — first line is name + relation +
+/** Contact card for family/caregiver: first line is name + relation +
  * optional Primary/Caregiver badge, second line is phone + hours. */
 function ContactField({ contact }) {
   return (
@@ -87,7 +87,7 @@ function ContactField({ contact }) {
 }
 
 /**
- * Profile tab — the demographic / contact / address panel behind the
+ * Profile tab: the demographic / contact / address panel behind the
  * left-panel's "Profile" sub-tab in PatientDetailView. Reads from the
  * p360_profiles Supabase table via the store's fetchP360Profile action,
  * falls back to whatever slim identity fields already live on the
@@ -103,7 +103,7 @@ export function ProfileTab({ patient }) {
   const openEdit = useAppStore((s) => s.openPatientEdit);
   const showPatientAppIndicator = useAppStore((s) => s.showPatientAppIndicator);
   // Two-view segmented control: Demographics (current sections) vs Insurance
-  // (Primary Insurance + Plan Benefits). Local state — persistence isn't
+  // (Primary Insurance + Plan Benefits). Local state, persistence isn't
   // needed since the tab-switch is transient viewing chrome.
   const [view, setView] = useState('demographics');
   const [prefsOpen, setPrefsOpen] = useState(false);
@@ -113,7 +113,7 @@ export function ProfileTab({ patient }) {
     if (patientId) fetchP360Profile(patientId);
   }, [patientId, fetchP360Profile]);
 
-  // Profile row we're rendering — the fetched p360 row wins on every field
+  // Profile row we're rendering: the fetched p360 row wins on every field
   // it defines, but fall through to the worklist row so a patient without
   // an extended profile still shows something usable.
   const p = p360Profile && p360Profile.patient_id === patientId ? p360Profile : null;
@@ -157,7 +157,7 @@ export function ProfileTab({ patient }) {
     Employer:    p?.employer,
   }), [p, patient]);
 
-  // Insurance — Figma P360 Revamp node 526:334385. First block is the
+  // Insurance: Figma P360 Revamp node 526:334385. First block is the
   // insurance identity + eligibility window; second is the plan-benefits
   // detail. All values fall through to '-' when the p360 row is missing
   // that field (identical shape to the demographics sections above).
@@ -192,7 +192,7 @@ export function ProfileTab({ patient }) {
 
   return (
     <div className={styles.wrapper}>
-      {/* Top row — Demographics/Insurance segmented control on the left,
+      {/* Top row: Demographics/Insurance segmented control on the left,
           single Edit action on the right. The per-section edit pencils were
           removed; this one button opens the drawer scrolled to a sensible
           starting section for the active view (basic for Demographics,
@@ -285,7 +285,7 @@ export function ProfileTab({ patient }) {
           </Section>
         </>
       ) : (
-        // Insurance view — matches Figma P360 Revamp node 526:334385.
+        // Insurance view: matches Figma P360 Revamp node 526:334385.
         // Primary Insurance is a single collapsible block whose body holds
         // both the identity fields and a nested "Plan Benefits" heading +
         // grid. Edit routes through the top-row action button, not a

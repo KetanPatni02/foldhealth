@@ -10,7 +10,7 @@ import { Button } from '../../../../../../../../components/Button/Button';
 import { goalCascadeQuestion } from '../../lib/carePlanGoalCascade';
 
 /**
- * RemoveGoalDialog — removing a goal that has linked items is a choice, not a
+ * RemoveGoalDialog: removing a goal that has linked items is a choice, not a
  * yes/no: delete its interventions and barriers with it, or take out only the
  * goal and leave them on the plan. A goal with nothing linked falls back to a
  * plain confirm, since there is nothing to choose between.

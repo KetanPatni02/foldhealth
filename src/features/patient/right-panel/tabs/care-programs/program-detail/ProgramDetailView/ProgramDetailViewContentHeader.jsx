@@ -15,7 +15,7 @@ import { CarePlanHeader } from '../../care-plan/CarePlanHeader/CarePlanHeader';
 import { EMPTY_TASK_FILTERS } from './ProgramDetailView.utils';
 import styles from './ProgramDetailView.module.css';
 
-// Sign dropdown actions — Figma SNP-Story 3039:621576. "Send for Sign Off"
+// Sign dropdown actions: Figma SNP-Story 3039:621576. "Send for Sign Off"
 // carries the right-chevron submenu affordance from the design; its submenu
 // isn't specced yet, so selecting it currently has no handler.
 const EMPTY_CHECKS = {};
@@ -117,7 +117,7 @@ export function ProgramDetailViewContentHeader({
       : 'Could not create the sign-off task');
   };
 
-  // Signing is gated on the mandatory Medication Checklist — every box has to
+  // Signing is gated on the mandatory Medication Checklist, every box has to
   // be ticked before Sign / Send for Sign Off is available.
   const medReconChecks = useAppStore(s => s.medReconChecks[s.selectedPatientId]) || EMPTY_CHECKS;
   const medReconChecklistDone = MED_RECON_MOCK.checklist.every(c => medReconChecks[c.id]);
@@ -131,7 +131,7 @@ export function ProgramDetailViewContentHeader({
   // what lands in the parenthetical role.
   const signMedRecon = (role) => {
     const name = currentUserProfile?.name;
-    if (!name) { showToast?.('Could not sign — no signed-in user'); return; }
+    if (!name) { showToast?.('Could not sign: no signed-in user'); return; }
     onSignMedRecon?.(name, role);
     showToast?.('Medication reconciliation signed');
   };
@@ -212,7 +212,7 @@ export function ProgramDetailViewContentHeader({
                   menuWidth={220}
                   menuAriaLabel="Sign options"
                   onMenuSelect={(key) => {
-                    // The Medication Checklist is mandatory — the control stays
+                    // The Medication Checklist is mandatory: the control stays
                     // enabled so the reason is discoverable, and the attempt
                     // surfaces it rather than a dead button.
                     if (!medReconChecklistDone) {

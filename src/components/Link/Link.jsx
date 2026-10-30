@@ -1,7 +1,7 @@
 import styles from './Link.module.css';
 
 /**
- * Link — inline primary-colored text link.
+ * Link: inline primary-colored text link.
  *
  * Use for primary text actions like "Download Template" or "Choose file".
  * Renders a span (so it composes inside sentences and clickable containers);
@@ -9,14 +9,14 @@ import styles from './Link.module.css';
  *
  * Props:
  *  - children   (ReactNode)
- *  - variant    ('primary'|'secondary'|'subtle')  — 'secondary' renders the same
+ *  - variant    ('primary'|'secondary'|'subtle'): 'secondary' renders the same
  *                link in neutral text, for de-emphasised actions sitting next
  *                to a primary one; 'subtle' is dark grey regular text that
  *                turns purple with a dashed underline on hover (e.g. "View 3 More")
- *  - disabled   (boolean)  — greyed out and inert (no click, not focusable)
+ *  - disabled   (boolean): greyed out and inert (no click, not focusable)
  *  - onClick    (function)
  *  - className  (string)
- *  - style      (object)   — e.g. { fontSize: 'var(--font-sm)' }
+ *  - style      (object): e.g. { fontSize: 'var(--font-sm)' }
  */
 export function Link({ children, variant = 'primary', disabled = false, onClick, className, style, ...rest }) {
   return (

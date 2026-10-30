@@ -175,7 +175,7 @@ export function ScheduleDrawerViewMode({
         </div>
 
         <div className={styles.section} style={isPastAppointment ? { pointerEvents: 'none', opacity: 0.7 } : undefined}>
-          <span className={styles.sectionLabel}>Appointment Details {isPastAppointment && <span style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-200)', fontWeight: 400 }}>(Past — read only)</span>}</span>
+          <span className={styles.sectionLabel}>Appointment Details {isPastAppointment && <span style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-200)', fontWeight: 400 }}>(Past: read only)</span>}</span>
           <div className={styles.detailsCard}>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Appointment Type</span>

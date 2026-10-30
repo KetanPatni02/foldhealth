@@ -2,7 +2,7 @@
 // The editor stores tokens as literal text in a block's `props.text`, using
 // the canonical `{{key}}` syntax (e.g. "Dear {{first_name}},"). Substitution
 // happens once, on the fully-rendered email HTML, right before it is shown in
-// a preview or handed to the send endpoint — see renderEmail.js. Keeping the
+// a preview or handed to the send endpoint, see renderEmail.js. Keeping the
 // tokens raw in the document means the author always sees the template, and a
 // single recipient context resolves every token in one pass.
 
@@ -60,8 +60,8 @@ export const TOKEN_GROUPS = ['Patient', 'Care team', 'System', 'Report', 'Accoun
 }));
 
 // Human-readable / short token names that map onto canonical keys. Lets the
-// engine resolve every convention that shipped in existing templates —
-// "{{First Name}}", "{{name}}", "{surname}", "{Patient Name}" — without a data
+// engine resolve every convention that shipped in existing templates,
+// "{{First Name}}", "{{name}}", "{surname}", "{Patient Name}", without a data
 // migration. Keys here are already normalized (lowercased, spaces → "_").
 const NAME_ALIASES = {
   patient_name: 'full_name',
@@ -86,7 +86,7 @@ function resolveName(rawName, ctx) {
 // Double-brace tokens: {{ First Name }}, {{first_name}}, {{email}}.
 const DOUBLE_RE = /\{\{\s*([a-zA-Z0-9_][a-zA-Z0-9_ -]*?)\s*\}\}/g;
 // Single-brace tokens: {Patient Name}, {name}. Only replaced when the name
-// resolves to a known token, so CSS braces ("{display:block}" — has a colon,
+// resolves to a known token, so CSS braces ("{display:block}", has a colon,
 // excluded by the char class anyway) are never touched.
 const SINGLE_RE = /\{\s*([a-zA-Z][a-zA-Z0-9_ -]*?)\s*\}/g;
 

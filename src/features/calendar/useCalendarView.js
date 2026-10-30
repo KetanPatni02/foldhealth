@@ -108,7 +108,7 @@ export function useCalendarView({ onOooSlot } = {}) {
       .select('id, full_name, email, status')
       .order('full_name')
       .then(({ data, error }) => {
-        // postgrest resolves (never rejects) on failure — without this the
+        // postgrest resolves (never rejects) on failure: without this the
         // Users chip just renders empty with no signal that the query failed.
         if (error) { console.error('Failed to load users for the calendar filter', error); return; }
         if (data?.length) {
@@ -286,7 +286,7 @@ export function useCalendarView({ onOooSlot } = {}) {
     const ep = eventsPluginRef.current;
     // Must check the event exists first. schedule-x's remove() does
     // splice(findIndex(...), 1) with no guard, so removing an id that isn't
-    // there splices at -1 and silently deletes the LAST real appointment —
+    // there splices at -1 and silently deletes the LAST real appointment,
     // which is every drawer close that didn't start from a slot click.
     if (ep?.get('__selection__')) ep.remove('__selection__');
   }, []);
@@ -393,7 +393,7 @@ export function useCalendarView({ onOooSlot } = {}) {
     if (T && dateTime?.epochMilliseconds && dateTime.add) {
       const clickStart = dateTime.epochMilliseconds;
       const clickEnd = dateTime.add({ minutes: 30 }).epochMilliseconds;
-      // Check against ALL appointments, not the calendar's event list — that
+      // Check against ALL appointments, not the calendar's event list: that
       // list only holds what the filter chips currently show, so filtering
       // would otherwise hide a conflict and let you double-book the slot.
       const hasOverlap = (appointments || []).some(a => {
@@ -444,7 +444,7 @@ export function useCalendarView({ onOooSlot } = {}) {
     setClickedAppointment(null);
     clearSelection();
     // A status change refetches appointments, and the re-rendered events carry
-    // their own is-cancelled class — no post-render class patching needed.
+    // their own is-cancelled class: no post-render class patching needed.
   }, [clearSelection]);
 
   const hoverRef = useRef(null);
@@ -521,11 +521,11 @@ export function useCalendarView({ onOooSlot } = {}) {
     let timer;
     let attempts = 0;
 
-    // The grid is ready when the CURRENT view's DOM exists — the column
+    // The grid is ready when the CURRENT view's DOM exists: the column
     // count check matters on view switches, when the previous view's
     // columns linger in the DOM for a frame or two.
     const gridReady = () => {
-      // Wait for the CELLS, not just the wrapper — the wrapper mounts a beat
+      // Wait for the CELLS, not just the wrapper, the wrapper mounts a beat
       // earlier, and decorating against zero cells would silently no-op with
       // no retry (month view would lose its past-day shading).
       if (currentView === 'month-grid') return document.querySelectorAll('.sx__month-grid-day').length > 0;

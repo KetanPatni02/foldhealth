@@ -63,7 +63,7 @@ export function PopulationGroupsCreateDrawer({ vm, onMemberAdded, onGroupCreated
             // Only the fields this drawer actually edits may change. It used
             // to hardcode filterType to 'static-csv' and derive the counts
             // from the chips, so renaming a Dynamic group silently converted
-            // it to a CSV group and zeroed its active/inactive counts — the
+            // it to a CSV group and zeroed its active/inactive counts, the
             // edit persisted, but persisted the wrong row. A Dynamic group's
             // membership comes from its rule, not from this drawer.
             const isStatic = (editingGroup.type || 'Static') === 'Static';

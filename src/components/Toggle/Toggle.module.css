@@ -1,4 +1,4 @@
-/* ── Fold Health Toggle — animated segmented control ──
+/* ── Fold Health Toggle: animated segmented control ──
  * Extracted from agent-builder NodePanel toggle.
  * Sliding pill indicator via JS inline style (left + width).
  *
@@ -16,7 +16,7 @@
   border: none;
   position: relative;
   /* Allow the toggle to shrink inside narrow flex parents (fieldCol etc.)
-     instead of overflowing — buttons inside will absorb the constraint. */
+     instead of overflowing: buttons inside will absorb the constraint. */
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;

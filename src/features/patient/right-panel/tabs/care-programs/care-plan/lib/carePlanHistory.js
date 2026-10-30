@@ -173,10 +173,10 @@ function parseArrow(detail) {
 const capitalize = v => (v ? v.charAt(0).toUpperCase() + v.slice(1) : v);
 
 // Values as people read them: an ISO date ("2026-10-11", with or without a
-// time) as MM/DD/YYYY, and a blank ("—", "-") as None.
+// time) as MM/DD/YYYY, and a blank ("-", "-") as None.
 function displayValue(v) {
   const text = (v || '').trim();
-  if (!text || text === '—' || text === '-') return 'None';
+  if (!text || text === '\u2014' || text === '-') return 'None';
   const iso = /^(\d{4})-(\d{2})-(\d{2})(?:[T ].*)?$/.exec(text);
   return iso ? `${iso[2]}/${iso[3]}/${iso[1]}` : text;
 }

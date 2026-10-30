@@ -97,7 +97,7 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
               ? log.programs.map(p => (
                   <span key={p} className={styles.logProgBadge}>{p}</span>
                 ))
-              : <span className={styles.logContactBadge} title="Outreach recorded at contact level — not tied to a care program">Contact-level</span>
+              : <span className={styles.logContactBadge} title="Outreach recorded at contact level: not tied to a care program">Contact-level</span>
             }
             <LogRowMenu log={log} onEdit={onEdit} onDelete={onDelete} />
           </div>
@@ -122,7 +122,7 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
               </button>
             )}
             {log.type === 'Call' && log.callDetailsMissing && (
-              <span className={styles.logCallNoDetails} title="External call — call details not available">
+              <span className={styles.logCallNoDetails} title="External call: call details not available">
                 <Icon name="solar:info-circle-linear" size={10} color="var(--neutral-300)" />
                 Call details unavailable
               </span>

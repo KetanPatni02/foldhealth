@@ -225,7 +225,7 @@ export function FilterBar({
     }
     if (onToggleVisible) {
       // Pass the current computed visible set so callers can toggle *just this
-      // key* against auto-fit's live selection — otherwise, when `visibleKeys`
+      // key* against auto-fit's live selection: otherwise, when `visibleKeys`
       // is uncontrolled and auto-fit has narrowed the row to a subset, the
       // caller has no way to know which chips were shown and typically falls
       // back to the full primary list, which reveals every hidden chip at once.

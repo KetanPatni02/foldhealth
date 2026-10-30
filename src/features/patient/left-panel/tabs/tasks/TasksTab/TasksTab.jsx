@@ -94,7 +94,7 @@ function StaticTaskRow({ task, done, onToggle, onClick }) {
       <div className={styles.assigneeCell}>
         {task.assignee
           ? <AssigneeChange name={task.assignee} initials={task.assigneeInitials} avatarOnly />
-          : <span className={styles.muted}>—</span>}
+          : <span className={styles.muted}>-</span>}
       </div>
       <div className={`${styles.dueCell} ${task.overdue ? styles.dueOverdue : ''}`}>{fmtDue(task.due)}</div>
     </div>

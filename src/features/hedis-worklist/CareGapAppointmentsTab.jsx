@@ -104,7 +104,7 @@ const fmtDate = (d) => (d
   : '');
 
 /**
- * Care Gap drawer — Appt/Reminders tab (Figma 225:93430). A table of the
+ * Care Gap drawer: Appt/Reminders tab (Figma 225:93430). A table of the
  * member's appointments with a View By (Upcoming / Past / All) switch,
  * search, and Type / Assignee filter chips. Rows carry the appointment
  * type, reason, date and time, and an assignee picker.
@@ -320,7 +320,7 @@ export function CareGapAppointmentsTab({
                 </td>
                 <td className={styles.td}>
                   <div className={styles.dateCell}>
-                    <span>{fmtDate(r.date) || '—'}</span>
+                    <span>{fmtDate(r.date) || '-'}</span>
                     {r.time && <span>{r.time}</span>}
                   </div>
                 </td>

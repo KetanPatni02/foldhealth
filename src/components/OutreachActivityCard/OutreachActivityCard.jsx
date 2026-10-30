@@ -6,7 +6,7 @@ import styles from './OutreachActivityCard.module.css';
 const OUTCOME_CLASS = { success: styles.outcomeOk, warning: styles.outcomeNote, error: styles.outcomeFailed };
 
 /**
- * OutreachActivityCard — a member's latest outreach attempts as a short
+ * OutreachActivityCard: a member's latest outreach attempts as a short
  * timeline (Figma P360 Revamp 608:347090), shown on hover of a worklist
  * Outreach cell.
  *
@@ -14,7 +14,7 @@ const OUTCOME_CLASS = { success: styles.outcomeOk, warning: styles.outcomeNote, 
  *  - items      [{ key, date, time?, by?, title, outcome?, failed?, tone?, kind? }],
  *                 tone ('success' | 'warning' | 'error') wins over failed.
  *               newest first. `kind: 'letter'` shows a document icon.
- *  - onViewAll  () => void — optional "View All" link to the full log
+ *  - onViewAll  () => void: optional "View All" link to the full log
  */
 export function OutreachActivityCard({ items, onViewAll }) {
   return (

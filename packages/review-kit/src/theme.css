@@ -1,7 +1,7 @@
 /* review-kit theme: the only file with raw values. Everything else reads these
    variables, so a host app restyles the kit by overriding them anywhere above
    the dock (:root, body, their own theme wrapper). Selectors here all live
-   under :where(...) so they carry zero specificity — any plain rule wins.
+   under :where(...) so they carry zero specificity, any plain rule wins.
    Dark mode is set either by `colorMode="dark"` on <ReviewDock /> (which puts
    data-rk-theme="dark" on the layer) or by the OS when colorMode="auto". */
 :where(:root),
@@ -49,7 +49,7 @@
   --rk-z: 2147482000;
 }
 
-/* Dark palette — swap only the surface and ink. Accent and feedback colors
+/* Dark palette: swap only the surface and ink. Accent and feedback colors
    stay the same so the host's brand remains consistent across modes. */
 :where([data-rk-theme='dark']) {
   --rk-bg: rgba(20, 22, 28, 0.78);

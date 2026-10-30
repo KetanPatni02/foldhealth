@@ -2,7 +2,7 @@ import { Icon } from '../Icon/Icon';
 import styles from './RingEmptyState.module.css';
 
 /**
- * RingEmptyState — the concentric dashed-ring empty state used across the app
+ * RingEmptyState: the concentric dashed-ring empty state used across the app
  * (e.g. "No Active Programs"). A gradient disc holds a single linear Solar icon
  * at 1px stroke in neutral-200, ringed by two dashed circles, with a caption.
  *

@@ -39,7 +39,7 @@ function isAnswered(a) {
 
 function stepsFor(med, a) {
   const steps = [
-    a.lastFillConfirmed ? `Last fill ${med.lastFill} confirmed` : `Last fill corrected to ${a.actualLastFill || '—'}`,
+    a.lastFillConfirmed ? `Last fill ${med.lastFill} confirmed` : `Last fill corrected to ${a.actualLastFill || '-'}`,
     a.refilled === 'Yes' ? 'Refilled' : 'Not refilled',
   ];
   if (a.refilled === 'Yes') steps.push(a.pickedUp === 'Yes' ? 'Picked up' : 'Not picked up (on shelf)');
@@ -70,7 +70,7 @@ const QUESTIONS = [
 
 function AnswerCell({ q, gap, answer, onChange, disabled }) {
   const set = (patch) => onChange({ ...answer, ...patch });
-  if (q.when && !q.when(answer)) return <span className={styles.na}>—</span>;
+  if (q.when && !q.when(answer)) return <span className={styles.na}>-</span>;
   switch (q.key) {
     case 'lastFillConfirmed':
       return (

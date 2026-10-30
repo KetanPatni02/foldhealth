@@ -45,7 +45,7 @@ export function StatusIcon({ status, size = 16 }) {
         </svg>
       );
     case 'returned':
-      // Support is under a records-request cycle — mirror the DiagPanel's
+      // Support is under a records-request cycle, mirror the DiagPanel's
       // Returned/Rebuttal state (secondary-toned undo glyph).
       return (
         <svg {...common}>
@@ -65,7 +65,7 @@ export function StatusIcon({ status, size = 16 }) {
   }
 }
 
-// Inline fail-reason form — renders INSIDE the doc card whose Fail button
+// Inline fail-reason form: renders INSIDE the doc card whose Fail button
 // was clicked, so the doc header (name + meta + Pass/Fail/⋯) and the
 // reason picker read as one bordered container per Figma. Keeps every
 // other doc row and header action live so the reviewer can bail out
@@ -73,9 +73,9 @@ export function StatusIcon({ status, size = 16 }) {
 // blocking the surface.
 export function FailReasonInline({ onCancel, onConfirm, value, onChange, hideActions = false }) {
   // Two modes:
-  //  1. Uncontrolled (default) — internal state + Confirm/Cancel actions.
+  //  1. Uncontrolled (default): internal state + Confirm/Cancel actions.
   //     Used by ChartDetailDrawer where the picker commits on Confirm.
-  //  2. Controlled — parent owns `value: { reasons: string[], note: string }`
+  //  2. Controlled: parent owns `value: { reasons: string[], note: string }`
   //     and receives changes via `onChange`. Pair with `hideActions` when the
   //     parent has its own outer submit (e.g. UploadChartDrawer's Upload
   //     button already saves everything on click).
@@ -103,7 +103,7 @@ export function FailReasonInline({ onCancel, onConfirm, value, onChange, hideAct
     emit(next, comment);
   };
   const setComment = (c) => emit(reasons, c);
-  // At least one reason is always required. The comment is optional — with
+  // At least one reason is always required. The comment is optional, with
   // one exception: picking "Other" makes it mandatory, since the reviewer
   // owes a specific reason for the downstream reviewer to act on. When
   // required, a red asterisk appears next to the Comment label.
@@ -168,7 +168,7 @@ export function FailReasonInline({ onCancel, onConfirm, value, onChange, hideAct
   );
 }
 
-// Inline metadata editor — the doc card's second row when the ⋯ menu's Edit
+// Inline metadata editor: the doc card's second row when the ⋯ menu's Edit
 // item is picked. Caption + Document Type + Visit Type are editable (the
 // file itself stays put); Save writes through updateChartDocMeta upstream.
 export function EditDocInline({ doc, onCancel, onSave }) {
@@ -225,7 +225,7 @@ export function EditDocInline({ doc, onCancel, onSave }) {
 
 /**
  * Hover tooltip for a doc row's "Failed" badge. Renders the design's
- * "Failed Due to:" card — bulleted reasons + a subtle Comment box — as a
+ * "Failed Due to:" card, bulleted reasons + a subtle Comment box, as a
  * portalled popover so it can escape the doc-row + drawer stacking
  * contexts. Falls back to the base badge (no tooltip) when there are no
  * reasons captured (e.g. a legacy fail with no metadata).

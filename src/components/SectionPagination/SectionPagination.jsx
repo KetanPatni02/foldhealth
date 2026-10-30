@@ -2,7 +2,7 @@ import { ActionButton } from '../ActionButton/ActionButton';
 import styles from './SectionPagination.module.css';
 
 /**
- * SectionPagination — the compact pager shown under a list/table section
+ * SectionPagination: the compact pager shown under a list/table section
  * (Figma 5732-276316). A left-aligned "start-end of total" range followed by
  * prev / next arrow buttons. Use it for in-section paging (e.g. a care-program
  * task section) where the full worklist `Pagination` (per-page selector +

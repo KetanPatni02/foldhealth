@@ -82,7 +82,7 @@ function VoiceBadge({ voice }) {
     cancelClose();
   }, []);
 
-  if (!voice) return <span style={{ color: 'var(--neutral-300)' }}>—</span>;
+  if (!voice) return <span style={{ color: 'var(--neutral-300)' }}>-</span>;
   const name = voice.name || 'Erica';
   const color = VOICE_COLORS[name] || '#7C5CFC';
 
@@ -123,7 +123,7 @@ const AGENT_MENU_ITEMS = [
   { key: 'delete', icon: 'solar:trash-bin-minimalistic-linear', label: 'Delete Agent', danger: true },
 ];
 
-// Provider inference — used to pick the leading model icon. The `model`
+// Provider inference: used to pick the leading model icon. The `model`
 // string may live either in agent.model or (legacy) inside voice metadata.
 function modelIcon(modelName) {
   const m = (modelName || '').toLowerCase();
@@ -133,7 +133,7 @@ function modelIcon(modelName) {
   return 'solar:cpu-bolt-linear';
 }
 
-// Resolves the current user's display name from Supabase — used to swap
+// Resolves the current user's display name from Supabase: used to swap
 // the literal "Current User" placeholder that older duplicate-agent code
 // writes to `last_updated_by`, and to append "(You)" when the row's
 // updater matches the logged-in user. Cached at module scope so every
@@ -335,12 +335,12 @@ function AgentRow({ agent, isFirst, bulkMode = false, selected = false, onToggle
   );
 }
 
-// Column definitions for the Agents WorklistShell — order matches the
+// Column definitions for the Agents WorklistShell, order matches the
 // user-provided screenshot: Use Case (sticky-left), Agent Name (avatar +
 // role subtitle), Model, Last Updated, Last Updated By, Status, Actions.
 // Status pins to the right alongside Actions so it stays visible at every
 // scroll position (like the user tab). "Last Updated" collapses into
-// "Last Updated By" as a two-line cell — name on top, date underneath.
+// "Last Updated By" as a two-line cell: name on top, date underneath.
 const AGENT_COLUMNS = [
   { key: 'useCase',   label: 'Use Case',        sortKey: 'use_case',        sticky: 'left', left: 0, width: 260 },
   { key: 'name',      label: 'Agent Name',      sortKey: 'name',            width: 260 },
@@ -369,7 +369,7 @@ export function AgentsTable() {
   const [goalsViewMode, setGoalsViewMode] = useState('table');
   const [goalsFilterOpen, setGoalsFilterOpen] = useState(false);
 
-  // Agents filter chips — Status / Model / Use Case are all primary so
+  // Agents filter chips: Status / Model / Use Case are all primary so
   // they always render in the FilterBar (no "More filters" overflow).
   const [agentsFilterOpen, setAgentsFilterOpen] = useState(false);
   const [agentFilters, setAgentFilters] = useState({ status: [], model: [], use_case: [] });
@@ -377,14 +377,14 @@ export function AgentsTable() {
     agentFilters.status.length + agentFilters.model.length + agentFilters.use_case.length;
 
   // Bulk-select (Agents tab only). AgentsTable owns the controller because the
-  // toggle lives in the shared SectionTitleBar above — a sibling of the shell,
+  // toggle lives in the shared SectionTitleBar above, a sibling of the shell,
   // not the shell's header. The shell still owns the select column, floating
   // bar, and confirm dialog via `bulkSelect.controller` below.
   const bulk = useBulkSelect(settingsTab);
 
   const bulkDeleteAgents = async (ids) => {
     const { error } = await supabase.from('agents').delete().in('id', ids);
-    if (error) { showToast?.('Could not delete agents — check permissions'); return; }
+    if (error) { showToast?.('Could not delete agents: check permissions'); return; }
     await fetchAgents();
     showToast?.(`${ids.length} agent${ids.length === 1 ? '' : 's'} deleted`);
   };
@@ -411,7 +411,7 @@ export function AgentsTable() {
     }
   };
 
-  // Only the visible tab fetches, and only until the first successful load —
+  // Only the visible tab fetches, and only until the first successful load,
   // switching to Goals/Knowledge Base (or revisiting the tab) must not
   // re-query `agents`.
   const agentsFetched = useAppStore(s => s.agentsFetched);
@@ -609,7 +609,7 @@ export function AgentsTable() {
         />
       )}
 
-      {/* Product Tour — shown once for new users on the Agents tab */}
+      {/* Product Tour: shown once for new users on the Agents tab */}
       {settingsTab === 'agents' && !agentsLoading && paginatedAgents.length > 0 && (
         <ProductTour
           tourId="agents-call-queue"
@@ -648,7 +648,7 @@ const AGENT_TOUR_STEPS = [
   {
     target: '[data-tour="call-analytics-btn"]',
     title: 'Call Analytics',
-    content: 'Jump directly into call performance — see goal progress, engagement scores, and sentiment analysis.',
+    content: 'Jump directly into call performance: see goal progress, engagement scores, and sentiment analysis.',
     icon: 'solar:chart-linear',
     placement: 'bottom',
     skipBeacon: true,

@@ -6,7 +6,7 @@ import { ActionButton } from '../ActionButton/ActionButton';
 import styles from './AuditDetailCard.module.css';
 
 /**
- * AuditDetailCard — the expandable detail card behind a history timeline's
+ * AuditDetailCard: the expandable detail card behind a history timeline's
  * "View Details". A bordered card of titled sections, each with an optional
  * caption, trailing badges, a from → to pair and a free-text body.
  *

@@ -10,7 +10,7 @@ export function TemplateScopeBadge({ template, className }) {
 }
 
 /**
- * "Who is this template for?" — asked whenever a template is created.
+ * "Who is this template for?", asked whenever a template is created.
  * `choices` lists the scopes this surface allows (the library offers
  * Organization / Only me; a patient's care plan adds This patient).
  */
@@ -26,7 +26,7 @@ export function TemplateScopeChoice({ value, onChange, choices, label = 'Who is 
   );
 }
 
-/** "When applied again" — what adding this template to a plan that has it does. */
+/** "When applied again", what adding this template to a plan that has it does. */
 export function TemplateRenewalChoice({ value, onChange, label = 'When applied again' }) {
   return (
     <RadioOptionGroup

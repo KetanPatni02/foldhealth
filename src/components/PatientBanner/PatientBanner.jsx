@@ -9,7 +9,7 @@ import { usePatientCallButton } from '../../hooks/usePatientCallButton';
 import styles from './PatientBanner.module.css';
 
 /**
- * PatientBanner — reusable patient context banner for drawers.
+ * PatientBanner: reusable patient context banner for drawers.
  *
  * Figma: 263:19234
  * Default (263:19235): Compact banner with avatar, name, meta, RAF, call + expand buttons
@@ -85,7 +85,7 @@ export function PatientBanner({
             <div className={styles.name}>
               {name}
               {/* External-tab jump to the patient's P360. Hash-router
-                  path is `#/<list>/patient/<memberId>` — HEDIS is a
+                  path is `#/<list>/patient/<memberId>`, HEDIS is a
                   safe default list since every P360 route just uses
                   it as a URL bucket; the patient page itself is the
                   same regardless of which list opened it. */}

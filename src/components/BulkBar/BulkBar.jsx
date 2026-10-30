@@ -9,7 +9,7 @@ import { useAppStore } from '../../store/useAppStore';
 import styles from './BulkBar.module.css';
 
 /**
- * BulkBar — floating action bar that appears when one or more rows are
+ * BulkBar: floating action bar that appears when one or more rows are
  * selected. By default it binds to the global selection store, but callers
  * can pass their own `selectedIds` + `onClear` if they manage a separate
  * selection set (e.g. the HCC worklist uses `selectedHccIds`).
@@ -73,7 +73,7 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
         <span className={styles.countText}>{selectedIds.length}{noun ? ` ${noun}` : ''} Selected</span>
       </div>
       <div className={styles.divider} />
-      {/* Icon-only affordances between the count and the labeled actions —
+      {/* Icon-only affordances between the count and the labeled actions,
           used when the surface has a couple of contextual quick actions
           (e.g. DiagPanel bulk bar has Upload / Comment before Accept /
           Dismiss). Rendered with ActionButton so tooltips + sizing stay

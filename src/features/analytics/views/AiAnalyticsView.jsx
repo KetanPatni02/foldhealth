@@ -76,7 +76,7 @@ export function AiAnalyticsView({ showToast, editing = false, resetTick = 0 }) {
   };
 
   const renderNlq = () => (
-    <Card title="Ask Fold — Natural Language Query Engine" sub="Click an example or type your own question">
+    <Card title="Ask Fold: Natural Language Query Engine" sub="Click an example or type your own question">
       <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-300)', marginBottom: 'var(--font-sm)' }}>
         Type any clinical or operational question. Fold Unity translates to structured queries against your data.
       </div>

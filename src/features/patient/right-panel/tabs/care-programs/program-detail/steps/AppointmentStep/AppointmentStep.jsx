@@ -122,7 +122,7 @@ export function AppointmentStep({ patientId, programCode, stepName = 'Appointmen
           <span className={styles.emptyText}>Program Related Appointment Not Scheduled</span>
           <div className={styles.actions}>
             <Button onClick={() => setScheduleOpen(true)}>Schedule Appointment</Button>
-            <Button variant="outline" trailingIcon="solar:arrow-right-up-linear" onClick={() => toast.success('Link Appointments — coming soon')}>
+            <Button variant="outline" trailingIcon="solar:arrow-right-up-linear" onClick={() => toast.success('Link Appointments: coming soon')}>
               Link Appointments
             </Button>
           </div>

@@ -6,7 +6,7 @@ import { CloseButton } from '../CloseButton/CloseButton';
 import styles from './ColumnConfigPopover.module.css';
 
 /**
- * Column visibility editor — searchable list of every column with a 6-dot
+ * Column visibility editor: searchable list of every column with a 6-dot
  * drag-grip + eye toggle, plus a Reset/Apply footer. Mirrors the Figma
  * "Show Columns" dropdown (node 9799:170254). The sticky Member and Actions
  * columns can't be hidden or reordered, but are still shown as locked rows
@@ -19,7 +19,7 @@ import styles from './ColumnConfigPopover.module.css';
  *  - onToggle   (fn(k: string))        Toggle a column's visibility.
  *  - onReorder  (fn(from: string,
  *                  to: string))        Drag-reorder: move `from` to where
- *                                      `to` currently sits. Optional — if
+ *                                      `to` currently sits. Optional, if
  *                                      omitted, dragging is disabled.
  *  - onReset    (fn)                   Restore defaults (clears order + hidden).
  *  - onClose    (fn)                   Dismiss popover (used by Apply too).
@@ -169,7 +169,7 @@ export function ColumnConfigPopover({
   );
 }
 
-// Locked / non-interactive row — used for "Member Name" and "Action" entries
+// Locked / non-interactive row: used for "Member Name" and "Action" entries
 // which are always-visible columns the user can't toggle or reorder.
 function LockedRow({ label }) {
   return (
@@ -185,7 +185,7 @@ function LockedRow({ label }) {
   );
 }
 
-// 6-dot vertical grip — matches Figma's "Drag Handle 2" glyph. No matching
+// 6-dot vertical grip: matches Figma's "Drag Handle 2" glyph. No matching
 // Solar icon ships with the right dot pattern, so we inline it.
 function GripIcon({ color = 'currentColor' }) {
   return (

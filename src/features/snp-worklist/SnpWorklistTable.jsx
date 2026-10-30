@@ -22,7 +22,7 @@ import { useWorklistColumns } from '../../components/WorklistColumns/useWorklist
 import { CarePlanReviewDrawer } from '../patient/right-panel/tabs/care-programs/care-plan/drawers/CarePlanReviewDrawer/CarePlanReviewDrawer';
 import styles from './SnpWorklistTable.module.css';
 
-// Sortable columns — each maps to a field on the enriched row. Tags and
+// Sortable columns: each maps to a field on the enriched row. Tags and
 // Outreach are intentionally omitted (visual composite cells with no natural
 // ordering). Dates surface as `<field>Sort` timestamps computed in enrichment
 // so MM/DD/YYYY strings sort chronologically instead of lexicographically.
@@ -46,11 +46,11 @@ const parseMdy = (s) => {
   return Date.UTC(+m[3], +m[1] - 1, +m[2]);
 };
 
-// Filter chips — each is a multi-select of string buckets derived per row.
+// Filter chips: each is a multi-select of string buckets derived per row.
 // `primary: true` chips render by default; extended chips are opt-in via the
 // More Filters popover. The extended set mirrors the full SNP-filter roster
 // (Member Status → Tags) even when the underlying member data doesn't yet
-// carry those fields — filtering on those is a no-op today.
+// carry those fields: filtering on those is a no-op today.
 const FILTER_KEYS = [
   // Spec 2.1: always-primary, then the SNP workflow filters (UTR Flag isn't
   // on SNP yet). Every primary always shows, in this order (FilterBar `pinPrimary`).
@@ -182,7 +182,7 @@ export function SnpWorklistTable() {
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
-  // Ensure the row-level assignee picker has users to show — one-shot
+  // Ensure the row-level assignee picker has users to show, one-shot
   // fetch, guarded in the store so repeat mounts don't re-round-trip.
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
@@ -240,7 +240,7 @@ export function SnpWorklistTable() {
     return rows;
   }, [enriched, searchQuery, filters]);
 
-  // Shared sort hook — click cycles asc → desc → cleared, same as HCC.
+  // Shared sort hook: click cycles asc → desc → cleared, same as HCC.
   const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered);
   const handleSort = (field) => {
     if (sortKey === field) {
@@ -253,7 +253,7 @@ export function SnpWorklistTable() {
   };
 
   // Visible chips = primary set (or user-customised set) plus any chip that
-  // has an active value — otherwise applying a saved filter could hide the
+  // has an active value: otherwise applying a saved filter could hide the
   // very chip whose value it just set.
   const activeKeys = useMemo(() => {
     const keys = [];
@@ -295,7 +295,7 @@ export function SnpWorklistTable() {
     return next;
   });
 
-  // Column prefs — bespoke table, wire useWorklistColumns directly.
+  // Column prefs: bespoke table, wire useWorklistColumns directly.
   const columnPrefs = useWorklistColumns('snp', SNP_MIDDLE_COLUMNS);
   const visibleMiddle = columnPrefs.visibleColumns;
   const orderedColumnsForRow = useMemo(() => (

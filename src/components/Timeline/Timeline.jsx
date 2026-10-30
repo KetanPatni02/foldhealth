@@ -6,7 +6,7 @@ import styles from './Timeline.module.css';
 import { groupByMonth } from './Timeline.utils';
 
 /**
- * Timeline — month-grouped vertical timeline used by Domain Registry's
+ * Timeline: month-grouped vertical timeline used by Domain Registry's
  * audit log and the Care Gap drawer's Activity Log tab. Extracted from
  * the original AuditLogDrawer so both callers share the same pattern.
  *
@@ -58,7 +58,7 @@ export function Timeline({ entries, currentUserName, renderExtra, emptyLabel = '
   );
 }
 
-/* ── Icons + colors keyed off entry.action — domain-registry uses these,
+/* ── Icons + colors keyed off entry.action, domain-registry uses these,
    but a caller can override per-entry by passing `icon` / `iconBg` /
    `iconColor` / `iconBorder` directly on the entry. ───────────────── */
 const ACTION_CONFIG = {
@@ -108,23 +108,23 @@ export function ChangeDisplay({ change }) {
 }
 
 /**
- * TimelineEntry — single timeline node.
+ * TimelineEntry: single timeline node.
  *
  * Accepted entry fields:
- *   - createdAt   (string)  — ISO timestamp (drives month grouping)
- *   - date        (string)  — display date, pre-formatted
- *   - time        (string)  — display time, pre-formatted
- *   - method      (string)  — how it happened (e.g. "Password"), after the time
- *   - user        (string)  — actor name
- *   - action      (string)  — key into ACTION_CONFIG (created/updated/etc.).
- *   - icon, iconBg, iconBorder, iconColor   — per-entry overrides
- *   - avatar      (node)    — rail node rendered in place of the icon tile
- *   - railBelow   (bool)    — keep the rail running below a last entry
- *   - title       (string)  — bold event line above the details
- *   - details     (string)  — primary description line
- *   - footnote    (string)  — muted subtitle line, shown in place of category
- *   - category    (string)  — muted subtitle line
- *   - changes     (array)   — structured field diffs (Domain Registry)
+ *   - createdAt   (string): ISO timestamp (drives month grouping)
+ *   - date        (string): display date, pre-formatted
+ *   - time        (string): display time, pre-formatted
+ *   - method      (string): how it happened (e.g. "Password"), after the time
+ *   - user        (string): actor name
+ *   - action      (string): key into ACTION_CONFIG (created/updated/etc.).
+ *   - icon, iconBg, iconBorder, iconColor, per-entry overrides
+ *   - avatar      (node): rail node rendered in place of the icon tile
+ *   - railBelow   (bool): keep the rail running below a last entry
+ *   - title       (string): bold event line above the details
+ *   - details     (string): primary description line
+ *   - footnote    (string): muted subtitle line, shown in place of category
+ *   - category    (string): muted subtitle line
+ *   - changes     (array): structured field diffs (Domain Registry)
  *
  * `compact` tightens the spacing between entries (e.g. a profile's Audit Log).
  * `collapseChanges` hides the field diffs behind the ActivityLog's "View
@@ -159,7 +159,7 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
           flex: 1,
           minHeight: 12,
           // The tail is dropped after the last entry so nothing dangles, unless
-          // the entry opted in — an expanded card needs the rail beside it.
+          // the entry opted in: an expanded card needs the rail beside it.
           background: isLast && !entry.railBelow ? 'transparent' : 'var(--neutral-150)',
         }} />
       </div>

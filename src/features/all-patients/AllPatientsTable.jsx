@@ -126,7 +126,7 @@ export function AllPatientsTable() {
 
   // The Supabase all_patients table is TOC+HCC-only today (its `source`
   // CHECK constraint restricts to toc/hcc/manual). To keep SNP counted in
-  // this view — matching what SubNav's dedupe union already reports — we
+  // this view, matching what SubNav's dedupe union already reports, we
   // supplement with any SNP member whose memberId isn't already present,
   // keyed on the normalized memberId used everywhere else in the app.
   const snpAsAllPatientRows = useMemo(() => snpWorklistMembers.map(m => ({
@@ -236,7 +236,7 @@ export function AllPatientsTable() {
     [showPatientAppIndicator],
   );
 
-  // Column prefs — bespoke table, wire useWorklistColumns directly.
+  // Column prefs: bespoke table, wire useWorklistColumns directly.
   const columnPrefs = useWorklistColumns('all-patients', middleColumnDefs);
   const visibleMiddle = columnPrefs.visibleColumns;
   const orderedColumnsForRow = useMemo(() => (

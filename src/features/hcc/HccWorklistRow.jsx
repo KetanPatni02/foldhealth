@@ -135,7 +135,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
       || rejectedStatuses.has(member.r1s)
       || rejectedStatuses.has(member.r2s);
   })();
-  // Billed is the post-billing terminal state — locks the row read-only
+  // Billed is the post-billing terminal state, locks the row read-only
   // the same way Rejected does, but with a green Billed treatment
   // (dollar badge on the avatar, green Billed chip in the Assignee cell).
   // A rejected row wins visually over billed so a rejection late in the
@@ -167,10 +167,10 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
     return null;
   })();
   const rejectedTooltip = isRecordRejected
-    ? `Rejected${rejectingRole ? ` by ${rejectingRole}` : ''} — record is read-only. Expand DOSs or open the record to review comments.`
+    ? `Rejected${rejectingRole ? ` by ${rejectingRole}` : ''}: record is read-only. Expand DOSs or open the record to review comments.`
     : undefined;
   const billedTooltip = isRecordBilled
-    ? 'Billed — record is read-only. Open the row to review the submitted claim.'
+    ? 'Billed: record is read-only. Open the row to review the submitted claim.'
     : undefined;
 
   return (
@@ -357,7 +357,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
               initials: member.initials,
               gender: member.gender,
               age: member.age,
-              // The drawer's DOB helpers only accept a string — normalize
+              // The drawer's DOB helpers only accept a string, normalize
               // any Date / ISO / mm-dd-yyyy shape to mm/dd/yyyy up front.
               dob: formatDobDisplay(member.dob) || deriveDob(member.age, member.name),
               email: member.email,
@@ -365,7 +365,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
             });
             return;
           }
-          showToast(`${label} — coming soon`);
+          showToast(`${label}: coming soon`);
         }}
       />
     )}

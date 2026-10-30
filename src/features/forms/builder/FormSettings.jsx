@@ -95,7 +95,7 @@ function EndingsEditor({ s, set }) {
 }
 
 const LAYOUT_OPTIONS = [
-  { value: 'by-question', icon: 'solar:square-academic-cap-linear', title: 'One question at a time', desc: 'Guided, Typeform-style — one screen per question.' },
+  { value: 'by-question', icon: 'solar:square-academic-cap-linear', title: 'One question at a time', desc: 'Guided, Typeform-style, one screen per question.' },
   { value: 'by-section', icon: 'solar:list-linear', title: 'Section by section', desc: 'One section per screen with Next / Back.' },
   { value: 'entire-page', icon: 'solar:document-text-linear', title: 'Entire page', desc: 'All questions on one scrolling page.' },
 ];

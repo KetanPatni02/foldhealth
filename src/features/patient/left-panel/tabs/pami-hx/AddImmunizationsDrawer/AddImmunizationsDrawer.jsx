@@ -199,7 +199,7 @@ const Section = forwardRef(function Section({ title, count, open, onToggle, chil
 });
 
 /**
- * Add Immunizations — the PAMI/Hx immunization list, editable in place.
+ * Add Immunizations: the PAMI/Hx immunization list, editable in place.
  * Vaccines are picked from CVX, so each row carries its code.
  *
  * @param {string} props.patientId
