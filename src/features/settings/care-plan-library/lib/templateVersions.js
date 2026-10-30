@@ -6,8 +6,10 @@
    migrateCarePlanTemplateInstance).
 
    A version: { id, templateId, versionNumber, effectiveDate (YYYY-MM-DD),
-                content: { name, conditions, goals, interventions, barriers, renewal },
+                content: { name, conditions, goals, interventions, barriers, renewal, categories? },
                 note, publishedBy, publishedAt } */
+
+import { categoriesOf, itemsFor } from './templateCategories.js';
 
 const KINDS = [['goals', 'goal'], ['interventions', 'intervention'], ['barriers', 'barrier']];
 const norm = (s) => String(s ?? '').trim().toLowerCase();
@@ -26,6 +28,7 @@ export const contentOf = (t) => ({
   interventions: t?.interventions || [],
   barriers: t?.barriers || [],
   ...(t?.renewal ? { renewal: t.renewal } : {}),
+  ...(categoriesOf(t).length ? { categories: categoriesOf(t) } : {}),
 });
 
 const byNumber = (a, b) => a.versionNumber - b.versionNumber;
@@ -46,13 +49,15 @@ export const nextVersionNumber = (versions) => (versions || []).reduce((m, v) =>
 /**
  * What moving from one version's content to another changes, by item title:
  * { goal: { added, removed }, intervention: {...}, barrier: {...}, total }.
- * Items kept by title are left as they are on each plan.
+ * Items kept by title are left as they are on each plan. With categories, a
+ * run compares Common + its own category (`categoryId`, null = Common alone);
+ * without one, every item in either version is compared.
  */
-export function versionDiff(from, to) {
+export function versionDiff(from, to, { categoryId } = {}) {
   const out = { total: 0 };
   for (const [listKey, kind] of KINDS) {
-    const before = new Map((from?.[listKey] || []).map(x => [norm(x.title), x]));
-    const after = new Map((to?.[listKey] || []).map(x => [norm(x.title), x]));
+    const before = new Map(itemsFor(from, listKey, categoryId).map(x => [norm(x.title), x]));
+    const after = new Map(itemsFor(to, listKey, categoryId).map(x => [norm(x.title), x]));
     const added = [...after.entries()].filter(([k]) => k && !before.has(k)).map(([, x]) => x);
     const removed = [...before.entries()].filter(([k]) => k && !after.has(k)).map(([, x]) => x);
     out[kind] = { added, removed };
