@@ -28,8 +28,8 @@ export function CcmBillingReviewDrawer({ member, onClose }) {
       headerRight={
         <>
           <Button
-            variant="tertiary"
-            size="S"
+            variant="soft"
+            size="sm"
             trailingIcon="solar:arrow-right-linear"
             onClick={gotoCarePlan}
             disabled={!member.patientId}

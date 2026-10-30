@@ -385,7 +385,7 @@ export function CarePlanInterventionsTable({
           <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
             <ActionButton
               icon="solar:menu-dots-linear"
-              size="S"
+              size="sm"
               tooltip="More"
               tooltipBelow
               tooltipLeft

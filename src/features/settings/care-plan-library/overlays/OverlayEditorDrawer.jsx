@@ -123,8 +123,8 @@ export function OverlayEditorDrawer({ overlay, onClose, canEdit }) {
       title={title}
       width="min(1040px, calc(100vw - 16px))"
       onClose={onClose}
-      secondaryAction={canEdit ? <Button variant="secondary" size="L" disabled={!canSave} onClick={() => save('draft')}>Save draft</Button> : null}
-      primaryAction={canEdit ? <Button variant="primary" size="L" disabled={!canSave} onClick={() => save('active')}>{overlay?.status === 'active' ? 'Save' : 'Save and activate'}</Button> : null}
+      secondaryAction={canEdit ? <Button variant="outline" disabled={!canSave} onClick={() => save('draft')}>Save draft</Button> : null}
+      primaryAction={canEdit ? <Button disabled={!canSave} onClick={() => save('active')}>{overlay?.status === 'active' ? 'Save' : 'Save and activate'}</Button> : null}
     >
       <div className={styles.stack}>
         {isNew && (
@@ -175,7 +175,7 @@ export function OverlayEditorDrawer({ overlay, onClose, canEdit }) {
                     <Badge tone="grey" size="S" label={cap(kind)} />
                     <span className={styles.itemTitle}>{x.title}</span>
                     <span className={styles.muted}>{[cap(x.priority || x.config?.priority), x.kind, x.goalTitle || x.goalTitles?.[0]].filter(Boolean).join(' • ')}</span>
-                    {canEdit && <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove" onClick={() => removeLocal(listKey, x.id)} />}
+                    {canEdit && <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Remove" onClick={() => removeLocal(listKey, x.id)} />}
                   </li>
                 )))}
               </ul>
@@ -190,7 +190,7 @@ export function OverlayEditorDrawer({ overlay, onClose, canEdit }) {
                     <Select portal options={[{ value: '', label: 'No goal' }, ...goalTitles.map(g => ({ value: g, label: g }))]} value={draft.goal} onChange={v => setDraft(d => ({ ...d, goal: v }))} />
                   )}
                   <Select portal options={PRIORITY_OPTIONS} value={draft.priority} onChange={v => setDraft(d => ({ ...d, priority: v }))} />
-                  <Button variant="secondary" size="S" disabled={!draft.title.trim()} onClick={addLocal}>Add</Button>
+                  <Button variant="outline" size="sm" disabled={!draft.title.trim()} onClick={addLocal}>Add</Button>
                 </div>
               )}
             </section>

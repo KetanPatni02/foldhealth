@@ -93,7 +93,7 @@ export function ChatBubble({
 
   const menu = menuItems?.length ? (
     <>
-      <ActionButton ref={menuRef} icon="solar:menu-dots-linear" size="S" tooltip="More" className={styles.menuBtn} onClick={() => setMenuOpen(o => !o)} />
+      <ActionButton ref={menuRef} icon="solar:menu-dots-linear" size="sm" tooltip="More" className={styles.menuBtn} onClick={() => setMenuOpen(o => !o)} />
       {menuOpen && (
         <MenuPopover
           anchorRef={menuRef}
@@ -140,7 +140,7 @@ export function ChatBubble({
         <span className={styles.link}>
           <Icon name="solar:link-minimalistic-linear" size={20} color="var(--neutral-300)" />
           <a href={link} target="_blank" rel="noopener noreferrer" className={styles.linkText}>{link}</a>
-          <ActionButton icon={copied ? 'solar:check-circle-linear' : 'solar:copy-linear'} size="S" tooltip={copied ? 'Copied' : 'Copy link'} onClick={copyLink} />
+          <ActionButton icon={copied ? 'solar:check-circle-linear' : 'solar:copy-linear'} size="sm" tooltip={copied ? 'Copied' : 'Copy link'} onClick={copyLink} />
         </span>
       )}
       {call && (

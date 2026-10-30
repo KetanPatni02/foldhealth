@@ -503,8 +503,7 @@ export function CreateAgentDrawer() {
 
   const headerRight = (
     <Button
-      variant={isFormValid ? 'primary' : 'secondary'}
-      size="L"
+      variant={isFormValid ? 'solid' : 'outline'}
       leadingIcon="solar:ghost-smile-linear"
       disabled={!isFormValid || creating}
       onClick={handleCreateAgent}

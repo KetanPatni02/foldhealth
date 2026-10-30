@@ -144,7 +144,6 @@ export function PatientBanner({
             <ActionButton
               ref={patientId ? callBtnRef : undefined}
               icon="solar:phone-calling-rounded-linear"
-              size="L"
               tooltip="Call patient"
               onClick={handleCall}
               tooltipBelow
@@ -152,7 +151,6 @@ export function PatientBanner({
           )}
           <span className={styles.divider} />
           <ActionButton
-            size="L"
             tooltip={expanded ? 'Collapse' : 'Expand'}
             onClick={() => setExpanded(v => !v)}
             className={expanded ? styles.chevronOpen : ''}
@@ -225,10 +223,10 @@ export function PatientBanner({
                 <div className={styles.synopsisFooterRight}>
                   <span className={styles.generatedAt}>Generated: {MOCK_SYNOPSIS.generatedAt}</span>
                   <Icon name="solar:refresh-linear" size={14} color="var(--neutral-200)" />
-                  <ActionButton icon="solar:like-linear" size="S" tooltip="Helpful" />
-                  <ActionButton icon="solar:dislike-linear" size="S" tooltip="Not helpful" />
-                  <ActionButton icon="solar:copy-linear" size="S" tooltip="Copy" />
-                  <ActionButton icon="solar:refresh-linear" size="S" tooltip="Regenerate" />
+                  <ActionButton icon="solar:like-linear" size="sm" tooltip="Helpful" />
+                  <ActionButton icon="solar:dislike-linear" size="sm" tooltip="Not helpful" />
+                  <ActionButton icon="solar:copy-linear" size="sm" tooltip="Copy" />
+                  <ActionButton icon="solar:refresh-linear" size="sm" tooltip="Regenerate" />
                 </div>
               </div>
             </div>

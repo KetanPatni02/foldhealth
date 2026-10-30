@@ -219,7 +219,7 @@ function TemplateRowMenu({ onDuplicate, onCustomize, onDelete }) {
   return (
     <>
       <div ref={btnRef} style={{ display: 'inline-flex' }}>
-        <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More Action" onClick={openMenu} />
+        <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More Action" onClick={openMenu} />
       </div>
       {open && createPortal(
         <div className={styles.overflowScrim} onClick={() => setOpen(false)}>
@@ -557,7 +557,7 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
           <ActionButton
-            size="S"
+            size="sm"
             tooltip={isFavorite(t.id) ? 'Remove favorite' : 'Add favorite'}
             onClick={() => toggleCarePlanFavorite(t.id)}
           >
@@ -568,13 +568,13 @@ export function CarePlanLibraryPanel() {
             />
           </ActionButton>
           <div className={styles.vDivider} />
-          <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditTemplate(t)} />
+          <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={() => openEditTemplate(t)} />
           {t.status === 'draft' && canManageTemplates && (
             <>
               <div className={styles.vDivider} />
               <ActionButton
                 icon="solar:check-circle-linear"
-                size="S"
+                size="sm"
                 tooltip={t.replacesTemplateId ? 'Approve and replace the published template' : 'Approve and publish'}
                 disabled={approving}
                 onClick={() => approveDrafts([t.id])}
@@ -625,9 +625,9 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdMuted}><StampCell name={g.createdBy}>{formatDateTime(g.createdAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
-          <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditSimple('goal', g)} />
+          <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={() => openEditSimple('goal', g)} />
           <div className={styles.vDivider} />
-          <ActionButton icon="solar:copy-linear" size="S" tooltip="Duplicate" onClick={() => duplicateGoal(g)} />
+          <ActionButton icon="solar:copy-linear" size="sm" tooltip="Duplicate" onClick={() => duplicateGoal(g)} />
           <div className={styles.vDivider} />
           <TemplateRowMenu onDelete={() => setDeleteTarget({ kind: 'goal', id: g.id, name: g.title })} />
         </div>
@@ -653,9 +653,9 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdUpdated}><StampCell name={item.updatedBy}>{formatRelative(item.updatedAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
-          <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditSimple(kind, item)} />
+          <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={() => openEditSimple(kind, item)} />
           <div className={styles.vDivider} />
-          <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Delete" onClick={() => setDeleteTarget({ kind, id: item.id, name: item.title })} />
+          <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Delete" onClick={() => setDeleteTarget({ kind, id: item.id, name: item.title })} />
         </div>
       </td>
     </tr>
@@ -702,7 +702,7 @@ export function CarePlanLibraryPanel() {
         <td className={styles.tdMuted}>{used ? `${used} template${used === 1 ? '' : 's'}` : 'None yet'}</td>
         <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
           <div className={styles.actionCell}>
-            <ActionButton icon="solar:eye-linear" size="S" tooltip="View" onClick={() => setOpenPathway(p)} />
+            <ActionButton icon="solar:eye-linear" size="sm" tooltip="View" onClick={() => setOpenPathway(p)} />
           </div>
         </td>
       </tr>
@@ -729,13 +729,13 @@ export function CarePlanLibraryPanel() {
         <td className={styles.tdUpdated}><StampCell name={o.updatedBy}>{formatDateTime(o.updatedAt)}</StampCell></td>
         <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
           <div className={styles.actionCell}>
-            <ActionButton icon="solar:pen-linear" size="S" tooltip={canManageTemplates ? 'Edit' : 'View'} onClick={() => setOverlayEditor({ overlay: o })} />
+            <ActionButton icon="solar:pen-linear" size="sm" tooltip={canManageTemplates ? 'Edit' : 'View'} onClick={() => setOverlayEditor({ overlay: o })} />
             {canManageTemplates && (
               <>
                 <div className={styles.vDivider} />
-                <ActionButton icon="solar:copy-linear" size="S" tooltip="Clone to other IPAs" onClick={() => setCloneTarget({ overlay: o, ipaIds: [] })} />
+                <ActionButton icon="solar:copy-linear" size="sm" tooltip="Clone to other IPAs" onClick={() => setCloneTarget({ overlay: o, ipaIds: [] })} />
                 <div className={styles.vDivider} />
-                <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Delete" onClick={() => setDeleteTarget({ kind: 'overlay', id: o.id, name: `${t.name} for ${ipaById.get(o.ipaId)?.name || 'IPA'}` })} />
+                <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Delete" onClick={() => setDeleteTarget({ kind: 'overlay', id: o.id, name: `${t.name} for ${ipaById.get(o.ipaId)?.name || 'IPA'}` })} />
               </>
             )}
           </div>
@@ -765,9 +765,9 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdUpdated}><StampCell name={item.updatedBy}>{formatRelative(item.updatedAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
-          <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditIntervention(item)} />
+          <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={() => openEditIntervention(item)} />
           <div className={styles.vDivider} />
-          <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Delete" onClick={() => setDeleteTarget({ kind: 'intervention', id: item.id, name: item.title })} />
+          <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Delete" onClick={() => setDeleteTarget({ kind: 'intervention', id: item.id, name: item.title })} />
         </div>
       </td>
     </tr>
@@ -779,7 +779,7 @@ export function CarePlanLibraryPanel() {
   const emptyPane = (label) => (
     <div className={styles.emptyPane}>
       <RingEmptyState icon={meta.emptyIcon} label={label} />
-      <Button variant="primary" size="L" leadingIconElement={<AddIconMinimalist size={16} />} onClick={openCreate}>
+      <Button leadingIconElement={<AddIconMinimalist size={16} />} onClick={openCreate}>
         {`New ${meta.entityLabel}`}
       </Button>
     </div>
@@ -807,12 +807,12 @@ export function CarePlanLibraryPanel() {
         rightExtras={(
           <>
           {activeTab === 'overlays' && (
-            <Button variant="secondary" size="L" leadingIcon="solar:buildings-2-linear" onClick={() => setIpaRegistryOpen(true)}>
+            <Button variant="outline" leadingIcon="solar:buildings-2-linear" onClick={() => setIpaRegistryOpen(true)}>
               IPAs
             </Button>
           )}
           {isTemplateTab && canManageTemplates && (
-            <Button variant="secondary" size="L" leadingIcon="solar:upload-minimalistic-linear" onClick={() => setImportOpen(true)}>
+            <Button variant="outline" leadingIcon="solar:upload-minimalistic-linear" onClick={() => setImportOpen(true)}>
               Import
             </Button>
           )}
@@ -911,7 +911,7 @@ export function CarePlanLibraryPanel() {
               <RingEmptyState icon="solar:layers-linear" label="No IPA Overlays" />
               <p className={styles.emptyHint}>Customize a template for one IPA: hide or reprioritize items, change goal cadence, reword items for patients, add local items and route sign-off.</p>
               {canManageTemplates && (
-                <Button variant="primary" size="L" leadingIconElement={<AddIconMinimalist size={16} />} onClick={openCreate}>New Overlay</Button>
+                <Button leadingIconElement={<AddIconMinimalist size={16} />} onClick={openCreate}>New Overlay</Button>
               )}
             </div>
           ) : (
@@ -1010,7 +1010,7 @@ export function CarePlanLibraryPanel() {
           selectedIds={selectedTemplateIds}
           onClear={() => setSelectedTemplateIds([])}
           noun="Drafts"
-          actions={[{ label: approving ? 'Approving…' : 'Approve', icon: 'solar:check-circle-linear', variant: 'primary', onClick: (ids) => approveDrafts(ids) }]}
+          actions={[{ label: approving ? 'Approving…' : 'Approve', icon: 'solar:check-circle-linear', variant: 'solid', onClick: (ids) => approveDrafts(ids) }]}
         />
       )}
 
@@ -1164,8 +1164,8 @@ export function CarePlanLibraryPanel() {
               choices={LIBRARY_SCOPE_CHOICES}
             />
             <div className={styles.duplicateFooter}>
-              <Button type="submit" variant="primary" size="L" disabled={!duplicateTarget?.name.trim()}>Duplicate</Button>
-              <Button type="button" variant="secondary" size="L" onClick={() => setDuplicateTarget(null)}>Cancel</Button>
+              <Button type="submit" disabled={!duplicateTarget?.name.trim()}>Duplicate</Button>
+              <Button type="button" variant="outline" onClick={() => setDuplicateTarget(null)}>Cancel</Button>
             </div>
           </form>
         </DialogContent>

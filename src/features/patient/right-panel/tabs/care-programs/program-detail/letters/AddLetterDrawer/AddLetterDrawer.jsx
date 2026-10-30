@@ -45,8 +45,8 @@ function LetterThumb() {
  */
 const AddButton = ({ letter, added, onAdd }) => (
   added
-    ? <Button variant="tertiary" size="S" className={styles.addBtn} disabled>Added</Button>
-    : <Button variant="tertiary" size="S" className={styles.addBtn} onClick={() => onAdd(letter)}>Add</Button>
+    ? <Button variant="soft" size="sm" className={styles.addBtn} disabled>Added</Button>
+    : <Button variant="soft" size="sm" className={styles.addBtn} onClick={() => onAdd(letter)}>Add</Button>
 );
 
 export function AddLetterDrawer({ letters = EMPTY_LETTERS, addedIds, onAdd, onPreview, onDownload, onClose }) {
@@ -129,9 +129,9 @@ export function AddLetterDrawer({ letters = EMPTY_LETTERS, addedIds, onAdd, onPr
                 <span className={styles.actions}>
                   <AddButton letter={l} added={isAdded(l.id)} onAdd={onAdd} />
                   <span className={styles.actionDivider} />
-                  <ActionButton icon="solar:eye-linear" size="S" tooltip="Preview" onClick={() => onPreview(l)} />
+                  <ActionButton icon="solar:eye-linear" size="sm" tooltip="Preview" onClick={() => onPreview(l)} />
                   <span className={styles.actionDivider} />
-                  <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" onClick={() => onDownload(l)} />
+                  <ActionButton icon="solar:download-minimalistic-linear" size="sm" tooltip="Download" onClick={() => onDownload(l)} />
                 </span>
               </td>
             </tr>
@@ -155,10 +155,10 @@ export function AddLetterDrawer({ letters = EMPTY_LETTERS, addedIds, onAdd, onPr
                   </div>
                 )}
                 <div className={styles.previewOverlay}>
-                  <Button variant="secondary" size="M" onClick={() => onPreview(l)}>Preview</Button>
+                  <Button variant="outline" onClick={() => onPreview(l)}>Preview</Button>
                   {isAdded(l.id)
-                    ? <Button variant="primary" size="M" disabled>Added</Button>
-                    : <Button variant="primary" size="M" onClick={() => onAdd(l)}>Add File</Button>}
+                    ? <Button disabled>Added</Button>
+                    : <Button onClick={() => onAdd(l)}>Add File</Button>}
                 </div>
               </div>
               <div className={styles.cardFooter}>

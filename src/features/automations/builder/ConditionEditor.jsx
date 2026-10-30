@@ -96,7 +96,7 @@ function RuleRows({ def, rules, onChange }) {
                 />
               )}
               {(r.value != null && r.value !== '' && !(Array.isArray(r.value) && !r.value.length)) && (
-                <ActionButton size="S" icon="solar:close-circle-linear" tooltip="Clear" onClick={() => set(f.key, { value: f.input === 'multi' ? [] : '' })} />
+                <ActionButton size="sm" icon="solar:close-circle-linear" tooltip="Clear" onClick={() => set(f.key, { value: f.input === 'multi' ? [] : '' })} />
               )}
             </div>
           </PanelRow>
@@ -179,12 +179,12 @@ function ClinicalCriteriaEditor({ config, onChange }) {
         <PanelRow key={i} label={<Select options={opt(CONDITION_TYPES)} value={c.type} onChange={v => setAt(i, CRITERIA_DEFAULTS[v]())} />}>
           <div className={styles.ruleControls}>
             {fields(c, i)}
-            <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Remove" disabled={criteria.length === 1} onClick={() => onChange({ criteria: criteria.filter((_, j) => j !== i) })} />
+            <ActionButton size="sm" icon="solar:trash-bin-trash-linear" tooltip="Remove" disabled={criteria.length === 1} onClick={() => onChange({ criteria: criteria.filter((_, j) => j !== i) })} />
           </div>
         </PanelRow>
       ))}
       <div className={styles.panelRow}>
-        <Button variant="tertiary" size="S" leadingIconElement={<AddIconMinimalist size={14} />} onClick={() => onChange({ criteria: [...criteria, CRITERIA_DEFAULTS.condition()] })}>
+        <Button variant="soft" size="sm" leadingIconElement={<AddIconMinimalist size={14} />} onClick={() => onChange({ criteria: [...criteria, CRITERIA_DEFAULTS.condition()] })}>
           Add criterion
         </Button>
       </div>

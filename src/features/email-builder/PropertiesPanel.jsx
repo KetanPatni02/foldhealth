@@ -231,8 +231,8 @@ function TemplateTab({ block }) {
         <div className={styles.presetSaveBar}>
           {!saveOpen ? (
             <Button
-              variant="tertiary"
-              size="S"
+              variant="soft"
+              size="sm"
               fullWidth
               leadingIcon="solar:bookmark-linear"
               className={styles.presetSaveBtn}
@@ -259,10 +259,10 @@ function TemplateTab({ block }) {
                 maxLength={120}
               />
               <div className={styles.presetSaveActions}>
-                <Button variant="secondary" size="S" onClick={() => setSaveOpen(false)}>
+                <Button variant="outline" size="sm" onClick={() => setSaveOpen(false)}>
                   Cancel
                 </Button>
-                <Button variant="primary" size="S" onClick={handleSave} disabled={saving}>
+                <Button size="sm" onClick={handleSave} disabled={saving}>
                   {saving ? 'Saving…' : 'Save'}
                 </Button>
               </div>
@@ -397,8 +397,8 @@ function TemplatePresetCard({
             maxLength={120}
           />
           <div className={styles.presetCardEditActions}>
-            <Button variant="secondary" size="S" onClick={onCancelRename}>Cancel</Button>
-            <Button variant="primary" size="S" onClick={onCommitRename}>Save</Button>
+            <Button variant="outline" size="sm" onClick={onCancelRename}>Cancel</Button>
+            <Button size="sm" onClick={onCommitRename}>Save</Button>
           </div>
         </div>
       )}
@@ -406,7 +406,7 @@ function TemplatePresetCard({
         <div className={styles.presetCardActions}>
           <ActionButton
             icon="solar:pen-2-linear"
-            size="S"
+            size="sm"
             tooltip="Rename"
             className={styles.presetCardActionBtn}
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
@@ -414,9 +414,9 @@ function TemplatePresetCard({
           />
           <ActionButton
             icon="solar:trash-bin-minimalistic-linear"
-            size="S"
+            size="sm"
             tooltip="Delete"
-            state="error"
+            tone="danger"
             className={styles.presetCardActionBtn}
             onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
             aria-label="Delete preset"

@@ -145,10 +145,10 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
           onClose={() => { setSearchOpen(false); setSearch(''); }}
         />
       ) : (
-        <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setSearchOpen(true)} />
+        <ActionButton size="sm" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setSearchOpen(true)} />
       )}
       <span className={styles.toolbarDivider} aria-hidden="true" />
-      <ActionButton size="S" icon="solar:calendar-linear" tooltip="Vaccine Calendar" onClick={openCalendar} />
+      <ActionButton size="sm" icon="solar:calendar-linear" tooltip="Vaccine Calendar" onClick={openCalendar} />
       <span className={styles.toolbarDivider} aria-hidden="true" />
       <Switch checked={allOpen} onChange={setAllOpen} label="Expand all" labelGap={6} />
       <span className={styles.toolbarDivider} aria-hidden="true" />
@@ -610,7 +610,7 @@ function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight,
         <span role="cell" className={styles.noteCol}>
           <ActionButton
             icon="solar:chat-round-line-linear"
-            size="S"
+            size="sm"
             tooltip={note ? note : 'Add a note'}
             tooltipLeft
             dot={!!note}
@@ -627,10 +627,9 @@ function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight,
             aria-label={`${antigen.label} dose ${row.number} note`}
             autoFocus
           />
-          <Button variant="secondary" size="S" onClick={() => setNoteOpen(false)}>Cancel</Button>
+          <Button variant="outline" size="sm" onClick={() => setNoteOpen(false)}>Cancel</Button>
           <Button
-            variant="primary"
-            size="S"
+            size="sm"
             disabled={draft.trim() === note}
             onClick={() => { onNoteSave(antigen, row, draft); setNoteOpen(false); }}
           >

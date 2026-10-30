@@ -100,7 +100,7 @@ export function StepConfigDrawer({ step, isNew = false, sectionId = null, sectio
       noCloseDivider
       headerRight={(
         <>
-          <Button variant="primary" size="L" disabled={missing} onClick={save}>{isNew ? 'Add Step' : 'Save'}</Button>
+          <Button disabled={missing} onClick={save}>{isNew ? 'Add Step' : 'Save'}</Button>
           <span className={styles.headerDivider} />
         </>
       )}

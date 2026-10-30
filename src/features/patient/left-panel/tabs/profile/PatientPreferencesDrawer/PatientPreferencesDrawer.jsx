@@ -54,7 +54,7 @@ export function PatientPreferencesDrawer({ patientId, preferences, programCodes,
       title="Contact Preferences"
       onClose={onClose}
       dismissed={closing}
-      primaryAction={<Button variant="primary" size="L" onClick={save}>Save</Button>}
+      primaryAction={<Button onClick={save}>Save</Button>}
     >
       <div className={styles.body}>
         <section className={styles.section}>

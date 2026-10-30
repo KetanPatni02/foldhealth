@@ -25,16 +25,16 @@ export function SectionPagination({ page, perPage, total, onPageChange }) {
       <span className={styles.range}>{start}-{end} of {total}</span>
       <ActionButton
         icon="solar:alt-arrow-left-linear"
-        size="S"
+        size="sm"
         tooltip="Previous"
-        state={safePage <= 1 ? 'disabled' : 'active'}
+        disabled={safePage <= 1}
         onClick={() => onPageChange(safePage - 1)}
       />
       <ActionButton
         icon="solar:alt-arrow-right-linear"
-        size="S"
+        size="sm"
         tooltip="Next"
-        state={safePage >= totalPages ? 'disabled' : 'active'}
+        disabled={safePage >= totalPages}
         onClick={() => onPageChange(safePage + 1)}
       />
     </div>

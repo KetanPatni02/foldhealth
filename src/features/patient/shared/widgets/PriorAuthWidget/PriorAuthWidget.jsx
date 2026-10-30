@@ -12,7 +12,7 @@ export function PriorAuthWidget() {
     <PanelSection
       icon="solar:document-medicine-linear"
       title="Prior Authorization Requests"
-      actions={<ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add Prior Authorization" />}
+      actions={<ActionButton icon="solar:add-circle-linear" size="sm" tooltip="Add Prior Authorization" />}
     >
       {REQUESTS.map(r => (
         <PanelSectionItem

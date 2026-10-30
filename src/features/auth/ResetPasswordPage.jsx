@@ -213,7 +213,7 @@ export function ResetPasswordPage({ onDone }) {
                 <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
                 Reset links expire shortly after they're sent and can only be used once.
               </div>
-              <Button variant="primary" size="L" fullWidth onClick={() => onDone?.()}>
+              <Button fullWidth onClick={() => onDone?.()}>
                 Back to Login
               </Button>
             </div>
@@ -267,7 +267,7 @@ export function ResetPasswordPage({ onDone }) {
               </div>
             )}
 
-            <Button variant="primary" size="L" fullWidth disabled={loading} type="submit">
+            <Button fullWidth disabled={loading} type="submit">
               {loading
                 ? (setupFlow ? 'Setting password...' : 'Updating password...')
                 : (setupFlow ? 'Set Password' : 'Update Password')}

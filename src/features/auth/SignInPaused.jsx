@@ -45,7 +45,7 @@ export function SignInPaused({ reason = 'paused', email, onBack }) {
 
       <div className={styles.form}>
         {!sent && (
-          <Button variant="primary" size="L" fullWidth leadingIcon="solar:user-speak-linear" onClick={ask} disabled={sending}>
+          <Button fullWidth leadingIcon="solar:user-speak-linear" onClick={ask} disabled={sending}>
             {sending ? 'Sending request...' : waiting ? 'Ask for a New Link' : 'Request Unlock from Administrator'}
           </Button>
         )}

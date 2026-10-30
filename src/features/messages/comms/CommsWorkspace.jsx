@@ -125,7 +125,7 @@ function DialFooter({ onDial }) {
           wrapperClassName={styles.grow}
           onKeyDown={e => { if (e.key === 'Enter') onDial(number); }}
         />
-        <Button variant="secondary" size="L" iconOnly leadingIcon="solar:keyboard-linear" aria-label="Open dial pad" onClick={() => onDial(number)} />
+        <Button variant="outline" iconOnly leadingIcon="solar:keyboard-linear" aria-label="Open dial pad" onClick={() => onDial(number)} />
       </div>
     </div>
   );

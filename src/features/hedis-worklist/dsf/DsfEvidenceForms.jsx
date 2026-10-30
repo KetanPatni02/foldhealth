@@ -203,7 +203,7 @@ function CarePlanOutcomePanel({ title, bullets, outreachNotes, onOutreachNotesCh
         <Textarea
           title="Outreach Notes"
           value={outreachNotes || ''}
-          onChange={(e) => onOutreachNotesChange(e.target.value)}
+          onChange={(text) => onOutreachNotesChange(text)}
           placeholder="Optional notes from the encounter..."
           rows={3}
         />
@@ -342,8 +342,6 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
           <div className={styles.phq2CardFooter}>
             {positive && !phq2Saved && !readOnly && (
               <Button
-                variant="primary"
-                size="M"
                 leadingIcon="solar:check-circle-linear"
                 onClick={handleSavePhq2Score}
               >
@@ -554,8 +552,6 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
           <div className={styles.phq2CardFooter}>
             {canSavePhq9 && !readOnly && (
               <Button
-                variant="primary"
-                size="M"
                 leadingIcon="solar:check-circle-linear"
                 onClick={handleSavePhq9Score}
               >

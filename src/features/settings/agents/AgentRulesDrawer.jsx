@@ -126,7 +126,7 @@ export function AgentRulesDrawer() {
               {rules.filter(r => r.type !== 'custom').length} default · {rules.filter(r => r.type === 'custom').length} custom · Evaluated top to bottom
             </span>
           </div>
-          <Button variant="primary" size="S" leadingIcon="solar:add-circle-linear" onClick={() => setShowAddRule(!showAddRule)}>
+          <Button size="sm" leadingIcon="solar:add-circle-linear" onClick={() => setShowAddRule(!showAddRule)}>
             Add Custom Rule
           </Button>
         </div>
@@ -173,7 +173,7 @@ export function AgentRulesDrawer() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <Button variant="primary" size="S" onClick={() => {
+              <Button size="sm" onClick={() => {
                 if (!newRuleName.trim()) return;
                 const newRule = {
                   id: Date.now(), name: newRuleName.trim(), type: 'custom', locked: false, enabled: true,
@@ -193,7 +193,7 @@ export function AgentRulesDrawer() {
                 setShowAddRule(false);
                 showToast('Custom rule added');
               }}>Add Rule</Button>
-              <Button variant="secondary" size="S" onClick={() => setShowAddRule(false)}>Cancel</Button>
+              <Button variant="outline" size="sm" onClick={() => setShowAddRule(false)}>Cancel</Button>
             </div>
           </div>
         )}
@@ -240,10 +240,10 @@ export function AgentRulesDrawer() {
               <Switch checked={r.enabled} onChange={() => toggleRule(r.id)} disabled={r.locked} />
               {!r.locked && (
                 <>
-                  <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit rule"
+                  <ActionButton icon="solar:pen-linear" tooltip="Edit rule"
                     onClick={() => setEditingRuleId(editingRuleId === r.id ? null : r.id)} />
                   <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-                  <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete rule"
+                  <ActionButton icon="solar:trash-bin-minimalistic-linear" tooltip="Delete rule"
                     onClick={() => { setRules(prev => prev.filter(rule => rule.id !== r.id)); showToast('Rule deleted'); }} />
                 </>
               )}
@@ -269,7 +269,7 @@ export function AgentRulesDrawer() {
                     style={{ width: '100%', marginTop: 4, padding: '8px 12px', borderRadius: 4, border: '0.5px solid var(--neutral-150)', fontSize: 'var(--font-md)', fontFamily: "'Inter', sans-serif", outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </div>
-              <Button variant="primary" size="S" onClick={() => { setEditingRuleId(null); showToast('Rule updated'); }}>Save Changes</Button>
+              <Button size="sm" onClick={() => { setEditingRuleId(null); showToast('Rule updated'); }}>Save Changes</Button>
             </div>
           )}
           </div>

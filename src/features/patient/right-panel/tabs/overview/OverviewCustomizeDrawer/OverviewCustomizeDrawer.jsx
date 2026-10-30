@@ -74,11 +74,11 @@ export function OverviewCustomizeDrawer({ layout, onSave, onClose }) {
       title="Customize Overview"
       onClose={onClose}
       secondaryAction={(
-        <Button variant="secondary" size="L" disabled={isDefault} onClick={() => setLanes(defaults)}>
+        <Button variant="outline" disabled={isDefault} onClick={() => setLanes(defaults)}>
           Reset to Default
         </Button>
       )}
-      primaryAction={<Button variant="primary" size="L" onClick={save}>Save</Button>}
+      primaryAction={<Button onClick={save}>Save</Button>}
     >
       <p className={styles.intro}>
         Drag widgets between Overview, Care Management, and Actionables. Hover a widget to hide it; hidden widgets
@@ -90,9 +90,9 @@ export function OverviewCustomizeDrawer({ layout, onSave, onClose }) {
         onChange={setLanes}
         renderCount={laneCount}
         renderActions={item => (item.disabled ? (
-          <ActionButton icon="solar:eye-closed-linear" size="S" tooltip={`Show ${item.label}`} tooltipLeft onClick={() => toggle(item.key)} />
+          <ActionButton icon="solar:eye-closed-linear" size="sm" tooltip={`Show ${item.label}`} tooltipLeft onClick={() => toggle(item.key)} />
         ) : (
-          <ActionButton icon="solar:eye-linear" size="S" tooltip={`Hide ${item.label}`} tooltipLeft onClick={() => toggle(item.key)} />
+          <ActionButton icon="solar:eye-linear" size="sm" tooltip={`Hide ${item.label}`} tooltipLeft onClick={() => toggle(item.key)} />
         ))}
       />
     </Drawer>

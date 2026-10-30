@@ -103,8 +103,7 @@ export function HeaderActions({
   return (
     <>
       <Button
-        variant="secondary"
-        size="L"
+        variant="outline"
         leadingIcon="solar:file-linear"
         onClick={onSaveDraft}
         disabled={!canSaveDraft}
@@ -112,8 +111,6 @@ export function HeaderActions({
         Save as Draft
       </Button>
       <Button
-        variant="primary"
-        size="L"
         menuItems={primaryMenu.length ? primaryMenu : undefined}
         onMenuSelect={runMenu}
         onClick={primaryOnClick}

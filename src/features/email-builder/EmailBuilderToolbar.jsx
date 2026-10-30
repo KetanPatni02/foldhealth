@@ -57,16 +57,14 @@ export function EmailBuilderToolbar({
       <div className={styles.topRight} style={{ position: 'relative' }}>
         <ActionButton
           icon="solar:undo-left-linear"
-          size="L"
           tooltip="Undo (⌘Z)"
-          state={canUndo ? 'active' : 'disabled'}
+          disabled={!canUndo}
           onClick={undoEmailEdit}
         />
         <ActionButton
           icon="solar:undo-right-linear"
-          size="L"
           tooltip="Redo (⇧⌘Z)"
-          state={canRedo ? 'active' : 'disabled'}
+          disabled={!canRedo}
           onClick={redoEmailEdit}
         />
         <ShortcutsHelpButton />
@@ -92,8 +90,7 @@ export function EmailBuilderToolbar({
         ) : (
         <>
         <Button
-          variant="secondary"
-          size="L"
+          variant="outline"
           leadingIcon="solar:letter-linear"
           onClick={() => setShowTestEmail(v => !v)}
         >
@@ -120,8 +117,6 @@ export function EmailBuilderToolbar({
           </span>
         )}
         <Button
-          variant="primary"
-          size="L"
           disabled={saving}
           onClick={onSave}
         >

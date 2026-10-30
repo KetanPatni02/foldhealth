@@ -283,7 +283,6 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
         <div className={styles.actionsRow}>
           <ActionButton
             icon="solar:eye-linear"
-            size="L"
             tooltip={hasUnreadMention ? 'View Diagnosis Gaps (you were mentioned)' : 'View Diagnosis Gaps'}
             dot={hasUnreadMention}
             dotPulse
@@ -297,7 +296,6 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
           <span className={styles.actionsDivider} />
           <ActionButton
             icon="custom:add-dos"
-            size="L"
             tooltip="Add DOS"
             onClick={(e) => { e.stopPropagation(); openAddDos(member); }}
           />
@@ -305,7 +303,6 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
           <ActionButton
             ref={actionsBtnRef}
             icon="solar:menu-dots-linear"
-            size="L"
             tooltip="More actions"
             onClick={openActions}
           />
@@ -456,7 +453,7 @@ function HccEmptyPatientRowImpl({ patient, hiddenCols, columns, staggerIndex = 0
 
       <td className={`${styles.actionsCell} ${styles.stickyRight} ${styles.colActions}`}>
         <div className={styles.actionsRow}>
-          <Button variant="alt" size="S" leadingIcon="solar:add-circle-linear" onClick={handleRecord}>Add DOS</Button>
+          <Button variant="outline" tone="primary" size="sm" leadingIcon="solar:add-circle-linear" onClick={handleRecord}>Add DOS</Button>
         </div>
       </td>
     </tr>

@@ -36,7 +36,7 @@ function RowMenu({ doc, onAction }) {
     <>
       <ActionButton
         icon="solar:menu-dots-linear"
-        size="S"
+        size="sm"
         tooltip="More"
         tooltipLeft
         aria-label={`Actions for ${doc.name}`}
@@ -89,9 +89,9 @@ export function DocumentsTable({ rows, selectedIds, onToggle, onToggleAll, onOpe
           </td>
           <td className={profileCellClass} onClick={e => e.stopPropagation()}>
             <span className={styles.rowActions}>
-              <ActionButton icon="solar:eye-linear" size="S" tooltip="View" tooltipLeft onClick={() => onOpen(d)} />
+              <ActionButton icon="solar:eye-linear" size="sm" tooltip="View" tooltipLeft onClick={() => onOpen(d)} />
               <span className={styles.divider} aria-hidden="true" />
-              <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" tooltipLeft disabled={!hasFile(d)} onClick={() => onDownload(d)} />
+              <ActionButton icon="solar:download-minimalistic-linear" size="sm" tooltip="Download" tooltipLeft disabled={!hasFile(d)} onClick={() => onDownload(d)} />
               <span className={styles.divider} aria-hidden="true" />
               <RowMenu doc={d} onAction={onAction} />
             </span>

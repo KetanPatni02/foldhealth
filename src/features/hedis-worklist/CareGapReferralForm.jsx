@@ -151,7 +151,7 @@ export function CareGapReferralForm({
                   <Icon name="solar:file-linear" size={18} color="var(--neutral-400)" />
                   <span className={styles.fileName}>{d.name}</span>
                   <span className={styles.fileSize}>From Documents</span>
-                  <ActionButton icon="solar:trash-bin-2-linear" size="S" tooltip="Remove" onClick={() => removeDoc(d.id)} />
+                  <ActionButton icon="solar:trash-bin-2-linear" size="sm" tooltip="Remove" onClick={() => removeDoc(d.id)} />
                 </li>
               ))}
               {values.files.map((f, i) => (
@@ -159,7 +159,7 @@ export function CareGapReferralForm({
                   <Icon name="custom:pdf-file" size={18} color="var(--neutral-400)" />
                   <span className={styles.fileName}>{f.name}</span>
                   <span className={styles.fileSize}>{formatBytes(f.size)}</span>
-                  <ActionButton icon="solar:trash-bin-2-linear" size="S" tooltip="Remove" onClick={() => removeFile(i)} />
+                  <ActionButton icon="solar:trash-bin-2-linear" size="sm" tooltip="Remove" onClick={() => removeFile(i)} />
                 </li>
               ))}
             </ul>

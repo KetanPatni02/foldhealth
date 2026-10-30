@@ -53,11 +53,11 @@ export function ProcessingPhase({ fileName, onMinimize, onDiscard }) {
         You can minimize this window and continue working while it processes.
       </div>
       <div className={styles.processingActions}>
-        <Button variant="primary" size="s" onClick={onMinimize}>
+        <Button size="sm" onClick={onMinimize}>
           <Icon name="solar:minimize-square-2-linear" size={14} color="#fff" />
           Minimize
         </Button>
-        <Button variant="alt" size="s" onClick={onDiscard}>
+        <Button variant="outline" tone="primary" size="sm" onClick={onDiscard}>
           <Icon name="solar:trash-bin-2-linear" size={14} color="var(--neutral-300)" />
           Discard
         </Button>
@@ -441,8 +441,8 @@ export function ExtractedRow({ rec, onReview, onDelete, onOpenPatient }) {
       )}
       {isAdded && (
         <div className={styles.exAddedActions}>
-          <ActionButton icon="solar:eye-linear" size="S" tooltip="View" onClick={() => onReview(rec)} />
-          <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" onClick={handleDownload} />
+          <ActionButton icon="solar:eye-linear" size="sm" tooltip="View" onClick={() => onReview(rec)} />
+          <ActionButton icon="solar:download-minimalistic-linear" size="sm" tooltip="Download" onClick={handleDownload} />
         </div>
       )}
       {(isDegraded || isUnreadable) && (
@@ -451,7 +451,7 @@ export function ExtractedRow({ rec, onReview, onDelete, onOpenPatient }) {
           <span ref={moreRef} className={styles.exMoreWrap}>
             <ActionButton
               icon="solar:menu-dots-linear"
-              size="S"
+              size="sm"
               tooltip="More"
               onClick={() => setMenuOpen(v => !v)}
               aria-expanded={menuOpen}

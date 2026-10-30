@@ -26,7 +26,7 @@ function WorklistDrawer({ worklist, programName, userOptions, onSave, onClose })
       noCloseDivider
       headerRight={(
         <>
-          <Button variant="primary" size="L" disabled={!w.name.trim()} onClick={() => onSave({ ...w, name: w.name.trim() })}>Save</Button>
+          <Button disabled={!w.name.trim()} onClick={() => onSave({ ...w, name: w.name.trim() })}>Save</Button>
           <span className={styles.headerDivider} />
         </>
       )}
@@ -100,8 +100,7 @@ export function WorklistsTab({ draft, patch }) {
           <p className={styles.cardHint}>Each worklist holds this program&apos;s patients in the statuses you pick, assigned by hand, in turn, or to the patient&apos;s Care Manager.</p>
         </div>
         <Button
-          variant="secondary"
-          size="M"
+          variant="outline"
           leadingIcon="solar:add-circle-linear"
           onClick={() => setEditing({ id: newId('wl'), name: '', description: '', assignmentMode: 'manual', assigneeIds: [], statuses: [], showInNavigation: true })}
         >
@@ -124,8 +123,8 @@ export function WorklistsTab({ draft, patch }) {
           </span>
           <span>{w.showInNavigation ? <Badge size="S" tone="success" label="Shown" /> : <Badge size="S" tone="grey" label="Hidden" />}</span>
           <span className={styles.actionCell}>
-            <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => setEditing(w)} />
-            <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Delete" onClick={() => setRemoving(w)} />
+            <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={() => setEditing(w)} />
+            <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Delete" onClick={() => setRemoving(w)} />
           </span>
         </div>
       ))}

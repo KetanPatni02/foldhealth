@@ -43,6 +43,9 @@
   --neutral-50:  #F6F7F8;
   --neutral-25:  #FAFAFA;
   --neutral-0:   #FFFFFF;
+  /* Text on a filled brand or status color. Not redeclared under dark
+     themes, so it stays white where --neutral-0 turns dark. */
+  --on-color:    #FFFFFF;
 
   /* Status — success darkened so it passes AA on the `-light` surface.
      `--status-warning` stays brand-accurate; pair it with dark text

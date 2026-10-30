@@ -250,8 +250,6 @@ export function InterventionDrawer({
   const headerRight = (
     <>
       <Button
-        variant="primary"
-        size="L"
         disabled={!canSave}
         onClick={() => onSave?.({
           kind,
@@ -788,7 +786,7 @@ export function InterventionDrawer({
                   </button>
                   <ActionButton
                     icon="solar:add-linear"
-                    size="S"
+                    size="sm"
                     tooltip="Link goal"
                     onClick={() => setLinkGoalPickerOpen(true)}
                     disabled={goalsForPicker.length === 0}
@@ -828,14 +826,14 @@ export function InterventionDrawer({
                             <div className={styles.linkActions}>
                               <ActionButton
                                 icon="solar:arrow-right-up-linear"
-                                size="S"
+                                size="sm"
                                 tooltip="Open goal"
                                 onClick={() => onOpenGoal?.(g)}
                               />
                               <span className={styles.linkActionsDivider} aria-hidden />
                               <ActionButton
                                 icon="solar:link-broken-minimalistic-linear"
-                                size="S"
+                                size="sm"
                                 tooltip="Unlink"
                                 onClick={() => handleUnlinkGoal(g.id)}
                               />

@@ -86,12 +86,12 @@ export function RemindersCard({ patient }) {
               {!done && (
                 <ActionButton
                   icon="solar:alarm-linear"
-                  size="S"
+                  size="sm"
                   tooltip="Snooze a day"
                   onClick={() => updateReminder(memberId, r.id, { remindAt: snoozeOneDay(r.remindAt, Date.now()) })}
                 />
               )}
-              <ActionButton icon="solar:trash-bin-minimalistic-linear" size="S" tooltip="Delete" onClick={() => deleteReminder(memberId, r.id)} />
+              <ActionButton icon="solar:trash-bin-minimalistic-linear" size="sm" tooltip="Delete" onClick={() => deleteReminder(memberId, r.id)} />
             </>
           )}
         />
@@ -104,7 +104,7 @@ export function RemindersCard({ patient }) {
       icon="solar:alarm-linear"
       title="Reminders"
       count={open.length || null}
-      actions={!adding && <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add reminder" onClick={startAdding} />}
+      actions={!adding && <ActionButton icon="solar:add-circle-linear" size="sm" tooltip="Add reminder" onClick={startAdding} />}
     >
       <DashboardCardBody className={styles.listBody}>
         {adding && (
@@ -122,8 +122,8 @@ export function RemindersCard({ patient }) {
             />
             <DateTimePicker value={when} onChange={setWhen} hour12 fullWidth minDate={new Date(now)} />
             <span className={styles.reminderActions}>
-              <Button variant="ghost" size="S" type="button" onClick={() => setAdding(false)}>Cancel</Button>
-              <Button size="S" type="submit" disabled={!canSave}>{saving ? 'Saving…' : 'Add Reminder'}</Button>
+              <Button variant="ghost" size="sm" type="button" onClick={() => setAdding(false)}>Cancel</Button>
+              <Button size="sm" type="submit" disabled={!canSave}>{saving ? 'Saving…' : 'Add Reminder'}</Button>
             </span>
           </form>
         )}
@@ -134,7 +134,7 @@ export function RemindersCard({ patient }) {
         )}
         {open.map(r => row(r, false))}
         {groups.done.length > 0 && (
-          <Button variant="ghost" size="S" className={styles.listMore} onClick={() => setShowDone(v => !v)}>
+          <Button variant="ghost" size="sm" className={styles.listMore} onClick={() => setShowDone(v => !v)}>
             {showDone ? 'Hide done' : `Show done (${groups.done.length})`}
           </Button>
         )}

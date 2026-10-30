@@ -230,8 +230,8 @@ export function EmailWorkspace({ onCompose, selectConversationId, onSelectedConv
             onClear={() => setPicked([])}
             noun={picked.length === 1 ? 'Email Thread' : 'Email Threads'}
             actions={[
-              { label: 'Mark as Read', icon: 'solar:check-read-linear', variant: 'secondary', onClick: (ids) => { ids.forEach(id => markConversationRead(emailConvs.find(c => c.id === id))); setPicked([]); } },
-              { label: 'Archive', icon: 'solar:archive-linear', variant: 'primary', onClick: (ids) => { ids.forEach(id => updateConversation(id, { archived: true })); setPicked([]); } },
+              { label: 'Mark as Read', icon: 'solar:check-read-linear', variant: 'outline', onClick: (ids) => { ids.forEach(id => markConversationRead(emailConvs.find(c => c.id === id))); setPicked([]); } },
+              { label: 'Archive', icon: 'solar:archive-linear', variant: 'solid', onClick: (ids) => { ids.forEach(id => updateConversation(id, { archived: true })); setPicked([]); } },
             ]}
           />
         )}

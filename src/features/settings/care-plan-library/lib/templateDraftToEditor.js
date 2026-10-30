@@ -2,12 +2,15 @@ import { apiFetch } from '../../../../lib/apiFetch';
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 
-/** Ask the server for a draft (see api/_handlers/care-plan-template-draft.js). */
-export async function requestTemplateDraft(description, catalog) {
+/**
+ * Ask the server for a draft (see api/_handlers/care-plan-template-draft.js).
+ * `protocol` (optional): { title, version, organization, guidance } the draft must follow.
+ */
+export async function requestTemplateDraft(description, catalog, protocol = null) {
   const res = await apiFetch('/api/care-plan-template-draft', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ description, catalog }),
+    body: JSON.stringify({ description, catalog, ...(protocol ? { protocol } : {}) }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.draft) {

@@ -253,10 +253,8 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
         />
 
         <div className={styles.actions}>
-          <Button variant="secondary" size="L" fullWidth onClick={onCancel}>Cancel</Button>
+          <Button variant="outline" fullWidth onClick={onCancel}>Cancel</Button>
           <Button
-            variant="primary"
-            size="L"
             fullWidth
             disabled={!canSubmit}
             onClick={() => onConfirm({

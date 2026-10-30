@@ -39,8 +39,13 @@ function findScroller(node) {
  *
  * Adjusting the page size changes the content height, so this converges over
  * a couple of passes (the effect re-runs on `perPage`) rather than in one.
- * It settles rather than oscillating because each pass strictly reduces the
- * leftover space and `Math.floor` only ever lands on slight underfill.
+ * It must not oscillate. Adding rows can change the rows already there
+ * (auto-width columns widen for a longer name, so earlier rows wrap less),
+ * and row heights vary (HCC, HEDIS), so "20 leaves a gap" and "25 overflows
+ * enough to drop back to 20" can both be true at one height. That flipped
+ * the page every frame. So after growing, it won't shrink again until the
+ * container gets shorter than it was when it grew; and a shrink measures
+ * the rows on screen rather than an average.
  *
  * The table is located by walking up from the pagination bar to the nearest
  * ancestor containing a <tbody>, which keeps this working for both
@@ -61,6 +66,8 @@ export function useAutoPageSize({ anchorRef, enabled, perPage, totalItems, onFit
   // re-subscribe the observers on every render.
   const onFitRef = useRef(onFit);
   useEffect(() => { onFitRef.current = onFit; }, [onFit]);
+  // Container height at the last grow; see the oscillation note above.
+  const grewAtRef = useRef(null);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -105,19 +112,33 @@ export function useAutoPageSize({ anchorRef, enabled, perPage, totalItems, onFit
       const clientBottom = scroller.getBoundingClientRect().top + scroller.clientHeight;
       const freeSpace = clientBottom - content.getBoundingClientRect().bottom - scroller.scrollTop;
 
-      // How many rows the viewport holds, as a fraction: what's rendered now
-      // plus (or minus) the leftover space converted to rows. Rounding up
-      // from here is what guarantees the last row runs past the fold instead
-      // of leaving a gap.
-      const capacity = perPage + freeSpace / rowHeight;
+      if (freeSpace > 0.5) {
+        // Room to spare: how many rows the viewport holds, as a fraction,
+        // rounded up so the last row runs past the fold instead of leaving
+        // a gap. Don't grow past the data: a page that isn't full means the
+        // rows ran out, not that more would fit.
+        if (rowCount < perPage) return;
+        const fitted = quantize(perPage + freeSpace / rowHeight);
+        if (fitted !== perPage) {
+          grewAtRef.current = scroller.clientHeight;
+          onFitRef.current(fitted);
+        }
+        return;
+      }
 
-      // Don't grow past the data. A page that isn't full means the rows ran
-      // out, not that more would fit — the leftover space there is missing
-      // records, which a bigger page size can't fill.
-      if (capacity > perPage && rowCount < perPage) return;
+      if (grewAtRef.current != null && scroller.clientHeight >= grewAtRef.current) return;
+      grewAtRef.current = null;
 
-      const fitted = quantize(capacity);
-      if (fitted !== perPage) onFitRef.current(fitted);
+      // Overflowing in a container that has shrunk: drop to the smallest
+      // step whose rendered rows still reach the fold.
+      const fold = clientBottom - scroller.scrollTop;
+      const tail = content.getBoundingClientRect().bottom - tbody.getBoundingClientRect().bottom;
+      for (let k = MIN_ROWS; k < Math.min(perPage, rowCount); k += STEP_ROWS) {
+        if (tbody.children[k - 1].getBoundingClientRect().bottom + tail >= fold - 0.5) {
+          onFitRef.current(k);
+          return;
+        }
+      }
     };
 
     // Coalesce every trigger into one measurement per frame, taken after

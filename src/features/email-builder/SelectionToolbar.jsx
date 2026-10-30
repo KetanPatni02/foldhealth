@@ -195,13 +195,13 @@ export function SelectionToolbar() {
       )}
       {!linkOpen ? (
         <>
-          <Button variant="ghost" size="S" iconOnly leadingIcon="solar:link-linear" className={styles.selectionToolbarBtn} title="Link" onClick={startLink} aria-label="Link" />
+          <Button variant="ghost" size="sm" iconOnly leadingIcon="solar:link-linear" className={styles.selectionToolbarBtn} title="Link" onClick={startLink} aria-label="Link" />
           <div className={styles.selectionToolbarDivider} />
-          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Bold" onClick={() => apply('bold')} aria-label="Bold"><b>B</b></Button>
-          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Italic" onClick={() => apply('italic')} aria-label="Italic"><i>I</i></Button>
-          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Underline" onClick={() => apply('underline')} aria-label="Underline"><u>U</u></Button>
-          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Strikethrough" onClick={() => apply('strikeThrough')} aria-label="Strikethrough"><s>S</s></Button>
-          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Code" onClick={wrapCode} aria-label="Code">{'<>'}</Button>
+          <Button variant="ghost" size="sm" iconOnly className={styles.selectionToolbarBtn} title="Bold" onClick={() => apply('bold')} aria-label="Bold"><b>B</b></Button>
+          <Button variant="ghost" size="sm" iconOnly className={styles.selectionToolbarBtn} title="Italic" onClick={() => apply('italic')} aria-label="Italic"><i>I</i></Button>
+          <Button variant="ghost" size="sm" iconOnly className={styles.selectionToolbarBtn} title="Underline" onClick={() => apply('underline')} aria-label="Underline"><u>U</u></Button>
+          <Button variant="ghost" size="sm" iconOnly className={styles.selectionToolbarBtn} title="Strikethrough" onClick={() => apply('strikeThrough')} aria-label="Strikethrough"><s>S</s></Button>
+          <Button variant="ghost" size="sm" iconOnly className={styles.selectionToolbarBtn} title="Code" onClick={wrapCode} aria-label="Code">{'<>'}</Button>
         </>
       ) : (
         <>
@@ -219,7 +219,7 @@ export function SelectionToolbar() {
           />
           <Button
             variant="ghost"
-            size="S"
+            size="sm"
             iconOnly
             leadingIcon="solar:check-circle-linear"
             className={styles.selectionToolbarBtn}

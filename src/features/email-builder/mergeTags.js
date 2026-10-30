@@ -42,6 +42,13 @@ export const MERGE_TOKENS = [
   { key: 'set_password_link', label: 'Set password link',    group: 'Account', sample: '#',                          resolve: c => c.setPasswordLink },
   { key: 'sign_in_link',      label: 'Sign-in link',         group: 'Account', sample: '#',                          resolve: c => c.signInLink },
   { key: 'event_time',        label: 'Time of the change',   group: 'Account', sample: 'Oct 19, 2026, 3:13 PM PDT',  resolve: c => c.eventTime },
+  { key: 'attempts',          label: 'Unsuccessful attempts', group: 'Account', sample: '5',                         resolve: c => c.attempts },
+  { key: 'reset_password_link', label: 'Reset password link', group: 'Account', sample: '#',                          resolve: c => c.resetPasswordLink },
+  // The patient a care team alert is about (the recipient is the admin).
+  { key: 'locked_patient_name',  label: 'Locked patient name',  group: 'Account', sample: 'Michael Brown',            resolve: c => c.lockedPatientName },
+  { key: 'locked_patient_id',    label: 'Locked patient ID',    group: 'Account', sample: '11089',                    resolve: c => c.lockedPatientId },
+  { key: 'locked_patient_email', label: 'Locked patient email', group: 'Account', sample: 'michael.brown@example.com', resolve: c => c.lockedPatientEmail },
+  { key: 'patient_profile_link', label: 'Patient profile link', group: 'Account', sample: '#',                        resolve: c => c.patientProfileLink },
 ];
 
 const TOKEN_BY_KEY = Object.fromEntries(MERGE_TOKENS.map(t => [t.key, t]));
@@ -135,6 +142,12 @@ export const SAMPLE_CONTEXT = {
   setPasswordLink: '#',
   signInLink: '#',
   eventTime: 'Oct 19, 2026, 3:13 PM PDT',
+  attempts: '5',
+  resetPasswordLink: '#',
+  lockedPatientName: 'Michael Brown',
+  lockedPatientId: '11089',
+  lockedPatientEmail: 'michael.brown@example.com',
+  patientProfileLink: '#',
 };
 
 /**

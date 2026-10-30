@@ -31,7 +31,7 @@ export function CareTeamCard({ memberId, onMessage }) {
                 <span className={styles.teamName}>{m.name}</span>
                 {(m.title || m.role) && <span className={styles.meta}>{m.title || m.role}</span>}
               </span>
-              <ActionButton icon="solar:chat-round-line-linear" size="S" tooltip={`Message ${m.name}`} onClick={() => onMessage(m.name)} />
+              <ActionButton icon="solar:chat-round-line-linear" size="sm" tooltip={`Message ${m.name}`} onClick={() => onMessage(m.name)} />
             </li>
           ))}
         </ul>

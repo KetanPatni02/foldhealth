@@ -101,10 +101,10 @@ export function StepsTab({ draft, patch }) {
           <Switch checked={step.enabled !== false} disabled={sectionOff} onChange={enabled => onPatch({ enabled })} ariaLabel={`Show ${step.name}`} />
         </span>
         <span className={styles.colConfigure}>
-          {onConfigure && <ActionButton icon="solar:settings-linear" size="S" tooltip={isSection ? 'Configure section' : 'Configure step'} onClick={onConfigure} />}
+          {onConfigure && <ActionButton icon="solar:settings-linear" size="sm" tooltip={isSection ? 'Configure section' : 'Configure step'} onClick={onConfigure} />}
         </span>
         <span className={styles.colDelete}>
-          {onRemove && <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove" onClick={onRemove} />}
+          {onRemove && <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Remove" onClick={onRemove} />}
         </span>
       </span>
     );
@@ -176,7 +176,7 @@ export function StepsTab({ draft, patch }) {
           <span className={styles.accessCount}>{counts.on} of {counts.total} on, {counts.mandatory} mandatory</span>
         </span>
         <span className={styles.accessHeadRight}>
-          <Button variant="secondary" size="M" leadingIcon="solar:add-circle-linear" onClick={addStep}>Add Step</Button>
+          <Button variant="outline" leadingIcon="solar:add-circle-linear" onClick={addStep}>Add Step</Button>
           <span className={styles.headerDivider} />
           <span className={styles.allowAll}>Show All</span>
           <Switch checked={steps.length > 0 && allOn(steps)} onChange={on => setSteps(setAll(steps, on))} ariaLabel="Show all steps" />

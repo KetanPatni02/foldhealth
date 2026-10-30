@@ -43,7 +43,7 @@ export function SignaturePad({ onChange, hasError = false, ariaLabel = 'Signatur
         aria-label={ariaLabel}
       />
       <div className={styles.actions}>
-        <Button variant="secondary" size="S" leadingIcon="solar:eraser-linear" onClick={clear}>Clear</Button>
+        <Button variant="outline" size="sm" leadingIcon="solar:eraser-linear" onClick={clear}>Clear</Button>
       </div>
     </div>
   );

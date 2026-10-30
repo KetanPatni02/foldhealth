@@ -67,7 +67,6 @@ export function HccWorklistTableView({
             <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
             <ActionButton
               icon="custom:export"
-              size="L"
               tooltip="Export"
               tooltipBelow
               onClick={() => showToast('Export — coming soon')}
@@ -123,8 +122,8 @@ export function HccWorklistTableView({
             icon="solar:filter-linear"
             action={
               <Button
-                variant="secondary"
-                size="S"
+                variant="outline"
+                size="sm"
                 leadingIcon="solar:close-circle-linear"
                 onClick={() => { clearHccFilters(); setHccDueDateFilter(null); }}
               >

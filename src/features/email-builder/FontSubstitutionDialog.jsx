@@ -101,8 +101,8 @@ export function FontSubstitutionDialog() {
           display: 'flex', justifyContent: 'flex-end', gap: 8,
           padding: '12px 20px', borderTop: '0.5px solid var(--neutral-100)',
         }}>
-          <Button variant="secondary" size="L" onClick={skip}>Skip</Button>
-          <Button variant="primary" size="L" onClick={commit}>Apply substitutions</Button>
+          <Button variant="outline" onClick={skip}>Skip</Button>
+          <Button onClick={commit}>Apply substitutions</Button>
         </div>
       </div>
     </dialog>

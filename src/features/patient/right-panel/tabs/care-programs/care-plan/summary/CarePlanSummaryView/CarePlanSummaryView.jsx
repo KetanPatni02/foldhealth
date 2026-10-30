@@ -170,8 +170,8 @@ function ActiveProgramsTable({ rows, onView, onOpenActivity }) {
                 </td>
                 <td className={`${styles.stickyRight} ${styles.colActions}`}>
                   <Button
-                    variant="secondary"
-                    size="S"
+                    variant="outline"
+                    size="sm"
                     onClick={() => onView?.(p)}
                     disabled={!onView}
                   >
@@ -288,7 +288,7 @@ function SectionHead({ title, count, open, onToggle, onAdd }) {
     <div className={styles.sectionHeadRow}>
       {toggle}
       <span className={styles.sectionActionDivider} aria-hidden="true" />
-      <ActionButton size="S" tooltip={`Add ${title.toLowerCase().replace(/s$/, '')}`} onClick={e => onAdd(e.currentTarget.getBoundingClientRect())}>
+      <ActionButton size="sm" tooltip={`Add ${title.toLowerCase().replace(/s$/, '')}`} onClick={e => onAdd(e.currentTarget.getBoundingClientRect())}>
         <AddIconMinimalist size={16} color="var(--neutral-300)" />
       </ActionButton>
     </div>

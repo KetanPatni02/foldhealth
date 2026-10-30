@@ -108,7 +108,7 @@ export function AppointmentStep({ patientId, programCode, stepName = 'Appointmen
         <div className={styles.section}>
           <div className={styles.sectionHead}>
             <span className={styles.sectionTitle}>Program related appointments</span>
-            <ActionButton size="S" tooltip="Schedule appointment" onClick={() => setScheduleOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
+            <ActionButton size="sm" tooltip="Schedule appointment" onClick={() => setScheduleOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
           <ApptTable rows={programAppts} />
         </div>
@@ -121,8 +121,8 @@ export function AppointmentStep({ patientId, programCode, stepName = 'Appointmen
           </span>
           <span className={styles.emptyText}>Program Related Appointment Not Scheduled</span>
           <div className={styles.actions}>
-            <Button variant="primary" size="L" onClick={() => setScheduleOpen(true)}>Schedule Appointment</Button>
-            <Button variant="secondary" size="L" trailingIcon="solar:arrow-right-up-linear" onClick={() => toast.success('Link Appointments — coming soon')}>
+            <Button onClick={() => setScheduleOpen(true)}>Schedule Appointment</Button>
+            <Button variant="outline" trailingIcon="solar:arrow-right-up-linear" onClick={() => toast.success('Link Appointments — coming soon')}>
               Link Appointments
             </Button>
           </div>
@@ -136,7 +136,7 @@ export function AppointmentStep({ patientId, programCode, stepName = 'Appointmen
             <span className={styles.sectionTitle}>Upcoming Appointments &amp; Reminders</span>
           </button>
           {upcomingOpen && (
-            <ActionButton size="S" tooltip="Add" onClick={() => setScheduleOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
+            <ActionButton size="sm" tooltip="Add" onClick={() => setScheduleOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           )}
         </div>
         <Collapse open={upcomingOpen} className={styles.sectionCollapse}>

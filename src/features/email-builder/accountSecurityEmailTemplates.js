@@ -8,7 +8,9 @@
  * and a lavender footer.
  *
  * They're new templates (Settings → Content → Emails, category "Account
- * Security") next to the existing ones, not replacements. Each has its own
+ * Security") next to the existing ones, not replacements. The two patient
+ * ones cover a paused patient app sign-in: the patient resets their password
+ * to unlock it (no admin step), and the care team gets a heads-up. Each has its own
  * `system_key` ending in `_v2`, which the server doesn't send yet, so what
  * users receive is unchanged until a template is switched over.
  *
@@ -252,6 +254,56 @@ export const ACCOUNT_SECURITY_EMAIL_TEMPLATES = [
       link: '{{set_password_link}}',
       copyLink: true,
       note: 'Link expired? Ask your administrator to send a new one.\nDidn’t expect this email? Don’t use the link. Contact your administrator right away.',
+    }),
+  },
+  {
+    systemKey: 'patient_account_locked_v2',
+    name: 'Account Security: Patient Sign-in Paused',
+    description: 'Sent to a patient when patient app sign-in is paused after too many unsuccessful attempts. They unlock it by resetting their password.',
+    subject: 'Sign-in to your Fold Health account is paused',
+    doc: documentOf('psp', {
+      title: 'Sign-in to your account is paused',
+      art: 'security-illustration-locked.png',
+      intro: [
+        'We paused sign-in to your Fold Health account after {{attempts}} unsuccessful sign-in attempts. We do this to keep your account safe.',
+        'To sign in again, reset your password. Waiting or trying your old password again won’t unlock it. Your health information is safe, and nothing in your account has changed.',
+      ],
+      details: [['Email', '{{email}}'], ['Paused on', '{{event_time}}'], ['Unsuccessful attempts', '{{attempts}}']],
+      stepsTitle: 'What to do next',
+      steps: [
+        'Select Reset your password below.',
+        'Choose a new password that you don’t use anywhere else.',
+        'Sign in to Fold Health with your new password.',
+      ],
+      button: 'Reset your password',
+      link: '{{reset_password_link}}',
+      copyLink: true,
+      note: 'Link expired? Choose Forgot password on the sign-in page to get a new one.\nDidn’t try to sign in? Someone else may have tried to use your account. Reset your password now, and let your care team know.',
+    }),
+  },
+  {
+    systemKey: 'patient_account_locked_admin_v2',
+    name: 'Account Security: Patient Sign-in Paused (Care Team)',
+    description: 'Sent to administrators when a patient’s sign-in is paused. The patient unlocks it by resetting their password; no admin action is needed.',
+    subject: 'A patient’s sign-in to Fold Health is paused',
+    doc: documentOf('psa', {
+      title: 'A patient’s sign-in is paused',
+      art: 'security-illustration-locked.png',
+      intro: [
+        'Sign-in to {{locked_patient_name}}’s Fold Health account was paused after {{attempts}} unsuccessful sign-in attempts.',
+        'You don’t need to unlock it. The patient unlocks it by resetting their password, and we’ve emailed them a link to do that.',
+      ],
+      details: [['Patient', '{{locked_patient_name}}'], ['Patient ID', '{{locked_patient_id}}'], ['Email', '{{locked_patient_email}}'], ['Paused on', '{{event_time}}'], ['Unsuccessful attempts', '{{attempts}}']],
+      stepsTitle: 'If the patient contacts you',
+      steps: [
+        'Ask them to reset their password using the link we emailed them.',
+        'If the link expired, they can choose Forgot password on the patient app sign-in page.',
+        'Once they set a new password, they can sign in again.',
+      ],
+      button: 'View patient profile',
+      link: '{{patient_profile_link}}',
+      copyLink: false,
+      note: 'Didn’t expect this? Several unsuccessful attempts can mean someone else tried to sign in. Check with the patient before you share any account details.',
     }),
   },
 ];

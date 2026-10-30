@@ -336,21 +336,21 @@ function CampaignRow({ campaign, onToggle }) {
           )}
           <ActionButton
             icon="solar:pen-linear"
-            size="S"
+            size="sm"
             tooltip="Edit"
             onClick={() => openCampaignBuilder(campaign)}
           />
           <div className={styles.vDivider} />
           <ActionButton
             icon="solar:chart-linear"
-            size="S"
+            size="sm"
             tooltip="Analytics"
             onClick={() => showToast('Analytics – coming soon')}
           />
           <div className={styles.vDivider} />
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="S"
+            size="sm"
             tooltip="More"
             onClick={() => showToast('More – coming soon')}
           />

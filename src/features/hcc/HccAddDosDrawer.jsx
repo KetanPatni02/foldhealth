@@ -487,7 +487,7 @@ export function HccAddDosDrawer() {
 
   const headerRight = (
     <>
-      <Button variant="primary" size="S" disabled={!canSave} onClick={doSave}>Save</Button>
+      <Button size="sm" disabled={!canSave} onClick={doSave}>Save</Button>
       <span className={styles.headerDivider} />
     </>
   );

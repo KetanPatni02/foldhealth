@@ -79,7 +79,7 @@ function ProblemDraft({ title, eyebrow, initial, onSave, onCancel }) {
         <div className={styles.draftNote}>
           <div className={styles.draftNoteHead}>
             <span className={styles.draftNoteLabel}>Note</span>
-            <ActionButton size="S" tooltip="Discard note" aria-label="Discard note" onClick={() => { setNote(''); setNoteOpen(false); }}>
+            <ActionButton size="sm" tooltip="Discard note" aria-label="Discard note" onClick={() => { setNote(''); setNoteOpen(false); }}>
               <CloseIcon size={14} color="var(--neutral-300)" />
             </ActionButton>
           </div>
@@ -87,7 +87,7 @@ function ProblemDraft({ title, eyebrow, initial, onSave, onCancel }) {
         </div>
       )}
       <div className={styles.draftActions}>
-        <Button variant="primary" size="M" disabled={saving} onClick={save}>Save</Button>
+        <Button disabled={saving} onClick={save}>Save</Button>
         <span className={styles.draftDivider} aria-hidden="true" />
         <Link variant="secondary" onClick={onCancel}>Cancel</Link>
       </div>
@@ -135,7 +135,7 @@ function ProblemRow({ problem, onStatusChange, onEdit, dimmed }) {
       <span className={styles.rowDivider} aria-hidden="true" />
       <ActionButton
         icon="solar:pen-linear"
-        size="S"
+        size="sm"
         tooltip="Edit"
         aria-label={`Edit ${problem.title}`}
         onClick={() => onEdit(problem)}

@@ -17,9 +17,9 @@ export function InsuranceWidget() {
       actions={(
         <>
           <span className={styles.lastChecked}>Last checked 02/19/2024</span>
-          <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh" />
+          <ActionButton icon="solar:refresh-linear" size="sm" tooltip="Refresh" />
           <PanelSectionDivider />
-          <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add Insurance" />
+          <ActionButton icon="solar:add-circle-linear" size="sm" tooltip="Add Insurance" />
         </>
       )}
     >

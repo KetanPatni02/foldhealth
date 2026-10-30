@@ -309,7 +309,7 @@ function TableView({ sections, onOpenGraph, onAdd, widgets, pinned, onTogglePin 
                             <span className={styles.rowName}>{row.name}</span>
                             <span className={`${styles.pinBtn} ${isPinned ? styles.pinBtnOn : ''}`}>
                               <ActionButton
-                                size="S"
+                                size="sm"
                                 tooltip={isPinned ? 'Unpin' : 'Pin to top'}
                                 aria-label={`${isPinned ? 'Unpin' : 'Pin'} ${row.name}`}
                                 active={isPinned}

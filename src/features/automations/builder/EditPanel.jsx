@@ -15,7 +15,7 @@ export function EditPanel({ title, icon, iconColor, iconBg, heading, onSave, sav
         <h2 className={styles.panelTitle}>{title}</h2>
         <span className={styles.panelHeaderActions}>
           {headerExtra}
-          {onSave && <Button size="M" disabled={saveDisabled} onClick={onSave}>{saveLabel}</Button>}
+          {onSave && <Button disabled={saveDisabled} onClick={onSave}>{saveLabel}</Button>}
           {onSave && <span className={styles.headerDivider} />}
           <CloseButton size={18} onClick={onClose} aria-label="Close panel" />
         </span>

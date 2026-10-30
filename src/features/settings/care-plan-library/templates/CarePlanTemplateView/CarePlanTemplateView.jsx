@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { InfoBar } from '../../../../../components/InfoBar/InfoBar';
 import { Input } from '../../../../../components/Input/Input';
 import { Textarea } from '../../../../../components/Textarea/Textarea';
 import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
@@ -181,6 +182,7 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
     id: entry.id || `barrier-${i}`,
     title: entry.title,
     subtitle: entry.description || '',
+    priority: entry.priority || 'medium',
     status: 'Not Started',
   })), [plainBarriers]);
 
@@ -220,6 +222,15 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
           <span className={styles.formTitle}>Edit Care Plan</span>
         </div>
         <div className={styles.formBody}>
+          {template.sourceProtocol && (
+            <InfoBar variant="inline" icon="solar:document-medicine-linear">
+              Based on clinical protocol: {[
+                template.sourceProtocol.title,
+                template.sourceProtocol.version && `v${template.sourceProtocol.version}`,
+                template.sourceProtocol.organization,
+              ].filter(Boolean).join(' · ')}
+            </InfoBar>
+          )}
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Care Plan Name</span>
             <Input
@@ -282,8 +293,6 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
       <div className={styles.planPane}>
         <div className={styles.toolbar}>
           <Button
-            variant="primary"
-            size="L"
             disabled={!name.trim()}
             onClick={() => onSave?.({
               name: name.trim(),
@@ -311,6 +320,7 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
             onRowMenuGoal={(m) => setRowMenu({ list: 'goals', item: m.item, rect: m.rect })}
             onRowMenuIntervention={(m) => setRowMenu({ list: 'interventions', item: m.item, rect: m.rect })}
             onRowMenuBarrier={(m) => setRowMenu({ list: 'barriers', item: m.item, rect: m.rect })}
+            onChangeBarrierPriority={(row, priority) => setBarriers(prev => prev.map(b => (b.id === row.id ? { ...b, priority } : b)))}
             onAddGoal={() => setPicker('goals')}
             onAddIntervention={() => setPicker('interventions')}
             onAddBarrier={() => setPicker('barriers')}

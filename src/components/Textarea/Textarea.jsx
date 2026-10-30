@@ -63,7 +63,7 @@ export const Textarea = forwardRef(function Textarea({
   supportingText,
   richText = false,
   maxLength,
-  bottomButton,          // { label, onClick, disabled, variant }
+  bottomButton,          // { label, onClick, disabled, variant, tone }
   speechToText = false,
   onSpeechClick,
   attachment = false,    // boolean toggle (attaches paperclip button) OR { onClick } / accept
@@ -672,8 +672,9 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
                 const cfg = typeof bottomButton === 'object' ? bottomButton : {};
                 return (
                   <Button
-                    variant={cfg.variant || 'primary'}
-                    size="S"
+                    variant={cfg.variant}
+                    tone={cfg.tone}
+                    size="sm"
                     disabled={disabled || cfg.disabled}
                     onClick={cfg.onClick}
                   >

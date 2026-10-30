@@ -42,15 +42,14 @@ export function CallsConvPanel({
         <div className={styles.convHeaderActions}>
           <ActionButton
             icon="solar:magnifer-linear"
-            size="L"
             tooltip="Search"
             active={showSearch}
             onClick={onToggleSearch}
           />
           <div className={styles.convDivider} />
-          <ActionButton icon="solar:refresh-linear" size="L" tooltip="Refresh" />
+          <ActionButton icon="solar:refresh-linear" tooltip="Refresh" />
           <div className={styles.convDivider} />
-          <ActionButton icon="custom:filter"  size="L" tooltip="Filter" />
+          <ActionButton icon="custom:filter" tooltip="Filter" />
         </div>
       </div>
 

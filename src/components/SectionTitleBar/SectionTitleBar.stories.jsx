@@ -59,7 +59,7 @@ export default {
     },
     primaryActionVariant: {
       control: 'select',
-      options: ['primary', 'secondary'],
+      options: ['solid', 'outline'],
       if: { arg: 'primaryActionLabel', truthy: true },
     },
     primaryActionIcon: {
@@ -140,7 +140,7 @@ export const Playground = {
     filterBadgeCount: 0,
     uploadHasDropdown: false,
     primaryActionLabel: '',
-    primaryActionVariant: 'secondary',
+    primaryActionVariant: 'outline',
     primaryActionIcon: 'solar:add-circle-linear',
   },
 };

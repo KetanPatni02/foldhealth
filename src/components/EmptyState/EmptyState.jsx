@@ -19,7 +19,7 @@ export function EmptyState({ icon, title, description, actionLabel, onAction }) 
         <div style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: 'var(--neutral-400)' }}>{title || 'Nothing here yet'}</div>
         <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-300)', lineHeight: 1.5 }}>{description || 'Items will appear here once available.'}</div>
         {actionLabel && onAction && (
-          <Button variant="primary" size="L" leadingIcon="solar:add-circle-linear" onClick={onAction} style={{ marginTop: 4 }}>
+          <Button leadingIcon="solar:add-circle-linear" onClick={onAction} style={{ marginTop: 4 }}>
             {actionLabel}
           </Button>
         )}

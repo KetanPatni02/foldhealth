@@ -135,7 +135,7 @@ export function EfaxWorkspace({ navCollapsed, onToggleNav }) {
         </div>
 
         <div className={styles.listFooter}>
-          <Button variant="secondary" size="L" fullWidth leadingIcon="solar:add-circle-linear" onClick={() => setCreating(true)}>
+          <Button variant="outline" fullWidth leadingIcon="solar:add-circle-linear" onClick={() => setCreating(true)}>
             Create Test eFax
           </Button>
         </div>

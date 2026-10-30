@@ -53,7 +53,7 @@ export function UnityPromptField({
           </span>
         )}
         value={value}
-        onChange={e => onChange?.(e.target.value.slice(0, maxLength))}
+        onChange={text => onChange?.(text.slice(0, maxLength))}
         placeholder={placeholder}
         rows={rows}
         maxLength={maxLength}
@@ -75,8 +75,8 @@ export function UnityPromptField({
           </button>
         ) : <span />}
         <Button
-          variant="secondary"
-          size="S"
+          variant="outline"
+          size="sm"
           leadingIconElement={<UnityIcon size={14} color="currentColor" />}
           disabled={!ready}
           onClick={submit}

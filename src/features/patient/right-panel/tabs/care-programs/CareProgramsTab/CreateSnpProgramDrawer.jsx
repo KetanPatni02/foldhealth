@@ -54,8 +54,8 @@ export function CreateSnpProgramDrawer({ patientId, onCreate, onClose }) {
       noCloseDivider
       headerRight={(
         <>
-          <Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="L" disabled={!ready} onClick={() => onCreate({ memberInfo: member, triggerType, triggerDate })}>Create</Button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={!ready} onClick={() => onCreate({ memberInfo: member, triggerType, triggerDate })}>Create</Button>
           <span className={styles.headerDivider} />
         </>
       )}

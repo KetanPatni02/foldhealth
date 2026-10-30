@@ -193,7 +193,7 @@ function ClaimRow({ c, onOpen }) {
       </span>
       <span className={styles.claimDate}>{c.date}</span>
       <ClaimStatusBadge claim={c} />
-      <ActionButton icon="solar:eye-linear" size="S" tooltip="View claim" onClick={() => onOpen(c.claimId)} />
+      <ActionButton icon="solar:eye-linear" size="sm" tooltip="View claim" onClick={() => onOpen(c.claimId)} />
     </div>
   );
 }

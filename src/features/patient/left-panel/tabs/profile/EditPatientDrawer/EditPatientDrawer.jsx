@@ -344,7 +344,7 @@ export function EditPatientDrawer({
       title={isInvite ? 'Invite Patient' : 'Update Member'}
       onClose={onClose}
       primaryAction={
-        <Button variant="primary" size="L" onClick={handleSave} disabled={saving || (isInvite && !form.name.trim())}>
+        <Button onClick={handleSave} disabled={saving || (isInvite && !form.name.trim())}>
           {saving ? (isInvite ? 'Inviting…' : 'Saving…') : (isInvite ? 'Send Invite' : 'Save')}
         </Button>
       }

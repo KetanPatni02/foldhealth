@@ -362,8 +362,7 @@ export function CareProgramsTab({ header }) {
           <div className={styles.npWrap}>
             <Button
               ref={npBtnRef}
-              variant="tertiary"
-              size="L"
+              variant="soft"
               leadingIconElement={<AddIconMinimalist size={16} />}
               trailingIconElement={<DownChevronIcon size={16} />}
               onClick={() => setNpOpen(o => !o)}

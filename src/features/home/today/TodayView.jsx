@@ -221,12 +221,12 @@ function TodayRow({ item, onSnooze, onOpen, showToast }) {
 
       <td className={`${styles.actionsTd} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
-          <ActionButton size="S" icon="solar:phone-calling-linear" tooltip="Call" onClick={() => showTouchModeSoon('Call')} />
+          <ActionButton size="sm" icon="solar:phone-calling-linear" tooltip="Call" onClick={() => showTouchModeSoon('Call')} />
           <span className={styles.actionDivider} />
-          <ActionButton size="S" icon="solar:chat-round-linear" tooltip="Text" onClick={() => showTouchModeSoon('Text')} />
+          <ActionButton size="sm" icon="solar:chat-round-linear" tooltip="Text" onClick={() => showTouchModeSoon('Text')} />
           <span className={styles.actionDivider} />
           <span style={{ position: 'relative', display: 'inline-flex' }}>
-            <ActionButton ref={moreRef} size="S" icon="solar:menu-dots-linear" tooltip="More" onClick={() => setMenuOpen((v) => !v)} />
+            <ActionButton ref={moreRef} size="sm" icon="solar:menu-dots-linear" tooltip="More" onClick={() => setMenuOpen((v) => !v)} />
             {menuOpen && (
               <MenuPopover
                 anchorRef={moreRef}
@@ -317,7 +317,7 @@ export function TodayView() {
           <span><b>{PANEL_TODAY.minutesTotal}</b> min logged today</span>
         </div>
         {startName && (
-          <Button variant="primary" onClick={() => openPatient(startRow)}>
+          <Button onClick={() => openPatient(startRow)}>
             Start next: {startName}
             <Icon name="solar:arrow-right-linear" size={14} />
           </Button>

@@ -434,7 +434,7 @@ function ActivityLogEntry({ entry, isFirst, isLast, afterGroup = false, hideComm
             <span className={styles.openButton}>
               <ActionButton
                 icon="solar:arrow-right-up-linear"
-                size="S"
+                size="sm"
                 tooltip={entry.openTooltip || 'Open'}
                 onClick={entry.onOpen}
               />
@@ -454,7 +454,9 @@ function OutreachEntryBody({ entry }) {
   // `details`: [{ label, value }] shown as a field list behind "View details"
   // (empty values are skipped).
   const details = (entry.details || []).filter(d => d && d.value != null && d.value !== '');
-  const hasDetails = details.length > 0;
+  // `onViewDetails`: the owner shows the details itself (e.g. a side
+  // panel), so View details calls it instead of expanding here.
+  const hasDetails = details.length > 0 || !!entry.onViewDetails;
   const expandable = hasNote || hasCall || hasDetails;
 
   return (
@@ -474,7 +476,7 @@ function OutreachEntryBody({ entry }) {
           <button
             type="button"
             className={`${styles.viewMoreBtn} ${expanded ? styles.viewMoreBtnOpen : ''}`}
-            onClick={() => setExpanded(v => !v)}
+            onClick={entry.onViewDetails || (() => setExpanded(v => !v))}
           >
             {entry.outcome && <span className={styles.viewNoteDot} aria-hidden="true">•</span>}
             {hasDetails ? 'View details' : 'View more'}
@@ -905,7 +907,7 @@ function CommentEntryBody({ entry, hideTitle = false }) {
           <span className={[styles.commentMenu, menuAnchor ? styles.commentMenuOpen : ''].filter(Boolean).join(' ')}>
             <ActionButton
               icon="solar:menu-dots-linear"
-              size="S"
+              size="sm"
               tooltip="Comment actions"
               onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget.getBoundingClientRect()); }}
             />
@@ -1033,7 +1035,7 @@ function ReferralEntryBody({ entry }) {
           {menuItems.length > 0 && (
             <ActionButton
               icon="solar:menu-dots-linear"
-              size="S"
+              size="sm"
               tooltip="More actions"
               tooltipLeft
               onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget.getBoundingClientRect()); }}

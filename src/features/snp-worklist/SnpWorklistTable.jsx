@@ -329,7 +329,6 @@ export function SnpWorklistTable() {
             <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
             <ActionButton
               icon="solar:upload-minimalistic-linear"
-              size="L"
               tooltip="Upload Document"
               tooltipBelow
               onClick={() => showToast('Upload Document – coming soon')}

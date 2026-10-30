@@ -94,7 +94,7 @@ export const CarePlanItemNote = forwardRef(function CarePlanItemNote(
               </div>
             </button>
             <span className={styles.delete}>
-              <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Delete note" onClick={remove} />
+              <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Delete note" onClick={remove} />
             </span>
           </div>
         ) : (
@@ -111,14 +111,13 @@ export const CarePlanItemNote = forwardRef(function CarePlanItemNote(
         <>
           <div className={styles.actions}>
             <Button
-              variant="secondary"
-              size="M"
+              variant="outline"
               disabled={!canDiscard}
               onClick={() => { setNote(baseline); if (latest) setEditing(false); }}
             >
               Cancel
             </Button>
-            <Button variant="primary" size="M" disabled={!canSave} onClick={save}>
+            <Button disabled={!canSave} onClick={save}>
               {latest ? 'Update Note' : 'Add Note'}
             </Button>
           </div>

@@ -5482,6 +5482,8 @@ export const useAppStore = create((set, get) => ({
     if (!id && values.replacesTemplateId) row.replaces_template_id = values.replacesTemplateId;
     // The Fold pathway (and version) a new template was adapted from.
     if (!id && values.sourcePathway) row.source_pathway = values.sourcePathway;
+    // The clinical protocol (and version) a new template was drafted from.
+    if (!id && values.sourceProtocol) row.source_protocol = values.sourceProtocol;
     if (!id) {
       // The owner must be the signed-in auth user: RLS checks it against auth.uid().
       const { data: { session } } = await supabase.auth.getSession();
@@ -5513,6 +5515,10 @@ export const useAppStore = create((set, get) => ({
     if (error && /source_pathway/.test(error.message || '') && 'source_pathway' in row) {
       const { source_pathway: _sp, ...rowWithoutPathway } = row;
       ({ data, error } = await run(rowWithoutPathway));
+    }
+    if (error && /source_protocol/.test(error.message || '') && 'source_protocol' in row) {
+      const { source_protocol: _spr, ...rowWithoutProtocol } = row;
+      ({ data, error } = await run(rowWithoutProtocol));
     }
     if (error && /renewal/i.test(error.message || '') && 'renewal' in row) {
       const { renewal: _r, ...rowWithoutRenewal } = row;

@@ -165,7 +165,7 @@ function Wrapper({ preset, width, sectionLabelVariant, showHeader, sortable, loa
 
   const header = useMemo(() => (
     showHeader
-      ? <Button variant="primary" size="L" leadingIcon="solar:add-circle-bold" fullWidth onClick={() => {}}>Create New</Button>
+      ? <Button leadingIcon="solar:add-circle-bold" fullWidth onClick={() => {}}>Create New</Button>
       : null
   ), [showHeader]);
 

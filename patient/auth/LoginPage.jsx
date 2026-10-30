@@ -138,8 +138,6 @@ export function LoginPage({ notice }) {
           </div>
 
           <Button
-            variant="primary"
-            size="L"
             fullWidth
             type="submit"
             disabled={loading || !agreed || !identifier.trim() || !password}

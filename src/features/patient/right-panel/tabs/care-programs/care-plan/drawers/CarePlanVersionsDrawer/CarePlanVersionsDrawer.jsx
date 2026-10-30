@@ -124,7 +124,6 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
               <div className={styles.actionCell} onClick={e => e.stopPropagation()}>
                 <ActionButton
                   icon="solar:eye-linear"
-                  size="L"
                   tooltip="View changes"
                   onClick={() => openChanges(v)}
                 />
@@ -135,7 +134,6 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
                     <span className={styles.vDivider} />
                     <ActionButton
                       icon="solar:restart-linear"
-                      size="L"
                       tooltip="Load into draft"
                       onClick={() => setRestoreTarget(v)}
                     />

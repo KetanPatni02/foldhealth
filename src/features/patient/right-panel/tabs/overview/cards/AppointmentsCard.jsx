@@ -111,7 +111,7 @@ export function AppointmentsCard({ patientId, patient }) {
                         : 'Not rebooked',
                     ]}
                     trailing={m.rebookedAt ? null : (
-                      <Button variant="secondary" size="S" onClick={() => setRescheduling(true)}>Reschedule</Button>
+                      <Button variant="outline" size="sm" onClick={() => setRescheduling(true)}>Reschedule</Button>
                     )}
                   />
                 </div>

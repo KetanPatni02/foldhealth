@@ -32,8 +32,8 @@ function PackageDrawer({ pkg, busy, onRequest, onClose }) {
       onClose={onClose}
       width={560}
       primaryAction={inIt
-        ? <Button variant="secondary" size="L" disabled={busy} onClick={() => onRequest(pkg, false)}>Opt out</Button>
-        : <Button variant="primary" size="L" disabled={busy} onClick={() => onRequest(pkg, true)}>Ask to join</Button>}
+        ? <Button variant="outline" disabled={busy} onClick={() => onRequest(pkg, false)}>Opt out</Button>
+        : <Button disabled={busy} onClick={() => onRequest(pkg, true)}>Ask to join</Button>}
     >
       <div className={styles.stack}>
         <span className={styles.packageIconLarge}><Icon name={pkg.icon} size={40} color="currentColor" /></span>

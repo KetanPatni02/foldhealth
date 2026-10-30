@@ -36,7 +36,7 @@ export function UploadDocumentDrawer({ categories, doc, initialCategory, initial
     <Drawer
       title={doc ? 'Update File' : 'Upload File'}
       onClose={onClose}
-      primaryAction={<Button variant="primary" size="L" disabled={!canSave} onClick={submit}>{doc ? 'Update' : 'Upload'}</Button>}
+      primaryAction={<Button disabled={!canSave} onClick={submit}>{doc ? 'Update' : 'Upload'}</Button>}
     >
       <div className={styles.uploadForm}>
         <DocumentUploadForm form={form} docTypes={FILE_TYPES} initialFile={initialFile} />

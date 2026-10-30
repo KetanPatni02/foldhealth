@@ -135,14 +135,14 @@ export function SharedSavingsView({ showToast, editing = false, resetTick = 0 })
           <ProgressBar label="Pharmacy PMPM Growth" value="+18% QoQ · GLP-1 driving" pct={58} color="amber" sub="Risk to TCOC if not managed" />
         </>
       )}
-      <Button variant="primary" size="S" fullWidth style={{ marginTop: 10 }} onClick={() => showToast?.('Opening ROI Simulator')}>
+      <Button size="sm" fullWidth style={{ marginTop: 10 }} onClick={() => showToast?.('Opening ROI Simulator')}>
         &#9654; Run Scenario Simulator &rarr;
       </Button>
     </Card>
   );
 
   const renderComposite = () => (
-    <Card title="Quality Composite Breakdown" actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening full Quality view')}>Full Quality View &rarr;</Button>}>
+    <Card title="Quality Composite Breakdown" actions={<Button variant="ghost" size="sm" onClick={() => showToast?.('Opening full Quality view')}>Full Quality View &rarr;</Button>}>
       <div className={s.g2}>
         <div>
           {qualFallback.slice(0, 4).map(b => (

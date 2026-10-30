@@ -1,10 +1,11 @@
 import { Icon } from '../../../components/Icon/Icon';
 import { InfoBar } from '../../../components/InfoBar/InfoBar';
+import { Input } from '../../../components/Input/Input';
 import { CisStatusBadge } from './CisStatus';
-import { DoseDateField } from './DoseDateField';
 import { DoseNoteInput } from './DoseNoteInput';
 import { apptDate } from './cisAppointments';
-import { DOSE_BADGE, fmtDate } from './cisStatusConfig';
+import { DOSE_BADGE, fmtDate, isLocked } from './cisStatusConfig';
+import { toIso } from './useCisTracker';
 import styles from './DoseQuickCard.module.css';
 
 const windowText = (r) => (r.recommendedEnd ? `${fmtDate(r.start)} – ${fmtDate(r.recommendedEnd)}` : fmtDate(r.start));
@@ -54,7 +55,22 @@ export function DoseQuickCard({ antigen, row, dob, note = '', booked, onDateChan
       {!row.record && <Row label="Due by:"><span>{fmtDate(row.due)}</span></Row>}
       <Row label="Date administered:">
         {onDateChange
-          ? <DoseDateField row={row} label={antigen.label} dob={dob} onChange={(iso) => onDateChange(antigen, row, iso)} />
+          ? (
+            // A real date field (typed or picked) so it reads as editable;
+            // locked until the dose's earliest allowed date.
+            <span className={styles.dateInput}>
+              <Input
+                type="date"
+                value={row.record ? toIso(row.record.date) : ''}
+                min={toIso(dob)}
+                max={toIso(new Date())}
+                disabled={isLocked(row)}
+                placeholder={isLocked(row) ? `Opens ${fmtDate(row.earliest)}` : 'MM/DD/YYYY'}
+                onChange={(e) => onDateChange(antigen, row, e.target.value)}
+                aria-label={`${antigen.label} dose ${row.number} date administered`}
+              />
+            </span>
+          )
           : <span>{row.record ? fmtDate(row.record.date) : '-'}</span>}
       </Row>
       {booked && (

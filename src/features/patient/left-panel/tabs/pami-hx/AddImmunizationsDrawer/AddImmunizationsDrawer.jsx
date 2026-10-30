@@ -72,7 +72,7 @@ function ImmunizationRow({ immunization, onStatusChange, onEdit, dimmed }) {
         <span className={styles.rowDivider} aria-hidden="true" />
         <ActionButton
           icon="solar:pen-linear"
-          size="S"
+          size="sm"
           tooltip="Edit"
           aria-label={`Edit ${immunization.title}`}
           onClick={() => onEdit(immunization)}
@@ -162,7 +162,7 @@ function ImmunizationDraft({ title, eyebrow, initial, onSave, onCancel }) {
         <div className={styles.draftNote}>
           <div className={styles.draftNoteHead}>
             <span className={styles.draftNoteLabel}>Note</span>
-            <ActionButton size="S" tooltip="Discard note" aria-label="Discard note" onClick={() => { setNote(''); setNoteOpen(false); }}>
+            <ActionButton size="sm" tooltip="Discard note" aria-label="Discard note" onClick={() => { setNote(''); setNoteOpen(false); }}>
               <CloseIcon size={14} color="var(--neutral-300)" />
             </ActionButton>
           </div>
@@ -170,9 +170,9 @@ function ImmunizationDraft({ title, eyebrow, initial, onSave, onCancel }) {
         </div>
       )}
       <div className={styles.draftActions}>
-        <Button variant="secondary" size="M" onClick={onCancel}>Cancel</Button>
+        <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <span className={styles.draftDivider} aria-hidden="true" />
-        <Button variant="primary" size="M" disabled={!canSave || saving} onClick={save}>Save</Button>
+        <Button disabled={!canSave || saving} onClick={save}>Save</Button>
       </div>
     </div>
   );

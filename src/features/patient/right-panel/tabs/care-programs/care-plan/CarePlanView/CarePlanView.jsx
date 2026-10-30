@@ -955,7 +955,7 @@ export function CarePlanView({ patientId, program }) {
               <span className={styles.stripDivider} aria-hidden="true" />
               <Button
                 variant="ghost"
-                size="S"
+                size="sm"
                 leadingIcon="solar:add-linear"
                 onClick={handleTemplates}
                 disabled={!canEdit}
@@ -1023,7 +1023,7 @@ export function CarePlanView({ patientId, program }) {
             message={<><strong>Care plan paused</strong> · {pauseSummary(live.plan.pause)}. No cadence, overdue flags or automated outreach until it resumes.</>}
           />
           {canEdit && (
-            <Button variant="secondary" size="S" leadingIcon="solar:play-circle-linear" onClick={resumePlan}>
+            <Button variant="outline" size="sm" leadingIcon="solar:play-circle-linear" onClick={resumePlan}>
               Resume Now
             </Button>
           )}
@@ -1102,7 +1102,7 @@ export function CarePlanView({ patientId, program }) {
                 <span className={styles.careNoteDelete}>
                   <ActionButton
                     icon="solar:trash-bin-trash-linear"
-                    size="S"
+                    size="sm"
                     tooltip="Delete note"
                     onClick={() => setNoteDeleteOpen(true)}
                     aria-label="Delete care note"
@@ -1145,7 +1145,7 @@ export function CarePlanView({ patientId, program }) {
           }, {
             label: 'Delete',
             icon: 'solar:trash-bin-trash-linear',
-            variant: 'danger',
+            variant: 'soft', tone: 'danger',
             onClick: () => setBulkDeleteOpen(true),
           }]}
         />
@@ -1159,7 +1159,7 @@ export function CarePlanView({ patientId, program }) {
             open={openSections.linkage}
             onToggle={() => toggleSection('linkage')}
             addButton={(
-              <ActionButton size="S" tooltip="Add goal" onClick={() => setAddGoalsDrawerOpen(true)} disabled={!canEdit}>
+              <ActionButton size="sm" tooltip="Add goal" onClick={() => setAddGoalsDrawerOpen(true)} disabled={!canEdit}>
                 <AddIconMinimalist size={16} color="var(--neutral-300)" />
               </ActionButton>
             )}
@@ -1200,7 +1200,7 @@ export function CarePlanView({ patientId, program }) {
             </button>
           )}
           addButton={(
-            <ActionButton size="S" tooltip="Add goal" onClick={() => setAddGoalsDrawerOpen(true)} disabled={!canEdit}>
+            <ActionButton size="sm" tooltip="Add goal" onClick={() => setAddGoalsDrawerOpen(true)} disabled={!canEdit}>
               <AddIconMinimalist size={16} color="var(--neutral-300)" />
             </ActionButton>
           )}
@@ -1262,7 +1262,7 @@ export function CarePlanView({ patientId, program }) {
           addButton={(
             <ActionButton
               ref={intvAddRef}
-              size="S"
+              size="sm"
               tooltip="Add intervention"
               aria-haspopup="menu"
               aria-expanded={intvTypeMenuOpen}
@@ -1337,7 +1337,7 @@ export function CarePlanView({ patientId, program }) {
           onToggle={() => toggleSection('barriers')}
           rightAccessory={renderDuplicateBadge('barrier')}
           addButton={(
-            <ActionButton size="S" tooltip="Add barrier" onClick={() => setAddBarriersDrawerOpen(true)} disabled={!canEdit}>
+            <ActionButton size="sm" tooltip="Add barrier" onClick={() => setAddBarriersDrawerOpen(true)} disabled={!canEdit}>
               <AddIconMinimalist size={16} color="var(--neutral-300)" />
             </ActionButton>
           )}

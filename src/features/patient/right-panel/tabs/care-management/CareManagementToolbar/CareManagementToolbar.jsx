@@ -22,7 +22,7 @@ export function CareManagementToolbar({
   const filterBtn = (
     <ActionButton
       icon="custom:filter"
-      size="S"
+      size="sm"
       tooltip="Filter"
       tooltipLeft
       iconColor={showFilters ? 'var(--primary-300)' : undefined}
@@ -49,7 +49,7 @@ export function CareManagementToolbar({
         </div>
       ) : (
         <div className={styles.subTabBar}>
-          <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setSearchMode(true)} />
+          <ActionButton icon="solar:magnifer-linear" size="sm" tooltip="Search" onClick={() => setSearchMode(true)} />
           <Divider />
           <div className={styles.subTabs}>{header}</div>
           {cta}

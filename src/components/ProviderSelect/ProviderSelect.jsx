@@ -139,7 +139,7 @@ export function ProviderSelect({
               <>
                 <span className={styles.searchDivider} />
                 <ActionButton
-                  size="S"
+                  size="sm"
                   icon="custom:filter"
                   tooltip={advancedOpen ? 'Hide advanced search' : 'Advanced search'}
                   iconColor={advancedOpen || anyAdvanced ? 'var(--primary-300)' : undefined}

@@ -255,8 +255,8 @@ export function CarePlanViewDrawers(d) {
         <Drawer
           title="Sign Care Plan"
           onClose={() => setSignOpen(false)}
-          secondaryAction={<Button variant="secondary" size="L" onClick={() => setSignOpen(false)}>Cancel</Button>}
-          primaryAction={<Button variant="primary" size="L" onClick={doSign}>Sign</Button>}
+          secondaryAction={<Button variant="outline" onClick={() => setSignOpen(false)}>Cancel</Button>}
+          primaryAction={<Button onClick={doSign}>Sign</Button>}
         >
           <div className={styles.drawerBody}>
             <p className={styles.drawerHint}>Signing saves a version snapshot of the plan and records who signed it. You can still add notes and change statuses afterwards.</p>
@@ -274,8 +274,6 @@ export function CarePlanViewDrawers(d) {
           onClose={() => closeNoteDrawer()}
           primaryAction={
             <Button
-              variant="primary"
-              size="L"
               onClick={doAddNote}
               disabled={!noteText.trim() || !noteDirty}
             >
@@ -325,8 +323,8 @@ export function CarePlanViewDrawers(d) {
         <Drawer
           title="Add Problem"
           onClose={() => setProblemOpen(false)}
-          secondaryAction={<Button variant="secondary" size="L" onClick={() => setProblemOpen(false)}>Cancel</Button>}
-          primaryAction={<Button variant="primary" size="L" onClick={doAddProblem} disabled={!problemText.trim()}>Add</Button>}
+          secondaryAction={<Button variant="outline" onClick={() => setProblemOpen(false)}>Cancel</Button>}
+          primaryAction={<Button onClick={doAddProblem} disabled={!problemText.trim()}>Add</Button>}
         >
           <div className={styles.drawerBody}>
             <p className={styles.drawerHint}>Adds a problem/condition to this care plan. It shows in the problems bar and groups the goals, interventions, and barriers that address it.</p>
@@ -420,8 +418,8 @@ export function CarePlanViewDrawers(d) {
             <TemplateScopeChoice value={templateScope} onChange={setTemplateScope} choices={PATIENT_SCOPE_CHOICES} />
           </div>
           <div className={styles.templateDialogFooter}>
-            <Button variant="primary" size="L" onClick={saveTemplate} disabled={!templateName.trim()}>Save</Button>
-            <Button variant="secondary" size="L" onClick={() => setTemplateOpen(false)}>Cancel</Button>
+            <Button onClick={saveTemplate} disabled={!templateName.trim()}>Save</Button>
+            <Button variant="outline" onClick={() => setTemplateOpen(false)}>Cancel</Button>
           </div>
         </DialogContent>
       </Dialog>

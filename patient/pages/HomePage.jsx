@@ -59,7 +59,7 @@ function PackagesPromo({ onDismiss }) {
       <span className={styles.promoText}>
         Health packages are customised care activities and routines. You can explore and enrol in one that suits you the best.
       </span>
-      <Button variant="secondary" size="L" leadingIcon="solar:box-linear" fullWidth onClick={() => goTo('settings/packages?tab=available')}>
+      <Button variant="outline" leadingIcon="solar:box-linear" fullWidth onClick={() => goTo('settings/packages?tab=available')}>
         Explore Package
       </Button>
     </div>
@@ -118,7 +118,7 @@ export function HomePage({ refreshKey, onBook, onMessage }) {
             <ul className={styles.visits}>
               {visits.map((v) => <VisitCard key={v.id} visit={v} />)}
             </ul>
-            <Button variant="secondary" size="L" leadingIcon="solar:calendar-add-linear" onClick={onBook}>
+            <Button variant="outline" leadingIcon="solar:calendar-add-linear" onClick={onBook}>
               Book another visit
             </Button>
           </>

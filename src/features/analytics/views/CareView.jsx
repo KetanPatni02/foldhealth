@@ -377,7 +377,7 @@ function TeamTab({ showToast, editing = false, resetTick = 0 }) {
   const renderNeedsSupport = () => (
     <Card title={<span>&#x26A0; Needs Support</span>} style={{ border: '1px solid var(--status-warning-light)' }}>
       {needsSupport.map(st => <StaffCard key={st.name} staff={st} isBottom={true} showToast={showToast} />)}
-      <Button variant="primary" size="S" style={{ marginTop: 10, width: '100%', justifyContent: 'center' }} onClick={() => showToast?.('Scheduling coaching sessions for 3 staff')}>
+      <Button size="sm" style={{ marginTop: 10, width: '100%', justifyContent: 'center' }} onClick={() => showToast?.('Scheduling coaching sessions for 3 staff')}>
         Schedule Support Sessions (3)
       </Button>
     </Card>
@@ -455,7 +455,7 @@ function QualityTab({ bars, showToast, editing = false, resetTick = 0 }) {
 
   const renderComplianceIssues = () => (
     <Card title={<span>&#x26A0; Compliance Issues</span>} style={{ border: '1px solid var(--status-warning-light)' }}
-      actions={<Button variant="primary" size="S" style={{ fontSize: 'var(--font-sm)' }} onClick={() => showToast?.('Compliance alerts sent to managers')}>Alert All</Button>}
+      actions={<Button size="sm" style={{ fontSize: 'var(--font-sm)' }} onClick={() => showToast?.('Compliance alerts sent to managers')}>Alert All</Button>}
     >
       {complianceIssues.map((c, i) => {
         const sc = c.severity === 'high' ? 'var(--status-error)' : c.severity === 'medium' ? 'var(--status-warning)' : 'var(--status-success)';
@@ -586,7 +586,7 @@ function ProgramsTab({ showToast, programsDetail, programsLoading, editing = fal
   const programs = PROGRAMS_DATA;
 
   const renderProgramsTable = () => (
-    <Card title="Programs Detail" flush actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Exporting programs detail...')}>Export</Button>}>
+    <Card title="Programs Detail" flush actions={<Button variant="ghost" size="sm" onClick={() => showToast?.('Exporting programs detail...')}>Export</Button>}>
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead>
@@ -612,7 +612,7 @@ function ProgramsTab({ showToast, programsDetail, programsLoading, editing = fal
                   <td>{row.pref_day}</td>
                   <td className={`${s.r} ${s.mono}`}>{row.outreach_pct}</td>
                   <td className={`${s.r}`}><span className={`${s.stPill} ${engColor === 'green' ? s.stGreen : engColor === 'amber' ? s.stAmber : s.stRed}`}>{row.engage_pct}</span></td>
-                  <td><Button variant="ghost" size="S" onClick={() => showToast?.(`${row.action} ${row.program}`)}>{row.action}</Button></td>
+                  <td><Button variant="ghost" size="sm" onClick={() => showToast?.(`${row.action} ${row.program}`)}>{row.action}</Button></td>
                 </tr>
               );
             })}

@@ -54,8 +54,8 @@ export function AddTaskDrawer({ onClose, onSave }) {
       onClose={onClose}
       footer={(
         <div className={styles.footer}>
-          <Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="L" onClick={handleSave} disabled={!canSave}>Add Task</Button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSave} disabled={!canSave}>Add Task</Button>
         </div>
       )}
     >

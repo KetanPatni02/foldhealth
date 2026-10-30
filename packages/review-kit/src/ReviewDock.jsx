@@ -5,7 +5,8 @@ import { pickElement, describeElement, KIT_ATTR } from './picker';
 import { captureElement, captureViewport, selectorFor } from './capture';
 import { PickIcon, CameraIcon, UploadIcon, CloseIcon, CollapseIcon, ChevronIcon, GripIcon, PlusIcon } from './icons';
 import { RichTextEditor } from './RichTextEditor';
-import { AttachmentCarousel } from './AttachmentCarousel';
+import { AttachmentStrip } from './AttachmentStrip';
+import { ImagePreview } from './ImagePreview';
 import { themeToStyle, mergeLabels } from './theme';
 
 const EDGE = 24; // drop within this many px of a side wall to collapse into a tab
@@ -32,6 +33,39 @@ const pageContext = () => (isBrowser ? {
 } : { url: '', title: '', viewport: { width: 0, height: 0 } });
 const newPoint = () => ({ id: nextId(), html: '', text: '', empty: true, attachments: [], context: pageContext() });
 const isEmpty = (p) => p.empty && !p.attachments.length;
+
+// Size and position that fit the current window: a saved box from a larger
+// screen, or one left off-screen, opens fully visible.
+const fitToWindow = (size, pos) => {
+  if (!isBrowser) return { size, pos };
+  const fit = {
+    width: clamp(size.width, 320, Math.max(320, window.innerWidth - 16)),
+    height: clamp(size.height, 320, Math.max(320, window.innerHeight - 16)),
+  };
+  return {
+    size: fit,
+    pos: {
+      x: clamp(pos.x, 0, Math.max(0, window.innerWidth - fit.width)),
+      y: clamp(pos.y, 0, Math.max(0, window.innerHeight - fit.height)),
+    },
+  };
+};
+
+// The layer is only an anchor (0x0 at the top-left). Its essentials are set
+// inline with !important, so no page stylesheet, extension or browser default
+// can give it a background, clip it or hide it: each of those has happened
+// to a review layer in the wild (Chromium 155 painted it white).
+const LAYER_GUARD = {
+  position: 'fixed', top: '0', left: '0', width: '0', height: '0',
+  overflow: 'visible', display: 'block', visibility: 'visible', opacity: '1',
+  background: 'none', transform: 'none', filter: 'none', 'clip-path': 'none',
+  contain: 'none', margin: '0', padding: '0', border: '0', 'pointer-events': 'none',
+  'z-index': 'var(--rk-z)',
+};
+const guardLayer = (el) => {
+  if (!el) return;
+  for (const [prop, value] of Object.entries(LAYER_GUARD)) el.style.setProperty(prop, value, 'important');
+};
 const defaultPosition = () => (isBrowser ? {
   x: Math.max(EDGE, window.innerWidth - DEFAULT_SIZE.width - 32),
   y: Math.max(EDGE, window.innerHeight - DEFAULT_SIZE.height - 32),
@@ -41,8 +75,9 @@ const defaultPosition = () => (isBrowser ? {
  * Floating, draggable review box. See README.md for the full API.
  *
  * Feedback is a series of points: each has its own screenshots (element picks,
- * screen shots, uploaded, pasted or dropped images and GIFs, shown as a
- * carousel), its own rich-text comment, and the page it was made on.
+ * screen shots, uploaded, pasted or dropped images and GIFs, shown as square
+ * thumbnails that open a preview with annotation), its own rich-text comment,
+ * and the page it was made on.
  *
  * Styling: `theme` (design tokens), CSS variables (--rk-*), and `classNames`
  * slots. Wording: `labels`. Storage: whatever `onSubmit` does with the points.
@@ -63,20 +98,26 @@ export function ReviewDock({
   const L = useMemo(() => mergeLabels(labels), [labels]);
   const themeStyle = useMemo(() => themeToStyle(theme), [theme]);
 
-  const [saved] = useState(() => readSaved(storageKey));
-  const [size, setSize] = useState(saved?.size || DEFAULT_SIZE);
-  const [pos, setPos] = useState(() => saved?.pos || defaultPosition());
-  const [collapsed, setCollapsed] = useState(saved?.collapsed || null); // null | 'left' | 'right'
+  const [initial] = useState(() => {
+    const saved = readSaved(storageKey);
+    return fitToWindow(saved?.size || DEFAULT_SIZE, saved?.pos || defaultPosition());
+  });
+  const [size, setSize] = useState(initial.size);
+  const [pos, setPos] = useState(initial.pos);
+  // Always opens expanded: a box that opens as a thin tab at the screen edge
+  // reads as "the review box didn't open".
+  const [collapsed, setCollapsed] = useState(null); // null | 'left' | 'right'
   const [edgeHint, setEdgeHint] = useState(null);
   const [points, setPoints] = useState(() => [newPoint()]);
   const [activeId, setActiveId] = useState(() => points[0].id);
   const [busy, setBusy] = useState(null); // null | 'pick' | 'capture' | 'send'
   const [notice, setNotice] = useState(null); // { tone: 'error'|'ok', text }
+  const [previewId, setPreviewId] = useState(null);
 
   const active = points.find(p => p.id === activeId) || points[0];
   const activeIndex = points.indexOf(active);
 
-  useEffect(() => { save(storageKey, { size, pos, collapsed }); }, [storageKey, size, pos, collapsed]);
+  useEffect(() => { save(storageKey, { size, pos }); }, [storageKey, size, pos]);
 
   // Keep the box on screen when the window shrinks.
   useEffect(() => {
@@ -101,6 +142,14 @@ export function ReviewDock({
   const removeAttachment = (id) => updateActive(p => ({
     ...p,
     attachments: p.attachments.filter(a => a.id !== id),
+  }));
+
+  // An annotated copy replaces the original, keeping where it came from.
+  const replaceAttachment = (id, file) => updateActive(p => ({
+    ...p,
+    attachments: p.attachments.map(a => (a.id === id
+      ? { ...a, file, type: 'image/png', name: a.name.replace(/\.[^.]+$/, '') + '.png', annotated: true }
+      : a)),
   }));
 
   const tooBig = useCallback((count) => setNotice({ tone: 'error', text: L.skipped(count, maxFileSizeMb) }), [L, maxFileSizeMb]);
@@ -192,7 +241,7 @@ export function ReviewDock({
           html: p.empty ? '' : p.html,
           attachments: p.attachments.map(a => ({
             file: a.file, name: a.name, type: a.type, kind: a.kind,
-            selector: a.selector, element: a.element, rect: a.rect,
+            selector: a.selector, element: a.element, rect: a.rect, annotated: !!a.annotated,
           })),
           context: p.context,
         })),
@@ -227,6 +276,7 @@ export function ReviewDock({
   };
 
   const layerProps = {
+    ref: guardLayer,
     className: cx('rk-root', 'rk-layer', className, classNames.root),
     style: themeStyle,
     [KIT_ATTR]: '',
@@ -252,6 +302,7 @@ export function ReviewDock({
   }
 
   const labelFor = (a) => (a.kind === 'element' ? a.element : a.kind === 'screen' ? L.screenLabel : a.name);
+  const previewing = active.attachments.find(a => a.id === previewId);
   const sendLabel = busy === 'send' ? L.sending : filled.length > 1 ? L.sendPoints(filled.length) : L.send;
 
   return (
@@ -259,7 +310,7 @@ export function ReviewDock({
       {edgeHint && <div className={`rk-edge-hint rk-edge-hint-${edgeHint}`} aria-hidden="true" />}
       <Rnd
         className="rk-dock"
-        bounds="parent"
+        bounds="window"
         size={size}
         position={pos}
         minWidth={320}
@@ -326,13 +377,14 @@ export function ReviewDock({
             )}
           </nav>
 
-          <AttachmentCarousel
+          <AttachmentStrip
             key={`shots-${active.id}`}
             items={active.attachments}
+            onOpen={setPreviewId}
             onRemove={removeAttachment}
             labelFor={labelFor}
             labels={L}
-            className={classNames.carousel}
+            className={classNames.attachments}
           />
 
           <div className="rk-body rk-no-drag">
@@ -374,6 +426,16 @@ export function ReviewDock({
           {isDragActive && <div className="rk-drop-overlay">{L.dropHint(activeIndex + 1)}</div>}
         </section>
       </Rnd>
+      {previewing && (
+        <ImagePreview
+          key={previewing.id}
+          attachment={previewing}
+          name={labelFor(previewing)}
+          labels={L}
+          onAnnotated={(file) => replaceAttachment(previewing.id, file)}
+          onClose={() => setPreviewId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -298,9 +298,9 @@ function OngoingCallTab({ searchQuery }) {
                   <Icon name="solar:translation-2-linear" size={16} color="var(--neutral-300)" />
                   Live Transcript
                 </button>
-                <ActionButton icon="solar:headphones-round-sound-linear" size="L" tooltip="Listen" />
+                <ActionButton icon="solar:headphones-round-sound-linear" tooltip="Listen" />
                 <span className={styles.actionDivider} />
-                <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" />
+                <ActionButton icon="solar:menu-dots-bold" tooltip="More Options" />
               </div>
             </td>
           </tr>
@@ -378,9 +378,9 @@ function InQueueTab({ searchQuery }) {
                     <Icon name="solar:alt-arrow-down-linear" size={16} color="var(--neutral-300)" />
                   </button>
                 </div>
-                <ActionButton icon="solar:close-circle-linear" size="L" tooltip="Remove from Queue" onClick={() => removeMember(idx)} />
+                <ActionButton icon="solar:close-circle-linear" tooltip="Remove from Queue" onClick={() => removeMember(idx)} />
                 <span className={styles.actionDivider} />
-                <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" />
+                <ActionButton icon="solar:menu-dots-bold" tooltip="More Options" />
               </div>
             </td>
           </tr>
@@ -512,7 +512,7 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
                   />
                 </div>
               </button>
-              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More Options" />
+              <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More Options" />
             </div>
 
             {!collapsedGroups[gi] && (
@@ -557,14 +557,14 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
                             <td>
                               <div className={styles.rowActions} onClick={e => e.stopPropagation()}>
                                 {isFailed ? (
-                                  <ActionButton icon="solar:refresh-linear" size="L" tooltip="Retry" />
+                                  <ActionButton icon="solar:refresh-linear" tooltip="Retry" />
                                 ) : (
                                   <>
-                                    <ActionButton icon="solar:document-text-linear" size="L" tooltip="Summary" />
-                                    <ActionButton icon="solar:play-linear" size="L" tooltip="Play Recording" />
+                                    <ActionButton icon="solar:document-text-linear" tooltip="Summary" />
+                                    <ActionButton icon="solar:play-linear" tooltip="Play Recording" />
                                   </>
                                 )}
-                                <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" />
+                                <ActionButton icon="solar:menu-dots-bold" tooltip="More Options" />
                               </div>
                             </td>
                           </tr>
@@ -723,8 +723,8 @@ export function CallQueueDrawer({ agent, onClose, initialTab }) {
               </div>
             </div>
             <div className={styles.bannerActions}>
-              <Button variant="secondary" size="M" leadingIcon="solar:pen-linear">Edit Configuration</Button>
-              <Button variant="error" size="M" leadingIcon="solar:forbidden-circle-linear">Stop</Button>
+              <Button variant="outline" leadingIcon="solar:pen-linear">Edit Configuration</Button>
+              <Button variant="soft" tone="danger" leadingIcon="solar:forbidden-circle-linear">Stop</Button>
             </div>
           </div>
 
@@ -742,11 +742,11 @@ export function CallQueueDrawer({ agent, onClose, initialTab }) {
               ))}
             </div>
             <div className={styles.tabActions}>
-              <ActionButton icon="solar:refresh-linear" size="L" tooltip="Refresh" />
+              <ActionButton icon="solar:refresh-linear" tooltip="Refresh" />
               <span className={styles.tabDivider} />
-              <ActionButton icon="custom:filter" size="L" tooltip="Filter" />
+              <ActionButton icon="custom:filter" tooltip="Filter" />
               <span className={styles.tabDivider} />
-              <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" onClick={() => { setSearchOpen(v => !v); if (searchOpen) setSearchQuery(''); }} />
+              <ActionButton icon="solar:magnifer-linear" tooltip="Search" onClick={() => { setSearchOpen(v => !v); if (searchOpen) setSearchQuery(''); }} />
             </div>
           </div>
 

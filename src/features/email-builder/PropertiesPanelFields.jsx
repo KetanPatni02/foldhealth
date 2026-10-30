@@ -545,8 +545,8 @@ export function TableEditor({ columns, rows, onChangeColumns, onChangeRows }) {
         ))}
       </div>
       <div className={styles.tableEditorActions}>
-        <Button variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={addRow}>+ Row</Button>
-        <Button variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={addColumn}>+ Column</Button>
+        <Button variant="ghost" size="sm" className={styles.tableEditorAddBtn} onClick={addRow}>+ Row</Button>
+        <Button variant="ghost" size="sm" className={styles.tableEditorAddBtn} onClick={addColumn}>+ Column</Button>
       </div>
     </div>
   );
@@ -653,11 +653,11 @@ export function SocialEditor({ platforms, onChange }) {
       ))}
       <div className={styles.socialPresets}>
         {SOCIAL_PRESETS.filter(sp => !platforms.some(p => p.id === sp.id)).map(sp => (
-          <Button key={sp.id} variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={() => addPlatform(sp)}>
+          <Button key={sp.id} variant="ghost" size="sm" className={styles.tableEditorAddBtn} onClick={() => addPlatform(sp)}>
             + {sp.label}
           </Button>
         ))}
-        <Button variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={addCustom}>
+        <Button variant="ghost" size="sm" className={styles.tableEditorAddBtn} onClick={addCustom}>
           + Custom
         </Button>
       </div>
@@ -696,7 +696,7 @@ export function NavLinkEditor({ links, onChange }) {
           <CloseButton size={12} onClick={() => removeLink(i)} className={styles.tableEditorRemoveRowBtn} label="Remove link" />
         </div>
       ))}
-      <Button variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={addLink}>+ Add link</Button>
+      <Button variant="ghost" size="sm" className={styles.tableEditorAddBtn} onClick={addLink}>+ Add link</Button>
     </div>
   );
 }

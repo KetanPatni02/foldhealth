@@ -40,8 +40,8 @@ export function GetStartedModal({ onClose }) {
             ))}
           </ol>
           <div className={styles.footer}>
-            <Button variant="secondary" onClick={onClose}>Close</Button>
-            <Button variant="primary" leadingIcon="solar:add-circle-linear" onClick={() => { onClose(); openNewAutomation(null); }}>
+            <Button variant="outline" onClick={onClose}>Close</Button>
+            <Button leadingIcon="solar:add-circle-linear" onClick={() => { onClose(); openNewAutomation(null); }}>
               Create an automation
             </Button>
           </div>

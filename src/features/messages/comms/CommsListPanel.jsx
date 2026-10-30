@@ -190,10 +190,10 @@ export function CommsListPanel({
           onClear={() => setPicked([])}
           noun={picked.length === 1 ? 'Conversation' : 'Conversations'}
           actions={[
-            { label: 'Mark as Read', icon: 'solar:check-read-linear', variant: 'secondary', onClick: (ids) => { ids.forEach(id => markConversationRead(conversations.find(c => c.id === id))); setPicked([]); } },
-            { label: 'Pin', icon: 'solar:pin-linear', variant: 'secondary', onClick: (ids) => { ids.forEach(id => updateConversation(id, { pinned: true })); setPicked([]); } },
-            { label: showArchived ? 'Unarchive' : 'Archive', icon: 'solar:archive-linear', variant: 'primary', onClick: (ids) => { ids.forEach(id => updateConversation(id, { archived: !showArchived })); setPicked([]); } },
-            { label: 'Delete', icon: 'solar:trash-bin-minimalistic-linear', variant: 'danger', onClick: () => setConfirmDelete(true) },
+            { label: 'Mark as Read', icon: 'solar:check-read-linear', variant: 'outline', onClick: (ids) => { ids.forEach(id => markConversationRead(conversations.find(c => c.id === id))); setPicked([]); } },
+            { label: 'Pin', icon: 'solar:pin-linear', variant: 'outline', onClick: (ids) => { ids.forEach(id => updateConversation(id, { pinned: true })); setPicked([]); } },
+            { label: showArchived ? 'Unarchive' : 'Archive', icon: 'solar:archive-linear', variant: 'solid', onClick: (ids) => { ids.forEach(id => updateConversation(id, { archived: !showArchived })); setPicked([]); } },
+            { label: 'Delete', icon: 'solar:trash-bin-minimalistic-linear', variant: 'soft', tone: 'danger', onClick: () => setConfirmDelete(true) },
           ]}
         />
       )}

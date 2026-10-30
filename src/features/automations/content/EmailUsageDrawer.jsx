@@ -30,7 +30,7 @@ function UsageCard({ automation, onOpen }) {
       <div className={styles.cardTop}>
         <FlowIcons graph={automation.graph} />
         <span ref={menuRef} className={styles.kebab}>
-          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" onClick={() => setMenu(m => !m)} />
+          <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" onClick={() => setMenu(m => !m)} />
         </span>
         {menu && (
           <MenuPopover
@@ -92,7 +92,7 @@ export function EmailUsageDrawer({ emailIds, emailName, deleting = false, onDele
 
   const headerRight = (
     <>
-      <Button variant="danger" size="L" leadingIcon="solar:trash-bin-trash-linear" disabled={deleting} onClick={() => onDelete()}>
+      <Button variant="soft" tone="danger" leadingIcon="solar:trash-bin-trash-linear" disabled={deleting} onClick={() => onDelete()}>
         {deleting ? 'Deleting…' : several ? 'Delete emails' : 'Delete email'}
       </Button>
       <span className={styles.headerDivider} />

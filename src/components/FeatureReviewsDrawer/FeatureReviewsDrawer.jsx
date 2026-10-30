@@ -90,7 +90,7 @@ function matches(tab, item, subItems, myEmail) {
  * add features and change reviewers. Everyone else sees only kept items
  * assigned to them. The database enforces all of it.
  */
-export function FeatureReviewsDrawer({ onClose }) {
+export function FeatureReviewsDrawer({ onClose, focusId = null }) {
   const reviews = useAppStore(s => s.featureReviews);
   const managers = useAppStore(s => s.featureReviewManagers);
   const loading = useAppStore(s => s.featureReviewsLoading);
@@ -140,7 +140,8 @@ export function FeatureReviewsDrawer({ onClose }) {
     all: approved.length + (isManager ? suggested.length : 0), suggested: suggested.length,
   };
 
-  const [tab, setTab] = useState(null);
+  // Opened on one item (from the review box): show it under All.
+  const [tab, setTab] = useState(focusId ? 'all' : null);
   // Managers land on everything; reviewers on what's waiting for them.
   const activeTab = tab || (isManager || counts.mine === 0 ? 'all' : 'mine');
   const [newestFirst, setNewestFirst] = useState(true);
@@ -158,7 +159,7 @@ export function FeatureReviewsDrawer({ onClose }) {
     return byDay;
   }, [filtered, activeTab, newestFirst]);
 
-  const [expanded, setExpanded] = useState(null);
+  const [expanded, setExpanded] = useState(focusId);
   const [form, setForm] = useState(null);
   // Review: go to the item's section and open the floating review box there.
   const startFeatureReview = useAppStore(s => s.startFeatureReview);
@@ -172,7 +173,18 @@ export function FeatureReviewsDrawer({ onClose }) {
   );
   const [dragId, setDragId] = useState(null);
   const [overId, setOverId] = useState(null);
-  const [flashId, setFlashId] = useState(null);
+  const [flashId, setFlashId] = useState(focusId);
+  // Bring the focused item into view once it has loaded, then let the flash
+  // fade. Keyed on "loaded" (flips once), so refetches don't restart it.
+  const focusLoaded = !!focusId && reviews.some(r => r.id === focusId);
+  useEffect(() => {
+    if (!focusLoaded) return undefined;
+    const frame = requestAnimationFrame(() => {
+      document.querySelector(`[data-review-id="${focusId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+    const fade = setTimeout(() => setFlashId(v => (v === focusId ? null : v)), 1800);
+    return () => { cancelAnimationFrame(frame); clearTimeout(fade); };
+  }, [focusId, focusLoaded]);
   const dragItem = dragId ? reviews.find(r => r.id === dragId) : null;
   const drop = dropVerdict(dragItem, overId, reviews);
 
@@ -234,7 +246,7 @@ export function FeatureReviewsDrawer({ onClose }) {
       noCloseDivider={isManager}
       headerRight={isManager ? (
         <>
-          <Button variant="secondary" size="S" leadingIcon="solar:add-circle-linear" onClick={() => setForm({ parentId: null })}>
+          <Button variant="outline" size="sm" leadingIcon="solar:add-circle-linear" onClick={() => setForm({ parentId: null })}>
             Add Feature
           </Button>
           <span className={styles.headerDivider} />
@@ -264,7 +276,7 @@ export function FeatureReviewsDrawer({ onClose }) {
             ...(isManager ? [{ key: 'suggested', label: 'Suggested', count: counts.suggested }] : []),
           ]}
           trailing={(
-            <Button variant="ghost" size="S" leadingIcon="solar:sort-vertical-linear" onClick={() => setNewestFirst(v => !v)}>
+            <Button variant="ghost" size="sm" leadingIcon="solar:sort-vertical-linear" onClick={() => setNewestFirst(v => !v)}>
               {newestFirst ? 'Newest first' : 'Oldest first'}
             </Button>
           )}
@@ -556,8 +568,8 @@ function ReviewRow({
         <div><ReviewStatus item={item} childItems={childItems} /></div>
         {suggestion && isManager ? (
           <div className={styles.actions}>
-            <ActionButton size="S" icon="solar:trash-bin-minimalistic-linear" tooltip="Remove from the list" tooltipLeft onClick={() => remove(item.id)} />
-            <Button variant="secondary" size="S" leadingIcon="solar:check-read-linear" onClick={handleKeep}>Keep</Button>
+            <ActionButton size="sm" icon="solar:trash-bin-minimalistic-linear" tooltip="Remove from the list" tooltipLeft onClick={() => remove(item.id)} />
+            <Button variant="outline" size="sm" leadingIcon="solar:check-read-linear" onClick={handleKeep}>Keep</Button>
           </div>
         ) : (
           // Fixed slots (Sign off · divider · comment · divider · open) so each control
@@ -565,7 +577,7 @@ function ReviewRow({
           <div className={styles.actionSlots}>
             <span className={styles.signOffSlot}>
               {showSignOff && (
-                <Button variant="tertiary" size="S" leadingIcon="solar:check-circle-linear" onClick={handleSignOff} disabled={signing}>
+                <Button variant="soft" size="sm" leadingIcon="solar:check-circle-linear" onClick={handleSignOff} disabled={signing}>
                   {signing ? 'Signing…' : 'Sign off'}
                 </Button>
               )}
@@ -574,7 +586,7 @@ function ReviewRow({
             <span>
               {mine && (
                 <ActionButton
-                  size="S"
+                  size="sm"
                   icon="solar:chat-line-linear"
                   tooltip={mine.comment ? 'Edit comment' : 'Add comment'}
                   tooltipLeft
@@ -584,7 +596,7 @@ function ReviewRow({
             </span>
             <span>{mine && showOpen && <span className={styles.headerDivider} />}</span>
             <span>
-              {showOpen && <ActionButton size="S" icon="solar:eye-linear" tooltip="Review: open the section with a comment box" tooltipLeft onClick={onReview} />}
+              {showOpen && <ActionButton size="sm" icon="solar:eye-linear" tooltip="Review: open the section with a comment box" tooltipLeft onClick={onReview} />}
             </span>
           </div>
         )}
@@ -625,7 +637,7 @@ function ReviewerAvatars({ item, editable, onEdit }) {
   if (!people.length) {
     return (
       <ActionButton
-        size="S"
+        size="sm"
         icon="solar:user-plus-linear"
         tooltip="Assign reviewers"
         onClick={e => onEdit(e.currentTarget.getBoundingClientRect())}
@@ -796,7 +808,7 @@ function ReviewDetail({ item, child, myEmail, isManager, commenting, onCommentDo
       {isManager && <ManageLink item={item} />}
       {isManager && !child && item.status === 'approved' && (
         <div>
-          <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" onClick={onAddSubItem}>Add Sub-item</Button>
+          <Button variant="ghost" size="sm" leadingIcon="solar:add-circle-linear" onClick={onAddSubItem}>Add Sub-item</Button>
         </div>
       )}
     </div>
@@ -834,8 +846,8 @@ function CommentBox({ signoff, onDone }) {
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) save(); }}
       />
       <div className={styles.commentActions}>
-        <Button variant="secondary" size="S" onClick={onDone} disabled={saving}>Cancel</Button>
-        <Button variant="primary" size="S" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+        <Button variant="outline" size="sm" onClick={onDone} disabled={saving}>Cancel</Button>
+        <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
       </div>
     </div>
   );

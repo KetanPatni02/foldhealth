@@ -279,13 +279,13 @@ function ProviderTable({ people, onAdd, onEdit, onDelete }) {
       ),
       actions: (
         <span className={styles.actions}>
-          <ActionButton icon="solar:add-linear" size="S" tooltip="Add slot" onClick={() => onAdd(u)} />
+          <ActionButton icon="solar:add-linear" size="sm" tooltip="Add slot" onClick={() => onAdd(u)} />
           {u.blocks.length > 0 && (
             <>
               <span className={styles.divider} aria-hidden="true" />
-              <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit availability" onClick={() => onEdit(u)} />
+              <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit availability" onClick={() => onEdit(u)} />
               <span className={styles.divider} aria-hidden="true" />
-              <ActionButton icon="solar:trash-bin-minimalistic-linear" size="S" tooltip="Delete availability" onClick={() => onDelete(u)} />
+              <ActionButton icon="solar:trash-bin-minimalistic-linear" size="sm" tooltip="Delete availability" onClick={() => onDelete(u)} />
             </>
           )}
         </span>
@@ -456,7 +456,7 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
   return (
     <div className={styles.weekWrap}>
       <div className={styles.weekNav}>
-        <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous week" onClick={() => onOffset(offset - 1)} />
+        <ActionButton icon="solar:alt-arrow-left-linear" size="sm" tooltip="Previous week" onClick={() => onOffset(offset - 1)} />
         {/* Opens a calendar to jump to any week. */}
         <button
           type="button"
@@ -489,7 +489,7 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
           }}
           onClose={() => setPickerRect(null)}
         />
-        <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next week" onClick={() => onOffset(offset + 1)} />
+        <ActionButton icon="solar:alt-arrow-right-linear" size="sm" tooltip="Next week" onClick={() => onOffset(offset + 1)} />
         {/* Figma Care Programs 7843:26166, at the bar's right end. */}
         {offset !== 0 && (
           <Link variant="secondary" className={styles.backToToday} onClick={() => onOffset(0)}>

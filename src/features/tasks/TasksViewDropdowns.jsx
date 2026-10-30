@@ -63,9 +63,9 @@ export function TaskDatePicker({ value, onSelect, overdue, compact = false }) {
             onClick={e => e.stopPropagation()}
           >
             <div className={styles.calendarHeader}>
-              <ActionButton icon="solar:alt-arrow-left-linear" size="S" onClick={() => setViewDate(new Date(year, month - 1, 1))} />
+              <ActionButton icon="solar:alt-arrow-left-linear" size="sm" onClick={() => setViewDate(new Date(year, month - 1, 1))} />
               <span className={styles.calendarTitle}>{MONTH_NAMES[month]} {year}</span>
-              <ActionButton icon="solar:alt-arrow-right-linear" size="S" onClick={() => setViewDate(new Date(year, month + 1, 1))} />
+              <ActionButton icon="solar:alt-arrow-right-linear" size="sm" onClick={() => setViewDate(new Date(year, month + 1, 1))} />
             </div>
             <div className={styles.calendarGrid}>
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={i} className={styles.calendarDayLabel}>{d}</div>)}

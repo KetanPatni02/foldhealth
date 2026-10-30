@@ -410,7 +410,7 @@ export function PatientDetailView() {
           <span className={styles.hostedTabTitle}>{tab}</span>
           <ActionButton
             icon="solar:sidebar-minimalistic-linear"
-            size="S"
+            size="sm"
             tooltip="Open in panel"
             onClick={() => openInPanel(tab)}
           />
@@ -453,7 +453,7 @@ export function PatientDetailView() {
         actions: (
           <ActionButton
             icon="solar:sidebar-minimalistic-linear"
-            size="S"
+            size="sm"
             tooltip="Move to patient panel"
             onClick={() => moveToLeftPanel(id)}
           />
@@ -569,7 +569,7 @@ export function PatientDetailView() {
             actions={barActiveTab === 'Overview' ? (
               <ActionButton
                 icon="solar:tuning-2-linear"
-                size="S"
+                size="sm"
                 tooltip="Customize Overview"
                 tooltipLeft
                 onClick={() => setCustomizingOverview(true)}

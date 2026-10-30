@@ -63,8 +63,8 @@ function EmailsBulkBar({ count, onDelete, onClear, onExit }) {
       </div>
       <span className={styles.bulkDivider} />
       <Button
-        variant="secondary"
-        size="S"
+        variant="outline"
+        size="sm"
         leadingIcon="solar:trash-bin-trash-linear"
         onClick={onDelete}
       >
@@ -172,7 +172,7 @@ function RowMenu({ onPreview, onDuplicate, onDelete }) {
       <div ref={btnRef} style={{ display: 'inline-flex' }}>
         <ActionButton
           icon="solar:menu-dots-linear"
-          size="S"
+          size="sm"
           tooltip="More"
           onClick={openMenu}
         />
@@ -349,14 +349,14 @@ function EmailsTab({
           <div className={styles.actionCell}>
             <ActionButton
               icon="solar:pen-linear"
-              size="S"
+              size="sm"
               tooltip="Edit template"
               onClick={() => openContentEmailBuilder(campaign)}
             />
             <div className={styles.vDivider} />
             <ActionButton
               icon="solar:chart-linear"
-              size="S"
+              size="sm"
               tooltip="Analytics"
               onClick={() => showToast('Analytics – coming soon')}
             />
@@ -464,7 +464,7 @@ function FormRowMenu({ onCopyLink, onDuplicate, onDelete }) {
   return (
     <>
       <div ref={btnRef} style={{ display: 'inline-flex' }}>
-        <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" onClick={openMenu} />
+        <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" onClick={openMenu} />
       </div>
       {open && createPortal(
         <div className={styles.overflowScrim} onClick={() => setOpen(false)}>
@@ -592,7 +592,7 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
         </td>
         <td className={styles.tdAction}>
           <div className={styles.actionCell}>
-            <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit form" onClick={() => openFormBuilder(form)} />
+            <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit form" onClick={() => openFormBuilder(form)} />
             <div className={styles.vDivider} />
             <FormRowMenu onCopyLink={() => copyLink(form)} onDuplicate={() => onDuplicate(form)} onDelete={() => onDelete(form)} />
           </div>
@@ -886,12 +886,12 @@ function NoteRowActions({
 
   return (
     <div className={styles.rowActions}>
-      <ActionButton icon="solar:eye-linear" size="S" tooltip="Preview" onClick={onPreview} />
-      <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={onEdit} />
+      <ActionButton icon="solar:eye-linear" size="sm" tooltip="Preview" onClick={onPreview} />
+      <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={onEdit} />
       <div ref={btnRef}>
         <ActionButton
           icon="solar:menu-dots-bold"
-          size="S"
+          size="sm"
           tooltip="More"
           onClick={() => setOpen(v => !v)}
         />
@@ -963,7 +963,7 @@ function NoteTemplateActivityDrawer({ template, onClose }) {
             <div className={styles.inspectorTitle}>Activity Log</div>
             <div className={styles.inspectorSub}>{template.name}</div>
           </div>
-          <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Close" onClick={onClose} />
+          <ActionButton icon="solar:close-circle-linear" size="sm" tooltip="Close" onClick={onClose} />
         </header>
         <div className={styles.inspectorBody}>
           <ActivityLog entries={entries} emptyLabel="No activity recorded yet." />
@@ -997,7 +997,7 @@ function NoteTemplateInspector({ template, onClose, onEditFields, onSetDefault, 
             <div className={styles.inspectorTitle}>{template.name}</div>
             {template.description && <div className={styles.inspectorSub}>{template.description}</div>}
           </div>
-          <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Close" onClick={onClose} />
+          <ActionButton icon="solar:close-circle-linear" size="sm" tooltip="Close" onClick={onClose} />
         </header>
         <div className={styles.inspectorMeta}>
           <Badge tone="grey" size="S" label={isCareGap ? 'Care Gap Note' : 'Normal Note'} />
@@ -1012,16 +1012,16 @@ function NoteTemplateInspector({ template, onClose, onEditFields, onSetDefault, 
           <Badge tone="grey" size="S" label={template.status || 'active'} />
         </div>
         <div className={styles.inspectorActions}>
-          <Button variant="primary" size="M" leadingIcon="solar:pen-linear" onClick={onEditFields}>
+          <Button leadingIcon="solar:pen-linear" onClick={onEditFields}>
             Edit fields
           </Button>
           {isCareGap && !isDefault && !isArchived && (
-            <Button variant="secondary" size="M" leadingIcon="solar:star-linear" onClick={onSetDefault}>
+            <Button variant="outline" leadingIcon="solar:star-linear" onClick={onSetDefault}>
               Set as {template.context === 'non_visit' ? 'Non-Visit' : 'Visit'} default
             </Button>
           )}
           {!isArchived && (
-            <Button variant="tertiary" size="M" leadingIcon="solar:archive-down-linear" onClick={onArchive}>
+            <Button variant="soft" leadingIcon="solar:archive-down-linear" onClick={onArchive}>
               Archive
             </Button>
           )}
@@ -1287,7 +1287,6 @@ export function ContentSettings() {
             )}
             {!isNotes && !isComponents && (
               <ActionButton
-                size="L"
                 tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
                 iconColor={bulkMode ? 'var(--primary-300)' : 'var(--neutral-300)'}
                 onClick={() => {
@@ -1302,7 +1301,6 @@ export function ContentSettings() {
               <>
                 <ActionButton
                   icon="custom:filter"
-                  size="L"
                   tooltip="Filter"
                   onClick={() => {
                     const idx = STATUS_CYCLE.indexOf(statusFilter);

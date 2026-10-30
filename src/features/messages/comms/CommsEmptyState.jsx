@@ -70,8 +70,6 @@ export function CommsPanelEmpty({ viewKey, hasConversations, onCreate }) {
         <>
           <Button
             ref={btnRef}
-            variant="primary"
-            size="L"
             leadingIcon="solar:add-circle-linear"
             trailingIcon="solar:alt-arrow-down-linear"
             onClick={() => setMenuOpen(o => !o)}
@@ -92,8 +90,6 @@ export function CommsPanelEmpty({ viewKey, hasConversations, onCreate }) {
         </>
       ) : (
         <Button
-          variant="primary"
-          size="L"
           leadingIcon="solar:add-circle-linear"
           disabled={!v.create}
           onClick={() => onCreate(v.create)}

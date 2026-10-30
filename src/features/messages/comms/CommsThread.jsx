@@ -135,7 +135,6 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
   // Rename Thread (FCS-5677), from the pencil; an empty name goes back to
   // the members' names.
   const [renaming, setRenaming] = useState(false);
-  const renameRef = useRef(null);
   const titleRef = useRef(null);
   const commitRename = async (next) => {
     if (next === (conversation.thread_name || '')) return;
@@ -393,11 +392,10 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
               <>
                 {/* Every member's first name, or the custom name. */}
                 <span ref={titleRef} className={styles.headerName}>{threadTitle(conversation, members)}</span>
-                <ActionButton ref={renameRef} icon="solar:pen-linear" size="S" tooltip="Rename Thread" onClick={() => setRenaming(o => !o)} />
+                <ActionButton icon="solar:pen-linear" size="sm" tooltip="Rename Thread" onClick={() => setRenaming(o => !o)} />
                 {renaming && (
                   <RenamePopover
                     anchorRef={titleRef}
-                    triggerRef={renameRef}
                     label="Thread name"
                     value={conversation.thread_name || ''}
                     placeholder="Type a thread name"
@@ -453,7 +451,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
                 <ActionButton
                   icon="solar:user-circle-linear"
                   tooltip="Log SMS for member"
-                  state={picked.size ? 'active' : 'disabled'}
+                  disabled={!picked.size}
                   onClick={() => setMemberModal(true)}
                 />
               ) : (
@@ -485,7 +483,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
           <ActionButton
             icon="solar:phone-calling-linear"
             tooltip="Make a Call"
-            state={callStatus === 'idle' || callStatus === 'ended' ? 'active' : 'disabled'}
+            disabled={!(callStatus === 'idle' || callStatus === 'ended')}
             onClick={call}
           />
           <span className={styles.headerDivider} />

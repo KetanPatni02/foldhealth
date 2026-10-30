@@ -95,7 +95,7 @@ export function CareProgramsTabTable({
               <td className={styles.actionsCell} onClick={e => e.stopPropagation()}>
                 <ActionButton
                   icon="solar:menu-dots-linear"
-                  size="S"
+                  size="sm"
                   tooltip="More actions"
                   tooltipBelow
                   tooltipLeft

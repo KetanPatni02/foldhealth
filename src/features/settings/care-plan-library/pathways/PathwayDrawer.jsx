@@ -94,11 +94,11 @@ export function PathwayDrawer({ pathway, onClose }) {
           <Badge tone="primary" size="S" label={`Fold v${pathway.version}`} />
           <span className={styles.headerDivider} />
           {canManage && (
-            <Button variant="secondary" size="L" disabled={!!busy} onClick={() => adapt(true)}>
+            <Button variant="outline" disabled={!!busy} onClick={() => adapt(true)}>
               {busy === 'publish' ? 'Publishing…' : 'Use as Template'}
             </Button>
           )}
-          <Button variant="primary" size="L" leadingIcon="solar:pen-new-square-linear" disabled={!!busy} onClick={() => adapt(false)}>
+          <Button leadingIcon="solar:pen-new-square-linear" disabled={!!busy} onClick={() => adapt(false)}>
             {busy === 'adapt' ? 'Creating…' : 'Adapt into Template'}
           </Button>
           <span className={styles.headerDivider} />

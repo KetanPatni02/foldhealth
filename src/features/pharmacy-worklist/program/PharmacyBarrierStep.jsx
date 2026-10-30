@@ -26,7 +26,7 @@ export function PharmacyBarrierStep({ member: memberProp, form: hostForm }) {
     return (
       <div className={styles.empty}>
         <Icon name="solar:pills-linear" size={40} color="var(--neutral-200)" />
-        <p>No MAD, MAH or MAC measures on file for this member.</p>
+        <p>No MAC, MAD or MAH measures on file for this member.</p>
       </div>
     );
   }
@@ -109,8 +109,8 @@ export function PharmacyBarrierStep({ member: memberProp, form: hostForm }) {
           <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="One note for the whole call" aria-label="Call note" />
           {!hostForm && (
             <div className={styles.foot}>
-              {changed.length > 0 && <Button variant="ghost" size="L" onClick={discard}>Discard</Button>}
-              <Button variant="primary" size="L" disabled={!changed.length} onClick={save}>
+              {changed.length > 0 && <Button variant="ghost" onClick={discard}>Discard</Button>}
+              <Button disabled={!changed.length} onClick={save}>
                 {changed.length ? `Save (${changed.map(x => x.code).join(', ')})` : 'Save'}
               </Button>
             </div>

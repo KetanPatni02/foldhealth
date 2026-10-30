@@ -92,7 +92,7 @@ export function NewChatDrawer({ initialType = 'patient', onClose, onCreated, onI
     <Drawer
       title="New Chat"
       onClose={onClose}
-      primaryAction={<Button variant="primary" size="L" onClick={start} disabled={saving}>Start Chat</Button>}
+      primaryAction={<Button onClick={start} disabled={saving}>Start Chat</Button>}
     >
       <div className={styles.form}>
         <Select
@@ -291,8 +291,6 @@ export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
       onClose={onClose}
       primaryAction={(
         <Button
-          variant="primary"
-          size="L"
           onClick={send}
           disabled={sending || !recipient || !targets.length || !hasText || blockers.length > 0}
           disabledReason={
@@ -455,7 +453,7 @@ export function VoiceCallDrawer({ onClose, initialMode = 'members', initialNumbe
               placeholder="Search Member"
               wrapperClassName={styles.grow}
             />
-            <Button variant="primary" size="L" iconOnly leadingIcon="solar:phone-calling-linear" aria-label="Call" disabled={!patientId} onClick={callMember} />
+            <Button iconOnly leadingIcon="solar:phone-calling-linear" aria-label="Call" disabled={!patientId} onClick={callMember} />
           </div>
         ) : (
           <div className={styles.dial}>
@@ -492,7 +490,7 @@ export function VoiceCallDrawer({ onClose, initialMode = 'members', initialNumbe
                 ))}
               </div>
             )}
-            <Button variant="primary" size="L" leadingIcon="solar:phone-calling-linear" className={styles.callBtn} disabled={!isDialable(number, dialCode)} onClick={callNumber}>
+            <Button leadingIcon="solar:phone-calling-linear" className={styles.callBtn} disabled={!isDialable(number, dialCode)} onClick={callNumber}>
               Call
             </Button>
             <span className={styles.dialHint}>Opens your phone to place the call, and logs it here.</span>

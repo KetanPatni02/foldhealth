@@ -31,7 +31,7 @@ export function PreviewModal({ title, meta, description, actions, stats, graph, 
           <span className={styles.expand}>
             <ActionButton
               icon={full ? 'solar:minimize-square-linear' : 'solar:maximize-square-linear'}
-              size="S"
+              size="sm"
               tooltip={full ? 'Exit full screen' : 'Full screen'}
               tooltipLeft
               onClick={() => setFull(v => !v)}

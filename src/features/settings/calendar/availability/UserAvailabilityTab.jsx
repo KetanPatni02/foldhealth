@@ -107,7 +107,7 @@ function RowMenu({ onSelect, hasBlocks, items }) {
   const [open, setOpen] = useState(false);
   return (
     <span ref={ref}>
-      <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More options" tooltipLeft onClick={() => setOpen(v => !v)} />
+      <ActionButton icon="solar:menu-dots-linear" tooltip="More options" tooltipLeft onClick={() => setOpen(v => !v)} />
       {open && (
         <MenuPopover
           anchorRef={ref}
@@ -281,9 +281,9 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
       )}
       {/* Search | Filter */}
       <span className={styles.toolDivider} aria-hidden="true" />
-      <ActionButton icon="custom:filter" size="L" tooltip={filtersOpen ? 'Hide filters' : 'Filters'} tooltipBelow active={filtersOpen || !!filtersOn} onClick={() => setFiltersOpen(o => !o)} />
+      <ActionButton icon="custom:filter" tooltip={filtersOpen ? 'Hide filters' : 'Filters'} tooltipBelow active={filtersOpen || !!filtersOn} onClick={() => setFiltersOpen(o => !o)} />
       <span className={styles.toolDivider} aria-hidden="true" />
-      <Button variant="secondary" size="L" leadingIconElement={<AddIconMinimalist size={16} color="currentColor" />} onClick={() => setEditing({})}>Add new</Button>
+      <Button variant="outline" leadingIconElement={<AddIconMinimalist size={16} color="currentColor" />} onClick={() => setEditing({})}>Add new</Button>
     </>
   );
 
@@ -310,11 +310,11 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
   const rowActions = (u) => (
     <>
         {u.blocks.length > 0 ? (
-          <ActionButton size="L" tooltip="Edit availability" tooltipLeft onClick={() => setEditing({ user: u })}>
+          <ActionButton tooltip="Edit availability" tooltipLeft onClick={() => setEditing({ user: u })}>
             <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" />
           </ActionButton>
         ) : (
-          <ActionButton icon="solar:add-linear" size="L" tooltip="Add availability" tooltipLeft onClick={() => setEditing({ user: u, addBlock: true })} />
+          <ActionButton icon="solar:add-linear" tooltip="Add availability" tooltipLeft onClick={() => setEditing({ user: u, addBlock: true })} />
         )}
         <span className={styles.actionDivider} aria-hidden="true" />
         <RowMenu

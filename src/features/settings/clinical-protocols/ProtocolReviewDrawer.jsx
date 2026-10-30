@@ -52,8 +52,8 @@ function ItemEditor({ section, item, onSave, onCancel }) {
         );
       })}
       <div className={styles.editorActions}>
-        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" size="S" disabled={!complete} onClick={() => onSave(value)}>Done</Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
+        <Button size="sm" disabled={!complete} onClick={() => onSave(value)}>Done</Button>
       </div>
     </div>
   );
@@ -86,8 +86,8 @@ function ProtocolItem({ section, item, editable, onChange, onRemove }) {
         </div>
         {editable && (
           <span className={styles.itemActions}>
-            <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => setEditing(true)} />
-            <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove" onClick={onRemove} />
+            <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={() => setEditing(true)} />
+            <ActionButton icon="solar:trash-bin-trash-linear" size="sm" tooltip="Remove" onClick={onRemove} />
           </span>
         )}
       </div>
@@ -113,7 +113,7 @@ function ProtocolSection({ section, items, editable, onItemsChange }) {
       <div className={styles.sectionHead}>
         <Icon name={section.icon} size={16} color="var(--neutral-400)" />
         <span className={styles.sectionTitle}>{section.label}<span className={styles.sectionCount}>{items.length}</span></span>
-        {editable && <ActionButton icon="solar:add-circle-linear" size="S" tooltip={`Add to ${section.label}`} onClick={add} />}
+        {editable && <ActionButton icon="solar:add-circle-linear" size="sm" tooltip={`Add to ${section.label}`} onClick={add} />}
       </div>
       {items.length === 0
         ? <div className={styles.sectionEmpty}>Nothing extracted for this section.</div>
@@ -151,6 +151,16 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
   const clinicalProtocolFileUrl = useAppStore(s => s.clinicalProtocolFileUrl);
   const showToast = useAppStore(s => s.showToast);
   useEffect(() => { fetchCareProgramTypes?.(); }, [fetchCareProgramTypes]);
+  // Care plan templates drafted from this protocol, any version of it.
+  const carePlanTemplates = useAppStore(s => s.carePlanTemplates);
+  const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
+  const setCarePlanTemplateScreen = useAppStore(s => s.setCarePlanTemplateScreen);
+  useEffect(() => { if (!carePlanTemplates.length) fetchCarePlanLibrary?.(); }, [carePlanTemplates.length, fetchCarePlanLibrary]);
+  const basedOn = useMemo(() => {
+    if (!protocol) return [];
+    const key = p => `${(p?.title || '').trim().toLowerCase()}|${(p?.organization || '').trim().toLowerCase()}`;
+    return carePlanTemplates.filter(t => t.sourceProtocol && (t.sourceProtocol.id === protocol.id || key(t.sourceProtocol) === key(protocol)));
+  }, [carePlanTemplates, protocol]);
 
   const [draft, setDraft] = useState(() => (protocol ? draftFrom(protocol) : null));
   const [menu, setMenu] = useState(null);
@@ -227,15 +237,15 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
           <Badge tone={status.tone} size="S" label={status.label} />
           <span className={styles.headerDivider} />
           {menuItems.length > 0 && (
-            <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More" onClick={e => setMenu(e.currentTarget.getBoundingClientRect())} />
+            <ActionButton icon="solar:menu-dots-linear" tooltip="More" onClick={e => setMenu(e.currentTarget.getBoundingClientRect())} />
           )}
           {editable && protocol.status !== 'draft' && (
-            <Button variant="secondary" size="L" disabled={!dirty || !canSubmit} onClick={save}>Save</Button>
+            <Button variant="outline" disabled={!dirty || !canSubmit} onClick={save}>Save</Button>
           )}
           {editable && protocol.status === 'draft' && (
             <>
-              <Button variant="secondary" size="L" disabled={!dirty || !canSubmit} onClick={save}>Save Draft</Button>
-              <Button variant="primary" size="L" leadingIcon="solar:shield-check-linear" disabled={!canSubmit} onClick={() => setConfirm('approve')}>Approve</Button>
+              <Button variant="outline" disabled={!dirty || !canSubmit} onClick={save}>Save Draft</Button>
+              <Button leadingIcon="solar:shield-check-linear" disabled={!canSubmit} onClick={() => setConfirm('approve')}>Approve</Button>
             </>
           )}
           <span className={styles.headerDivider} />
@@ -312,6 +322,31 @@ export function ProtocolReviewDrawer({ protocolId, onClose }) {
                 <ul className={styles.scopeList}>{draft.protocol.scope.exclusions.map(x => <li key={x}>{x}</li>)}</ul>
               </div>
             )}
+          </div>
+        )}
+
+        {basedOn.length > 0 && (
+          <div className={styles.card}>
+            <h3 className={styles.cardTitle}>Care Plan Templates from This Protocol</h3>
+            <div className={styles.templateList}>
+              {basedOn.map(t => (
+                <div key={t.id} className={styles.templateRow}>
+                  <button
+                    type="button"
+                    className={styles.nameLink}
+                    onClick={() => { onClose(); setCarePlanTemplateScreen({ mode: 'edit', template: t }); }}
+                  >
+                    {t.name}
+                  </button>
+                  <span className={styles.chips}>
+                    <Badge tone={t.status === 'draft' ? 'grey' : 'success'} size="S" label={t.status === 'draft' ? 'Draft' : 'Published'} />
+                    {t.sourceProtocol.version && t.sourceProtocol.version !== protocol.version
+                      ? <Badge tone="warning" size="S" label={`From v${t.sourceProtocol.version}, now v${protocol.version || '?'}`} />
+                      : t.sourceProtocol.version && <Badge tone="grey" size="S" label={`v${t.sourceProtocol.version}`} />}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

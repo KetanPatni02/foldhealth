@@ -61,7 +61,7 @@ export function DoseDateField({ row, label, dob, onChange }) {
           onClose={() => setPickerRect(null)}
           footer={row.record ? (
             <div className={styles.pickerFooter}>
-              <Button variant="secondary" size="S" onClick={() => pick('')}>Clear date</Button>
+              <Button variant="outline" size="sm" onClick={() => pick('')}>Clear date</Button>
             </div>
           ) : null}
         />

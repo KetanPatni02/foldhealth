@@ -347,13 +347,13 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
                     </span>
                   </button>
                   <span className={styles.blockActions}>
-                    <ActionButton icon="solar:copy-linear" size="S" tooltip="Duplicate block" onClick={() => cloneBlock(i)} />
+                    <ActionButton icon="solar:copy-linear" size="sm" tooltip="Duplicate block" onClick={() => cloneBlock(i)} />
                     {shown > 1 && (
                       <>
                         <span className={styles.actionDivider} aria-hidden="true" />
                         <ActionButton
                           icon="solar:trash-bin-minimalistic-linear"
-                          size="S"
+                          size="sm"
                           tooltip="Remove block"
                           onClick={() => { setDirty(true); setBlocks(bs => bs.filter((_, k) => k !== i)); }}
                         />
@@ -518,9 +518,9 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
                           <span className={styles.to}>to</span>
                           <TimePicker value={s.end} placeholder="End time" defaultTime={s.start} after={s.start} onChange={(v) => updateSlot(i, j, { end: s.start && v <= s.start ? '' : v })} aria-label="End time" wrapperClassName={styles.slotTime} />
                           <ActionButton
-                            size="S"
+                            size="sm"
                             tooltip="Remove time range"
-                            state={b.slots.length > 1 ? 'active' : 'disabled'}
+                            disabled={!(b.slots.length > 1)}
                             onClick={() => b.slots.length > 1 && update(i, { slots: b.slots.filter((_, k) => k !== j) })}
                           >
                             <CloseIcon size={16} color={b.slots.length > 1 ? 'var(--neutral-300)' : 'var(--neutral-200)'} />
@@ -574,8 +574,6 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
         primaryAction={(
           <Tooltip label={saveBlocker} placement="bottom" align="right">
             <Button
-              variant="primary"
-              size="L"
               onClick={() => save()}
               disabled={saving || !!saveBlocker}
               // A disabled button swallows hover, so let it reach the tooltip's wrapper.
@@ -617,8 +615,8 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
                   </>
                 )}
                 <Button
-                  variant="tertiary"
-                  size="S"
+                  variant="soft"
+                  size="sm"
                   leadingIconElement={<AddIconMinimalist size={16} color="currentColor" />}
                   onClick={() => {
                     setDirty(true);
@@ -633,8 +631,8 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
                 {!cloneFrom && (
                   <Tooltip label={user ? '' : 'Choose a user first'} placement="bottom" align="right">
                     <Button
-                      variant="secondary"
-                      size="S"
+                      variant="outline"
+                      size="sm"
                       leadingIcon="solar:arrow-left-down-linear"
                       disabled={!user}
                       style={user ? undefined : { pointerEvents: 'none' }}

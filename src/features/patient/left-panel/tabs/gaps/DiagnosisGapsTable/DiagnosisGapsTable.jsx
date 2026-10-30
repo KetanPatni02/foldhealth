@@ -44,7 +44,7 @@ function DiagnosisGapRow({ item }) {
       </td>
       <td className={profileCellClass}>
         <div className={styles.moreBtn}>
-          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+          <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More" />
         </div>
       </td>
     </tr>

@@ -108,8 +108,8 @@ export function TriggersTab({ groupId, showToast }) {
       <div className={styles.triggersHeader}>
         <span className={styles.triggersTitle}>Automation Triggers</span>
         <Button
-          variant="secondary"
-          size="S"
+          variant="outline"
+          size="sm"
           leadingIcon="solar:add-circle-linear"
           onClick={() => setEditId('new')}
         >
@@ -134,8 +134,8 @@ export function TriggersTab({ groupId, showToast }) {
               <Toggle checked={t.enabled} onChange={() => handleToggle(t)} size="S" />
               <span className={styles.triggerCardName}>{t.name}</span>
               <span className={styles.triggerCardActions}>
-                <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => setEditId(t.id)} />
-                <ActionButton icon="solar:trash-bin-minimalistic-linear" size="S" tooltip="Delete" onClick={() => setDeleteTarget(t)} />
+                <ActionButton icon="solar:pen-linear" size="sm" tooltip="Edit" onClick={() => setEditId(t.id)} />
+                <ActionButton icon="solar:trash-bin-minimalistic-linear" size="sm" tooltip="Delete" onClick={() => setDeleteTarget(t)} />
               </span>
             </div>
             <div className={styles.triggerCardBody}>
@@ -210,7 +210,7 @@ function TriggerEditorDrawer({ triggerId, groupId, triggers, onClose, onSaved })
       title={triggerId ? 'Edit Trigger' : 'New Trigger'}
       onClose={onClose}
       primaryAction={
-        <Button variant="primary" size="L" disabled={!canSave || saving} onClick={save}>
+        <Button disabled={!canSave || saving} onClick={save}>
           {saving ? 'Saving...' : 'Save'}
         </Button>
       }

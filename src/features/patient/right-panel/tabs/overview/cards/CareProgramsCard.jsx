@@ -42,7 +42,7 @@ export function CareProgramsCard({ patientId }) {
       icon="solar:stethoscope-linear"
       title="Active Care Programs"
       count={programs.length || null}
-      actions={<Button variant="ghost" size="S" onClick={goToCarePrograms}>View all</Button>}
+      actions={<Button variant="ghost" size="sm" onClick={goToCarePrograms}>View all</Button>}
     >
       <DashboardCardBody className={styles.listBody}>
         {programs.length === 0 ? (

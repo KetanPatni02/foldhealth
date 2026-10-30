@@ -14,9 +14,9 @@ import { hasGivenDose } from './cisStatusConfig';
  * @param {object}   props.result         – evaluateCis() output
  * @param {object}   [props.notes]
  * @param {function} props.onSaveEvidence – ({ file, caption, sync }) => void
- * @param {'S'|'L'}  [props.size='S']
+ * @param {'sm'|'md'} [props.size='sm']
  */
-export function CisSyncEhrButton({ member, result, notes, onSaveEvidence, size = 'S' }) {
+export function CisSyncEhrButton({ member, result, notes, onSaveEvidence, size = 'sm' }) {
   const [busy, setBusy] = useState(false);
   const hasDoses = hasGivenDose(result);
   const sync = async () => {
@@ -34,7 +34,7 @@ export function CisSyncEhrButton({ member, result, notes, onSaveEvidence, size =
       icon="solar:refresh-circle-linear"
       tooltip={hasDoses ? 'Sync to EHR' : 'No doses on record yet'}
       tooltipLeft
-      state={disabled ? 'disabled' : 'active'}
+      disabled={disabled}
       onClick={disabled ? undefined : sync}
     />
   );

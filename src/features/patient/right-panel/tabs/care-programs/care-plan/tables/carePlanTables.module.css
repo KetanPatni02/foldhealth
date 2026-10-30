@@ -74,6 +74,11 @@
 .row .priorityTd {
   padding: calc(var(--space-1) + var(--space-1) / 2) calc(var(--space-1) / 2);
 }
+/* A read-only priority is a bare block-level icon, which text-align can't
+   centre; centre it under the "P" like the button version. */
+.priorityTd > svg {
+  margin-inline: auto;
+}
 .titleTd {
   composes: membersTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
   min-width: 0;
@@ -214,16 +219,23 @@
 .nameCellStacked {
   align-items: center;
 }
-/* Rows with a second line (due date, assignee, target): the priority and
-   type icons sit on the title line, not between the two lines. The title
-   cell starts at the top too, so the priority's offset can be fixed. */
-.row:has(.nameCellStacked) .titleTd,
-.row:has(.nameCellStacked) .priorityTd {
+/* Rows with a second line (due date, assignee, target, description): the
+   priority and type icons sit on the title line, not between the two lines.
+   The title cell starts at the top too, so the priority's offset can be
+   fixed. Single-line rows keep both cells centred, so the icons line up
+   whatever else the title cell holds. */
+.row:has(.nameTextStacked > :nth-child(2)) .titleTd,
+.row:has(.nameTextStacked > :nth-child(2)) .priorityTd {
   vertical-align: top;
 }
-.row:has(.nameCellStacked) .priorityTd {
+.row:has(.nameTextStacked > :nth-child(2)) .priorityTd {
   /* The 24px button centred on the title's 16px line. */
   padding-top: var(--space-1);
+}
+/* A read-only priority is the bare 16px icon (templates): it lines up with
+   the title's type icon instead. */
+.row:has(.nameTextStacked > :nth-child(2)) .priorityTd:not(:has(button)) {
+  padding-top: var(--space-2);
 }
 .nameCellStacked:has(.nameTextStacked > :nth-child(2)) {
   align-items: flex-start;

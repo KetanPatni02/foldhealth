@@ -114,11 +114,11 @@ export function OutreachTabActivity({
               onClose={() => { setActivitySearchOpen(false); setActivitySearchText(''); }}
             />
           ) : (
-            <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setActivitySearchOpen(true)} />
+            <ActionButton size="sm" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setActivitySearchOpen(true)} />
           )}
           <span className={styles.activityFilterDivider} />
           <ActionButton
-            size="S"
+            size="sm"
             icon="custom:filter"
             tooltip={chipsOpen ? 'Hide filters' : 'Filter'}
             iconColor={chipsOpen || anyChipActive ? 'var(--primary-300)' : undefined}

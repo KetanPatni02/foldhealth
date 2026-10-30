@@ -55,7 +55,7 @@ export function TasksCard({ patient, actions }) {
       icon="solar:checklist-linear"
       title="Tasks"
       count={groups.pending.length + groups.overdue.length || null}
-      actions={<CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}><Button variant="ghost" size="S" onClick={actions.addTask}>Add task</Button></CardHeaderActions>}
+      actions={<CardHeaderActions insightsOpen={insightsOpen} onToggleInsights={() => setInsightsOpen(v => !v)}><Button variant="ghost" size="sm" onClick={actions.addTask}>Add task</Button></CardHeaderActions>}
     >
       <CardInsights open={insightsOpen} />
       <div className={`${styles.tabs} ${styles.tabsWithFilter}`}>

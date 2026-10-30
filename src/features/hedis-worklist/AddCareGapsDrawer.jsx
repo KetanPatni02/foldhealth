@@ -146,7 +146,7 @@ export function AddCareGapsDrawer() {
 
   const headerRight = (
     <>
-      <Button variant="primary" size="S" disabled={!canSave} onClick={doSave}>
+      <Button size="sm" disabled={!canSave} onClick={doSave}>
         {picked.length > 1 ? `Add ${picked.length} Gaps` : 'Add Gap'}
       </Button>
       <span className={styles.headerDivider} />

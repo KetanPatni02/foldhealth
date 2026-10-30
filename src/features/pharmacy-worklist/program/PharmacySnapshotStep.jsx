@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Badge } from '../../../components/Badge/Badge';
 import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
@@ -10,18 +11,9 @@ import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import {
   GAP_STATUS_TONE, MANUAL_GAP_STATUSES, MEASURE_NAMES, daysFromToday, isActiveGap, enrichPharmacyMember, medicationStatus, pdcTone, pharmaciesUsed, prescribersOf,
 } from '../pharmacyWorklist.utils';
-import { Dash, DrugsCount, DueDate, FailDateValue, MeasureCode, NextFillDueValue, PdcValue, PriorYearPdc, SavabilityBadge, SubStatus } from '../PharmacyCells';
+import { Dash, DrugsCount, DueDate, NamesCount, FailDateValue, MeasureCode, NextFillDueValue, PdcValue, PriorYearPdc, SavabilityBadge, SubStatus } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacySnapshotStep.module.css';
-
-function Field({ label, children }) {
-  return (
-    <div className={styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
-      <span className={styles.fieldValue}>{children}</span>
-    </div>
-  );
-}
 
 // Days supply and quantity in one cell: "90 days • Qty 90".
 const supplyLabel = (d) => [d.daysSupply != null && `${d.daysSupply} days`, d.qty != null && `Qty ${d.qty}`].filter(Boolean).join(' • ') || '—';
@@ -302,6 +294,43 @@ export function PharmacyGapsCard({ member, onSetStatus, compact = false, titleEx
   );
 }
 
+// The card header's call action: straight to the call popover (pick the line
+// to call from) for one contact; with several, pick who first.
+function CallContactAction({ contacts, onDial }) {
+  const openNumberCallPopover = useAppStore(st => st.openNumberCallPopover);
+  const btnRef = useRef(null);
+  const [menuRect, setMenuRect] = useState(null);
+  const callable = contacts.filter(c => c.phone);
+  if (!callable.length) return null;
+  const call = (c) => openNumberCallPopover({ number: c.phone, label: c.name, onDial: onDial(c.name, c.phone) }, btnRef);
+  return (
+    <>
+      <ActionButton
+        ref={btnRef}
+        icon="solar:phone-linear"
+        size="sm"
+        tooltip={callable.length === 1 ? `Call ${callable[0].name}` : 'Call'}
+        tooltipLeft
+        onClick={(e) => {
+          e.stopPropagation();
+          if (callable.length === 1) call(callable[0]);
+          else setMenuRect(e.currentTarget.getBoundingClientRect());
+        }}
+      />
+      {menuRect && (
+        <MenuPopover
+          anchorRect={menuRect}
+          items={callable.map(c => ({ key: c.name, label: `${c.name} · ${c.phone}` }))}
+          onSelect={(key) => { setMenuRect(null); call(callable.find(c => c.name === key)); }}
+          onClose={() => setMenuRect(null)}
+          width={280}
+          ariaLabel="Who to call"
+        />
+      )}
+    </>
+  );
+}
+
 // Who to call about the member's gaps: prescribers of their drugs and the
 // pharmacies their fills came from. Phone numbers dial and log to Activity.
 export function PharmacyContacts({ member }) {
@@ -309,28 +338,36 @@ export function PharmacyContacts({ member }) {
   const prescribers = prescribersOf(member);
   const pharmacies = pharmaciesUsed(member);
   const dial = (who, number) => () => logActivity?.(member.id, who, number);
+  // Both cards read the same way: who (with their address under the name),
+  // how to reach them, then what ties them to the member.
   return (
     <>
-      <DashboardCard title={prescribers.length === 1 ? 'Prescriber' : 'Prescribers'}>
-        {prescribers.length === 0 && <div className={styles.row}><span className={styles.muted}>No prescriber on file.</span></div>}
-        {prescribers.map(p => (
-          <div key={p.name} className={styles.row}>
-            <div className={styles.contactHead}>
-              <span className={styles.contactName}>{p.name}</span>
-              <span className={styles.muted}>{p.drugs.join(', ')}</span>
-            </div>
-            <div className={styles.contactGrid}>
-              <Field label="Phone"><PhoneLink number={p.phone} label={p.name} onDial={dial(p.name, p.phone)} /></Field>
-              <Field label="Fax">{p.fax || '—'}</Field>
-              <Field label="Address">{addressOf(p)}</Field>
-            </div>
-          </div>
-        ))}
+      <DashboardCard size="S" title={prescribers.length === 1 ? 'Prescriber' : 'Prescribers'} actions={<CallContactAction contacts={prescribers} onDial={dial} />}>
+        {prescribers.length === 0 ? <div className={styles.row}><span className={styles.muted}>No prescriber on file.</span></div> : (
+          <table className={`${styles.table} ${styles.contactTable}`}>
+            <thead>
+              <tr><th>Prescriber</th><th>Phone</th><th>Fax</th><th>Medications</th></tr>
+            </thead>
+            <tbody>
+              {prescribers.map(p => (
+                <tr key={p.name}>
+                  <td>
+                    <span className={styles.contactName}>{p.name}</span>
+                    <span className={styles.address}>{addressOf(p)}</span>
+                  </td>
+                  <td><PhoneLink number={p.phone} label={p.name} onDial={dial(p.name, p.phone)} /></td>
+                  <td>{p.fax || '—'}</td>
+                  <td><NamesCount names={p.drugs} label="medication" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </DashboardCard>
 
-      <DashboardCard title="Pharmacies" count="Where fills happened, most recent first">
+      <DashboardCard size="S" title={pharmacies.length === 1 ? 'Pharmacy' : 'Pharmacies'} actions={<CallContactAction contacts={pharmacies} onDial={dial} />}>
         {pharmacies.length === 0 ? <div className={styles.row}><span className={styles.muted}>No fills on record.</span></div> : (
-          <table className={styles.table}>
+          <table className={`${styles.table} ${styles.contactTable}`}>
             <thead>
               <tr><th>Pharmacy</th><th>Phone</th><th>Fills</th><th>Last Fill</th></tr>
             </thead>
@@ -339,7 +376,7 @@ export function PharmacyContacts({ member }) {
                 <tr key={p.name}>
                   <td>
                     <span className={styles.contactName}>{p.name}</span>
-                    {i === 0 && pharmacies.length > 1 && <span className={styles.muted}> · Last used</span>}
+                    {i === 0 && pharmacies.length > 1 && <Badge size="S" tone="grey" label="Last used" className={styles.lastUsed} />}
                     <span className={styles.address}>{addressOf(p)}</span>
                   </td>
                   <td><PhoneLink number={p.phone} label={p.name} onDial={dial(p.name, p.phone)} /></td>
@@ -365,7 +402,7 @@ export function PharmacySnapshotStep({ member }) {
     return (
       <div className={styles.empty}>
         <Icon name="solar:pill-linear" size={40} color="var(--neutral-200)" />
-        <p>No MAD, MAH or MAC measures on file for this member.</p>
+        <p>No MAC, MAD or MAH measures on file for this member.</p>
       </div>
     );
   }

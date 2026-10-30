@@ -37,7 +37,9 @@ function activityType(e) {
 // pickups and the fill dates they moved, barrier logs, medication edits,
 // status and assignee changes), newest first, grouped by month, with
 // filters for type, date, who, medication and gap.
-export function PharmacyActivityLog({ member }) {
+// `onViewVerification(call)`: View details on a saved verification call opens
+// that call's form (read-only) instead of expanding the answers inline.
+export function PharmacyActivityLog({ member, onViewVerification }) {
   const [types, setTypes] = useState([]);
   const [datePreset, setDatePreset] = useState(null);
   const [dateRange, setDateRange] = useState([]);
@@ -52,7 +54,15 @@ export function PharmacyActivityLog({ member }) {
     const activity = (member?.activityLog || [])
       .filter(e => !BARRIER_ACTIVITY.test(e.title || ''))
       .map(withVerificationDetails)
-      .map(e => ({ ...e, when: e.at, title: withBullets(e.title), note: withBullets(e.note), outcome: withBullets(e.outcome) }));
+      .map(e => {
+        const call = onViewVerification && e.verificationId
+          ? (member.callHistory || []).find(c => c.id === e.verificationId && c.answers)
+          : null;
+        return {
+          ...e, when: e.at, title: withBullets(e.title), note: withBullets(e.note), outcome: withBullets(e.outcome),
+          ...(call ? { onViewDetails: () => onViewVerification(call) } : {}),
+        };
+      });
     const barriers = member ? barrierHistoryEntries(member, member.measures || []) : [];
     const allDrugs = [...new Set(Object.values(drugsByGap).flat())];
     return [...activity, ...barriers].map(e => {
@@ -64,7 +74,7 @@ export function PharmacyActivityLog({ member }) {
         : allDrugs.filter(n => text.includes(n));
       return { ...e, type: activityType(e), person: e.actor || e.user || 'System', codes, drugs };
     });
-  }, [member, drugsByGap]);
+  }, [member, drugsByGap, onViewVerification]);
 
   const options = useMemo(() => ({
     types: [...new Set(all.map(e => e.type))].sort(),

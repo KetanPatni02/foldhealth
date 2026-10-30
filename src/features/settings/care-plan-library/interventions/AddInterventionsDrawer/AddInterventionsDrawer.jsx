@@ -86,8 +86,6 @@ export function AddInterventionsDrawer({ onClose, onAdd, primaryLabel = 'Add' })
   const headerRight = (
     <>
       <Button
-        variant="primary"
-        size="L"
         disabled={selected.size === 0}
         onClick={() => onAdd?.(items.filter(i => selected.has(i.id)))}
       >
@@ -103,8 +101,8 @@ export function AddInterventionsDrawer({ onClose, onAdd, primaryLabel = 'Add' })
         <div className={styles.filterRow}>
           <Toggle size="S" items={tabs} active={tab} onChange={setTab} />
           <Button
-            variant="tertiary"
-            size="S"
+            variant="soft"
+            size="sm"
             leadingIconElement={<AddIconMinimalist size={14} />}
             onClick={openCreate}
           >

@@ -43,7 +43,7 @@ export function ScheduleDrawerPatientSection({
             </div>
           </div>
           {!locked && (
-            <ActionButton icon="solar:close-linear" size="S" tooltip="Remove" onClick={() => setSelectedPatient(null)} />
+            <ActionButton icon="solar:close-linear" size="sm" tooltip="Remove" onClick={() => setSelectedPatient(null)} />
           )}
         </div>
 

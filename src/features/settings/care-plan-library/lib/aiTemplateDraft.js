@@ -93,7 +93,20 @@ export const TEMPLATE_DRAFT_SCHEMA = {
   required: ['name', 'summary', 'templateType', 'conditions', 'goals'],
 };
 
-export function buildTemplateDraftPrompt(description, catalog) {
+/**
+ * `protocol` (optional): { title, version, organization, guidance }, an
+ * Active clinical protocol the template should follow, its content as plain
+ * lines (protocolGuidanceText).
+ */
+export function buildTemplateDraftPrompt(description, catalog, protocol = null) {
+  const protocolLines = protocol?.guidance ? [
+    '',
+    `Clinical protocol to follow: ${clip(protocol.title, 200)}${protocol.version ? ` v${clip(protocol.version, 20)}` : ''}${protocol.organization ? ` (${clip(protocol.organization, 120)})` : ''}. Approved by the organization; the template must agree with it.`,
+    '- Base goals on its targets and thresholds, interventions on its monitoring, check-in cadence, escalation rules and titration steps, and barriers on what it says gets in the way.',
+    '- Match goal frequency and intervention repeatEvery to its cadence where it gives one. Do not contradict it, and add nothing it does not support.',
+    '- List the conditions it covers.',
+    String(protocol.guidance).slice(0, 8000),
+  ] : [];
   return [
     'You draft care plan templates for Fold Health care managers. A supervisor reviews and edits every draft before it is published, so propose a sensible starting point, not a final plan.',
     '',
@@ -103,7 +116,8 @@ export function buildTemplateDraftPrompt(description, catalog) {
     '- Cadence: give every goal how often it is measured (frequency) and how long the template runs for it (duration + durationUnit). Give an intervention repeatEvery / repeatEveryUnit only when it recurs; otherwise null.',
     '- templateType is "chronic" when the description is about a specific chronic condition, then list those conditions by their common clinical names; otherwise "general" with no conditions.',
     `- name: at most ${CARE_PLAN_NAME_MAX} characters. summary: one plain sentence describing the plan's focus.`,
-    '- Write titles in the style of the catalog: short, specific, sentence case. No dosing, diagnoses or clinical claims beyond the description.',
+    `- Write titles in the style of the catalog: short, specific, sentence case. No dosing, diagnoses or clinical claims beyond the description${protocol?.guidance ? ' and the protocol' : ''}.`,
+    ...protocolLines,
     '',
     'Library catalog (JSON):',
     JSON.stringify(catalog),

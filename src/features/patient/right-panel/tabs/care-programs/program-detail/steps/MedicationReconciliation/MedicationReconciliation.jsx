@@ -1024,7 +1024,7 @@ export function MedicationReconciliation({ programCode } = {}) {
       )}
 
       <div className={styles.formActions}>
-        <Button variant="primary" size="S" onClick={saveDraft} disabled={!canSave}>
+        <Button size="sm" onClick={saveDraft} disabled={!canSave}>
           {saving ? 'Saving…' : 'Save'}
         </Button>
         <span className={styles.formDivider} />
@@ -1045,8 +1045,7 @@ export function MedicationReconciliation({ programCode } = {}) {
         <div className={styles.medHeaderRight}>
           <Toggle size="S" items={MED_VIEW_ITEMS} active={medView} onChange={setMedView} />
           <Button
-            variant="tertiary"
-            size="L"
+            variant="soft"
             menuItems={ADD_NEW_MENU_ITEMS}
             menuWidth={250}
             menuAriaLabel="Add medication"
@@ -1119,8 +1118,7 @@ export function MedicationReconciliation({ programCode } = {}) {
                 actions={
                   <>
                     <Button
-                      variant="primary"
-                      size="S"
+                      size="sm"
                       leadingIconElement={<AIIcon size={14} />}
                       disabled={extracting}
                       onClick={() => extractMeds(file)}
@@ -1315,7 +1313,7 @@ export function MedicationReconciliation({ programCode } = {}) {
                 */}
                 <ActionButton
                   icon="solar:document-text-linear"
-                  size="S"
+                  size="sm"
                   tooltip={noteTooltip(m)}
                   count={noteCount(m)}
                   onClick={() => toggleNote(m)}
@@ -1434,7 +1432,7 @@ export function MedicationReconciliation({ programCode } = {}) {
                 <div className={styles.actionsInner}>
                   <ActionButton
                     icon="solar:document-text-linear"
-                    size="S"
+                    size="sm"
                     tooltip={noteTooltip(m)}
                     count={noteCount(m)}
                     onClick={() => toggleNote(m)}
@@ -1523,8 +1521,7 @@ export function MedicationReconciliation({ programCode } = {}) {
           </div>
           <span className={styles.bulkDivider} />
           <Button
-            variant="secondary"
-            size="L"
+            variant="outline"
             leadingIcon="solar:forbidden-circle-linear"
             disabled={bulkBusy}
             onClick={stopSelectedMeds}
@@ -1533,14 +1530,14 @@ export function MedicationReconciliation({ programCode } = {}) {
           </Button>
           <ActionButton
             icon="solar:trash-bin-trash-linear"
-            size="S"
+            size="sm"
             tooltip="Delete"
             onClick={() => setBulkDeleteOpen(true)}
           />
           <span className={styles.bulkDivider} />
           <ActionButton
             icon="solar:close-circle-linear"
-            size="S"
+            size="sm"
             tooltip="Clear selection"
             onClick={clearMedSelection}
           />

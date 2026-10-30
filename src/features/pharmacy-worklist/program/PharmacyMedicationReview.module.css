@@ -171,6 +171,7 @@
 .noWrap { white-space: nowrap; }
 
 .subTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.subTitleRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 
 .empty {
   display: flex;
@@ -330,7 +331,6 @@
 .cChipEmpty { color: var(--neutral-200); }
 /* The note icon, fixed at the right of the row (the row opens details). */
 .cActions { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); }
-.cNote { display: inline-flex; }
 /* Info under the Rx details: prescriber and pharmacy on hover, one per line. */
 .cInfoLink {
   border: none; background: none; padding: 0; cursor: default;
@@ -355,6 +355,8 @@
   color: var(--neutral-300);
   cursor: default;
 }
+/* Beside Info and Barrier on the second line: plain text, not a link. */
+.cRefills { color: var(--neutral-300); white-space: nowrap; }
 .cMetaLine { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Under the Recent Fill chip: the fill's claim match. */
 .cMatch {

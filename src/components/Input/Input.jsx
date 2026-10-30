@@ -503,8 +503,8 @@ export const Input = forwardRef(function Input(
       )}
       {showTrailingButton && (
         <Button
-          variant="tertiary"
-          size="S"
+          variant="soft"
+          size="sm"
           onClick={onTrailingButtonClick}
           className={styles.trailingButtonSlot}
         >

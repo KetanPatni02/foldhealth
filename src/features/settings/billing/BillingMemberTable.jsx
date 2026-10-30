@@ -66,7 +66,7 @@ export function BillingMemberTable({ rows, loading, onView, embedded = false }) 
             </td>
             {onView && (
               <td className={`${styles.td} ${styles.stickyRight} ${styles.actionTd}`}>
-                <ActionButton icon="solar:eye-linear" size="L" tooltip="View billing details" tooltipLeft onClick={() => onView(r)} />
+                <ActionButton icon="solar:eye-linear" tooltip="View billing details" tooltipLeft onClick={() => onView(r)} />
               </td>
             )}
           </tr>

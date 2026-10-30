@@ -79,7 +79,7 @@ export function EfaxSettingsPanel({ searchQuery = '', editing, setEditing }) {
     return (
       <div className={styles.empty}>
         <RingEmptyState icon="solar:printer-linear" label="No eFax numbers added yet" />
-        <Button variant="primary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setEditing('new')}>Add eFax</Button>
+        <Button leadingIcon="solar:add-circle-linear" onClick={() => setEditing('new')}>Add eFax</Button>
         {drawer}
       </div>
     );
@@ -134,9 +134,9 @@ export function EfaxSettingsPanel({ searchQuery = '', editing, setEditing }) {
               </td>
               <td>
                 <div className={styles.actions}>
-                  <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit eFax" onClick={() => setEditing(n)} />
+                  <ActionButton icon="solar:pen-linear" tooltip="Edit eFax" onClick={() => setEditing(n)} />
                   <span className={styles.divider} />
-                  <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete eFax" tooltipLeft onClick={() => setToDelete(n)} />
+                  <ActionButton icon="solar:trash-bin-minimalistic-linear" tooltip="Delete eFax" tooltipLeft onClick={() => setToDelete(n)} />
                 </div>
               </td>
             </tr>

@@ -937,7 +937,7 @@ export function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload
             We couldn't read any patient records from this file. Ensure it's a <strong>CSV</strong> with
             {' '}<strong>Patient ID, First Name, Last Name, DOB</strong> columns, then reupload.
           </p>
-          <Button variant="secondary" size="L" leadingIcon="solar:refresh-linear" onClick={onReupload}>Reupload File</Button>
+          <Button variant="outline" leadingIcon="solar:refresh-linear" onClick={onReupload}>Reupload File</Button>
         </div>
       </div>
     );
@@ -1033,8 +1033,8 @@ export function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload
 
         {/* Buttons row 1433:10247 — gap-12, justify-center, full width */}
         <div style={{ display:'flex', gap:12, justifyContent:'center', alignItems:'flex-start', width:'100%' }}>
-          <Button variant="primary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={downloadErrorFile}>Download File with Errors</Button>
-          <Button variant="secondary" size="L" leadingIcon="solar:refresh-linear" onClick={reuploadFile}>Reupload File</Button>
+          <Button leadingIcon="solar:download-minimalistic-linear" onClick={downloadErrorFile}>Download File with Errors</Button>
+          <Button variant="outline" leadingIcon="solar:refresh-linear" onClick={reuploadFile}>Reupload File</Button>
         </div>
       </div>
     </div>

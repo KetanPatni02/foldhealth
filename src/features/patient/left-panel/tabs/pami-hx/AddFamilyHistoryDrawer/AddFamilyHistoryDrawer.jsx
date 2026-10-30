@@ -192,8 +192,8 @@ export function AddFamilyHistoryDrawer({ patientId, onClose }) {
           <div className={styles.famHead}>
             <span className={styles.addLabel}>Family History</span>
             <Button
-              variant="secondary"
-              size="S"
+              variant="outline"
+              size="sm"
               leadingIconElement={<AddIconMinimalist size={14} color="currentColor" />}
               disabled={!canAddRelation}
               disabledReason={!canAddRelation ? 'Pick a relation for the new row first' : undefined}
@@ -249,7 +249,7 @@ export function AddFamilyHistoryDrawer({ patientId, onClose }) {
                       <td className={`${historyCellClass} ${styles.historyCellTop} ${styles.famActionsCell}`}>
                         <ActionButton
                           icon="solar:trash-bin-trash-linear"
-                          size="S"
+                          size="sm"
                           tooltip="Remove"
                           aria-label="Remove relation"
                           onClick={() => dropPending(group.id)}

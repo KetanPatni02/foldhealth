@@ -35,8 +35,8 @@ export function AddCategoryDialog({ taken = [], onCancel, onAdd }) {
             errorText={duplicate ? 'A category with this name already exists.' : undefined}
           />
           <div className={styles.categoryDialogFooter}>
-            <Button variant="secondary" size="L" fullWidth onClick={onCancel} disabled={saving}>Cancel</Button>
-            <Button variant="primary" size="L" fullWidth disabled={!canAdd} onClick={submit}>Add</Button>
+            <Button variant="outline" fullWidth onClick={onCancel} disabled={saving}>Cancel</Button>
+            <Button fullWidth disabled={!canAdd} onClick={submit}>Add</Button>
           </div>
         </div>
       </DialogContent>
