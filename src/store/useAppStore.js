@@ -3238,8 +3238,10 @@ export const useAppStore = create((set, get) => ({
       for (const id of appliedIds) {
         const stored = templates.find(t => String(t.id) === String(id));
         if (!stored) continue;
-        // With the category its active run went on with.
+        // With the category its active run went on with. One at a time: each
+        // template merges into the same plan, de-duplicating by title.
         const run = (cur.templateInstances || []).find(i => String(i.templateId) === String(id) && i.status === 'active');
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop
         await applyTemplateToPlan(get, patientId, program, withCategory(stored, run?.categoryId || null), libraryGoals);
       }
     } finally {
