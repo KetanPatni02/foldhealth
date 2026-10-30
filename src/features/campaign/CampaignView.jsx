@@ -257,7 +257,7 @@ function CampaignRow({ campaign, onToggle }) {
 
   return (
     <tr className={styles.row}>
-      {/* 1. S — status */}
+      {/* 1. S: status */}
       <td className={styles.tdS}>
         <StatusIcon section={campaign.section} />
       </td>
@@ -313,12 +313,12 @@ function CampaignRow({ campaign, onToggle }) {
 
       {/* 8. Start Date */}
       <td className={styles.tdDate}>
-        <span className={styles.cellText}>{campaign.startDate || '—'}</span>
+        <span className={styles.cellText}>{campaign.startDate || '-'}</span>
       </td>
 
       {/* 9. Duration */}
       <td className={styles.tdDuration}>
-        <span className={styles.cellText}>{campaign.duration != null ? `${campaign.duration} Days` : '—'}</span>
+        <span className={styles.cellText}>{campaign.duration != null ? `${campaign.duration} Days` : '-'}</span>
       </td>
 
       {/* 10. Action */}
@@ -388,7 +388,7 @@ export function CampaignView() {
     setLocalData(prev => prev.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
   };
 
-  // Live tick — gradually advance progress/delivered/opened on running, enabled campaigns.
+  // Live tick: gradually advance progress/delivered/opened on running, enabled campaigns.
   useEffect(() => {
     if (usingSupa) return;
     const id = setInterval(() => {

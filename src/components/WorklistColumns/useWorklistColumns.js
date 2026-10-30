@@ -6,11 +6,11 @@ import { useAppStore } from '../../store/useAppStore';
  * list (respecting the user's drag order + hidden set) plus stable callbacks
  * the shared ColumnConfigPopover needs. Column defs may use either the
  * ColumnConfigPopover shape ({ k, lb }) or the WorklistShell shape
- * ({ key, label }) — this hook accepts both.
+ * ({ key, label }), this hook accepts both.
  *
  * @param worklistKey  Stable key persisted in Supabase (e.g. 'toc-queue').
  * @param defaultColumns Array of column defs in the default order.
- * @param options.hiddenByDefault  Column keys to skip on first render — e.g.
+ * @param options.hiddenByDefault  Column keys to skip on first render, e.g.
  *   optional columns a caller wants off unless the user opts in.
  */
 export function useWorklistColumns(worklistKey, defaultColumns, options = {}) {

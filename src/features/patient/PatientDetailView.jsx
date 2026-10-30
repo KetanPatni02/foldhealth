@@ -169,7 +169,7 @@ export function PatientDetailView() {
   // Left-panel tab, lifted here so it survives collapse: when the panel is
   // collapsed its tabs flow into the right-panel tab bar and its content
   // renders in the right panel. `showingLeftContent` is only meaningful while
-  // collapsed — true means a flowed-in left tab is the active view.
+  // collapsed: true means a flowed-in left tab is the active view.
   const [leftTabRaw, setLeftTab] = useState(CARE_GAP_TABS[0]);
   // The left tabs in the user's order, without the ones they switched off
   // (More > Customize).
@@ -195,7 +195,7 @@ export function PatientDetailView() {
   }, [leftCollapsed, leftTabs, setActiveTab]);
 
   // Once the signed-in user is known, load their saved collapse state (only if
-  // they have one — a new user keeps the device default until they toggle).
+  // they have one: a new user keeps the device default until they toggle).
   useEffect(() => {
     if (!currentUserId) return;
     const saved = readCollapse(currentUserId);
@@ -252,7 +252,7 @@ export function PatientDetailView() {
   }, []);
 
   // Fall back through every worklist slice when the id isn't in the main
-  // patients list — those rows live in separate slices and shouldn't 404.
+  // patients list: those rows live in separate slices and shouldn't 404.
   // Also match by memberId so a deep-link URL with the fold id (from
   // #/population/<list>/patient/<memberId>) resolves before the router's
   // reverse lookup has store data to work with.
@@ -267,7 +267,7 @@ export function PatientDetailView() {
     || worklistMemberToPatient(hedisMembers?.find(matchesId))
     || worklistMemberToPatient(allPatients?.find(matchesId));
 
-  // Worklist slices don't all carry patient_app_active — merge from the
+  // Worklist slices don't all carry patient_app_active: merge from the
   // patients / all_patients tables when the resolved row is missing it.
   const patientWithAppStatus = useMemo(() => {
     if (!patient) return null;
@@ -280,13 +280,13 @@ export function PatientDetailView() {
     return { ...patient, patientAppActive: source.patientAppActive };
   }, [patient, patients, allPatients]);
 
-  // The app assumes we're always inside a real patient's record — if the id
+  // The app assumes we're always inside a real patient's record: if the id
   // doesn't resolve to a patient (e.g. a stale hash from a deleted row, or a
   // worklist row wired to a placeholder id), bounce straight back to the
   // worklist instead of showing an orphan "Patient not found" screen.
   // A slice is still resolving when it's empty and either hasn't been fetched
   // yet or its fetch is in flight. Wait for every slice before deciding the
-  // patient id is stale — otherwise the first slice to return (often
+  // patient id is stale: otherwise the first slice to return (often
   // `patients`) trips the bounce while SNP/HCC rows are still loading.
   const slicePending = (items, didFetch, loading) =>
     (items?.length || 0) === 0 && (!didFetch || loading);
@@ -550,7 +550,7 @@ export function PatientDetailView() {
                 />
               </div>
             </div>
-            {/* Drag handle — fades with the panel it borders. */}
+            {/* Drag handle: fades with the panel it borders. */}
             <div
               className={`${styles.dragHandle} ${leftCollapsed ? styles.dragHandleHidden : ''}`}
               onMouseDown={handleMouseDown}
@@ -604,7 +604,7 @@ export function PatientDetailView() {
  * P360-level mount for the standalone `ClinicalNotePreviewDrawer`, driven
  * by the store's `previewNoteFromHover` slice. The P360 Notes tab (and
  * anywhere else on this page that calls `openNotePreview`) needs a mount
- * point — TasksView already owns one for the Tasks page, but P360 didn't
+ * point: TasksView already owns one for the Tasks page, but P360 didn't
  * have one, so the Notes-tab View action was a silent no-op.
  */
 function P360NotePreviewMount() {

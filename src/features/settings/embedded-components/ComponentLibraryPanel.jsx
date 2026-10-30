@@ -152,11 +152,11 @@ function ComponentRow({ comp, onToggle, onEdit, onPreview, onAuditLog, onDuplica
         </div>
       </td>
 
-      {/* Errors 24h — with tooltip on hover */}
+      {/* Errors 24h: with tooltip on hover */}
       <td style={tdStyle}>
         {comp.errors24h > 0 ? (
           <span
-            title={comp.errors24h >= 3 ? `${comp.errors24h} errors in 24h — component may be misconfigured or domain unreachable` : `${comp.errors24h} warning(s) in 24h — intermittent issues detected`}
+            title={comp.errors24h >= 3 ? `${comp.errors24h} errors in 24h, component may be misconfigured or domain unreachable` : `${comp.errors24h} warning(s) in 24h, intermittent issues detected`}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: comp.errors24h >= 3 ? 'var(--status-error)' : 'var(--status-warning)', fontSize: 'var(--font-base)', fontWeight: 500, cursor: 'help' }}
           >
             <Icon name={comp.errors24h >= 3 ? 'solar:close-circle-bold' : 'solar:danger-triangle-linear'} size={14} color={comp.errors24h >= 3 ? 'var(--status-error)' : 'var(--status-warning)'} />
@@ -210,7 +210,7 @@ function PreviewDrawer({ comp, onClose }) {
   const fullUrl = embedUrl(comp.domain, comp.url);
 
   return (
-    <Drawer title={`Preview — ${comp.name}`} onClose={onClose}>
+    <Drawer title={`Preview: ${comp.name}`} onClose={onClose}>
       <div style={{ border: '0.5px solid var(--neutral-150)', borderRadius: 8, overflow: 'hidden' }}>
         {/* Collapsible header */}
         <button
@@ -367,7 +367,7 @@ export function ComponentLibraryPanel({ searchQuery = '' }) {
         </div>
       )}
 
-      {/* Table — edge-to-edge */}
+      {/* Table: edge-to-edge */}
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'Inter', sans-serif" }}>
         <thead>
           <tr>

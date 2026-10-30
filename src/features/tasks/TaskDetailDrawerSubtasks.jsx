@@ -13,7 +13,7 @@ export function TaskDetailDrawerSubtasks({
 }) {
   return (
     <>
-        {/* Subtasks — show progress + list of children, allow adding new ones */}
+        {/* Subtasks: show progress + list of children, allow adding new ones */}
         {!task.is_subtask && (
           <div className={styles.drawerSection}>
             <div className={styles.subtaskHeader}>

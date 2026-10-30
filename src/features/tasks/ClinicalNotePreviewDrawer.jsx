@@ -11,7 +11,7 @@ import styles from './TasksView.module.css';
 import { openSafeUrl } from '../../lib/openSafeUrl';
 
 /**
- * ClinicalNotePreviewDrawer — read-only linked-note preview shell.
+ * ClinicalNotePreviewDrawer: read-only linked-note preview shell.
  *
  * Renders the same title / patient banner / EHR-sync body the CareGap and
  * Task Detail flows use, but as a standalone drawer that can be summoned
@@ -21,9 +21,9 @@ import { openSafeUrl } from '../../lib/openSafeUrl';
  *   • submitted → Pending Review pill + Edit
  *
  * Props:
- *   • note      — the persisted clinical_notes row to preview
- *   • onClose   — dismisses the drawer
- *   • onEdit    — optional. Called with the note when Amend / Edit is
+ *   • note: the persisted clinical_notes row to preview
+ *   • onClose: dismisses the drawer
+ *   • onEdit: optional. Called with the note when Amend / Edit is
  *                 clicked. When omitted the caller can rely on `onClose`
  *                 firing and route from there (e.g. show a toast).
  */
@@ -62,7 +62,7 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
     : { name: 'solar:pen-new-square-linear', color: 'var(--primary-300)' };
   const subtitleText = isSigned
     ? `Signed by ${signer}${signedWhen}`
-    : `Submitted for Review to ${note.reviewerName || '—'}`;
+    : `Submitted for Review to ${note.reviewerName || '-'}`;
   const handleEdit = () => {
     onClose?.();
     onEdit?.(note);

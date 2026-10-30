@@ -65,10 +65,10 @@
   flex-direction: column;
   gap: var(--space-2);
 }
-/* Read-only section header — mirrors the CarePlanView's GBI section head
+/* Read-only section header: mirrors the CarePlanView's GBI section head
    (chevron + title + count pill) minus the Add affordance, since this
    is a consolidated snapshot across programs. */
-/* Editable roll-up: title toggle, divider, then Add — the CarePlanView
+/* Editable roll-up: title toggle, divider, then Add, the CarePlanView
    section head's layout. */
 .sectionHeadRow {
   display: flex;
@@ -173,7 +173,7 @@
   border-bottom: none;
 }
 
-/* Column widths — first + last are pinned so the middle band scrolls.
+/* Column widths: first + last are pinned so the middle band scrolls.
    Text-heavy columns use min-width so wide viewports let them grow,
    narrow viewports let them shrink to fit the content. */
 .colPlan     { width: 84px; }
@@ -222,7 +222,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Program cell — the row's own program badge plus an optional "+N"
+/* Program cell: the row's own program badge plus an optional "+N"
    overflow badge when the same title also appears on other programs
    in the current filtered snapshot. */
 .programBadgeStack {

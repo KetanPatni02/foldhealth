@@ -17,7 +17,7 @@ import {
  * supports it, so the HCC worklist tbody crossfades between filter sets
  * (paired with the view-transition-name in HccWorklistRow.module.css).
  * Falls back to a direct call when the API is unavailable (Firefox pre-129,
- * Safari pre-18) — filter still applies, just without the crossfade.
+ * Safari pre-18): filter still applies, just without the crossfade.
  *
  * Rapid filter changes abort in-flight transitions; the API surfaces that
  * as InvalidStateError on the ready/finished promises. We swallow those
@@ -146,7 +146,7 @@ export function FilterChipBar({
     return def?.opts || [];
   };
 
-  // FilterDefs for the shared bar — moreFilterItems shape ({k,label}) plus a
+  // FilterDefs for the shared bar: moreFilterItems shape ({k,label}) plus a
   // `primary` flag driven by PRIMARY_FILTER_KEYS, and matching `key` prop.
   const primaryKeySet = useMemo(() => new Set(primaryFilterKeys), [primaryFilterKeys]);
 
@@ -170,7 +170,7 @@ export function FilterChipBar({
   // Toggle a chip's visibility from the More Filters popover. Base priority:
   //   1. The user's persisted custom set (they've customized before).
   //   2. Whatever FilterBar is *currently* showing after auto-fit narrowed
-  //      the row (passed in as `currentVisible`) — so toggling one chip on
+  //      the row (passed in as `currentVisible`): so toggling one chip on
   //      only reveals that chip, not every hidden primary at once.
   //   3. Primary set (very first open, before auto-fit measured anything).
   const toggleVisible = (k, currentVisible) => {
@@ -211,8 +211,8 @@ export function FilterChipBar({
           active={false}
           renderPopover={({ onClose }) => {
             showToast(
-              def ? `Filter "${item.label}" popover — not yet wired`
-                  : `Filter "${item.label}" — coming soon`
+              def ? `Filter "${item.label}" popover: not yet wired`
+                  : `Filter "${item.label}", coming soon`
             );
             onClose();
             return null;

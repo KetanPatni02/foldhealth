@@ -174,7 +174,7 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
   if (status === 'review') {
     return <Badge size="M" variant="status-review" label="Review" icon="solar:danger-triangle-linear" />;
   }
-  return <span style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-200)' }}>—</span>;
+  return <span style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-200)' }}>-</span>;
 }
 
 // Shared status → badge-variant map for the Assessment and Outreach Status
@@ -192,10 +192,10 @@ const STATUS_BADGE = {
 };
 
 // Clickable status pill used by both Assessment and Outreach Status cells.
-// Renders a `—` when the row has no value yet (patients seed only sets
+// Renders a `-` when the row has no value yet (patients seed only sets
 // values for the 10 agent-assigned rows in the current backfill).
 function StatusPill({ status, onOpen, ariaLabel }) {
-  if (!status) return <span className={rowStyles.dateDash}>—</span>;
+  if (!status) return <span className={rowStyles.dateDash}>-</span>;
   const cfg = STATUS_BADGE[status] || STATUS_BADGE['Not Started'];
   return (
     <button
@@ -271,7 +271,7 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
   },
   {
     key: 'agentStatus',
-    // `label` is the plain string shown in the Show Columns popover — the
+    // `label` is the plain string shown in the Show Columns popover, the
     // "Agent" prefix disambiguates from the sibling `tocStatus` column and
     // the regular `dueOn` column. `thLabel` is the JSX icon+text cluster
     // shown in the table header so the agent band still reads like a
@@ -298,11 +298,11 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
     renderCell: (p) => (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, whiteSpace: 'nowrap' }}>
         <span style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-400)' }}>
-          {computeAgentDueOn(p.dischargeDate, p.outreachType) || '—'}
+          {computeAgentDueOn(p.dischargeDate, p.outreachType) || '-'}
         </span>
         <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <Icon name="solar:clock-circle-linear" size={14} />
-          {p.outreachLeft || '—'}
+          {p.outreachLeft || '-'}
         </span>
       </div>
     ),
@@ -339,10 +339,10 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
     tdClassName: rowStyles.td,
     renderCell: (p) => <TocStatusBadge status={p.tocStatus} />,
   },
-  { key: 'dueOn',         label: 'Due On',         tdClassName: rowStyles.td, renderCell: (p) => p.dueOn || '—' },
-  { key: 'nextOutreach',  label: 'Next Outreach',  tdClassName: rowStyles.td, renderCell: (p) => p.nextOutreach || '—' },
-  { key: 'startDate',     label: 'Start Date',     tdClassName: rowStyles.td, renderCell: (p) => p.startDate || '—' },
-  { key: 'lastAdmission', label: 'Last Admission', tdClassName: rowStyles.td, renderCell: (p) => p.lastAdmission || '—' },
+  { key: 'dueOn',         label: 'Due On',         tdClassName: rowStyles.td, renderCell: (p) => p.dueOn || '-' },
+  { key: 'nextOutreach',  label: 'Next Outreach',  tdClassName: rowStyles.td, renderCell: (p) => p.nextOutreach || '-' },
+  { key: 'startDate',     label: 'Start Date',     tdClassName: rowStyles.td, renderCell: (p) => p.startDate || '-' },
+  { key: 'lastAdmission', label: 'Last Admission', tdClassName: rowStyles.td, renderCell: (p) => p.lastAdmission || '-' },
   {
     key: 'assignee',
     label: 'Assignee',
@@ -394,7 +394,7 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
       <div className={rowStyles.tasksCell}>
         {p.tasks > 0
           ? <span className={rowStyles.taskBadge}>{p.tasks}</span>
-          : <span className={rowStyles.dateDash}>—</span>}
+          : <span className={rowStyles.dateDash}>-</span>}
       </div>
     ),
   },

@@ -537,7 +537,7 @@ const BASE_HEDIS_MEMBERS = [
     ipa: 'CFC', hpCode: 'HP-002', zip: '07030', city: 'Hoboken', state: 'NJ',
   },
 
-  // ── DSF-A-only seed (10 members) — reviewers running the PHQ-2
+  // ── DSF-A-only seed (10 members): reviewers running the PHQ-2
   //    without a paired follow-up gap yet. Covers the "opened from
   //    Astrana, not yet screened" pattern the worklist should show.
   {
@@ -641,7 +641,7 @@ const BASE_HEDIS_MEMBERS = [
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10010', city: 'Newark', state: 'NJ',
   },
 
-  // ── DSF-B-only seed (5 members) — DSF-A (PHQ-2 Positive) completed
+  // ── DSF-B-only seed (5 members): DSF-A (PHQ-2 Positive) completed
   //    outside Fold, so only the follow-up (PHQ-9) gap is ingested from
   //    Astrana. Due date anchor here is the DSF-B ingestion date + 30
   //    days (not the PHQ-2 savedAt, since we never observed one).

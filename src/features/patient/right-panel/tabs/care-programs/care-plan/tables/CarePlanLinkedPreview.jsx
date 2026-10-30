@@ -121,7 +121,7 @@ function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave, onNa
 
 /**
  * Link affordance for a GBI row: an ActionButton badged with the number of
- * linked interventions/barriers/automations. Hovering previews them — the
+ * linked interventions/barriers/automations. Hovering previews them, the
  * preview is the whole affordance, so the button doesn't open anything.
  */
 export function GbiLinkButton({ data, size = 'sm', keepSlot = false }) {
@@ -154,7 +154,7 @@ export function GbiLinkButton({ data, size = 'sm', keepSlot = false }) {
   };
   const cancelClose = () => clearTimeout(closeTimerRef.current);
 
-  // Nothing to link, nothing to render — collapses the slot instead
+  // Nothing to link, nothing to render, collapses the slot instead
   // of showing a disabled link icon with a "No linked items" tooltip.
   // `keepSlot` callers (the fixed Actions column) need the slot held so
   // icons stay aligned row to row, so they get the dimmed state instead.

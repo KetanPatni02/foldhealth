@@ -10,7 +10,7 @@ import { clearFailedSignIns, completeUnlockLink, inspectUnlockLink } from './acc
 import styles from './LoginPage.module.css';
 
 /**
- * #/unlock-account?token=… — the link an administrator's unlock emails.
+ * #/unlock-account?token=…, the link an administrator's unlock emails.
  * Shows the User ID, takes a new password and confirmation, then signs the
  * user in. The link works once and expires in 24 hours.
  */

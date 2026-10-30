@@ -8,7 +8,7 @@ import styles from './OverflowTabStrip.module.css';
 const MORE_RESERVE_PX = 72;
 
 /**
- * TabStrip with responsive overflow — tabs that don't fit collapse into a
+ * TabStrip with responsive overflow: tabs that don't fit collapse into a
  * "More ▾" dropdown. Active tab is always kept visible by swapping it into
  * the last visible slot when needed. Same behavior as SectionTitleBar tabs.
  *

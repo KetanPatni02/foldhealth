@@ -61,7 +61,7 @@ function ImpactAnalysis({ rows, marked }) {
               <tr key={r.instanceId} className={marked && !marked.has(r.instanceId) ? styles.rowDim : ''}>
                 <td>{r.patientName}</td>
                 <td>{r.programCode}</td>
-                <td>{r.ipa || '—'}</td>
+                <td>{r.ipa || '-'}</td>
                 <td>{r.careManager || 'Unassigned'}</td>
                 <td>v{r.versionNumber}</td>
                 <td>{marked && (marked.has(r.instanceId) ? <Badge tone="info" size="S" label="Moves" /> : <span className={styles.muted}>Stays</span>)}</td>

@@ -19,8 +19,8 @@ import styles from './CcmTimerWidget.module.css';
 
 // CCM activity timer (Figma CCM Timer 324:84077), drawn in our timer's own
 // style. Two sizes:
-//   mini     — the control bar; docked in the banner's tag row by default
-//   expanded — a card with the patient, the time large, and the actions
+//   mini: the control bar; docked in the banner's tag row by default
+//   expanded: a card with the patient, the time large, and the actions
 // and these states (Figma variant in brackets):
 //   idle        → 00:00, Start Timer                         (Start / Mini Start)
 //   running     → green time, Pause · Stop                   (Mini / Expanded)
@@ -127,7 +127,7 @@ function TimerNotice({ notice, onClose }) {
 }
 
 /**
- * "Are you still working on this patient?" — our ConfirmDialog, inline so it
+ * "Are you still working on this patient?", our ConfirmDialog, inline so it
  * sits above the timer (where the banners go) without blocking the page.
  * Keep Timer Running continues; Pause Timer pauses. "Don't remind me
  * again" is a checkbox that rides along with either answer and quiets

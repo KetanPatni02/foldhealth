@@ -49,11 +49,11 @@ export function ChartDetailDrawerView(props) {
 
   // When true, the PDF preview takes the full drawer width and both
   // the tabbed Comments/Timeline left column AND the right-hand doc
-  // listing are hidden. Local state — resets when the drawer unmounts.
+  // listing are hidden. Local state, resets when the drawer unmounts.
   const [pdfExpanded, setPdfExpanded] = useState(false);
 
   // Merge live activity (this session's doc-status / comment / assignment
-  // writes via `addActivityEntry`) with the mock / DB-seeded log — same
+  // writes via `addActivityEntry`) with the mock / DB-seeded log, same
   // recipe LeftWorkspace uses so the Timeline pane here reads 1:1 with
   // the DiagPanel Activity tab.
   const liveLog = useAppStore(s => s.hccActivityLog[m?.name]);
@@ -120,18 +120,18 @@ export function ChartDetailDrawerView(props) {
         width={1300}
         bodyClassName={`${styles.body} ${isEmpty ? styles.bodyEmpty : ''}`}
       >
-        {/* Body — two panes normally; right-pane only once the last doc is
+        {/* Body: two panes normally; right-pane only once the last doc is
             unlinked (left preview closed, Upload section shown). PatientBanner
             + Created meta strip live INSIDE the right pane per Figma
             ICD-Import 4481:112909, so the left PDF gets the full drawer height. */}
         <>
-          {/* Left — PDF preview, or the Comments panel when the header
+          {/* Left: PDF preview, or the Comments panel when the header
               "Comment" action is toggled on. Panel writes/reads the same
               hccDiagComments store the Diagnosis Gap drawer uses, so support
               comments dropped here appear in DiagPanel's Comments tab. */}
           {!isEmpty && !pdfExpanded && (leftPanel === 'comments' || leftPanel === 'activity') && (
             <div className={styles.leftPane}>
-              {/* Tabbed header — matches the DiagPanel left-workspace tab
+              {/* Tabbed header: matches the DiagPanel left-workspace tab
                   strip. Comments count mirrors the toolbar badge; the
                   close button collapses back to the PDF preview and
                   re-selects the first doc so the right-hand card
@@ -156,7 +156,7 @@ export function ChartDetailDrawerView(props) {
                   label={leftPanel === 'comments' ? 'Close comments' : 'Close timeline'}
                 />
               </div>
-              {/* Filter row — same DOS / HCC / ICD / Recorded By / Date
+              {/* Filter row: same DOS / HCC / ICD / Recorded By / Date
                   chips the DiagPanel LeftWorkspace uses, so a filter
                   set here narrows both Timeline and Comments the way
                   it would in the Diagnosis Gap surface. */}
@@ -226,7 +226,7 @@ export function ChartDetailDrawerView(props) {
               const doc = docs.find(d => d.id === moreMenu.docId);
               setMoreMenu(null);
               if (!doc) return;
-              // Inline edit — the doc card renders a Caption + Document Type
+              // Inline edit: the doc card renders a Caption + Document Type
               // editor in place of the header actions until the user saves
               // or cancels.
               setEditingDocId(doc.id);
@@ -336,7 +336,7 @@ export function ChartDetailDrawerView(props) {
   );
 }
 
-// PDF preview pane — file name on the left of the header, review
+// PDF preview pane: file name on the left of the header, review
 // status pill + Expand + Open-in-new-tab actions on the right.
 // Expand toggles an in-app full-drawer mode (right-hand doc list and
 // Comments/Timeline pane hide, PDF pane takes the full width). Open

@@ -68,7 +68,7 @@ function SurgeryRow({ entry, others, onDateChange, onRemove }) {
 }
 
 /**
- * Add Surgical History — a Name / Performed Date table. Picking a procedure
+ * Add Surgical History: a Name / Performed Date table. Picking a procedure
  * from the search adds its row straight away; the date is then filled in on
  * the row. Procedures come from the NLM procedure list, so each row carries
  * its key.

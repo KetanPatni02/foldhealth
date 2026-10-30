@@ -60,7 +60,7 @@ export default {
     },
     dropdown: {
       control: 'boolean',
-      description: 'Split-button mode — appends a chevron with a MenuPopover of secondary actions',
+      description: 'Split-button mode: appends a chevron with a MenuPopover of secondary actions',
       table: { defaultValue: { summary: 'false' } },
     },
     fullWidth: {
@@ -77,7 +77,7 @@ export default {
 };
 
 /**
- * The default playground — tweak every prop in the Controls panel.
+ * The default playground: tweak every prop in the Controls panel.
  * This single story replaces all the individual variant stories.
  *
  * Leading / trailing icons live behind their own boolean toggles so the

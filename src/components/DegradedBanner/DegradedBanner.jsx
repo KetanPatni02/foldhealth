@@ -27,9 +27,9 @@ export function DegradedBanner() {
       fontWeight: 500,
     }}>
       <Icon name="solar:danger-triangle-bold" size={16} />
-      {hasDown ? 'System Outage' : 'Degraded Performance'}: {names.join(', ')}
+      {hasDown ? 'System Outage' : 'Degraded Performance'}: {names.join(', ')}.
       <span style={{ fontWeight: 400, fontSize: 'var(--font-sm)', marginLeft: 4 }}>
-        — Some features may be limited. Contact engineering if issues persist.
+        Some features may be limited. Contact engineering if issues persist.
       </span>
     </div>
   );

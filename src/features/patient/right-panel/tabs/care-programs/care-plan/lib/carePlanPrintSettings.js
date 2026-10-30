@@ -4,6 +4,7 @@
  * or private to its creator, like care plan templates.
  */
 import { resolvePatientDisplay } from '../../../../../../../lib/patientDisplay';
+import { isEmptyDash } from '../../../../../../../lib/emptyDash';
 
 export const DEMOGRAPHIC_FIELDS = [
   { key: 'dobAgeSex', label: 'DOB, age and sex' },
@@ -93,7 +94,7 @@ export function demographicRows(patient, picked) {
     rows.push({ label: 'Fold ID', value: patient.memberId ? `#${patient.memberId}` : '' });
   }
   if (picked.includes('pcpInsurance')) {
-    rows.push({ label: 'PCP', value: patient.pcp && patient.pcp !== '—' ? patient.pcp : '' });
+    rows.push({ label: 'PCP', value: patient.pcp && !isEmptyDash(patient.pcp) ? patient.pcp : '' });
     rows.push({ label: 'Insurance', value: patient.insurance || '' });
   }
   return rows;
@@ -113,7 +114,7 @@ export function findPatientRecord(state, patientId) {
   const found = slices.flatMap(list => (list || []).filter(match));
   if (!found.length) return null;
   const pick = (...keys) => {
-    for (const r of found) for (const k of keys) if (r[k] != null && r[k] !== '' && r[k] !== '—') return r[k];
+    for (const r of found) for (const k of keys) if (r[k] != null && r[k] !== '' && !isEmptyDash(r[k])) return r[k];
     return '';
   };
   // DOB, age and sex as the patient banner shows them (P360 profile first).

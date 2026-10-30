@@ -15,7 +15,7 @@ import { attachSentry } from './lib/tracking'
 // prefill params, so only origin + path ever reach Sentry.
 const stripUrl = (u) => (typeof u === 'string' ? u.split(/[?#]/)[0] : u)
 
-// Sentry — error + performance monitoring. browserTracingIntegration adds
+// Sentry: error + performance monitoring. browserTracingIntegration adds
 // the Web Vitals transactions (FCP / LCP / INP / TTFB / CLS) we want to
 // watch. Must run before createRoot so React errors are captured from
 // the first render. v11's default dataCollection includes IP addresses and
@@ -23,7 +23,7 @@ const stripUrl = (u) => (typeof u === 'string' ? u.split(/[?#]/)[0] : u)
 //
 // Only initialize on the deployed production site. `import.meta.env.PROD`
 // alone isn't enough because `bun run preview` serves the built bundle
-// locally with PROD=true — and those localhost sessions were leaking
+// locally with PROD=true: and those localhost sessions were leaking
 // dev-time HMR crashes into the auto-fix routine (see PR #27). Gating on
 // hostname too means dev, preview, and any local build stay silent.
 const isDeployedProd =
@@ -60,7 +60,7 @@ if (isDeployedProd) {
       return event
     },
     // Noise that isn't ours and isn't actionable:
-    //   • navigator.locks contention on the Supabase auth token — expected
+    //   • navigator.locks contention on the Supabase auth token, expected
     //     whenever a user has the app open in more than one tab; the losing
     //     tab retries and recovers on its own.
     //   • "Object Not Found Matching Id…" comes from the Outlook SafeLinks
@@ -87,7 +87,7 @@ useAppStore.getState()._initThemeSubscriptions()
 startUpdateChecker()
 
 if (import.meta.env.DEV) {
-  // Dev-only escape hatch — lets DevTools poke at store state (e.g. to
+  // Dev-only escape hatch: lets DevTools poke at store state (e.g. to
   // preview the update card without waiting for a real chunk error).
   window.__store = useAppStore
 }

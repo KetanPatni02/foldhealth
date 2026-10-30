@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     return res.status(200).json(out);
   } catch (err) {
     // Degrade to a soft error the client can fall back from, never a 500.
-    // Details stay in the server log — upstream error bodies may include
+    // Details stay in the server log, upstream error bodies may include
     // request internals that don't belong in the browser.
     console.error('[icd-search]', err?.message || err);
     return res.status(200).json({ results: [], source: 'error' });

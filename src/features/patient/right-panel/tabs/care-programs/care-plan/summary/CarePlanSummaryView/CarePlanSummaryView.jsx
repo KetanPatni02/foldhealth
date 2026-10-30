@@ -47,10 +47,11 @@ import styles from './CarePlanSummaryView.module.css';
 import { localDateMs } from '../../../../../../../../lib/localDate';
 import { useSignedCarePlans } from '../../lib/useSignedCarePlans';
 import { isProgramClosed } from '../../../../../../data/programStatus';
+import { isEmptyDash } from '../../../../../../../../lib/emptyDash';
 
 const PRIORITIES = ['high', 'medium', 'low'];
 
-// Person cell — shared Avatar primitive + name, so PCM / PCP renders
+// Person cell: shared Avatar primitive + name, so PCM / PCP renders
 // the way every other assignee cell in the app does (matches the
 // Fold design system rather than a bespoke user glyph).
 function PersonCell({ name, fallback = 'Unassigned' }) {
@@ -64,7 +65,7 @@ function PersonCell({ name, fallback = 'Unassigned' }) {
   );
 }
 
-// Active Programs Summary table — one row per enrolled program that
+// Active Programs Summary table: one row per enrolled program that
 // has a care plan. Plan (first column) and Actions (last column) are
 // sticky so the middle columns can scroll horizontally on narrow
 // panes. Read-only surface; interactions are limited to View Plan +
@@ -90,8 +91,8 @@ function ActiveProgramsTable({ rows, onView, onOpenActivity }) {
             const conditionsList = p.conditionsList || [];
             const firstCondition = conditionsList[0] || null;
             const extraConditions = Math.max(conditionsList.length - 1, 0);
-            const range = p.startDateFmt === '—' && p.endDateFmt === '—'
-              ? '—'
+            const range = isEmptyDash(p.startDateFmt) && isEmptyDash(p.endDateFmt)
+              ? '-'
               : `${p.startDateFmt} - ${p.endDateFmt}`;
             const activityCount = (p.sinceReviewEntries || []).length;
             return (
@@ -108,7 +109,7 @@ function ActiveProgramsTable({ rows, onView, onOpenActivity }) {
                       )}
                     </span>
                   ) : (
-                    <span className={styles.programMuted}>—</span>
+                    <span className={styles.programMuted}>-</span>
                   )}
                 </td>
                 <td className={styles.programDates}>{range}</td>
@@ -131,7 +132,7 @@ function ActiveProgramsTable({ rows, onView, onOpenActivity }) {
                       {p.activitySummary}
                     </button>
                   ) : (
-                    <span className={styles.programMuted}>—</span>
+                    <span className={styles.programMuted}>-</span>
                   )}
                 </td>
                 <td className={`${styles.stickyRight} ${styles.colActions}`}>
@@ -174,7 +175,7 @@ function ActivityReviewDrawer({ target, onClose }) {
   });
   return (
     <Drawer
-      title={`Activity Since Review${target?.code ? ` — ${target.code}` : ''}`}
+      title={`Activity Since Review${target?.code ? `, ${target.code}` : ''}`}
       onClose={onClose}
       headerRight={target?.lastReviewed ? (
         <span className={styles.drawerMeta}>Last reviewed {target.lastReviewed}{target.lastReviewedBy ? ` · by ${target.lastReviewedBy}` : ''}</span>
@@ -187,7 +188,7 @@ function ActivityReviewDrawer({ target, onClose }) {
   );
 }
 
-// Goals/Interventions/Barriers section head — matches the CarePlanView's GBI
+// Goals/Interventions/Barriers section head: matches the CarePlanView's GBI
 // treatment (chevron + title + count pill). The read-only roll-up has no Add;
 // the editable one (care_plan_mode = 'both') passes `onAdd`, which asks for
 // the owning program first.
@@ -215,7 +216,7 @@ function SectionHead({ title, count, open, onToggle, onAdd }) {
   );
 }
 
-// Care Plan column — injected before Status in each table so every row
+// Care Plan column: injected before Status in each table so every row
 // tells you which program owns it. Sort by the row's `programCode` tag.
 const HEADER_COMPACT = { paddingLeft: 6, paddingRight: 6 };
 const CARE_PLAN_COLUMN = {
@@ -235,7 +236,7 @@ const insertBefore = (cols, key, col) => {
 
 const stripActions = (cols) => cols.filter(c => c.key !== 'actions');
 
-// Due Date column — matches the per-plan CarePlanInterventionsTable
+// Due Date column: matches the per-plan CarePlanInterventionsTable
 // injection (inserted immediately before Assigned To), so the
 // Comprehensive interventions grid reads: P · Name · Due Date ·
 // Assigned To · Adherence · Program · Status.
@@ -254,7 +255,7 @@ const colByKey = (cols, key) => cols.find(c => c.key === key);
 // than reusing every GBI column: the body renders a compact metric set
 // (Progress for goals, Adherence for interventions) plus a Program tag, so a
 // literal list keeps the header aligned with the body. The sticky `actions`
-// column is kept — it is where WorklistShell mounts the column picker button.
+// column is kept: it is where WorklistShell mounts the column picker button.
 // Progress and Adherence carry `defaultHidden` from the shared defs, so both
 // start hidden and users opt in through the picker.
 const SUMMARY_GOAL_COLUMNS = [
@@ -279,7 +280,7 @@ const SUMMARY_INTERVENTION_COLUMNS = [
 ];
 const SUMMARY_BARRIER_COLUMNS = insertBefore(stripActions(BARRIER_COLUMNS), 'status', CARE_PLAN_COLUMN);
 
-// Program cell — first programCode as a badge, plus a `+N` badge
+// Program cell: first programCode as a badge, plus a `+N` badge
 // when the same title also appears on other programs in the current
 // filtered snapshot. Keeps each row's own program identity intact
 // while surfacing cross-program overlap ("SNP +1") in one glance.
@@ -463,7 +464,7 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
         renderRow={(i, _idx, ctx) => {
           const hidden = ctx?.hiddenSet || null;
           const isHidden = (k) => (hidden ? hidden.has(k) : false);
-          // Only Internal Task lets the user reassign — every other
+          // Only Internal Task lets the user reassign, every other
           // intervention kind runs on the member and the assignee stays
           // locked to them. Fall back to the plan's patient when a
           // legacy row is still 'Unassigned' so the column reads
@@ -562,7 +563,7 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
   );
 }
 
-// Row body — mirrors the per-plan CarePlanBarriersTable's BarrierRow
+// Row body: mirrors the per-plan CarePlanBarriersTable's BarrierRow
 // (empty priority cell, custom:barrier icon, barrierStatusTd width),
 // with the Care Plan column injected before Status.
 function BarrierRow({ b, onOpen, onStatusMenu, overlap }) {
@@ -709,11 +710,11 @@ export function CarePlanSummaryView({
   const signedCarePlans = useSignedCarePlans();
   const patientCarePlans = editable ? draftCarePlans : signedCarePlans;
   const saveCarePlanLiveField = useAppStore(s => s.saveCarePlanLiveField);
-  // Resolve THIS patient only — `s.patients` holds the current worklist
+  // Resolve THIS patient only: `s.patients` holds the current worklist
   // slice (many patients), so indexing [0] there landed on whoever's at
   // the top of the list (e.g. "Ralph Halvorson") instead of the patient
   // we're viewing. Look up by `patientId` across every worklist slice,
-  // then hand the row picker a single-element array — mirrors what the
+  // then hand the row picker a single-element array, mirrors what the
   // per-plan CarePlanView passes into `CarePlanInterventionsTable`.
   const currentPatient = useAppStore(s => {
     const buckets = [s.patients, s.allPatients, s.snpMembers, s.ccmMembers, s.hccMembers, s.awvMembers, s.jsaMembers];
@@ -764,7 +765,7 @@ export function CarePlanSummaryView({
     [conditions, goals, interventions, barriers, searchText, filterKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  // Per-table cross-program overlap map — powers the ProgramCell's
+  // Per-table cross-program overlap map: powers the ProgramCell's
   // "+N" badge on rows whose title appears on multiple programs.
   const goalProgramOverlap         = useMemo(() => buildProgramOverlap(filteredGoals),         [filteredGoals]);
   const interventionProgramOverlap = useMemo(() => buildProgramOverlap(filteredInterventions), [filteredInterventions]);
@@ -783,12 +784,12 @@ export function CarePlanSummaryView({
 
   // Active programs summary row set. Only surfaces programs whose
   // patient plan actually exists (a plan row in `patientCarePlans` for
-  // this patient + program) — matches the ask that the section shows
+  // this patient + program): matches the ask that the section shows
   // "only plans that have been created". Closed / completed enrollments
   // are still hidden to match CareProgramsTab's PAST_STATUSES rule.
   const patientCarePlanAudit = useAppStore(s => s.patientCarePlanAudit);
   const fmtDate = (iso) => {
-    if (!iso || iso === '—') return null;
+    if (!iso || isEmptyDash(iso)) return null;
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return null;
     const pad = (n) => String(n).padStart(2, '0');
@@ -801,7 +802,7 @@ export function CarePlanSummaryView({
         const key = `${patientId}::${p.id}`;
         const plan = patientCarePlans[key];
         if (!plan) return null;
-        // Conditions on this plan — only the patient-level medical
+        // Conditions on this plan: only the patient-level medical
         // conditions the plan row carries (e.g. Diabetes,
         // Hypertension). Goal.conditions holds template category tags
         // ("Care management", "Comprehensive care management"), which
@@ -828,13 +829,13 @@ export function CarePlanSummaryView({
         const endISO = goalEndTimes.length
           ? new Date(Math.max(...goalEndTimes)).toISOString()
           : null;
-        const startDate = fmtDate(startISO) || '—';
-        const endDate = fmtDate(endISO) || (p.endDate && p.endDate !== '—' ? p.endDate : '—');
+        const startDate = fmtDate(startISO) || '-';
+        const endDate = fmtDate(endISO) || (p.endDate && !isEmptyDash(p.endDate) ? p.endDate : '-');
 
         // Reviewer + last review date come off the plan's most recent
         // signature; fall back to the program's lastUpdated stamp.
-        const lastReviewedISO = plan.plan?.signedAt || (p.lastUpdated !== '—' ? p.lastUpdated : null);
-        const lastReviewed = fmtDate(lastReviewedISO) || '—';
+        const lastReviewedISO = plan.plan?.signedAt || (!isEmptyDash(p.lastUpdated) ? p.lastUpdated : null);
+        const lastReviewed = fmtDate(lastReviewedISO) || '-';
         const lastReviewedBy = plan.plan?.signedBy || null;
         const lastReviewedTs = lastReviewedISO ? new Date(lastReviewedISO).getTime() : 0;
 
@@ -851,7 +852,7 @@ export function CarePlanSummaryView({
         if (buckets.intervention) activityBits.push(`${buckets.intervention} Intervention${buckets.intervention === 1 ? '' : 's'} Updated`);
         if (buckets.barrier) activityBits.push(`${buckets.barrier} Barrier${buckets.barrier === 1 ? '' : 's'} Closed`);
         // Every plan-level or otherwise-bucketed audit entry that isn't
-        // captured above still counts as activity for the reviewer —
+        // captured above still counts as activity for the reviewer,
         // report it as a generic "N Plan Update(s)" so the cell never
         // renders a blank clickable when sinceReview has entries but
         // none of them are goal / intervention / barrier changes.
@@ -881,7 +882,7 @@ export function CarePlanSummaryView({
       .filter(Boolean);
   }, [programs, patientCarePlans, patientCarePlanAudit, patientId, currentPatient?.pcp]);
 
-  // Summarize — the cross-program recap (via the /api/care-plan-summary proxy,
+  // Summarize: the cross-program recap (via the /api/care-plan-summary proxy,
   // which keeps the Gemini key server-side). It is persisted one row per patient
   // in patient_care_plan_summaries, so the card renders straight from the store:
   // a generated summary survives reload, and regenerating overwrites it.
@@ -902,11 +903,11 @@ export function CarePlanSummaryView({
     isEmpty: goals.length + interventions.length + barriers.length === 0,
   });
 
-  // "Activity Since Review" drawer target — the row the user clicked;
+  // "Activity Since Review" drawer target: the row the user clicked;
   // null when the drawer is closed.
   const [activityReviewOpen, setActivityReviewOpen] = useState(null);
 
-  // Preview drawer state — reuses the exact per-plan drawer so every
+  // Preview drawer state: reuses the exact per-plan drawer so every
   // edit (status, adherence, progress, notes) lands in the same store
   // slice and shows up here on the next render.
   const [previewGoal, setPreviewGoal] = useState(null);
@@ -1007,7 +1008,7 @@ export function CarePlanSummaryView({
           </div>
 
           <div className={styles.section}>
-            {/* Active Programs Summary — one row per enrolled program.
+            {/* Active Programs Summary: one row per enrolled program.
                 Sits above the GBI sections so the reader gets a quick
                 who-owns-what recap (PCM / PCP / last review / activity
                 since review) before diving into the goal / intervention

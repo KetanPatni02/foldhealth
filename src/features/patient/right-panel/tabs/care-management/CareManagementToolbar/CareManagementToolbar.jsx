@@ -5,7 +5,7 @@ import styles from './CareManagementToolbar.module.css';
 const Divider = () => <span className={styles.vDivider} />;
 
 /**
- * Shared Care Management toolbar row — identical across every sub-tab:
+ * Shared Care Management toolbar row: identical across every sub-tab:
  * [search] | [sub-tabs] … [per-tab CTA] | [filter]. Only the `cta` (and the
  * `filterBar` it toggles) change per tab; search and filter are always present.
  *

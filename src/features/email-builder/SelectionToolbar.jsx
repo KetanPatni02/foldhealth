@@ -8,7 +8,7 @@ import styles from './EmailBuilder.module.css';
 
 // Floating toolbar that pops up when the user selects text inside a Text or
 // Heading block on the canvas. Provides quick access to **range-level**
-// formatting — bold, italic, underline, strikethrough, inline code, link —
+// formatting: bold, italic, underline, strikethrough, inline code, link,
 // applied via document.execCommand. Block-level controls (font size, padding,
 // etc.) continue to live in the right-hand property panel.
 //
@@ -135,7 +135,7 @@ export function SelectionToolbar() {
     restoreSelection(r);
     const code = document.createElement('code');
     try { r.surroundContents(code); }
-    catch { /* selection spans block boundaries — execCommand fallback */ }
+    catch { /* selection spans block boundaries: execCommand fallback */ }
     apply('styleWithCSS', false); // no-op: just triggers a commit cycle
   };
 

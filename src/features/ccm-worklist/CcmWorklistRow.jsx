@@ -30,7 +30,7 @@ function StatusBadge({ status }) {
 }
 
 const formatMins = (seconds) => {
-  if (!seconds && seconds !== 0) return '—';
+  if (!seconds && seconds !== 0) return '-';
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} Mins`;
@@ -55,7 +55,7 @@ export const CCM_MIDDLE_COLUMNS = [
     label: 'Next Action Due',
     renderCell: (m) => (
       <span className={`${styles.dateText} ${m.nextActionOverdue ? styles.overdue : ''}`}>
-        {m.nextActionDue || '—'}
+        {m.nextActionDue || '-'}
       </span>
     ),
   },
@@ -74,7 +74,7 @@ export const CCM_MIDDLE_COLUMNS = [
       ) : (
         <div className={styles.outreachCell}>
           <Icon name="solar:phone-linear" size={15} color="var(--neutral-200)" />
-          <span className={styles.outreachNone}>—</span>
+          <span className={styles.outreachNone}>-</span>
         </div>
       )
     ),
@@ -88,14 +88,14 @@ export const CCM_MIDDLE_COLUMNS = [
           name={m.assigneeName}
           initials={m.assigneeInitials || m.assigneeName.slice(0, 2).toUpperCase()}
           showRole={false}
-          onClick={() => ctx.showToast?.(`Change assignee for ${m.name} — coming soon`)}
+          onClick={() => ctx.showToast?.(`Change assignee for ${m.name}, coming soon`)}
         />
       ) : (
         <AssigneeChange
           unassigned
           unassignedLabel="Assign User"
           showRole={false}
-          onClick={() => ctx.showToast?.(`Assign owner for ${m.name} — coming soon`)}
+          onClick={() => ctx.showToast?.(`Assign owner for ${m.name}, coming soon`)}
         />
       )
     ),
@@ -103,12 +103,12 @@ export const CCM_MIDDLE_COLUMNS = [
   {
     key: 'startDate',
     label: 'Start Date',
-    renderCell: (m) => <span className={styles.dateText}>{m.startDate || '—'}</span>,
+    renderCell: (m) => <span className={styles.dateText}>{m.startDate || '-'}</span>,
   },
   {
     key: 'lastAdmission',
     label: 'Last Admission',
-    renderCell: (m) => <span className={styles.dateText}>{m.lastAdmission || '—'}</span>,
+    renderCell: (m) => <span className={styles.dateText}>{m.lastAdmission || '-'}</span>,
   },
   {
     key: 'billableMins',
@@ -131,7 +131,7 @@ export const CCM_MIDDLE_COLUMNS = [
     renderCell: (m) => (
       m.riskLevel
         ? <Badge size="M" variant={`lace-${m.riskLevel.toLowerCase()}`} label={m.riskLevel} />
-        : <span className={styles.mutedDash}>—</span>
+        : <span className={styles.mutedDash}>-</span>
     ),
   },
   {
@@ -140,13 +140,13 @@ export const CCM_MIDDLE_COLUMNS = [
     renderCell: (m) => (
       m.taskCount
         ? <span className={styles.taskBadge}>{m.taskCount} Task</span>
-        : <span className={styles.mutedDash}>—</span>
+        : <span className={styles.mutedDash}>-</span>
     ),
   },
   {
     key: 'carePlanStatus',
     label: 'Care Plan Status',
-    renderCell: (m) => <span className={styles.carePlanText}>{m.carePlanStatus || '—'}</span>,
+    renderCell: (m) => <span className={styles.carePlanText}>{m.carePlanStatus || '-'}</span>,
   },
 ];
 
@@ -207,7 +207,7 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
   const openInCarePlan = (e) => {
     e.stopPropagation();
     if (!m.patientId) {
-      showToast(`${m.name} — no linked patient record yet`);
+      showToast(`${m.name}, no linked patient record yet`);
       return;
     }
     navigateToPatient(m.patientId, {
@@ -218,7 +218,7 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
 
   const handleRowClick = () => {
     if (m.patientId) navigateToPatient(m.patientId);
-    else showToast(`${m.name} — no linked patient record yet`);
+    else showToast(`${m.name}, no linked patient record yet`);
   };
 
   const handleNameClick = (e) => {

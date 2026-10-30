@@ -70,7 +70,7 @@ function StackCell({ label, value }) {
   );
 }
 
-// Care Team columns — mirrors the grid this table replaced: 290 / fill / 40.
+// Care Team columns: mirrors the grid this table replaced: 290 / fill / 40.
 // The Role column keeps its vertical rule via `thStyle` on the header and
 // `.careRole` on the body cells.
 const CARE_TEAM_COLUMNS = [

@@ -10,7 +10,7 @@ import { GBI_STATUSES, gbiStatusMeta } from '../../lib/gbiStatus';
 const STATUS_OPTIONS = GBI_STATUSES.map(v => ({ value: v, label: v, icon: gbiStatusMeta(v).icon }));
 
 // Deliberately plain: title, who owns it, how long, and status. This is the
-// simplified intervention entry (roadmap #6) — no automation wizard.
+// simplified intervention entry (roadmap #6): no automation wizard.
 export function AddInterventionDrawer({ intervention, onClose, onSave }) {
   const [title, setTitle] = useState(intervention?.title || '');
   const [assignee, setAssignee] = useState(intervention?.assignee?.name || '');

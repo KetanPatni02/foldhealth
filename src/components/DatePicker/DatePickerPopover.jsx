@@ -11,7 +11,7 @@ import { Tooltip } from '../Tooltip/Tooltip';
 import styles from './DatePickerPopover.module.css';
 
 /**
- * Fold-brand calendar popover — Figma Fold-Pixel-1.0.
+ * Fold-brand calendar popover: Figma Fold-Pixel-1.0.
  *
  * Two variants, both driven off the same primitives:
  *   - Single (node 8646:12168):  one month grid.
@@ -27,7 +27,7 @@ import styles from './DatePickerPopover.module.css';
  *   value     ISO string (single) or `{ start, end }` (range)
  *   onChange  fires with the new value on commit
  *   anchorRect
- *   min / max ISO strings — bounds; days outside are disabled
+ *   min / max ISO strings: bounds; days outside are disabled
  */
 export function DatePickerPopover({
   open,
@@ -40,11 +40,11 @@ export function DatePickerPopover({
   mode = 'single',
   // Optional slot rendered below the month grid (single mode) or
   // between the month grid and the Clear/Save row (range mode).
-  // Lets callers attach a controls strip — e.g. a Repeat toggle —
+  // Lets callers attach a controls strip, e.g. a Repeat toggle,
   // without forking the popover.
   footer = null,
   // Optional ISO (YYYY-MM-DD) strings to paint with a subtle grey
-  // fill — used by callers with a recurrence config to show every
+  // fill: used by callers with a recurrence config to show every
   // future occurrence at a glance. The primary selection still
   // renders in the solid primary swatch on top.
   highlightedDates = null,
@@ -98,13 +98,13 @@ export function DatePickerPopover({
   const today = todayLocal();
 
   const selectedSingle = !isRange && value ? parseIsoLocal(value) : null;
-  // In range mode the popover works entirely off the pending pair —
+  // In range mode the popover works entirely off the pending pair,
   // clicking Save is what writes back to the parent. The `value` prop
   // seeds the pair on open (see the effect above).
   const rangeStart = isRange ? pendingStart : null;
   const rangeEnd = isRange ? pendingEnd : null;
   // Ephemeral range while the user hovers between the first and second
-  // click — clamped so hovering LEFT of the pending start previews a
+  // click: clamped so hovering LEFT of the pending start previews a
   // backwards range too.
   const previewStart = pendingStart && !pendingEnd && hoverEnd
     ? (hoverEnd < pendingStart ? hoverEnd : pendingStart)
@@ -135,7 +135,7 @@ export function DatePickerPopover({
       setHoverEnd(null);
       return;
     }
-    // Second click completes the pair — always ordered so start ≤ end.
+    // Second click completes the pair: always ordered so start ≤ end.
     const [start, end] = d < pendingStart ? [d, pendingStart] : [pendingStart, d];
     setPendingStart(start);
     setPendingEnd(end);

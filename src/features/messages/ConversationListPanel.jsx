@@ -15,7 +15,7 @@ const ACTIVITY_FILTER = { Today: 1, 'Last 7 days': 7, 'Last 30 days': 30 };
 import styles from './MessagesView.module.css';
 
 /**
- * Placeholder rows shaped like `.convItem` — avatar circle, name line,
+ * Placeholder rows shaped like `.convItem`, avatar circle, name line,
  * preview line. Reuses the shared `.bone` shimmer rather than defining
  * another one.
  */
@@ -141,7 +141,7 @@ export function ConversationListPanel({
         ) : loading ? (
           /* Loading, not empty. Rendering the "No conversations yet" empty
              state while the first fetch is still in flight told the user
-             they had no chats and offered them a Start-a-chat button — a
+             they had no chats and offered them a Start-a-chat button, a
              wrong answer, stated confidently, for as long as the round-trip
              took. The skeleton is shaped like `.convItem` so the list does
              not jump when real rows replace it. */

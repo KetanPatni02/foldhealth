@@ -82,7 +82,7 @@ const ENTITY_NOUN = {
   barrier: ['Barrier', 'Barriers'],
 };
 const ENTITY_ICON = {
-  // The goal glyph the plan itself uses — mapPatientCarePlanGoalRow's default
+  // The goal glyph the plan itself uses, mapPatientCarePlanGoalRow's default
   // and the icon on every goal row.
   goal: 'solar:flag-linear',
   intervention: 'solar:checklist-minimalistic-linear',
@@ -193,7 +193,7 @@ export function sectionsFor(group, openAt, links) {
   const plain = rows.filter(r => r.entityType !== 'template');
   const added = plain.filter(r => r.action === 'created' && !isOwned(r));
   const removed = plain.filter(r => r.action === 'deleted' && !isOwned(r));
-  // Sharing only happens as part of signing, so it is not its own activity —
+  // Sharing only happens as part of signing, so it is not its own activity,
   // the attribution line above already names where the plan went.
   const rest = plain.filter(r => r.action !== 'created' && r.action !== 'deleted'
     && r.action !== 'shared');

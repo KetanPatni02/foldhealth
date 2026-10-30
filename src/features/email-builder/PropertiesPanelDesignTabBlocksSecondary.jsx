@@ -79,7 +79,7 @@ export function DesignTabBlocksSecondary({ ctx }) {
               <ColorInput label="Line Color" value={props.lineColor} onChange={v => update(['data', 'props', 'lineColor'], v)} />
               <IconInput label="Thickness" suffix="px" value={props.lineHeight || 1} onChange={v => update(['data', 'props', 'lineHeight'], parseFloat(v) || 1)} />
             </Row2>
-            {/* Vertical dividers get an explicit Height field — without it
+            {/* Vertical dividers get an explicit Height field, without it
                 the bar collapses to its 24px min-height inside flex layouts. */}
             {props.orientation === 'vertical' && (
               <IconInput
@@ -107,7 +107,7 @@ export function DesignTabBlocksSecondary({ ctx }) {
                 <Toggle
                   fullWidth
                   items={[
-                    { key: 'none', label: '—' },
+                    { key: 'none', label: '-' },
                     { key: 'circle', label: '●' },
                     { key: 'arrow', label: '◄' },
                   ]}
@@ -121,7 +121,7 @@ export function DesignTabBlocksSecondary({ ctx }) {
                 <Toggle
                   fullWidth
                   items={[
-                    { key: 'none', label: '—' },
+                    { key: 'none', label: '-' },
                     { key: 'circle', label: '●' },
                     { key: 'arrow', label: '►' },
                   ]}

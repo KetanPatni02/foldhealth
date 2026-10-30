@@ -38,7 +38,7 @@ function getUserDisplayName(user) {
 }
 
 /* ── Profile Popover (Figma node 1904:6423) ── */
-// The full HCC role vocabulary — filtered per-user against the roles their
+// The full HCC role vocabulary: filtered per-user against the roles their
 // profile actually carries in profiles.clinical_roles.
 const ALL_HCC_ROLES = ['Support', 'Coder', 'QA', 'Compliance'];
 
@@ -49,11 +49,11 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
   const [firstName, setFirstName] = useState(user?.user_metadata?.first_name || '');
   const [lastName, setLastName] = useState(user?.user_metadata?.last_name || '');
   const [saving, setSaving] = useState(false);
-  // (from my branch — superseded by foldhealth/main's hccUserRole; kept
+  // (from my branch: superseded by foldhealth/main's hccUserRole; kept
   // commented per merge-resolution instruction rather than deleted)
   // const account = useAppStore(s => s.hccRole);
   // const setAccount = useAppStore(s => s.setHccRole);
-  // HCC role — the store owns it so the worklist + DiagPanel can react.
+  // HCC role: the store owns it so the worklist + DiagPanel can react.
   const account = useAppStore(s => s.hccUserRole);
   const setAccount = useAppStore(s => s.setHccUserRole);
   const [showRoles, setShowRoles] = useState(false);
@@ -61,7 +61,7 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
   // notifications. Used to be a third GET of `clinical_roles` on every page.
   const assignedRoles = useAppStore(s => s.currentUserClinicalRoles) || [];
   const assignedHccRoles = assignedRoles.filter(r => ALL_HCC_ROLES.includes(r));
-  // In dev we always let the switcher offer every HCC role — it lets us
+  // In dev we always let the switcher offer every HCC role, it lets us
   // exercise every workflow without touching profiles.clinical_roles in the
   // DB. In prod we keep the gate: users see only the roles they actually
   // have assigned.
@@ -78,7 +78,7 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
   useEffect(() => {
     const close = (e) => {
       if (popoverRef.current?.contains(e.target)) return;
-      // Ignore mousedown on the avatar trigger — it fires before the button's
+      // Ignore mousedown on the avatar trigger, it fires before the button's
       // click toggle and would close-then-reopen the popover.
       if (anchorRef?.current?.contains(e.target)) return;
       onClose();
@@ -129,7 +129,7 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
         <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
           <Avatar variant="staff" size="XL" initials={initials} userName={profile?.name || displayName} userId={profile?.id} />
-          {/* Online-status dot — sits on the avatar's top-right corner.
+          {/* Online-status dot: sits on the avatar's top-right corner.
               Out of office, the avatar's OOO badge says so instead. */}
           {!isOoo && <span style={{
             position: 'absolute', top: -1, right: -3, width: 10, height: 10,
@@ -193,7 +193,7 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
           </div>
         )}
 
-        {/* Theme picker — separated by thin divider above and below */}
+        {/* Theme picker: separated by thin divider above and below */}
         <div style={{ marginTop: 4, paddingTop: 8, borderTop: '0.5px solid var(--neutral-100)' }}>
           <ThemePicker />
         </div>
@@ -385,7 +385,7 @@ export function TopBar() {
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
 
   // Search must cover every patient the app knows about, not just the TOC
-  // slice — the worklist slices are prefetched by SubNav on Population, but
+  // slice: the worklist slices are prefetched by SubNav on Population, but
   // the TopBar also renders on pages without a SubNav, so it owns the two
   // fetches its index depends on.
   //
@@ -396,7 +396,7 @@ export function TopBar() {
   // Settings → Users the page's own `profiles` query measured ~300 ms alone
   // and ~3.2 s behind these two.
   //
-  // requestIdleCallback was tried and does NOT solve this — idle arrives
+  // requestIdleCallback was tried and does NOT solve this, idle arrives
   // while the route's lazy chunk is still downloading, so the prefetch fired
   // at ~1.0 s and the page's own query at ~1.3 s, i.e. still ahead of it.
   // Any delay long enough to clear an arbitrary page's fetches would be a
@@ -410,7 +410,7 @@ export function TopBar() {
   // fetch all of them on every Population route, and this index quietly rode
   // along on that. SubNav now fetches badge counts only, so if search did not
   // warm them itself, coverage would silently fall from 152 patients to the
-  // ~120 in `all_patients` — and `all_patients` is NOT a superset of the
+  // ~120 in `all_patients`, and `all_patients` is NOT a superset of the
   // worklists (measured: 136 of the 152 union keys are absent from it, same id
   // format, genuinely a different cohort). Losing search hits is a much worse
   // outcome than a one-time fetch on first search, so they load on intent
@@ -430,7 +430,7 @@ export function TopBar() {
   // slices come first so their rows win the dedupe (their ids resolve in
   // PatientDetailView), and all_patients fills in everyone else (its rows
   // have no profile view yet, so selecting one opens the QuickView drawer).
-  // Dedupe key: normalized memberId — the one identity field every slice
+  // Dedupe key: normalized memberId, the one identity field every slice
   // shares. Same-name patients with different member ids are DIFFERENT
   // people and must all appear.
   const searchIndex = useMemo(() => {
@@ -488,7 +488,7 @@ export function TopBar() {
     if (result.navigable) {
       navigateToPatient(result.id);
     } else {
-      // all_patients-only rows have no profile view yet — QuickView shows
+      // all_patients-only rows have no profile view yet, QuickView shows
       // their basics instead of navigating into a profile that would bounce.
       openQuickView({
         id: result.id,

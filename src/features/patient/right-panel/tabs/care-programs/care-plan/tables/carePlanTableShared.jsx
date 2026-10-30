@@ -99,7 +99,7 @@ export const SELECT_COLUMN = { key: 'select', label: '', showCheckbox: true, wid
 export const withSelectColumn = (columns, bulkMode) =>
   (bulkMode ? [SELECT_COLUMN, ...columns] : columns);
 
-// Goals surface Start + Target instead of Current Value — the value
+// Goals surface Start + Target instead of Current Value, the value
 // is more useful on the goal detail drawer, where trends and last
 // measurement context live; the schedule cadence reads better in the
 // table. Widths intentionally match the intervention table one-for-one
@@ -108,17 +108,17 @@ export const withSelectColumn = (columns, bulkMode) =>
 export const GBI_COL_DATE_WIDTH = 108;
 export const GOAL_COLUMNS = [
   { key: 'priority', label: 'P', popoverLabel: 'Priority', width: GBI_COL_WIDTH.priority, align: 'center', sortKey: '_sortPriority', sortType: 'priority', hideSortIcon: true, thStyle: { paddingLeft: 4, paddingRight: 4 } },
-  // Goal Title is the row's identity — hiding it leaves a nameless row,
+  // Goal Title is the row's identity: hiding it leaves a nameless row,
   // so lock the picker's Hide toggle off (the column still renders and
   // stays sortable).
   { key: 'title', label: 'Goal Title', sortKey: 'title', sortType: 'alpha', locked: true },
   { key: 'createdDate', label: 'Start', popoverLabel: 'Start Date', width: GBI_COL_DATE_WIDTH, sortKey: '_sortCreatedAt', sortType: 'generic', thStyle: HEADER_COMPACT },
   { key: 'targetDate', label: 'Target', popoverLabel: 'Target Date', width: GBI_COL_WIDTH.assignee, sortKey: '_sortTargetDate', sortType: 'generic', thStyle: HEADER_COMPACT },
-  // Optional columns — off by default; users opt in through the picker.
+  // Optional columns: off by default; users opt in through the picker.
   { key: 'currentValue', label: 'Current Value', width: GBI_COL_WIDTH.progress, defaultHidden: true, thStyle: HEADER_COMPACT },
   { key: 'progress', label: 'Progress', width: GBI_COL_WIDTH.progress, sortKey: '_sortProgress', sortType: 'number', defaultHidden: true, thStyle: HEADER_COMPACT },
   { key: 'trend', label: 'Trend', width: GBI_COL_WIDTH.progress, defaultHidden: true, thStyle: HEADER_COMPACT },
-  // Status is intentionally non-hideable — the row is meaningless without
+  // Status is intentionally non-hideable: the row is meaningless without
   // its Status pill. It stays in-flow (not sticky) so it reads next to
   // optional metrics; only the picker's Hide toggle is locked off.
   { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, sortKey: 'status', sortType: 'alpha', locked: true, thStyle: HEADER_COMPACT },
@@ -127,7 +127,7 @@ export const GOAL_COLUMNS = [
 
 export const INTERVENTION_COLUMNS = [
   { key: 'priority', label: 'P', popoverLabel: 'Priority', width: GBI_COL_WIDTH.priority, align: 'center', sortKey: '_sortPriority', sortType: 'priority', hideSortIcon: true, thStyle: { paddingLeft: 4, paddingRight: 4 } },
-  // Name is the intervention row's identity — same locking treatment
+  // Name is the intervention row's identity: same locking treatment
   // as Goal Title above.
   { key: 'title', label: 'Name', sortKey: 'title', sortType: 'alpha', locked: true },
   { key: 'assignee', label: 'Assigned To', width: GBI_COL_WIDTH.assignee, sortKey: '_sortAssignee', sortType: 'alpha', thStyle: HEADER_COMPACT },
@@ -143,7 +143,7 @@ export const BARRIER_COLUMNS = [
   { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, thStyle: { paddingLeft: 4, paddingRight: 4 } },
 ];
 
-/** "Start 09/15/2026 • Due 12/14/2026" — segments joined with a muted bullet. */
+/** "Start 09/15/2026 • Due 12/14/2026", segments joined with a muted bullet. */
 export function GbiMetaLine({ segments }) {
   const shown = segments.filter(Boolean);
   if (shown.length === 0) return null;
@@ -195,7 +195,7 @@ export function GbiMetaDate({ label, noun, value, emptyLabel, status, editable, 
 }
 
 /**
- * Linked items · Notes · More — the fixed Actions cell for every GBI row.
+ * Linked items · Notes · More, the fixed Actions cell for every GBI row.
  * `note`: { count, isNew } when the item has notes. The count shows on the
  * note button, highlighted when one is new to this user.
  */
@@ -262,7 +262,7 @@ export function CompletedRowsGroup({ label, rows, open, onToggle, colSpan, rende
   );
 }
 
-// The per-row bulk checkbox cell shared by all three GBI tables — stops click
+// The per-row bulk checkbox cell shared by all three GBI tables, stops click
 // propagation so ticking never fires the row action.
 export function GbiCheckboxCell({ checked, onToggle, label, disabled }) {
   return (
@@ -281,7 +281,7 @@ export function LinkChip({ count }) {
   );
 }
 
-/** Shared name cell — primary title + optional secondary meta (inline or stacked). */
+/** Shared name cell: primary title + optional secondary meta (inline or stacked). */
 export function GbiNameCell({
   icon,
   iconTitle,
@@ -289,7 +289,7 @@ export function GbiNameCell({
   meta,
   layout = 'inline',
   linked = null,
-  // `recurring` — when true, renders a small refresh glyph before
+  // `recurring`, when true, renders a small refresh glyph before
   // the link button so recurring interventions are visible at a
   // glance. No-op for goals / barriers, which never pass it.
   recurring = false,
@@ -299,7 +299,7 @@ export function GbiNameCell({
   recurringLabel = 'Recurring',
   // The compact grid moves the link button into the Actions column.
   showLink = true,
-  // (next) => void — makes the title editable in place: click the text to
+  // (next) => void: makes the title editable in place: click the text to
   // type, Enter or click away saves, Escape cancels. Clicks anywhere else
   // on the row still open the drawer.
   onTitleCommit,
@@ -357,7 +357,7 @@ export function GbiNameCell({
   );
 }
 
-/** Progress / adherence cell — bar in tables, ring in drawers. */
+/** Progress / adherence cell: bar in tables, ring in drawers. */
 export function GbiProgressCell({ progress, variant = 'bar', size = 'S' }) {
   const pct = Math.max(0, Math.min(100, Number(progress) || 0));
   return <CarePlanProgressRing progress={pct} variant={variant} size={size} />;
@@ -367,7 +367,7 @@ export function GbiProgressCell({ progress, variant = 'bar', size = 'S' }) {
 export const GoalProgressCell = GbiProgressCell;
 
 export function TrendCell({ trend }) {
-  if (!trend || trend === '-') return <span className={styles.trendDash}>—</span>;
+  if (!trend || trend === '-') return <span className={styles.trendDash}>-</span>;
   const tone = trend === '↑' ? 'success' : trend === '↓' ? 'error' : 'grey';
   const icon = trend === '↑'
     ? 'solar:arrow-up-linear'

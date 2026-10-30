@@ -71,7 +71,7 @@ export function CareGapDetailDrawerHeader({
       <div className={styles.gapHeader}>
         <div className={styles.gapToolbar}>
           <div className={styles.yearWrap}>
-            {/* Shared FilterChip in single-select mode — same "Label ⌄" idle
+            {/* Shared FilterChip in single-select mode: same "Label ⌄" idle
                 → "Label : value ✕" active behaviour every other filter chip
                 in the app uses. Emits a 1-element array so the local state
                 stays a plain number. */}
@@ -91,7 +91,7 @@ export function CareGapDetailDrawerHeader({
             />
           </div>
           <div className={styles.gapToolbarRight}>
-            {/* Assignee + Status promoted from the title row into the toolbar —
+            {/* Assignee + Status promoted from the title row into the toolbar,
                 primary actions live in Suggested Actions below, so the toolbar
                 is reserved for the gap's identity chips (who owns it, what
                 state it's in) plus the More menu that catches everything else
@@ -99,7 +99,7 @@ export function CareGapDetailDrawerHeader({
             {(() => {
               const effectiveAssignee = gap.assignee ?? member?.assignee ?? null;
               const pickerUsers = effectiveAssignee
-                ? [...(platformUsers || []), { id: '__unassign', name: 'Unassign', initials: '—' }]
+                ? [...(platformUsers || []), { id: '__unassign', name: 'Unassign', initials: '-' }]
                 : (platformUsers || []);
               return (
                 <AssigneeChange
@@ -279,7 +279,7 @@ export function CareGapDetailDrawerHeader({
               {!(status === 'Submitted' || status === 'Completed' || (status || '').startsWith('Closed')) && (
                 <Button variant="soft" onClick={() => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true))}>Add Note</Button>
               )}
-              <Button variant="soft" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
+              <Button variant="soft" onClick={() => showToast('Add MRC Task: coming soon')}>Add MRC Task</Button>
               <Button variant="outline" onClick={() => onAddOutreach?.()}>Add Outreach</Button>
             </>
           )}

@@ -17,7 +17,7 @@ const COLUMN_LAYOUT = [
 ];
 
 /**
- * AddConditionPopover — the condition picker (Figma 1:13419). Anchored below
+ * AddConditionPopover: the condition picker (Figma 1:13419). Anchored below
  * the "+ Add Condition" trigger, portal-rendered so the canvas never clips it.
  */
 export function AddConditionPopover({ anchorRect, inline = false, onSelect, onClose }) {

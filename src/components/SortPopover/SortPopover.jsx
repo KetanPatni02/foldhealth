@@ -3,7 +3,7 @@ import { Popover } from '../Popover/Popover';
 import styles from './SortPopover.module.css';
 
 /**
- * Fold Health SortPopover — explicit ascending/descending sort picker.
+ * Fold Health SortPopover: explicit ascending/descending sort picker.
  *
  * Two layouts depending on `items`:
  *  - 1 item → simple per-column sort (mirrors prototype's SortPopup).
@@ -100,7 +100,7 @@ function DirButton({ dir, active, onClick }) {
       onClick={onClick}
       aria-label={dir === 'asc' ? 'Sort ascending' : 'Sort descending'}
     >
-      {/* Real arrow (shaft + head) — the shared Icon layer maps
+      {/* Real arrow (shaft + head): the shared Icon layer maps
           `solar:arrow-*` names to a plain chevron, which reads as a
           disclosure indicator instead of a direction cue, so this
           component ships its own inline SVG. */}

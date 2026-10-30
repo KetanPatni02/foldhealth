@@ -225,11 +225,11 @@ export function applyPendingPickup(member, codes, date) {
 }
 
 // Outcome text → fill event. Covers the schema's pickup outcomes
-// ("Confirmed medication pickup", "…pickup date") and "Pending — Pick up".
+// ("Confirmed medication pickup", "…pickup date") and "Pending: Pick up".
 export function fillEventFor(outcome) {
   const o = (outcome || '').toLowerCase();
   if (o.includes('confirmed medication pickup')) return 'pickup';
-  if (o.includes('pending — pick up')) return 'pending-pickup';
+  if (/pending(?: \u2014|:) pick up/.test(o)) return 'pending-pickup';
   return null;
 }
 

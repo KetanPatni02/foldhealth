@@ -7,7 +7,7 @@ import { useAppStore } from '../../store/useAppStore';
 import styles from './UpdateCard.module.css';
 
 /**
- * UpdateCard — floating announcement card: gradient hero with the Fold mark,
+ * UpdateCard: floating announcement card: gradient hero with the Fold mark,
  * a title with an optional pill tag, a short description, up to three highlight lines,
  * and a primary + secondary action. Pinned to the bottom-right corner above
  * everything else unless `floating` is false (e.g. inside a story canvas).

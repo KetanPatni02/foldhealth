@@ -103,7 +103,7 @@ function MedicationRow({ med, onStatusChange, onEdit, dimmed }) {
 
 /**
  * The picked medication, before it joins the list: when it starts, how it is
- * taken, and — once it is stopped — when and why.
+ * taken, and, once it is stopped, when and why.
  */
 function MedicationDraft({ title, eyebrow, initial, onSave, onCancel }) {
   const [status, setStatus] = useState(initial?.status || 'Active');
@@ -229,7 +229,7 @@ const Section = forwardRef(function Section({ title, count, open, onToggle, chil
 });
 
 /**
- * Add Medications — the PAMI/Hx Medications section's `+` opens this.
+ * Add Medications: the PAMI/Hx Medications section's `+` opens this.
  * Mirrors Add Problems: search at the top, the patient's list below, split by
  * status, with add and edit sharing one card.
  */
@@ -303,7 +303,7 @@ export function AddMedicationsDrawer({ patientId, focus, onClose }) {
   };
 
   const confirmStop = async ({ stop, stopReason }) => {
-    // What the row held before, so Undo can put it all back — the stop date
+    // What the row held before, so Undo can put it all back, the stop date
     // and reason as well as the status.
     const med = stopping;
     const before = { status: med.status || 'Active', stop: med.stop || '', stopReason: med.stopReason || '' };

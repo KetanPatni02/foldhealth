@@ -18,7 +18,7 @@ import { useAppStore } from '../../../../../store/useAppStore';
 import { formatGoalTarget, formatGoalDuration } from '../../lib/goalFormat';
 import styles from './AddGoalsDrawer.module.css';
 
-// Rows shown under "Recently Used" — the newest goals in the library. There
+// Rows shown under "Recently Used", the newest goals in the library. There
 // is no per-user usage log, so recency stands in for it. Used only in the
 // settings library context (no patient); the patient care-plan context groups
 // by "Added goals" / "Recommended" instead.
@@ -37,7 +37,7 @@ function goalDetail(g) {
     .join(' • ');
 }
 
-// Total items pointing at this goal — mirrors CarePlanLibraryPanel's rollup
+// Total items pointing at this goal, mirrors CarePlanLibraryPanel's rollup
 // so the number in the hover action badge matches the library table.
 function linkedCount(g) {
   const linked = Object.values(g?.linked || {}).reduce((n, v) => n + (v || 0), 0);
@@ -45,7 +45,7 @@ function linkedCount(g) {
 }
 
 /**
- * Add Goals — goal picker for the New Care Plan screen.
+ * Add Goals: goal picker for the New Care Plan screen.
  * Figma Care-Plan-Creation 14109:296954.
  */
 export function AddGoalsDrawer({
@@ -91,7 +91,7 @@ export function AddGoalsDrawer({
   }, [libraryGoals]);
 
   // Tabs are the canonical enum, not whatever labels the rows happen to
-  // carry — seeded goals still hold the pre-rename categories.
+  // carry: seeded goals still hold the pre-rename categories.
   const categories = useMemo(() => ['All', ...GOAL_CATEGORIES], []);
 
   const rows = useMemo(() => {

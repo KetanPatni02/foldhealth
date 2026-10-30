@@ -10,7 +10,7 @@ import styles from './QuickViewDrawer.module.css';
  * The patient a quick view shows: the snapshot it was opened with, with the
  * live slice row merged over it.
  *
- * The snapshot is whatever the opening row passed at click time — it goes
+ * The snapshot is whatever the opening row passed at click time, it goes
  * stale the moment the Update Member drawer saves. Merge the live slice
  * row (matched by id, then by memberId) over it so the banner always
  * shows current name / dob / gender / age. HEDIS members are real Fold

@@ -45,7 +45,7 @@ function Playground_() {
         </Button>
         <Button
           variant="outline" tone="primary"
-          onClick={() => toast.warning('Session will expire in 2 minutes', desc('Save any open work — unsaved changes will be lost.'))}
+          onClick={() => toast.warning('Session will expire in 2 minutes', desc('Save any open work: unsaved changes will be lost.'))}
         >
           Warning
         </Button>

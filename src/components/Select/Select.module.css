@@ -55,7 +55,7 @@
   color: var(--status-error);
 }
 
-/* Trigger — mirrors Input's `.input` spec: 32px, 0.5px --neutral-200
+/* Trigger: mirrors Input's `.input` spec: 32px, 0.5px --neutral-200
    border, 4px radius. Hover + focus + open all flip the border to
    --primary-300 and paint a solid 2px --primary-100 ring via box-shadow. */
 .trigger {
@@ -119,7 +119,7 @@
   pointer-events: none;
 }
 
-/* Ghost variant — no border/ring; only a subtle hover/open background. */
+/* Ghost variant: no border/ring; only a subtle hover/open background. */
 .triggerGhost {
   border-color: transparent;
   background: transparent;
@@ -132,7 +132,7 @@
   box-shadow: none;
 }
 
-/* Error variant — red border, and hover/focus/open paint a 2px
+/* Error variant: red border, and hover/focus/open paint a 2px
    --status-error-light ring (matches Input's error hover state). */
 .triggerError,
 .triggerError:hover,
@@ -192,7 +192,7 @@
 }
 @media (prefers-reduced-motion: reduce) { .menu { animation: none; } }
 
-/* Portaled variant — lives on document.body, so it's positioned against the
+/* Portaled variant: lives on document.body, so it's positioned against the
    viewport from the trigger's measured rect instead of its wrapper. Lets the
    menu escape a clipping scroll container (e.g. a horizontally-scrolling
    table). Coordinates come from inline styles set by the component. */
@@ -211,7 +211,7 @@
   overscroll-behavior: contain;
 }
 
-/* Flip-up variant — used when the trigger is near the bottom of the
+/* Flip-up variant: used when the trigger is near the bottom of the
    viewport and opening downward would clip. Pinned above the trigger. */
 .menuTop {
   top: auto;
@@ -224,7 +224,7 @@
   min-width: 100%;
 }
 
-/* Searchable variant — sticky filter input pinned to the top of the menu. */
+/* Searchable variant: sticky filter input pinned to the top of the menu. */
 .emptyOption {
   padding: 10px 12px;
   font-size: var(--font-md);
@@ -258,7 +258,7 @@
   min-width: 0;
 }
 
-/* Non-interactive section header — pinned inside the menu to label a
+/* Non-interactive section header: pinned inside the menu to label a
    group of options that follow it. Callers pass options of shape
    `{ type: 'header', label, value }` to render this variant. */
 .groupHeader {
@@ -297,10 +297,10 @@
 }
 .itemDisabled:hover { background: transparent; }
 
-/* Checkbox rows lead with the control, so the label must sit next to it —
+/* Checkbox rows lead with the control, so the label must sit next to it,
    `.item`'s default `space-between` (built for label → trailing check) would
    push every label to the right edge. */
-/* Badge summary in the trigger — one line only; anything past the edge is
+/* Badge summary in the trigger: one line only; anything past the edge is
    collapsed into a "+N" badge by the measuring effect. */
 .triggerBadges {
   position: relative;
@@ -321,7 +321,7 @@
 .triggerBadges > .badgeShrink { flex-shrink: 1; min-width: 0; max-width: 100%; }
 .badgeText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Off-screen mirror of the full badge set — measured for widths, never seen. */
+/* Off-screen mirror of the full badge set, measured for widths, never seen. */
 .triggerBadgesMeasure {
   position: absolute;
   top: 0;
@@ -336,7 +336,7 @@
 .itemWithCheckbox {
   justify-content: flex-start;
 }
-/* Row checkbox for `multiple` + `checkboxes` — purely a state indicator; the
+/* Row checkbox for `multiple` + `checkboxes`, purely a state indicator; the
    row handles the click, so it must not swallow pointer events. */
 .itemCheckbox {
   pointer-events: none;

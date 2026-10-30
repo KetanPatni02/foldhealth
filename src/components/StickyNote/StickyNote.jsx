@@ -13,7 +13,7 @@ function formatStickyNoteDate(dateStr) {
 }
 
 /**
- * StickyNote — Reusable sticky note component with multiple states.
+ * StickyNote: Reusable sticky note component with multiple states.
  *
  * Notes are paginated by insurance profile (ehr_profile).
  * Chevrons switch between different profile sticky notes.
@@ -23,7 +23,7 @@ function formatStickyNoteDate(dateStr) {
  * @param {object[]}  notes         - Array of note objects { id, text, author_name, author_date, ehr_profile }
  * @param {function}  onSave        - (id, text) => void
  * @param {function}  onCreate      - (text) => void
- * @param {function}  onDelete      - (id) => void — soft-delete: logs activity, removes note
+ * @param {function}  onDelete      - (id) => void: soft-delete: logs activity, removes note
  * @param {function}  onAuditLog    - () => void
  * @param {boolean}   collapsedOnly - If true, always show collapsed single-line view
  */

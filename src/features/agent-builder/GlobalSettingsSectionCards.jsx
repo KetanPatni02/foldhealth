@@ -106,7 +106,7 @@ export function GlobalSettingsInterfaceAndVoiceSection({ settings, update }) {
         icon="solar:monitor-linear"
         title="Interface"
         defaultOpen={false}
-        description="How the agent connects with users — voice, chat, or both — and which languages it speaks."
+        description="How the agent connects with users, voice, chat, or both, and which languages it speaks."
       >
         <Field label="Modality">
           <Select

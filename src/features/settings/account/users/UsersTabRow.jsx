@@ -73,7 +73,7 @@ export function UsersTabRow({
             )}
           </div>
         ) : (
-          <span className={styles.emptyDash}>—</span>
+          <span className={styles.emptyDash}>-</span>
         )}
       </td>
       <td className={styles.td}>{formatDate(user.createdAt)}</td>

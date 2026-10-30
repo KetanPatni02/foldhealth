@@ -30,7 +30,7 @@ function ProgramDetail({ program, progressFor, onSelect }) {
         <div className={styles.detailHead}>{head}</div>
       )}
       <div className={styles.detailRow}>
-        <span className={styles.detailLabel}>Start Date:</span> {program.startDate || '—'}
+        <span className={styles.detailLabel}>Start Date:</span> {program.startDate || '-'}
       </div>
       <div className={styles.detailRow}>
         <span className={styles.detailLabel}>Assigned to:</span> {unassigned ? 'Unassigned' : program.assignee}

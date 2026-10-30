@@ -37,7 +37,7 @@ const CM_TABS_PROGRAM = ['Care Programs', 'Comprehensive Care Plan', 'Program Ac
 const CM_TABS_PATIENT = ['Care Programs', 'Care Plan', 'Program Activity Log'];
 
 /** "Add Care Note" drawer for the Comprehensive Care Plan pane.
- *  Composer only for now —
+ *  Composer only for now,
  *  hands the note body back to the caller, which decides how to
  *  persist it (toast placeholder until the patient-level notes API
  *  ships). */
@@ -72,7 +72,7 @@ function AddCareNoteDrawer({ onClose, onSave }) {
   );
 }
 
-/** Comprehensive Care Plan pane — read-only cross-program snapshot with its own
+/** Comprehensive Care Plan pane: read-only cross-program snapshot with its own
  *  search + (program) filter and a Download CTA. */
 function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpenProgramStep, editable = false }) {
   const showToast = useAppStore(s => s.showToast);
@@ -91,7 +91,7 @@ function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpe
   const [createdDateFilter, setCreatedDateFilter] = useState([]);
 
   const programCodes = useMemo(() => [...new Set(programs.map(p => p.code))], [programs]);
-  // Option lists — only surface template / status / priority values
+  // Option lists: only surface template / status / priority values
   // that actually appear on this patient's plans, so the popovers
   // never show empty rows.
   const snapshot = useMemo(
@@ -245,7 +245,7 @@ const shortDate = (iso) => {
     : iso;
 };
 
-/** Program Activity Log — every care program's activity on one monthly
+/** Program Activity Log: every care program's activity on one monthly
  *  timeline (program events plus each care plan's own history), with search
  *  and Activity Type / Program / Date / Activity By filters. `active` is true
  *  while the tab is showing. */
@@ -461,7 +461,7 @@ function ProgramActivityLog({ header, programs = [], active = false }) {
 }
 
 /**
- * Care Management — a secondary switch (SubTabs) over the three program views.
+ * Care Management: a secondary switch (SubTabs) over the three program views.
  * Every tab shares the same toolbar layout (search · sub-tabs · CTA · filter);
  * only the CTA changes per tab. Each pane reuses its existing, data-backed view.
  */
@@ -509,7 +509,7 @@ export function CareManagementView() {
   const subTabBar = <SubTabs tabs={cmTabs} activeKey={subTab} onChange={setSubTab} />;
 
   // Keep all three panes mounted and toggle visibility, so switching only
-  // shows/hides a pane instead of unmounting + remounting it — no re-fetch,
+  // shows/hides a pane instead of unmounting + remounting it, no re-fetch,
   // no re-animation, no reflow. The result is a flicker-free switch.
   return (
     <div className={styles.container}>

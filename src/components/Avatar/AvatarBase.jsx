@@ -2,7 +2,7 @@ import { Icon } from '../Icon/Icon';
 import styles from './Avatar.module.css';
 
 // Wrap the rendered avatar in a locked container when a caller passes
-// `locked` — greys the avatar out and stamps a lock badge (white rounded
+// `locked`, greys the avatar out and stamps a lock badge (white rounded
 // square + outlined red lock) on the bottom-right corner. Matches the HCC
 // "record rejected" treatment (Figma spec).
 //
@@ -16,7 +16,7 @@ function LockedWrapper({ locked, billed, children, className }) {
     <span className={[styles.lockedWrap, className || ''].filter(Boolean).join(' ')}>
       {children}
       {locked && (
-        <span className={styles.lockBadge} aria-label="Locked — record rejected">
+        <span className={styles.lockBadge} aria-label="Locked: record rejected">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect width="12" height="12" rx="2" fill="white" />
             <path
@@ -28,7 +28,7 @@ function LockedWrapper({ locked, billed, children, className }) {
         </span>
       )}
       {!locked && billed && (
-        <span className={styles.billedBadge} aria-label="Billed — record is read-only">
+        <span className={styles.billedBadge} aria-label="Billed: record is read-only">
           <Icon name="solar:dollar-linear" size={10} color="var(--neutral-0)" />
         </span>
       )}
@@ -47,11 +47,11 @@ const sizeScaleClass = (size, styles) => {
   return styles[`size${size}`] || '';
 };
 
-// Icon size per tile — ~55% of tile edge. Keeps the icon optically balanced
+// Icon size per tile: ~55% of tile edge. Keeps the icon optically balanced
 // across every step in the token scale (Figma Fold-Pixel-1.0 node 25:4344).
 const ICON_SIZE_BY_TOKEN = { XS: 12, S: 14, M: 18, L: 22, XL: 28, DXL: 36 };
 
-// Foreground token per color variant — used for the icon fill so an Icon
+// Foreground token per color variant: used for the icon fill so an Icon
 // Avatar reads with the same weight as the corresponding Initial Avatar.
 const ICON_COLOR_BY_VARIANT = {
   patient: 'var(--primary-300)',

@@ -9,12 +9,12 @@ import { generateCarePlanSummaryPdf } from './generateCarePlanSummaryPdf';
  * Care plan PDF, "Tables" format: a patient card, then Goals, Interventions
  * and Barriers as one clean table each (or a block per condition), the Care
  * Note and the note to the recipient. A4, Inter when the fonts are passed.
- * Empty values print "—"; nothing is filled in.
+ * Empty values print "-"; nothing is filled in.
  */
 const PAGE = { w: 595, h: 842 };
 const M = 32;
 const CONTENT_W = PAGE.w - M * 2;
-const DASH = '—';
+const DASH = '-';
 
 const C = {
   ink: [31, 41, 55],

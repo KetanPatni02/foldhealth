@@ -5,7 +5,7 @@ import { Button } from '../Button/Button';
 import styles from './RangeSliderPopover.module.css';
 
 /**
- * Fold Health RangeSliderPopover — dual-thumb range picker in a popover.
+ * Fold Health RangeSliderPopover: dual-thumb range picker in a popover.
  *
  * Used by the HCC Decile filter (1–10) but kept generic enough to drop in
  * anywhere a min/max numeric range chip is needed.
@@ -63,7 +63,7 @@ export function RangeSliderPopover({
           <span className={styles.endcapValue}>{vals[0]}</span>
           {unitLabel && <span className={styles.endcapUnit}>{unitLabel}</span>}
         </div>
-        <span className={styles.divider}>—</span>
+        <span className={styles.divider}>-</span>
         <div className={styles.endcap}>
           <span className={styles.endcapValue}>{vals[1]}</span>
           {unitLabel && <span className={styles.endcapUnit}>{unitLabel}</span>}

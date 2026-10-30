@@ -55,7 +55,7 @@ describe('Fold protocol content', () => {
   });
 
   it('uses no em dashes', () => {
-    expect(JSON.stringify(FOLD_PROTOCOL_CONTENT)).not.toContain('—');
+    expect(JSON.stringify(FOLD_PROTOCOL_CONTENT)).not.toContain('\u2014');
   });
 });
 

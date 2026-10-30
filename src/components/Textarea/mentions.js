@@ -23,7 +23,7 @@ export function serializePlain(root) {
       } else if (el.tagName === 'BR') {
         out += '\n';
       } else {
-        // Recurse — bold/italic/list wrappers hold plain text underneath.
+        // Recurse: bold/italic/list wrappers hold plain text underneath.
         out += serializePlain(el);
       }
     }
@@ -32,8 +32,8 @@ export function serializePlain(root) {
 }
 
 // Build the DOM node for a mention chip. Rendering imperatively (rather
-// than via <Badge/>) keeps the chip out of React's reconciliation path —
-// which would otherwise fight the contenteditable's own DOM mutations —
+// than via <Badge/>) keeps the chip out of React's reconciliation path,
+// which would otherwise fight the contenteditable's own DOM mutations,
 // and lets us reuse Badge's CSS module classes for pixel-identical styling.
 export function createMentionChip(user) {
   const chip = document.createElement('span');
@@ -68,7 +68,7 @@ export function collectMentions(root) {
 
 // Detect the "@query" fragment before the caret. Walks the current text
 // node backwards to the last "@" and returns { range, query } iff that
-// "@" is at start-of-input or preceded by whitespace — otherwise null.
+// "@" is at start-of-input or preceded by whitespace, otherwise null.
 export function detectMention(editor) {
   const sel = window.getSelection();
   if (!sel || !sel.rangeCount) return null;

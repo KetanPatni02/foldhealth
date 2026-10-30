@@ -69,7 +69,7 @@ export function AssessmentDrawer() {
           <span className={styles.actionDivider} />
           <Button
             variant="outline" tone="primary"
-            onClick={() => showToast('Resend — coming soon')}
+            onClick={() => showToast('Resend: coming soon')}
           >
             Resend
           </Button>

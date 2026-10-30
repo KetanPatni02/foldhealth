@@ -29,7 +29,7 @@ function NotificationSkeleton({ count = 3 }) {
 }
 
 /**
- * NotificationsPopover — bell-icon dropdown.
+ * NotificationsPopover: bell-icon dropdown.
  *
  * Renders the notifications slice from the global store. Each entry has
  * a typed icon, title, body, and a relative-time stamp. Clicking an
@@ -42,7 +42,7 @@ function NotificationSkeleton({ count = 3 }) {
  */
 export function NotificationsPopover({ onClose, anchorRef }) {
   const ref = useRef(null);
-  // Read once on open — Notification.permission is not reactive, so this is
+  // Read once on open: Notification.permission is not reactive, so this is
   // re-evaluated when the popover mounts and after the user answers.
   const [canAsk, setCanAsk] = useState(canAskBrowserNotifications);
   // Tracks the OS-level permission so a blocked state is visible rather than
@@ -69,8 +69,8 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   const openAssignedAppointments = useAppStore(s => s.openAssignedAppointments);
 
   // Refetch on open. The realtime subscription is the fast path, not the
-  // source of truth: a binding created before the table was published — or
-  // one that died while the tab stayed visible and online — delivers silence
+  // source of truth: a binding created before the table was published, or
+  // one that died while the tab stayed visible and online, delivers silence
   // forever, and none of the other resync triggers (visibilitychange, online,
   // re-subscribe) fire in that state. Reading once at the moment the user
   // actually looks makes the panel correct regardless of socket health, and
@@ -161,7 +161,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
       )}
 
       {/* Blocked state. Once an origin is denied, the browser refuses further
-          prompts from script, so there is no button to offer — surface why the
+          prompts from script, so there is no button to offer, surface why the
           OS banners stopped and where to turn them back on. Permission is
           per-origin (host + port), so a changed dev-server port reads here too. */}
       {permission === 'denied' && (
@@ -171,7 +171,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
         </div>
       )}
 
-      {/* Cold load only — `didFetch` keeps the skeleton from flashing on
+      {/* Cold load only: `didFetch` keeps the skeleton from flashing on
           background resyncs (tab refocus, realtime reconnect), which would
           otherwise blank a list the user is actively reading. */}
       {loading && !didFetch && notifications.length === 0 ? (

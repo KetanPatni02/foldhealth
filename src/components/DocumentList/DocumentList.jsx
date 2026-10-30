@@ -6,7 +6,7 @@ import { MenuPopover } from '../MenuPopover/MenuPopover';
 import styles from './DocumentList.module.css';
 
 /**
- * DocumentList — the document table from the HCC Diagnosis Gaps drawer's
+ * DocumentList: the document table from the HCC Diagnosis Gaps drawer's
  * Documents tab: a dashed "Upload Document" CTA, then rows of file icon +
  * name + meta line, an optional status Badge, and a row menu.
  *

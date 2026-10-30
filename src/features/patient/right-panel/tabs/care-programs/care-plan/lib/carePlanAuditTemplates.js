@@ -78,7 +78,7 @@ export function withLiveLinks(contents, { plan, libraryGoals } = {}) {
   const linkedBarriers = new Set();
 
   // When the row recorded a list, the links are narrowed to it. When it
-  // recorded none — older rows carry no barriers at all — the library goal's
+  // recorded none, older rows carry no barriers at all, the library goal's
   // links stand on their own, since those links are what the template applied.
   const keep = (recorded) => (title) => recorded.size === 0 || recorded.has(norm(title));
   const keepIntv = keep(ownIntv);

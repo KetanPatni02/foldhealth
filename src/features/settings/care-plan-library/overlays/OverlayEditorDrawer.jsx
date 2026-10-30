@@ -42,7 +42,7 @@ function ItemRow({ kind, item, override, onChange, readOnly }) {
             <Input type="number" min={1} disabled={hidden || readOnly} value={o.duration || ''} onChange={e => set({ duration: e.target.value || undefined })} placeholder={item.duration || 'For'} aria-label="Duration" wrapperClassName={styles.duration} />
             <Select portal disabled={hidden || readOnly || !o.duration} options={GOAL_DURATION_UNITS.map(u => ({ value: u, label: `${u}s` }))} value={o.durationUnit || 'Month'} onChange={v => set({ durationUnit: v })} />
           </div>
-        ) : <span className={styles.muted}>—</span>}
+        ) : <span className={styles.muted}>-</span>}
       </td>
       <td>
         <Input disabled={hidden || readOnly} value={o.patientTitle || ''} onChange={e => set({ patientTitle: e.target.value || undefined })} placeholder="Same as title" aria-label={`Patient wording for ${item.title}`} />

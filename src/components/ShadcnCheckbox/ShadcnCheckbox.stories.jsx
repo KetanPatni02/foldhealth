@@ -16,7 +16,7 @@ export default {
     checked: {
       control: 'select',
       options: [true, false, 'indeterminate'],
-      description: 'Checked state — supports the tri-state `"indeterminate"` value.',
+      description: 'Checked state: supports the tri-state `"indeterminate"` value.',
       table: { type: { summary: "boolean | 'indeterminate'" } },
     },
     onCheckedChange: {

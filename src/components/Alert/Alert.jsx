@@ -25,7 +25,7 @@ const TONE = {
 };
 
 /**
- * Alert — inline status banner for warnings, deadlines, and contextual notices.
+ * Alert: inline status banner for warnings, deadlines, and contextual notices.
  */
 export function Alert({
   tone = 'error',

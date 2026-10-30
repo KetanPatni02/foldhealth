@@ -37,7 +37,7 @@ export function RowActionMenu({ task }) {
   const completeTask = () => {
     if (task.hedisMemberId) {
       completeCareGapSignOffTask(task.id, 'NP');
-      showToast('Sign-off task completed — gaps closed');
+      showToast('Sign-off task completed: gaps closed');
     } else {
       updateTask(task.id, { status: 'completed' });
       showToast('Task marked as complete');

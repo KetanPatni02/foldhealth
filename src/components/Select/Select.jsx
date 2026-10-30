@@ -9,7 +9,7 @@ import { CloseIcon } from '../Icon/CloseIcon';
 import styles from './Select.module.css';
 
 /**
- * Fold Health Select — controlled single-select dropdown that matches
+ * Fold Health Select: controlled single-select dropdown that matches
  * <Input>'s design tokens (height 32, border, radius, focus ring). Used in
  * builders that need a styled dropdown without pulling in shadcn/radix.
  *
@@ -27,7 +27,7 @@ import styles from './Select.module.css';
  *                 Removing a chip keeps the menu open.
  *  - showInfo + infoText: an (i) beside the label with `infoText` in a
  *                 Tooltip on hover.
- *  - emptyText  (string | (query) => string) — shown when nothing matches; a
+ *  - emptyText  (string | (query) => string): shown when nothing matches; a
  *                 function gets what was typed, for "No users match "x" …"
  *  - value      (string)
  *  - onChange   (value) => void
@@ -35,14 +35,14 @@ import styles from './Select.module.css';
  *  - disabled   (boolean)
  *  - variant    'default' | 'error' | 'ghost' (borderless, hover-only bg)
  *  - className  (string)
- *  - style      (object)        — inline style on the outer wrap (e.g. widths)
- *  - id         (string)        — passes through to the trigger button
- *  - menuAlign  'left' | 'right' — popover horizontal anchor (defaults left)
- *  - leadingIcon (string)       — optional Solar icon shown before the label
- *  - defaultOpen (boolean)      — mount with the menu already open (and the
+ *  - style      (object): inline style on the outer wrap (e.g. widths)
+ *  - id         (string): passes through to the trigger button
+ *  - menuAlign  'left' | 'right', popover horizontal anchor (defaults left)
+ *  - leadingIcon (string): optional Solar icon shown before the label
+ *  - defaultOpen (boolean): mount with the menu already open (and the
  *                                 search focused), for a picker revealed by
  *                                 a click so the user can type straight away
- *  - portal     (boolean)       — render the menu into document.body with
+ *  - portal     (boolean): render the menu into document.body with
  *                                 fixed positioning. Needed when the Select
  *                                 sits inside a scroll container (e.g. a
  *                                 horizontally-scrolling table), which would
@@ -63,7 +63,7 @@ export function Select({
   menuAlign = 'left',
   searchable = false,
   searchPlaceholder = 'Search…',
-  // External search control — when both are provided, the caller owns the
+  // External search control: when both are provided, the caller owns the
   // query string and Select stops filtering `options` client-side (it just
   // renders whatever the caller passes in). Used for async remote search
   // (e.g. WHO ICD-11 API in the HCC drawer).
@@ -72,7 +72,7 @@ export function Select({
   searchLoading = false,
   emptyText,
   leadingIcon,
-  // Field-wrapper props — parity with `src/components/Input`. Any one of
+  // Field-wrapper props: parity with `src/components/Input`. Any one of
   // these promotes the render from a bare trigger to a labelled field
   // (label + required dot + optional info icon on top, trigger in the
   // middle, helper/error text at the bottom). Callers that just want the
@@ -86,7 +86,7 @@ export function Select({
   helperText,
   errorText,
   // Multi-select mode. When true, `value` is an array of strings and
-  // clicking an option toggles it in place — the menu stays open. The
+  // clicking an option toggles it in place, the menu stays open. The
   // trigger label collapses to a count summary once more than one item
   // is picked. Header items (type: 'header') stay non-interactive; an
   // option with `singleAction: true` (e.g. "+ Custom Date") still fires
@@ -151,7 +151,7 @@ export function Select({
     };
   }, [open]);
 
-  // Measure the trigger's position on every open — flip up when the
+  // Measure the trigger's position on every open: flip up when the
   // 240px menu wouldn't fit below and there IS enough room above.
   useEffect(() => {
     if (!open) return;
@@ -178,13 +178,13 @@ export function Select({
   const selected = multiple ? null : options.find(o => o.value === value);
   // Map picks back to their options for the trigger. With remote search the
   // option list is replaced on every query, so a pick whose option is no
-  // longer present falls back to its own value — otherwise the trigger would
+  // longer present falls back to its own value, otherwise the trigger would
   // blank out and read as "nothing selected".
   const selectedMulti = multiple
     ? valueArray.map(v =>
       options.find(o => o.type !== 'header' && o.value === v) || { value: v, label: v })
     : [];
-  // Trigger label for multi mode — first pick's label + "+N" summary.
+  // Trigger label for multi mode: first pick's label + "+N" summary.
   const multiSummary = () => {
     if (selectedMulti.length === 0) return null;
     const first = selectedMulti[0];
@@ -250,7 +250,7 @@ export function Select({
 
     const ro = new ResizeObserver(recompute);
     ro.observe(row);
-    // rAF rather than a synchronous call — setting state in an effect body
+    // rAF rather than a synchronous call, setting state in an effect body
     // cascades renders.
     const raf = requestAnimationFrame(recompute);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
@@ -455,7 +455,7 @@ export function Select({
           // listeners on document with `{ passive: false }` that call
           // preventDefault() to block body scroll while a modal is open.
           // A portaled Select menu is a body sibling of the modal, so
-          // those global listeners cancel its scroll wheel events too —
+          // those global listeners cancel its scroll wheel events too,
           // even though the menu has `overflow-y: auto`. Stopping
           // propagation at the menu's own wheel + touchmove handlers
           // keeps Radix's document-level listeners from firing, so the
@@ -477,7 +477,7 @@ export function Select({
             </li>
           )}
           {shownOptions.map((opt, i) => {
-            // Non-interactive section header — used by callers that want to
+            // Non-interactive section header: used by callers that want to
             // group options under a label (e.g. cross-row DOSs by Created
             // date). Pass `{ type: 'header', label, value }` and any value
             // works so long as it's unique among options.
@@ -523,7 +523,7 @@ export function Select({
                 }}
               >
                 {multiple && checkboxes && (
-                  // Presentational — the row's own onClick owns the toggle, so
+                  // Presentational: the row's own onClick owns the toggle, so
                   // the checkbox must not also handle the click.
                   <Checkbox
                     checked={isActive}
@@ -546,7 +546,7 @@ export function Select({
     </div>
   );
 
-  // Bare-trigger fast path — no label / helper / error requested, so we
+  // Bare-trigger fast path: no label / helper / error requested, so we
   // return the wrap+trigger as-is. Existing callers that manage their own
   // <label> (e.g. via the Drawer's local Field wrapper) stay unaffected.
   if (!needsField) return trigger;

@@ -11,16 +11,16 @@ import { TemplateAnswersForm } from './TemplateAnswersForm';
 import styles from './NonVisitNoteDrawer.module.css';
 
 /**
- * NonVisitNoteDrawer — Clinical Note authoring surface used from P360 →
+ * NonVisitNoteDrawer: Clinical Note authoring surface used from P360 →
  * Notes → New Note.
  *
  * A single drawer with two possible bodies:
  *
- *   1. Free-form (default) — title + body + optional gap chips. Payload:
+ *   1. Free-form (default): title + body + optional gap chips. Payload:
  *      { title, body, dateOfService }. This is the shape shipped in
  *      Phase-1 and is what earlier notes carry.
  *
- *   2. Template-driven — user picks a Note Template (either a Normal
+ *   2. Template-driven: user picks a Note Template (either a Normal
  *      template or a Care Gap × Non-Visit template). The template's
  *      schema fields render via TemplateAnswersForm and the payload
  *      becomes { formId, answers, dateOfService }. Care Gap templates
@@ -61,8 +61,8 @@ export function NonVisitNoteDrawer({ patient, initialTitle = '', onClose }) {
     const normal = rows.filter(t => !t.gap_code).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     const care = rows.filter(t => !!t.gap_code).sort((a, b) => (a.gap_code || '').localeCompare(b.gap_code || ''));
     const opts = [{ value: '', label: 'Free-form (title + body)' }];
-    normal.forEach(t => opts.push({ value: String(t.id), label: `${t.name} — Normal` }));
-    care.forEach(t => opts.push({ value: String(t.id), label: `${t.name} — ${t.gap_code} · Non-Visit` }));
+    normal.forEach(t => opts.push({ value: String(t.id), label: `${t.name}, Normal` }));
+    care.forEach(t => opts.push({ value: String(t.id), label: `${t.name}, ${t.gap_code} · Non-Visit` }));
     return opts;
   }, [templatesById]);
 
@@ -127,7 +127,7 @@ export function NonVisitNoteDrawer({ patient, initialTitle = '', onClose }) {
         showToast?.(status === 'signed' ? 'Note signed' : 'Draft saved');
         onClose?.();
       } else {
-        showToast?.('Save failed — check console');
+        showToast?.('Save failed: check console');
       }
     } finally {
       setSaving(false);
@@ -221,7 +221,7 @@ export function NonVisitNoteDrawer({ patient, initialTitle = '', onClose }) {
             <div className={styles.chipRow}>
               <span className={styles.chipActive}>
                 <Icon name="solar:link-linear" size={12} color="var(--primary-300)" />
-                <Badge tone="primary" size="S" label={`${templateGapCode} — ${MEASURE_NAMES[templateGapCode] || templateGapCode}`} />
+                <Badge tone="primary" size="S" label={`${templateGapCode}: ${MEASURE_NAMES[templateGapCode] || templateGapCode}`} />
               </span>
             </div>
             <p className={styles.templateHelp}>Locked by the selected template.</p>

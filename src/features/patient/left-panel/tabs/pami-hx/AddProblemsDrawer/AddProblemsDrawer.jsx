@@ -168,7 +168,7 @@ const Section = forwardRef(function Section({ title, count, open, onToggle, chil
 });
 
 /**
- * Add Problems — the PAMI/Hx Problems section's `+` opens this.
+ * Add Problems: the PAMI/Hx Problems section's `+` opens this.
  * Figma P360 8207:293083.
  *
  * Search adds a problem to the patient's list; the two sections below are the

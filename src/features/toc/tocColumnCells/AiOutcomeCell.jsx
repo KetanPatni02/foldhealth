@@ -11,7 +11,7 @@ const OUTREACH_STATUS = {
 
 export function AiOutcomeCell({ patient, onOpen }) {
   const label = outreachStatusLabel(patient);
-  if (!label) return <span className={styles.dash}>—</span>;
+  if (!label) return <span className={styles.dash}>-</span>;
   const cfg = OUTREACH_STATUS[label];
   const invokedAt = formatAiOutcomeInvokedAt(patient.aiOutcomeInvokedAt);
   return (

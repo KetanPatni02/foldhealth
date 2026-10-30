@@ -33,7 +33,7 @@
   flex-shrink: 0;
 }
 
-/* Hidden mirror — measures chip widths for the auto-fit calculation.
+/* Hidden mirror: measures chip widths for the auto-fit calculation.
    Rendered inside FilterBar itself when `autoFit` is on. */
 .measure {
   position: absolute;
@@ -158,7 +158,7 @@
   font-size: var(--font-sm);
 }
 
-/* "More Filters" trigger — matches the HCC FilterChipBar's version so the
+/* "More Filters" trigger: matches the HCC FilterChipBar's version so the
    two worklists read as one system. Sits at the end of the chip row and
    opens the shared MoreFiltersPopover. */
 .moreBtn {
@@ -186,7 +186,7 @@
   color: var(--primary-300);
 }
 
-/* Tail cluster — More Filters | Clear All | Save Filter grouped as one
+/* Tail cluster: More Filters | Clear All | Save Filter grouped as one
    inline-flex unit that sits immediately after the last chip. Vertical
    dividers between the buttons. Mirrors HCC's FilterChipBar pattern. */
 .tail {
@@ -216,7 +216,7 @@
 }
 .clearAll:hover { color: var(--neutral-400); }
 
-/* Save Filter — same link style as Clear All but tinted primary to draw
+/* Save Filter: same link style as Clear All but tinted primary to draw
    the eye since saving is the commit action. */
 .saveFilter {
   display: inline-flex;

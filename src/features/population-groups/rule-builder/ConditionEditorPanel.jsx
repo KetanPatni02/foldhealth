@@ -19,7 +19,7 @@ const effectiveOperator = (rule, field) => {
 };
 
 /**
- * ConditionEditorPanel — the docked 400px editor (Figma 9:44005 right pane).
+ * ConditionEditorPanel: the docked 400px editor (Figma 9:44005 right pane).
  * Dispatches to value editors by field.valueType: number, select, date, text
  * (profile-column originals) and codedTerm, observation, eventCount (new
  * healthcare types).
@@ -72,7 +72,7 @@ export function ConditionEditorPanel({ rule, onSave, onClose }) {
             style={{ width: '100%' }}
           />
 
-          {/* Value editor — dispatched by field type */}
+          {/* Value editor: dispatched by field type */}
           {vt === 'codedTerm' && (
             <CodedTermEditor draft={draft} field={field} onChange={set} onPatch={setDraft} />
           )}
@@ -96,7 +96,7 @@ export function ConditionEditorPanel({ rule, onSave, onClose }) {
             <TextEditor draft={draft} field={field} onChange={set} />
           )}
 
-          {/* As-of — date-anchored fields only (e.g. Patient Age) */}
+          {/* As-of: date-anchored fields only (e.g. Patient Age) */}
           {field.supportsAsOf && (
             <>
               <span className={styles.editorSectionLabel}>As of</span>

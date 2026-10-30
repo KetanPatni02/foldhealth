@@ -10,7 +10,7 @@ import {
 } from './ProductTour.utils';
 
 /**
- * ProductTour — wraps React Joyride with Fold Health design system.
+ * ProductTour: wraps React Joyride with Fold Health design system.
  * Tour state is persisted to Supabase (cross-device) with localStorage fallback.
  */
 export function ProductTour({ tourId, steps, run = true, onFinish, continuous = true }) {
@@ -40,7 +40,7 @@ export function ProductTour({ tourId, steps, run = true, onFinish, continuous = 
           return;
         }
       }
-      // Not seen anywhere — show the tour
+      // Not seen anywhere: show the tour
       setRunning(true);
       setChecked(true);
     })();
@@ -81,7 +81,7 @@ export function ProductTour({ tourId, steps, run = true, onFinish, continuous = 
       tooltipComponent={TourTooltip}
       // react-joyride v3 API: zIndex/overlayColor moved from styles.options
       // to the options prop, and spotlight rounding is the spotlightRadius
-      // option — styles.spotlight is spread as props onto an SVG <path>, so
+      // option: styles.spotlight is spread as props onto an SVG <path>, so
       // borderRadius there hits the DOM and triggers a React warning.
       options={{
         zIndex: 10000,

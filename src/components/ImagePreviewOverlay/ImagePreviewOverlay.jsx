@@ -11,7 +11,7 @@ const ZOOM_MAX = 3;
 const ZOOM_STEP = 0.25;
 
 /**
- * Full-bleed lightbox for a document — dark toolbar (filename, zoom,
+ * Full-bleed lightbox for a document: dark toolbar (filename, zoom,
  * download, close) over an 80% black scrim. Zoom applies to images only
  * (a PDF/docx/fallback render fills the frame on its own via FilePreview).
  *

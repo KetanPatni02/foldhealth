@@ -6,7 +6,7 @@ import { safeTableRows } from './shared.utils';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
 
-// Editable dashboard config. `h` values are seeds only — EditableGrid
+// Editable dashboard config. `h` values are seeds only: EditableGrid
 // auto-fits each cell to its content height. x/y/w drive placement & order.
 const STORAGE_KEY = 'analytics-quality-layout-v2';
 

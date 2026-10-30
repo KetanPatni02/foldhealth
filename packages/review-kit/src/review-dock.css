@@ -821,7 +821,7 @@
 }
 
 /* Native modal <dialog>s, in the browser's top layer. The preview uses a
-   solid surface — the image inside is the subject, and a translucent card
+   solid surface: the image inside is the subject, and a translucent card
    would let the real page bleed through and read as a duplicate of the
    captured content. The frosted-glass feel still comes from a blurred
    ::backdrop (page behind) and a soft shadow. */
@@ -857,7 +857,7 @@
 }
 
 /* Preview and annotator share the exact same explicit dimensions so switching
-   between the two is purely a content crossfade — nothing resizes. */
+   between the two is purely a content crossfade, nothing resizes. */
 .rk-preview,
 .rk-annotator {
   width: min(1200px, calc(100vw - var(--rk-space-4) * 2));
@@ -935,7 +935,7 @@
   view-transition-name: rk-preview-surface;
 }
 
-/* The image fills the body — stretched to the body's bounds, with aspect
+/* The image fills the body: stretched to the body's bounds, with aspect
    preserved. Soft rounded corners and the muted canvas tint; no border or
    shadow so it reads as a flat surface, not a lifted card. */
 .rk-preview-img,
@@ -953,7 +953,7 @@
 /* The canvas region: a muted "working surface" below the header. The image
    sits in a card centred inside; the three control pills live in a separate
    row below (not floating over the canvas), so the layout reads as three
-   clear sections — header, canvas, controls. */
+   clear sections: header, canvas, controls. */
 .rk-annotator-canvas {
   position: relative;
   flex: 1;

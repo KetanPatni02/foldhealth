@@ -10,7 +10,7 @@ import styles from '../AccountPanel.module.css';
  * when the account is locked), Disable/Enable,
  * More menu (Edit / View OOO Records / Delete). Pending sign-ups get
  * Approve / Reject in place of Reset Password and Disable/Enable.
- * Non-admins see a plain "—" — every action on this component is admin-only.
+ * Non-admins see a plain "-", every action on this component is admin-only.
  */
 export function UserActions({ user, isAdmin, locked = false, onResetPassword, onUnlock, onToggleStatus, onApprove, onReject, onEdit, onViewOoo, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,7 +24,7 @@ export function UserActions({ user, isAdmin, locked = false, onResetPassword, on
   }, [menuOpen]);
 
   if (!isAdmin) {
-    return <span style={{ color: 'var(--neutral-200)', fontSize: 'var(--font-md)' }}>—</span>;
+    return <span style={{ color: 'var(--neutral-200)', fontSize: 'var(--font-md)' }}>-</span>;
   }
 
   return (

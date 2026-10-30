@@ -151,7 +151,7 @@ export function PreferencesDrawer({ onClose, initialTab = 'account' }) {
               <div style={{ padding: 32, textAlign: 'center', color: 'var(--neutral-300)' }}>Loading profile...</div>
             ) : (
               <div className={styles.profileForm}>
-                {/* User header — same as Account edit drawer */}
+                {/* User header: same as Account edit drawer */}
                 <div className={styles.editHeader}>
                   <div className={styles.avatarUploadWrap}>
                     {profile?.avatar_url ? (

@@ -1,7 +1,7 @@
 import { isProgramClosed } from '../../../../data/programStatus';
 
 
-// URL key for a program row — code slug plus the trigger ordinal past 1
+// URL key for a program row, code slug plus the trigger ordinal past 1
 // ('awv', 'toc-ip', 'snp-2'). Trigger is derived deterministically from
 // created_at order in the store, so key ↔ program survives a refresh even
 // though row ids never appear in the URL.

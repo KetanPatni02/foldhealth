@@ -34,7 +34,7 @@ export function GoalLinkedInterventionsList({
   onRecurrenceChange,
   onRowMenu,
 }) {
-  // Shared inline due-date popover state — one anchor at a time so
+  // Shared inline due-date popover state: one anchor at a time so
   // opening a different row's date button dismisses the previous one.
   const [duePicker, setDuePicker] = useState(null); // { intv, rect } | null
   const commitDueDate = (iso) => {
@@ -46,7 +46,7 @@ export function GoalLinkedInterventionsList({
     <ul className={styles.intvLinkList}>
       {interventions.map((i) => {
         // Patient tasks: every intervention kind except internal-task
-        // is owned by the patient — pre-populate the assignee.
+        // is owned by the patient: pre-populate the assignee.
         const isMemberTask = i.kind !== 'internal-task';
         const rawName = i.assignee?.name || '';
         const rawInitials = i.assignee?.initials || '';
@@ -147,7 +147,7 @@ export function GoalLinkedInterventionsList({
           </li>
         );
       })}
-      {/* Shared inline due-date picker — identical config to the one
+      {/* Shared inline due-date picker: identical config to the one
           rendered by the intervention Due Date cell in the plan table
           (see CarePlanInterventionsTable). RepeatEditor footer,
           highlighted future occurrences, and ISO-day value all mirror

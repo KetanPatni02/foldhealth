@@ -2,7 +2,7 @@ import { Popover } from '../Popover/Popover';
 import styles from './RadioListPopover.module.css';
 
 /**
- * Fold Health RadioListPopover — anchored, portaled single-select.
+ * Fold Health RadioListPopover: anchored, portaled single-select.
  *
  * Mirrors CheckboxListPopover but with radio semantics: at most one value
  * selected at a time. Reset clears the selection. Used by filter chips whose

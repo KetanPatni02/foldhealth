@@ -1,10 +1,10 @@
 // Hand-drawn to match the kit's main outline icon set:
 // 1.75 stroke, round caps and joins, 24x24 viewBox. Keep this file in sync
-// visually with src/icons.jsx — same weight, same vocabulary of shapes.
+// visually with src/icons.jsx, same weight, same vocabulary of shapes.
 const S = 'fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"';
 
 export const ANNOTATOR_ICONS = {
-  // Pointer with a small marquee corner — cursor + selection.
+  // Pointer with a small marquee corner, cursor + selection.
   select: `<path ${S} d="M6 4 L15 11 L11 12 L13 17 L11 18 L9 13 L6 15 Z"/>`,
 
   // Simple rounded rectangle.
@@ -19,7 +19,7 @@ export const ANNOTATOR_ICONS = {
   // Capital T inside a square: the text tool.
   text: `<path ${S} d="M8 7 H16 M12 7 V17"/><rect x="4" y="4" width="16" height="16" rx="3" ${S}/>`,
 
-  // Eye crossed through — redact.
+  // Eye crossed through: redact.
   redact: `<path ${S} d="M3 12 C 6 7, 9 5, 12 5 C 15 5, 18 7, 21 12 C 18 17, 15 19, 12 19 C 9 19, 6 17, 3 12 Z"/><path ${S} d="M5 5 L19 19"/>`,
 
   // Crop corners.
@@ -34,10 +34,10 @@ export const ANNOTATOR_ICONS = {
   // Trash can.
   remove: `<path ${S} d="M4 7 H20"/><path ${S} d="M10 4 H14 M6 7 L7 19 a2 2 0 0 0 2 2 h6 a2 2 0 0 0 2 -2 L18 7"/><path ${S} d="M10 11 V17 M14 11 V17"/>`,
 
-  // Single checkmark — this is the "Done" affirmation.
+  // Single checkmark: this is the "Done" affirmation.
   done: `<path ${S} d="M5 12.5 L10 17.5 L19 7.5"/>`,
 
-  // Filled soft rect — highlighter swatch.
+  // Filled soft rect: highlighter swatch.
   highlight: `<rect x="4" y="6" width="16" height="12" rx="2.5" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`,
 
   // Clean circle.

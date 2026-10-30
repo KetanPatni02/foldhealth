@@ -3,11 +3,11 @@ import { Icon } from '../Icon/Icon';
 import styles from './Toggle.module.css';
 
 /**
- * Fold Health Toggle — animated segmented control with a sliding pill indicator.
+ * Fold Health Toggle: animated segmented control with a sliding pill indicator.
  *
  * Uses `data-active` + JS offset tracking to animate the pill. A ResizeObserver
  * keeps the slider in sync when buttons change size (async icon loads, font
- * swap, container width changes, etc.) — without it the slider would be stuck
+ * swap, container width changes, etc.), without it the slider would be stuck
  * at the first-measured size and visibly fall behind its button.
  *
  * Props:
@@ -39,7 +39,7 @@ export function Toggle({ items = [], active, onChange, className, size = 'M', fu
     }
   }, []);
 
-  // Use layout effect so the slider is positioned before paint — avoids the
+  // Use layout effect so the slider is positioned before paint, avoids the
   // visible "snap" from 0,0 to its actual spot on first render.
   useLayoutEffect(() => { updateSlider(); }, [active, updateSlider, items.length]);
 

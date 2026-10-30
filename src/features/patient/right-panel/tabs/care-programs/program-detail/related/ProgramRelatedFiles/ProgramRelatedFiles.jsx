@@ -60,15 +60,15 @@ const extOf = (filename) => {
 };
 
 // Only offer the click-to-preview affordance when there's an actual file to
-// show (fileUrl once persisted, or the in-memory File for the same session)
-// — otherwise FilePreview would just render an empty drawer/overlay.
+// show (fileUrl once persisted, or the in-memory File for the same session),
+// otherwise FilePreview would just render an empty drawer/overlay.
 const previewKindOf = (d) => (d.fileUrl || d.file)
   ? resolveFileKind({ src: d.fileUrl, name: d.name, ext: d.ext })
   : null;
 const isPreviewable = (d) => ['image', 'pdf', 'docx'].includes(previewKindOf(d));
 
 /**
- * Program Documents step — a patient's document library. Empty by default;
+ * Program Documents step: a patient's document library. Empty by default;
  * documents accrue as the user uploads them via the inline DocumentUploader
  * (opened by the "Upload File" toolbar button). Uploaded docs persist to the
  * `program_documents` table, scoped by programCode + patientId.
@@ -140,7 +140,7 @@ export function ProgramRelatedFiles({ programCode, patientId }) {
 
   return (
     <div className={styles.container}>
-      {/* Toolbar — mirrors the Letters step formatting. */}
+      {/* Toolbar: mirrors the Letters step formatting. */}
       <div className={styles.toolbar}>
         {searchOpen ? (
           <div className={styles.searchWrap}>

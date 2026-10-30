@@ -1,5 +1,5 @@
 /**
- * AI Insight Icon — lightbulb with gradient sparkle stars.
+ * AI Insight Icon: lightbulb with gradient sparkle stars.
  * Used on the AI Insight Summary banner in analytics and the Overview Recap.
  * Pass `tint` for a single-colour version (white on the Unity gradient). It
  * isn't `color` because Button hands leading icons `color="currentColor"`,

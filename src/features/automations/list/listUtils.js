@@ -6,12 +6,12 @@ const DAY = 86400000;
 /** "03-13-2024" */
 export const fmtDate = (iso) => (iso
   ? new Date(iso).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }).replace(/\//g, '-')
-  : '—');
+  : '-');
 
 /** "03-13-2024, 11:20 AM" */
 export const fmtDateTime = (iso) => (iso
   ? `${fmtDate(iso)}, ${new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-  : '—');
+  : '-');
 
 export const plural = (n, one, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 

@@ -19,7 +19,7 @@ async function searchPexelsPhotos({ query, page = 1, orientation }) {
 }
 
 /**
- * PhotoSearch — search free stock photos (Pexels) and pick one. A search
+ * PhotoSearch: search free stock photos (Pexels) and pick one. A search
  * field, a grid of thumbnails, "Load more", and the Pexels credit their
  * licence asks for. Videos are never searched.
  *

@@ -15,7 +15,7 @@ function Fact({ label, children, tone }) {
   return (
     <div className={styles.fact}>
       <span className={styles.factLabel}>{label}</span>
-      <span className={`${styles.factValue} ${TONE_CLASS[tone] || ''}`}>{children ?? '—'}</span>
+      <span className={`${styles.factValue} ${TONE_CLASS[tone] || ''}`}>{children ?? '-'}</span>
     </div>
   );
 }
@@ -37,7 +37,7 @@ function RecentFill({ x }) {
       {active.map(d => (
         <div key={d.id} className={styles.recentFillRow}>
           {active.length > 1 && <span className={styles.factValue}>{d.name} {d.strength} {d.unit}</span>}
-          <span className={styles.factValue}>{d.recentFill || '—'}</span>
+          <span className={styles.factValue}>{d.recentFill || '-'}</span>
           {hintOf(d) && <span className={styles.factHint}>{hintOf(d)}</span>}
         </div>
       ))}

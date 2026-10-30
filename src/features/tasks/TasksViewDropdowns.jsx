@@ -182,7 +182,7 @@ export function DetailDropdown({ value, options, onSelect, renderOption, childre
           setOpen(v => !v);
         }}
       >
-        {children || value || '—'}
+        {children || value || '-'}
       </button>
       {open && !disabled && pos && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }}>
@@ -197,7 +197,7 @@ export function DetailDropdown({ value, options, onSelect, renderOption, childre
                 ? { bottom: Math.max(8, window.innerHeight - pos.top) }
                 : { top: pos.top }),
               // 'right' aligns the popover's right edge to the trigger's right
-              // edge so it opens leftward — used when the trigger sits near
+              // edge so it opens leftward: used when the trigger sits near
               // the right rail of a drawer and a left-anchored popover would
               // overflow the viewport (Figma 4523:*).
               ...(align === 'right'

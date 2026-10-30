@@ -9,7 +9,7 @@ const Bone = ({ w, h = 12, r = 4, style, className }) => (
   />
 );
 
-/** Mirrors AssessmentFormView — stats strip + intro + numbered questions. */
+/** Mirrors AssessmentFormView: stats strip + intro + numbered questions. */
 export function AssessmentFormSkeleton() {
   return (
     <div className={styles.wrap} aria-busy="true" aria-label="Loading assessment form">

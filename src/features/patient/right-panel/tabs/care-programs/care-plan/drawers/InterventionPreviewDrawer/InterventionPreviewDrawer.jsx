@@ -43,7 +43,7 @@ function adherenceNum(value) {
 }
 
 // Adherence uses the 3-band scheme (Poor / Moderate / Good) from the
-// shared lib — intervention adherence is a distinct metric from goal
+// shared lib: intervention adherence is a distinct metric from goal
 // progress, which stays on 5 bands. Local aliases keep the render calls
 // short without re-declaring the logic.
 const progressBand = adherenceBand;
@@ -87,7 +87,7 @@ function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit }) {
 }
 
 /**
- * Intervention details — Paper 35-0. Mirrors Goal Details layout with
+ * Intervention details: Paper 35-0. Mirrors Goal Details layout with
  * adherence, linked goals, automations, notes, and activity feed.
  */
 export function InterventionPreviewDrawer({ intervention, patientId, program, onClose, onEdit, onOpenGoal, consolidated = false, signedView = false, focusSection = null, readOnly = false, snapshot = null }) {
@@ -125,7 +125,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
       || (s.allPatients || []).find(x => x.id === patientId);
     return p?.name;
   });
-  // Content lookup — a Patient Education intervention stores the linked
+  // Content lookup: a Patient Education intervention stores the linked
   // material id as `config.content` (prefixed `email:<id>` / `form:<id>`);
   // Send Form stores it as `config.form`. Resolve to a name so the
   // reader can see which content was shared without opening the editor.
@@ -179,7 +179,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   useEffect(() => { setPct(adherenceNum(live?.adherence)); }, [live?.id, live?.adherence]);
   useEffect(() => { if (patientId && program) fetchCarePlanAudit(patientId, program.id); }, [patientId, program, fetchCarePlanAudit]);
 
-  // Lazy-load the content library only for the kinds that need it — so the
+  // Lazy-load the content library only for the kinds that need it, so the
   // Linked Education / Linked Form row can render a name instead of the raw
   // id when the drawer is opened cold (e.g. no library visit yet this
   // session).
@@ -285,7 +285,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   const recurringLabel = hasRepeat ? formatRecurrenceLabel(live) : null;
 
   // Primary line: everything the reviewer needs at a glance about
-  // scheduling — start, due, duration, recurrence. Audit line
+  // scheduling: start, due, duration, recurrence. Audit line
   // (Last Update) drops to its own row so the primary line stays
   // scannable at any width.
   // Same ownership rule as the plan table: member tasks belong to the patient.
@@ -451,7 +451,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
         </section>
 
         {(() => {
-          // Schedule — the dates this intervention is due (each occurrence of a
+          // Schedule: the dates this intervention is due (each occurrence of a
           // recurring one). Per-day completion isn't recorded anywhere, so rows
           // say only where a date falls relative to today; a Met intervention
           // gets one "Met on" line from the audit trail instead of per-day ticks.
@@ -509,7 +509,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
           );
         })()}
 
-        {/* Linked Goals section — hidden entirely in the Comprehensive
+        {/* Linked Goals section: hidden entirely in the Comprehensive
             Care Plan view when nothing is linked (user can't link new
             goals here); otherwise shown read-only (Link/Unlink hidden). */}
         {(!ro || linkedGoals.length > 0) && (
@@ -586,7 +586,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
         </section>
         )}
 
-        {/* Automations section — hidden entirely in the Comprehensive
+        {/* Automations section: hidden entirely in the Comprehensive
             Care Plan view when nothing is set up (user can't add new
             automations from that surface); otherwise shown read-only. */}
         {(!ro || automations.length > 0) && (
