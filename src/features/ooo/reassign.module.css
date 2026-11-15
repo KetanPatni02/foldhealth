@@ -213,3 +213,15 @@
 .flatRow [class*='itemMain'] { align-items: flex-start; }
 .flatRow [class*='itemMain'] > svg { margin-top: calc(var(--space-1) / 2); }
 .flatRow [class*='itemTitle'] { display: flex; align-items: center; min-height: var(--space-5); }
+
+/* While You Were Away: four counts in a row, then a patient row per thread. */
+.awayStats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+.awayStat {
+  display: flex; flex-direction: column; gap: calc(var(--space-1) / 2);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.awayStatValue { font-size: var(--font-lg); font-weight: 500; line-height: 1.2; color: var(--neutral-500); font-variant-numeric: tabular-nums; }
+.awayStatLabel { font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-300); }
+.awayThread { width: 100%; padding: 0; border: none; border-bottom: 0.5px solid var(--neutral-150); text-align: left; cursor: pointer; font: inherit; }
+.awayThread:hover { background: var(--primary-50); }

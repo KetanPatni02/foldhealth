@@ -37,6 +37,9 @@ export function EfaxWorkspace({ navCollapsed, onToggleNav }) {
   const loading = useAppStore(s => s.efaxesLoading);
   const fetchEfaxes = useAppStore(s => s.fetchEfaxes);
   const oooRecords = useAppStore(s => s.oooRecords);
+  // Opened from a notification: show that fax.
+  const efaxFocus = useAppStore(s => s.efaxFocus);
+  const [seenFocus, setSeenFocus] = useState(null);
   const addEfax = useAppStore(s => s.addEfax);
   const { patients, me } = useCommsPeople();
   const [selectedId, setSelectedId] = useState(null);
@@ -70,6 +73,11 @@ export function EfaxWorkspace({ navCollapsed, onToggleNav }) {
     if (!q) return true;
     return `${f.senderName} ${f.documentType} ${f.linked?.name || ''} ${f.extracted?.name || ''}`.toLowerCase().includes(q);
   });
+  if (efaxFocus && efaxFocus !== seenFocus && faxes.some(f => f.id === efaxFocus.id)) {
+    setSeenFocus(efaxFocus);
+    setTab('all');
+    setSelectedId(efaxFocus.id);
+  }
   const selected = list.find(f => f.id === selectedId) || null;
   // Every linked user of a number is its assignee, so the open fax warns
   // when any of them (other than me) is out of office.

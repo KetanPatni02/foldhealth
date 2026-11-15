@@ -55,9 +55,10 @@ const byDept = (results) => {
  *
  * @param {object}   props
  * @param {string}   props.jobId
+ * @param {boolean}  [props.mineOnly] – only what was reassigned to me
  * @param {function} props.onClose
  */
-export function ReassignmentSummaryDrawer({ jobId, onClose }) {
+export function ReassignmentSummaryDrawer({ jobId, mineOnly = false, onClose }) {
   const jobs = useAppStore(s => s.reassignmentJobs);
   const fetchJobs = useAppStore(s => s.fetchReassignmentJobs);
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
@@ -66,7 +67,7 @@ export function ReassignmentSummaryDrawer({ jobId, onClose }) {
   const me = useAppStore(s => s.currentUserProfile);
   const isMine = (r) => r.outcome === 'reassigned'
     && ((r.toId && me?.id && String(r.toId) === String(me.id)) || (!r.toId && me?.name && r.to === me.name));
-  const coveringView = !!jobRow && !!me?.name && jobRow.createdBy !== me.name && jobRow.results.some(isMine);
+  const coveringView = !!jobRow && !!me?.name && (mineOnly || jobRow.createdBy !== me.name) && jobRow.results.some(isMine);
   const job = coveringView ? { ...jobRow, results: jobRow.results.filter(isMine) } : jobRow;
   // Kinds this job has (an appointments-only job shows no kind tabs).
   const kinds = job ? KINDS.filter(k => job.results.some(r => kindOf(r) === k.key)) : [];

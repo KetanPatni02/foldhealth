@@ -471,7 +471,8 @@ function readLocalBulkRead() {
 }
 // Reading a kept job's notification sticks across reloads too.
 function rememberBulkRead(notifications) {
-  const ids = (notifications || []).filter(n => n?.type === 'bulk.summary').map(n => n.id);
+  // Also the Out of Office notifications built in this browser (`cov:` ids).
+  const ids = (notifications || []).filter(n => n?.type === 'bulk.summary' || String(n?.id || '').startsWith('cov:')).map(n => n.id);
   if (!ids.length) return;
   try { localStorage.setItem(LOCAL_BULK_READ_KEY, JSON.stringify([...new Set([...readLocalBulkRead(), ...ids])].slice(-50))); } catch { /* storage blocked */ }
 }
@@ -7849,8 +7850,9 @@ export const useAppStore = create((set, get) => ({
   /** Ephemeral, this-tab-only. Persisted rows arrive via realtime instead. */
   addNotification: (n) => set(s => ({
     notifications: [
-      { id: n.id || `n-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ts: Date.now(), read: false, ...n },
-      ...(s.notifications || []),
+      // Kept jobs and Out of Office notices remember being read (by id).
+      { id: n.id || `n-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ts: Date.now(), read: !!n.id && readLocalBulkRead().includes(n.id), ...n },
+      ...(s.notifications || []).filter(x => !n.id || x.id !== n.id),
     ].slice(0, 50),  // keep the last 50
   })),
 
@@ -7879,7 +7881,11 @@ export const useAppStore = create((set, get) => ({
     // referral_id comes with caregap_referrals_migration.sql; until it runs,
     // read without it rather than losing the whole feed.
     // reassignment_job_id comes with reassignment_notifications_migration.sql.
-    let { data, error } = await query(`${COLS}, referral_id, reassignment_job_id`);
+    // conversation_id, conversation_channel, efax_id, covering_for and
+    // visible_at come with ooo_covering_notifications_migration.sql.
+    const COVER = 'conversation_id, conversation_channel, efax_id, covering_for, visible_at';
+    let { data, error } = await query(`${COLS}, referral_id, reassignment_job_id, ${COVER}`);
+    if (error && /conversation_|efax_id|covering_for|visible_at/.test(error.message || '')) ({ data, error } = await query(`${COLS}, referral_id, reassignment_job_id`));
     if (error && /reassignment_job_id/.test(error.message || '')) ({ data, error } = await query(`${COLS}, referral_id`));
     if (error && /referral_id/.test(error.message || '')) ({ data, error } = await query(COLS));
     if (error) {
@@ -7889,7 +7895,8 @@ export const useAppStore = create((set, get) => ({
       set({ notificationsLoading: false, notificationsDidFetch: true });
       return;
     }
-    const rows = (data || []).map(mapNotificationRow);
+    // A coverage notice waits for the day it's about (visible_at).
+    const rows = (data || []).filter(r => !r.visible_at || Date.parse(r.visible_at) <= Date.now()).map(mapNotificationRow);
     set(s => ({
       notifications: mergeNotifications(rows, (s.notifications || []).filter(n => !n.persisted)),
       notificationsLoading: false,
@@ -8389,6 +8396,18 @@ export const useAppStore = create((set, get) => ({
   openCommsDrawer: (type, props = {}) => set({ commsDrawer: { type, props } }),
   closeCommsDrawer: () => set({ commsDrawer: null }),
   setCommsFocus: (focus) => set({ commsFocus: focus }),
+  // An eFax to open once Comms › E-fax shows (from a notification).
+  efaxFocus: null,
+  openEfaxFromNotification: (efaxId) => {
+    set({ efaxFocus: { id: efaxId, at: Date.now() } });
+    get().goToComms({ channel: 'efax' });
+  },
+  // "View Covered Work": Tasks on the Covering tab.
+  openCoveredWork: () => {
+    if (get().selectedPatientId) get().navigateBackToWorklist();
+    get().setTasksTab('covering');
+    get().setActivePage('tasks');
+  },
   // Go to Comms (leaving a patient's page if one is open), optionally on a
   // conversation: { channel, conversationId }.
   // Worklist row menu → Comms drawers (Send SMS / Send Email / Send
@@ -17165,7 +17184,10 @@ export const useAppStore = create((set, get) => ({
   reassignmentJobsFetched: false,
   reassignmentLocal: false,
   reassignmentSummaryJobId: null,
-  openReassignmentSummary: (jobId) => set({ reassignmentSummaryJobId: jobId }),
+  // `mine`: only what came to me (a covering provider's notification), even
+  // when I also ran the job.
+  reassignmentSummaryMine: false,
+  openReassignmentSummary: (jobId, { mine = false } = {}) => set({ reassignmentSummaryJobId: jobId, reassignmentSummaryMine: mine }),
   // "View Appointments" on a reassignment notification: the calendar's List
   // view on the week of the first appointment moved to me, with the moved
   // ones highlighted (calendarFocus, consumed by CalendarView).
@@ -17184,6 +17206,10 @@ export const useAppStore = create((set, get) => ({
   },
   clearCalendarFocus: () => set({ calendarFocus: null }),
   closeReassignmentSummary: () => set({ reassignmentSummaryJobId: null }),
+  // While You Were Away (from "Welcome back"): { jobId, recordId }.
+  awaySummary: null,
+  openAwaySummary: (jobId, recordId = null) => set({ awaySummary: { jobId, recordId } }),
+  closeAwaySummary: () => set({ awaySummary: null }),
   fetchReassignmentJobs: async ({ force = false } = {}) => {
     if (get().reassignmentJobsFetched && !force) return;
     const { rowToJob } = await import('../features/ooo/reassignJobs');
@@ -17326,15 +17352,8 @@ export const useAppStore = create((set, get) => ({
     // An Out of Office job (with tasks or care programs): the covering
     // provider gets the summary of what came to them, as the trigger sends.
     if (get().reassignmentLocal && moved.length && mineAll.length) {
-      const k = (kind) => mineAll.filter(r => (r.kind || 'appointment') === kind).length;
-      const part = (n, one, many) => n && `${n} ${n === 1 ? one : many}`;
-      get().addNotification?.({
-        type: 'reassignment.summary',
-        title: `Out of Office reassignment summary: you're covering for ${fromUser}.`,
-        body: [part(k('appointment'), 'Appointment', 'Appointments'), part(k('task'), 'Task', 'Tasks'), part(k('program'), 'Care Program', 'Care Programs')].filter(Boolean).join(' • '),
-        action: 'openReassignmentSummary',
-        reassignmentJobId: job.id,
-      });
+      const { reassignedToMe, withLink } = await import('../features/ooo/coveringNotifications');
+      get().addNotification?.(withLink(reassignedToMe({ job, mine: mineAll })));
     } else if (get().reassignmentLocal && toMe) {
       get().addNotification?.({
         type: 'appointment.reassigned',
