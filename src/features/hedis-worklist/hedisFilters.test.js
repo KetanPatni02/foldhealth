@@ -76,12 +76,18 @@ describe('Compliance and Operational Status filters', () => {
     { code: 'COL', status: 'Closed - UTR' },
   ] };
   it('reads compliance and work stage from the one gap status', () => {
-    expect(memberMatchesFilters(m, { complianceStatus: ['Compliant'] })).toBe(true);
-    expect(memberMatchesFilters({ gaps: [m.gaps[0]] }, { complianceStatus: ['Compliant'] })).toBe(false);
+    expect(memberMatchesFilters({ gaps: [m.gaps[1]] }, { complianceStatus: ['Closed'] })).toBe(true);
     expect(memberMatchesFilters({ gaps: [m.gaps[2]] }, { complianceStatus: ['Closed'] })).toBe(true);
+    expect(memberMatchesFilters({ gaps: [m.gaps[0]] }, { complianceStatus: ['Closed'] })).toBe(false);
+    // Saved filters from when there were three values.
+    expect(memberMatchesFilters({ gaps: [m.gaps[1]] }, { complianceStatus: ['Compliant'] })).toBe(true);
     expect(memberMatchesFilters({ gaps: [m.gaps[0]] }, { operationalStatus: ['Not Started'] })).toBe(true);
   });
+  it('filters by the one Gap Status filter', () => {
+    expect(memberMatchesFilters(m, { gapStatus: ['Closed - UTR'] })).toBe(true);
+    expect(m.gaps.filter(g => gapMatchesGapFilters(g, { gapStatus: ['Completed', 'Closed - UTR'] })).map(g => g.code)).toEqual(['CBP', 'COL']);
+  });
   it('narrows a member to the matching gaps', () => {
-    expect(m.gaps.filter(g => gapMatchesGapFilters(g, { complianceStatus: ['Non-Compliant'] })).map(g => g.code)).toEqual(['BCS']);
+    expect(m.gaps.filter(g => gapMatchesGapFilters(g, { complianceStatus: ['Open'] })).map(g => g.code)).toEqual(['BCS']);
   });
 });

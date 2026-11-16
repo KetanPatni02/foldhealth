@@ -21,9 +21,9 @@ import { CrmTab } from '../tabs/crm/CrmTab/CrmTab.jsx';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS, CARE_GAP_TABS_DRAWER } from '../../data/careGapsMock';
 import { CareGapDetailDrawer } from '../../../hedis-worklist/CareGapDetailDrawer';
 import { hedisGapSection } from '../tabs/gaps/hedisGapSection';
+import { GAP_STATUS_OPTIONS, gapStatusSection } from '../../../hedis-worklist/hedisFilters';
 import { groupGapItems, VIEW_BY_OPTIONS } from '../tabs/gaps/gapGroups';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
-import { useGapEvidenceSources } from '../tabs/gaps/useGapEvidenceSources';
 import { usePatientPanelLayout } from '../../hooks/usePatientPanelLayout';
 import { visibleTabs, visibleWidgets } from '../patientPanelLayout';
 import { PanelCustomizeDrawer } from '../PanelCustomizeDrawer/PanelCustomizeDrawer';
@@ -126,15 +126,16 @@ export function PatientProfileTabs({
     setCareGapDrawer({ member, gapCode: code, instanceNo: item.openInstanceNo ?? null, year: new Date().getFullYear() });
   };
 
-  const evidenceSources = useGapEvidenceSources(hedisMember);
-  const hedisSection = hedisGapSection(hedisMember, evidenceSources);
+  const hedisSection = hedisGapSection(hedisMember);
   const sourceSections = hedisSection ? [hedisSection] : CARE_GAP_SECTIONS_EXTENDED;
 
   // Care Gaps filters (Status, Year). A row stays when it, or one of its
   // previous instances, matches, so a closed status still finds old ones.
   const allGapItems = sourceSections.flatMap(sec => sec.items.flatMap(it => [it, ...(it.previous || [])]));
+  // HEDIS patients get every gap status, grouped Open / Closed like the
+  // worklist's Gap Status filter; sample data lists what it has.
   const gapFilterOptions = {
-    status: [...new Set(allGapItems.map(it => it.status).filter(Boolean))].sort(),
+    status: hedisSection ? GAP_STATUS_OPTIONS : [...new Set(allGapItems.map(it => it.status).filter(Boolean))].sort(),
     year: [...new Set(allGapItems.map(it => it.year).filter(Boolean))].sort().reverse(),
   };
   const matchesGapFilters = (it) => (!gapStatusFilter.length || gapStatusFilter.includes(it.status))
@@ -234,7 +235,7 @@ export function PatientProfileTabs({
               <div className={styles.collapseInner}>
                 {gapFiltersOpen && (
                   <div className={styles.gapFilters}>
-                    <FilterChip label="Status" size="S" options={gapFilterOptions.status} selected={gapStatusFilter} onChange={setGapStatusFilter} />
+                    <FilterChip label="Status" size="S" options={gapFilterOptions.status} selected={gapStatusFilter} onChange={setGapStatusFilter} sectionOf={hedisSection ? gapStatusSection : undefined} />
                     {gapFilterOptions.year.length > 0 && (
                       <FilterChip label="Year" size="S" options={gapFilterOptions.year} selected={gapYearFilter} onChange={setGapYearFilter} />
                     )}

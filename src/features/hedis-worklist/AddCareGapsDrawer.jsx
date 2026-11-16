@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Button } from '../../components/Button/Button';
 import { Select } from '../../components/Select/Select';
-import { Input } from '../../components/Input/Input';
 import { SearchBar } from '../../components/SearchBar/SearchBar';
 import { Checkbox } from '../../components/Checkbox/Checkbox';
 import { Badge } from '../../components/Badge/Badge';
-import { Banner } from '../../components/Banner/Banner';
 import { Icon } from '../../components/Icon/Icon';
 import { SimpleTableSkeleton } from '../../components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { openMeasureYears } from './data/caregapWhitelistMock';
@@ -74,94 +72,65 @@ function GapRow({ whitelist, parent, history, measureYear, checked, config, onTo
         <span className={styles.gapName}>{whitelist.name}</span>
         <span className={styles.gapMeta}>
           {lockNote && <span className={styles.lockNote}>{lockNote}</span>}
+          {/* Picked with no earlier instance: nothing to fill in, just say so. */}
+          {checked && !needsReason && <span className={styles.lockNote}>New gap</span>}
           {parent && <Badge size="sm" tone={STATUS_BADGE_VARIANT[parent.status] || 'neutral'} label={parent.status} />}
         </span>
       </label>
-      {checked && (
+      {checked && needsReason && (
         <div className={styles.gapConfig}>
-          {needsReason ? (
-            <>
-              <span className={styles.subLabel}>Instances in this measure year</span>
-              <GapHistory history={history} />
-              <div className={styles.field}>
-                <span className={styles.label}>Reason<span className={styles.req}>•</span></span>
-                <Select options={toOptions(REASONS)} value={config.reason} placeholder="Why add it again?" onValueChange={(v) => onConfig({ ...config, reason: v })} />
-              </div>
-            </>
-          ) : (
-            <span className={styles.helper}>No instance of this gap in {measureYear} yet. A new care gap will be created.</span>
-          )}
+          <span className={styles.subLabel}>Instances in this measure year</span>
+          <GapHistory history={history} />
+          <div className={styles.field}>
+            <span className={styles.label}>Reason<span className={styles.req}>•</span></span>
+            <Select options={toOptions(REASONS)} value={config.reason} placeholder="Why add it again?" onValueChange={(v) => onConfig({ ...config, reason: v })} />
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// Member field, as in HCC's Add Manually: the field is the search input;
-// focus shows the matches, a picked member shows avatar, name and details
-// and clicking it searches again.
+// Member field: the design system's searchable Select. Each option shows the
+// avatar, name and demographics; the picked member reads the same, compact.
 function MemberField({ members, value, onChange }) {
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(!value);
-  const wrapRef = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
-    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-  const q = query.trim().toLowerCase();
-  const matches = (q
-    ? members.filter(m => m.name.toLowerCase().includes(q) || String(m.memberId || '').toLowerCase().includes(q))
-    : members).slice(0, 20);
   const meta = (m) => [m.gender, m.age, m.memberId].filter(Boolean).join(' • ');
+  const options = members.map(m => ({
+    value: m.id,
+    searchText: `${m.name} ${m.memberId || ''}`,
+    label: (
+      <span className={styles.memberOption}>
+        <Avatar variant="patient" size="XS" initials={m.in} />
+        <span className={styles.memberOptionText}>
+          <span>{m.name}</span>
+          <span className={styles.memberOptionMeta}>{meta(m)}</span>
+        </span>
+      </span>
+    ),
+    triggerLabel: (
+      <span className={styles.memberOption}>
+        <Avatar variant="patient" size="XS" initials={m.in} />
+        <span className={styles.memberSelectedText}>
+          <span className={styles.memberName}>{m.name}</span>
+          <span className={styles.memberMeta}>{meta(m)}</span>
+        </span>
+      </span>
+    ),
+  }));
   return (
-    <div className={styles.memberSection} ref={wrapRef}>
+    <div className={styles.memberSection}>
       <span className={styles.label}>Member<span className={styles.req}>•</span></span>
-      <div className={styles.memberField}>
-        {value && !open ? (
-          <button type="button" className={styles.memberSelected} onClick={() => { setQuery(''); setOpen(true); }}>
-            <Avatar variant="patient" initials={value.in} />
-            <span className={styles.memberName}>{value.name}</span>
-            <span className={styles.memberMeta}>({meta(value)})</span>
-          </button>
-        ) : (
-          <input
-            type="text"
-            className={styles.memberInput}
-            placeholder="Search and Select Member"
-            value={query}
-            autoFocus
-            onFocus={() => setOpen(true)}
-            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-            aria-label="Search and select member"
-          />
-        )}
-        <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-      </div>
-      {open && (
-        <div className={styles.memberPop} role="listbox" aria-label="Members">
-          {matches.length === 0 ? (
-            <div className={styles.memberEmpty}>No matches</div>
-          ) : matches.map(m => (
-            <button
-              key={m.id}
-              type="button"
-              role="option"
-              aria-selected={value?.id === m.id}
-              className={styles.memberOption}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { onChange(m); setQuery(''); setOpen(false); }}
-            >
-              <Avatar variant="patient" initials={m.in} />
-              <span>{m.name}</span>
-              <span className={styles.memberOptionMeta}>{meta(m)}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      <Select
+        searchable
+        portal
+        defaultOpen={!value}
+        options={options}
+        value={value?.id ?? ''}
+        placeholder="Search and Select Member"
+        searchPlaceholder="Search and Select Member"
+        aria-label="Member"
+        onValueChange={(id) => { const m = members.find(x => x.id === id); if (m) onChange(m); }}
+      />
     </div>
   );
 }
@@ -286,7 +255,7 @@ export function AddCareGapsDrawer() {
 
   return (
     <Drawer
-      title={picker ? `Add Care Gaps for ${member.name}` : 'Add Care Gaps'}
+      title="Add Care Gaps"
       onClose={close}
       headerRight={headerRight}
       noCloseDivider
@@ -306,12 +275,6 @@ export function AddCareGapsDrawer() {
         />
       )}
 
-      {/* Edge to edge under the patient banner (or the drawer header when
-          the Member field names the patient). */}
-      <Banner className={styles.billingBar}>
-        A gap is added to SSD automatically once its clinical note is signed; otherwise close it manually.
-      </Banner>
-
       <div className={styles.container}>
         {picker && <MemberField key={member.id} members={hedisMembers} value={member} onChange={pickMember} />}
         <section className={styles.section}>
@@ -319,15 +282,6 @@ export function AddCareGapsDrawer() {
             <div className={styles.field}>
               <span className={styles.label}>Measure Year<span className={styles.req}>•</span></span>
               <Select options={yearOptions} value={String(measureYear)} onValueChange={(v) => setMeasureYear(Number(v))} />
-            </div>
-            <div className={styles.field}>
-              <span className={styles.label}>IPA</span>
-              {/* Set by the measure year, not editable: read-only, not a greyed-out dropdown. */}
-              <Input readOnly value={ipa} placeholder="No IPA on file" aria-label="IPA" />
-            </div>
-            <div className={styles.field}>
-              <span className={styles.label}>HP Code</span>
-              <Input readOnly value={hpCode} placeholder="No HP Code on file" aria-label="HP Code" />
             </div>
           </div>
         </section>

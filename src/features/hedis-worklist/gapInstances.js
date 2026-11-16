@@ -31,7 +31,9 @@ export function activityForInstance(entries, code, instanceNo, latestNo) {
     || (e.gapCode === code && (e.instanceNo ?? latestNo) === instanceNo));
 }
 
-const isClosedStatus = (status) => status === 'Completed' || String(status || '').startsWith('Closed');
+// Completed (met) or any Closed status: the gap is finished, so its
+// assignee is read-only.
+export const isClosedStatus = (status) => status === 'Completed' || String(status || '').startsWith('Closed');
 const todayMdY = () => new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
 // A gap moved to Completed or a Closed status gets today as its closed date

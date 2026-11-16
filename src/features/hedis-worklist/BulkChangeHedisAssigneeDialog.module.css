@@ -1,0 +1,58 @@
+/* Gaps table in Bulk Change Assignees (Figma HCC-Workflow 13099:470165):
+   one row per gap with its own assignee picker. */
+.table {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.headRow,
+.row {
+  display: grid;
+  grid-template-columns: 165px minmax(0, 1fr);
+  align-items: center;
+}
+.headRow {
+  min-height: 32px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.row { min-height: 40px; border-bottom: 0.5px solid var(--neutral-100); }
+.row:last-child { border-bottom: none; }
+.gapCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+}
+.assigneeCol { min-width: 0; padding: var(--space-1) var(--space-2); }
+.gapCode { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
+.gapMeta { font-size: var(--font-sm); color: var(--neutral-300); white-space: nowrap; cursor: default; text-decoration: underline dotted; text-underline-offset: 2px; }
+
+/* Hover card: a Member | Assignee table of who has this gap now. */
+.memberTable { width: 100%; border-collapse: collapse; font-size: var(--font-sm); }
+.memberTable th {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-weight: 500;
+  color: var(--neutral-300);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.memberTable td { padding: var(--space-2) var(--space-3); border-bottom: 0.5px solid var(--neutral-100); }
+.memberTable tr:last-child td { border-bottom: none; }
+.patientName { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--neutral-400); font-weight: 500; }
+.patientAssignee { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--neutral-300); white-space: nowrap; }
+.patientUnassigned { flex-shrink: 0; color: var(--neutral-200); }
+
+/* Assignee menus render inside the dialog (top layer) and are wider than
+   the cell: let them spill past the dialog's edge instead of scrolling it. */
+.dialogOverflow { overflow: visible; }
+
+/* Title + subtitle on the left, close (×) in the top-right corner. */
+.headerRow { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }

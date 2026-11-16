@@ -8,7 +8,6 @@ import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { CARE_GAP_SECTIONS_EXTENDED } from '../../../../../../data/careGapsMock';
 import { CareGapSection } from '../../../../../../left-panel/tabs/gaps/CareGapSection/CareGapSection.jsx';
 import { hedisGapSection, findHedisMember } from '../../../../../../left-panel/tabs/gaps/hedisGapSection';
-import { useGapEvidenceSources } from '../../../../../../left-panel/tabs/gaps/useGapEvidenceSources';
 import { CareGapDetailDrawer } from '../../../../../../../hedis-worklist/CareGapDetailDrawer';
 import styles from './OpenCareGaps.module.css';
 
@@ -74,8 +73,7 @@ export function OpenCareGaps({ patientId, patientName }) {
   const openAddCareGaps = useAppStore(s => s.openAddCareGaps);
   const [drawer, setDrawer] = useState(null);
   const member = findHedisMember(hedisMembers, patientId, patientName);
-  const evidenceSources = useGapEvidenceSources(member);
-  const section = hedisGapSection(member, evidenceSources);
+  const section = hedisGapSection(member);
   if (member) {
     return (
       <div className={styles.container}>

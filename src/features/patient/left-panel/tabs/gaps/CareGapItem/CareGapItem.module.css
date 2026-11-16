@@ -45,7 +45,5 @@
 .rowNested { background: var(--neutral-25); }
 .rowNested .content { padding-left: var(--space-4); opacity: 0.75; }
 .rowNested .status { opacity: 0.75; }
-/* Evidence line under a completed or closed instance. */
-.evidence { font-size: var(--font-sm); color: var(--neutral-300); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Title with the gap's M / C source circle after it. */
 .titleLine { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }

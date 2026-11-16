@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
+import { isClosedStatus } from './gapInstances';
 import { Badge } from '../../components/Badge/Badge';
 import { Button } from '../../components/Button/Button';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
@@ -115,7 +116,9 @@ export function CareGapDetailDrawerHeader({
               return (
                 <AssigneeChange
                   avatarOnly
-                  disabled={readOnly}
+                  // Read-only on an older instance, and once the gap is
+                  // Completed or Closed.
+                  disabled={readOnly || isClosedStatus(gap.status)}
                   unassigned={!effectiveAssignee}
                   name={effectiveAssignee || undefined}
                   initials={effectiveAssignee ? initialsOf(effectiveAssignee) : undefined}
