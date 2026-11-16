@@ -23,9 +23,13 @@ import styles from './SelectAssigneeModal.module.css';
  * @param {function} props.onClose
  * @param {function} props.onConfirm            – (user) => void, user = { id, name, initials, clinicalRoles }
  * @param {string}   [props.title='Select Assignee']
+ * @param {React.ReactNode} [props.subtitle]   – a line under the title
+ * @param {string}   [props.searchPlaceholder='Search']
  * @param {string}   [props.confirmLabel='Confirm']
+ * @param {React.ReactNode} [props.header]     – choices that come before
+ *                                               picking a person (e.g. which
+ *                                               role and sub-programs change)
  * @param {React.ReactNode} [props.children]   – extra choices under the list
- *                                               (e.g. which sub-programs change)
  * @param {boolean}  [props.confirmDisabled]     – keep Confirm off while those
  *                                               choices are incomplete
  * @param {function} [props.outOfOffice]         – (user) => { startAt, endAt,
@@ -41,7 +45,10 @@ export function SelectAssigneeModal({
   onClose,
   onConfirm,
   title = 'Select Assignee',
+  subtitle,
+  searchPlaceholder = 'Search',
   confirmLabel = 'Confirm',
+  header,
   children,
   confirmDisabled = false,
   outOfOffice: outOfOfficeProp,
@@ -149,15 +156,23 @@ export function SelectAssigneeModal({
         </DialogDescription>
 
         <div className={styles.header}>
-          <span className={styles.headerTitle}>{title}</span>
+          {subtitle ? (
+            <span className={styles.headerText}>
+              <span className={`${styles.headerTitle} ${styles.headerTitleLg}`}>{title}</span>
+              <span className={styles.headerSubtitle}>{subtitle}</span>
+            </span>
+          ) : (
+            <span className={styles.headerTitle}>{title}</span>
+          )}
           <CloseButton onClick={close} />
         </div>
 
         <div className={styles.body}>
+          {header}
           <SearchBar
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search"
+            placeholder={searchPlaceholder}
             fullWidth
           />
 

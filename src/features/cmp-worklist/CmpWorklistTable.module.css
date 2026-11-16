@@ -1,17 +1,8 @@
-/* Change Assignee: which sub-programs take the new assignee. */
-.subProgramPick {
+/* Bulk Change Assignees runs top to bottom: role, sub-programs, then the
+   person, so the setup sits above the people list with a divider under it. */
+.assignSetup {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-3) 0 0;
-  border: none;
-  border-top: 0.5px solid var(--neutral-150);
+  gap: var(--space-3);
 }
-.subProgramLegend { padding: 0; margin-bottom: var(--space-2); font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); }
-.subProgramRow { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-md); color: var(--neutral-400); cursor: pointer; }
-.subProgramName { flex: 1; min-width: 0; }
-.subProgramCount { color: var(--neutral-300); }
-
-/* Which owner the bulk change sets, above the sub-programs. */
-.rolePick { padding-top: var(--space-3); border-top: 0.5px solid var(--neutral-150); }
+.assignDivider { height: 0.5px; background: var(--neutral-150); }
