@@ -87,6 +87,12 @@ const AGE_GROUPS = [
 // Per-gap Source / Instance, shared with the worklist columns so the filter
 // and the cell always agree. Gaps added in Fold are stamped `fold-native`;
 // a gap closed then re-added stays in the row stamped `supersededAt`.
+// Shorter display names for long gap statuses (worklist and Gaps widget).
+export const GAP_STATUS_LABEL = {
+  'Engaged Requires Follow-Up': 'Engaged: Follow-up',
+};
+export const gapStatusLabel = (status) => GAP_STATUS_LABEL[status] || status;
+
 export const gapSourceLabel = (g) => (g.source === 'fold-native' ? 'Manual' : 'Claim');
 export const gapInstanceLabel = (g) => (g.supersededAt ? 'Older' : 'Latest');
 // Saved filters from before the rename keep working.

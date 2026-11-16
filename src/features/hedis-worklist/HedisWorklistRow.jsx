@@ -15,7 +15,7 @@ import { computeDsfbDueDateISO } from './dsf/dsfScoring';
 import { CIS_CODE, cisDueIndicator, evaluateCis } from './cis/cisRules';
 import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import { MEASURE_NAMES } from './ClinicalNotePanel.utils';
-import { gapSourceLabel } from './hedisFilters';
+import { gapSourceLabel, gapStatusLabel } from './hedisFilters';
 import { gapInstanceNo } from './gapInstances';
 import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import { ActionsMenuPopover } from '../hcc/RowPopovers';
@@ -48,9 +48,6 @@ function CisDueLabel({ member }) {
 }
 
 // Shorter display names for long statuses; the stored value is unchanged.
-const STATUS_LABEL = {
-  'Engaged Requires Follow-Up': 'Engaged: Follow-up',
-};
 
 // Hover card on the source circle: the source, the reason the gap was added
 // (if any) and the gap's other instances, each with an arrow that opens it in
@@ -218,7 +215,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
       <div className={styles.gapItems}>
         {(ctx.visibleGaps || []).map((g, i) => (
           <div key={`${g.code}-${i}`} className={styles.gapItem}>
-            <Badge size="md" tone={STATUS_BADGE_VARIANT[g.status] || 'neutral'} label={STATUS_LABEL[g.status] || g.status} />
+            <Badge size="md" tone={STATUS_BADGE_VARIANT[g.status] || 'neutral'} label={gapStatusLabel(g.status)} />
           </div>
         ))}
         {/* Empty spacer keeps this column bottom-aligned with Total Gaps' expander. */}

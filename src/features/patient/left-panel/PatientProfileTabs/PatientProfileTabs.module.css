@@ -46,7 +46,7 @@
  * so it lines up with the other tabs (PAMI/Hx, Vitals/Labs, Comms…). */
 .flushContent .gapsWrapper { padding: 12px 12px 0; }
 .flushContent .sections { padding: 0; }
-.flushContent .sectionHeader { padding: 0; }
+.flushContent .sectionHeader { padding: 0 0 0 var(--space-3); }
 /* Was `margin-top: 0`, that zeroed out the shared 16px gap so the
  * Diagnosis Gaps / Alerts headers merged flush with the previous
  * section's last row. Keep the 16px so the QuickView reads with the
@@ -65,9 +65,6 @@
   padding-right: 16px;
 }
 
-.flushContent .gapsWrapper :global([class*="sectionLabel"]) {
-  padding-left: 0;
-}
 
 /* Tab row: OverflowTabStrip fills height; search pinned on the right. */
 .tabRow {
@@ -126,7 +123,9 @@
  * first section header ("Care Gaps") from the strip. */
 .gapsWrapper { padding: 12px 0 0; }
 .sections { padding: 0; }
-.sectionHeader { display: flex; align-items: center; gap: 0; padding: 0; height: 32px; flex-shrink: 0; }
+/* Indented by the table cells' 12px padding, so the section title, the
+ * group labels, the column headers and the rows all start on one line. */
+.sectionHeader { display: flex; align-items: center; gap: 0; padding: 0 0 0 var(--space-3); height: 32px; flex-shrink: 0; }
 .collapseToggle { background: none; border: none; cursor: pointer; padding: 0; margin-left: 4px; display: flex; align-items: center; }
 .sectionActions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .sectionTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
@@ -161,3 +160,6 @@
   font-size: var(--font-md);
   color: var(--neutral-300);
 }
+/* Care Gaps "View By: Action / Condition" menu trigger. */
+.viewByBtn { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0; border: none; background: none; cursor: pointer; }
+.viewByBtn:hover .viewBy { color: var(--neutral-400); }

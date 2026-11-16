@@ -21,6 +21,8 @@ import { CrmTab } from '../tabs/crm/CrmTab/CrmTab.jsx';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS, CARE_GAP_TABS_DRAWER } from '../../data/careGapsMock';
 import { CareGapDetailDrawer } from '../../../hedis-worklist/CareGapDetailDrawer';
 import { hedisGapSection } from '../tabs/gaps/hedisGapSection';
+import { groupGapItems, VIEW_BY_OPTIONS } from '../tabs/gaps/gapGroups';
+import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useGapEvidenceSources } from '../tabs/gaps/useGapEvidenceSources';
 import { usePatientPanelLayout } from '../../hooks/usePatientPanelLayout';
 import { visibleTabs, visibleWidgets } from '../patientPanelLayout';
@@ -73,6 +75,9 @@ export function PatientProfileTabs({
   const [gapFiltersOpen, setGapFiltersOpen] = useState(false);
   const [gapStatusFilter, setGapStatusFilter] = useState([]);
   const [gapYearFilter, setGapYearFilter] = useState([]);
+  const [gapViewBy, setGapViewBy] = useState('action');
+  const [viewByOpen, setViewByOpen] = useState(false);
+  const viewByRef = useRef(null);
   const [diagnosisCollapsed, setDiagnosisCollapsed] = useState(false);
   const [alertsCollapsed, setAlertsCollapsed] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -136,12 +141,14 @@ export function PatientProfileTabs({
     && (!gapYearFilter.length || gapYearFilter.includes(it.year));
   const gapFilterCount = gapStatusFilter.length + gapYearFilter.length;
 
-  const careGapSections = sourceSections.map(section => ({
-    ...section,
-    items: section.items
+  // View By regroups the matching rows: by the action that closes each gap,
+  // or by condition.
+  const careGapSections = groupGapItems(
+    sourceSections.flatMap(section => section.items)
       .filter(item => !searchQuery || item.title.toLowerCase().includes(searchQuery.toLowerCase()))
       .filter(item => !gapFilterCount || matchesGapFilters(item) || (item.previous || []).some(matchesGapFilters)),
-  }));
+    gapViewBy,
+  );
 
   // A tab switched off while open falls back to the first one shown.
   const currentTab = tabs.includes(activeTab) ? activeTab : tabs[0];
@@ -177,8 +184,27 @@ export function PatientProfileTabs({
               </button>
               {!gapsCollapsed && (
                 <div className={styles.sectionActions}>
-                  <span className={styles.viewBy}>View By: Action</span>
-                  <DownChevronIcon size={10} />
+                  <button
+                    ref={viewByRef}
+                    type="button"
+                    className={styles.viewByBtn}
+                    aria-haspopup="menu"
+                    aria-expanded={viewByOpen}
+                    onClick={() => setViewByOpen(v => !v)}
+                  >
+                    <span className={styles.viewBy}>View By: {VIEW_BY_OPTIONS.find(o => o.key === gapViewBy).label}</span>
+                    <DownChevronIcon size={10} />
+                  </button>
+                  {viewByOpen && (
+                    <MenuPopover
+                      anchorRef={viewByRef}
+                      ariaLabel="View care gaps by"
+                      width={160}
+                      items={VIEW_BY_OPTIONS.map(o => ({ key: o.key, label: o.label, selected: o.key === gapViewBy }))}
+                      onSelect={(key) => { setGapViewBy(key); setViewByOpen(false); }}
+                      onClose={() => setViewByOpen(false)}
+                    />
+                  )}
                   <span className={styles.filterDivider} />
                   {/* Same Add Care Gaps drawer as the worklist, already set
                       to this patient. Only patients on the HEDIS worklist

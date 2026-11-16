@@ -1,6 +1,9 @@
 .wrapper { margin-bottom: 0; }
 
 .sectionLabel {
-  height: 28px; display: flex; align-items: center; padding-left: 8px;
-  font-size: var(--font-base); font-weight: 400; color: var(--neutral-300);
+  /* Lines up with the table's column headers and row text (12px cell padding). */
+  height: 28px; display: flex; align-items: center; padding-left: var(--space-3);
+  font-size: var(--font-base); font-weight: 400; color: var(--neutral-200);
+  /* Group band: grey 50 on the left fading to white. */
+  background: linear-gradient(to right, var(--neutral-50), var(--neutral-0));
 }

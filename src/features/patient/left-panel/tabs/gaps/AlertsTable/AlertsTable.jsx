@@ -2,7 +2,8 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { ProfileTable } from '../../../../../../components/ProfileTable/ProfileTable';
 import { profileRowClass, profileCellClass } from '../../../../../../components/ProfileTable/profileTableClasses';
 import { ALERT_ITEMS } from '../../../../data/careGapsMock';
-import { GAP_TABLE_COLUMNS } from '../gapTableColumns';
+import { GAP_TABLE_COLUMNS, gapRowStatusTone } from '../gapTableColumns';
+import { Badge } from '../../../../../../components/Badge/Badge';
 import styles from './AlertsTable.module.css';
 
 function FlagIcon({ severity }) {
@@ -29,7 +30,7 @@ function AlertRow({ item }) {
         </div>
       </td>
       <td className={profileCellClass}>
-        <span className={styles.status}>{item.status}</span>
+        <Badge tone={gapRowStatusTone(item.status)} label={item.status} />
       </td>
       <td className={profileCellClass}>
         <div className={styles.moreBtn}>
