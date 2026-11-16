@@ -31,6 +31,8 @@ export function hedisGapSection(member, evidenceSources) {
         g.closedDate ? `Closed ${g.closedDate}` : null,
       ].filter(Boolean).join(' • '),
       openInstanceNo: g.supersededAt ? no : null,
+      // Shown as the M / C source circle next to the title.
+      sourceGap: g,
       evidence: isClosed(g.status) && evidenceSources ? evidenceSummary(gapEvidence(g, evidenceSources)) : '',
     };
   };
