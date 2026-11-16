@@ -7344,8 +7344,8 @@ export const useAppStore = create((set, get) => ({
   // than one SMS line show it regardless (sms_practice_line_migration.sql).
   alwaysShowSmsLine: true,
   // HCC Outreach workflow (Astrana): the HCC chart's Outreach tab
-  // (org_settings_hcc_outreach_migration.sql).
-  hccOutreachEnabled: false,
+  // (org_settings_hcc_outreach_migration.sql). On unless the org turns it off.
+  hccOutreachEnabled: true,
   orgFeaturesDidFetch: false,
   fetchOrgFeatures: async () => {
     if (useAppStore.getState().orgFeaturesDidFetch) return;
@@ -7381,7 +7381,7 @@ export const useAppStore = create((set, get) => ({
         carePlanMode: normalizeCarePlanMode(data?.care_plan_mode),
         askStatusChangeReason: !!data?.ask_status_change_reason,
         alwaysShowSmsLine: data?.always_show_sms_line !== false,
-        hccOutreachEnabled: !!data?.hcc_outreach_enabled,
+        hccOutreachEnabled: data?.hcc_outreach_enabled !== false,
       });
     } catch (err) {
       console.warn('fetchOrgFeatures failed:', err?.message || err);

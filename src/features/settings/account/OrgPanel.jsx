@@ -30,7 +30,7 @@ export function OrgPanel() {
   const [showPatientAppIndicator, setShowPatientAppIndicator] = useState(false);
   const [carePlanMode, setCarePlanMode] = useState(DEFAULT_CARE_PLAN_MODE);
   const [askStatusChangeReason, setAskStatusChangeReason] = useState(false);
-  const [hccOutreachEnabled, setHccOutreachEnabled] = useState(false);
+  const [hccOutreachEnabled, setHccOutreachEnabled] = useState(true);
   const [primaryColor, setPrimaryColor] = useState('#8C5AE2');
   const [about, setAbout] = useState('');
   const [socials, setSocials] = useState({ twitter: '', instagram: '', facebook: '', linkedin: '', website: '' });
@@ -61,7 +61,7 @@ export function OrgPanel() {
           setShowPatientAppIndicator(!!data.show_patient_app_indicator);
           setCarePlanMode(normalizeCarePlanMode(data.care_plan_mode));
           setAskStatusChangeReason(!!data.ask_status_change_reason);
-          setHccOutreachEnabled(!!data.hcc_outreach_enabled);
+          setHccOutreachEnabled(data.hcc_outreach_enabled !== false);
           setPrimaryColor(data.primary_color || '#8C5AE2');
           setAbout(data.about || '');
           setLogo(data.logo_url || null);
