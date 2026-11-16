@@ -5,6 +5,7 @@ import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Button } from '../../components/Button/Button';
 import { Select } from '../../components/Select/Select';
+import { Input } from '../../components/Input/Input';
 import { SearchBar } from '../../components/SearchBar/SearchBar';
 import { Checkbox } from '../../components/Checkbox/Checkbox';
 import { Badge } from '../../components/Badge/Badge';
@@ -321,11 +322,12 @@ export function AddCareGapsDrawer() {
             </div>
             <div className={styles.field}>
               <span className={styles.label}>IPA</span>
-              <Select options={toOptions([ipa].filter(Boolean))} value={ipa} placeholder="No IPA on file" disabled />
+              {/* Set by the measure year, not editable: read-only, not a greyed-out dropdown. */}
+              <Input readOnly value={ipa} placeholder="No IPA on file" aria-label="IPA" />
             </div>
             <div className={styles.field}>
               <span className={styles.label}>HP Code</span>
-              <Select options={toOptions([hpCode].filter(Boolean))} value={hpCode} placeholder="No HP Code on file" disabled />
+              <Input readOnly value={hpCode} placeholder="No HP Code on file" aria-label="HP Code" />
             </div>
           </div>
         </section>

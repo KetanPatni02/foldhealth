@@ -2,6 +2,9 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { profileRowClass, profileCellClass } from '../../../../../../components/ProfileTable/profileTableClasses';
+import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
+import { GapSourceCircle } from '../../../../../hedis-worklist/GapSourceCircle';
+import { gapSourceLabel } from '../../../../../hedis-worklist/hedisFilters';
 import styles from './CareGapItem.module.css';
 
 /**
@@ -18,18 +21,26 @@ export function CareGapItem({ item, selected, onSelect, onOpen, nested = false, 
     >
       <td className={profileCellClass}>
         <div className={styles.content}>
-          {onOpen ? (
-            <button
-              type="button"
-              className={styles.titleButton}
-              onClick={(e) => { e.stopPropagation(); onOpen(item); }}
-              aria-label={`Open ${item.title}`}
-            >
-              {item.title}
-            </button>
-          ) : (
-            <span className={styles.title}>{item.title}</span>
-          )}
+          <span className={styles.titleLine}>
+            {onOpen ? (
+              <button
+                type="button"
+                className={styles.titleButton}
+                onClick={(e) => { e.stopPropagation(); onOpen(item); }}
+                aria-label={`Open ${item.title}`}
+              >
+                {item.title}
+              </button>
+            ) : (
+              <span className={styles.title}>{item.title}</span>
+            )}
+            {/* HEDIS gaps: Manual (M) or Claim (C), as on the worklist. */}
+            {item.sourceGap && (
+              <Tooltip label={`Source: ${gapSourceLabel(item.sourceGap)}${item.sourceGap.reason ? ` · ${item.sourceGap.reason}` : ''}`}>
+                <GapSourceCircle gap={item.sourceGap} />
+              </Tooltip>
+            )}
+          </span>
           {(item.diagnosis || previousCount > 0) && (
             <span className={styles.metaRow}>
               {item.diagnosis && <span className={styles.meta}>{item.diagnosis}</span>}
