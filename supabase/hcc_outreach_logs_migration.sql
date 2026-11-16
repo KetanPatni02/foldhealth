@@ -9,7 +9,9 @@
 --                 when the outreach was a call
 --   snooze_until  MM/DD/YYYY picked from the form's Snooze action
 --
--- Read with the anon key like the other HCC tables, so RLS allows all.
+-- Signed-in staff only, like the other HCC tables since
+-- narrow_public_policies_to_authenticated.sql: these are patient call notes
+-- and transcripts, never readable with the anon key (see RLS_POSTURE.md).
 
 CREATE TABLE IF NOT EXISTS public.hcc_outreach_logs (
   id            text PRIMARY KEY,
@@ -36,4 +38,5 @@ CREATE INDEX IF NOT EXISTS hcc_outreach_logs_member_idx
 ALTER TABLE public.hcc_outreach_logs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow all" ON public.hcc_outreach_logs;
-CREATE POLICY "Allow all" ON public.hcc_outreach_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all" ON public.hcc_outreach_logs
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);

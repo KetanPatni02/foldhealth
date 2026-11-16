@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { reportPersistFailure } from '../lib/reportPersistFailure';
 import { HCC_OUTREACH_MOCK } from '../../features/hcc/data/hccOutreachMock';
 import { hccOutreachToRow, rowToHccOutreach } from '../../features/hcc/data/hccOutreachRows';
 
@@ -44,7 +45,7 @@ export function createHccOutreachSlice(set, get) {
       if (!logs?.length) return;
       set(s => ({ hccOutreachLogs: [...logs, ...s.hccOutreachLogs] }));
       supabase.from('hcc_outreach_logs').insert(logs.map(hccOutreachToRow))
-        .then(({ error }) => { if (error) console.warn('addHccOutreachLogs:', error.message); });
+        .then(({ error }) => { if (error) reportPersistFailure('addHccOutreachLogs', error); });
     },
 
     updateHccOutreachLog: (id, patch) => {
@@ -53,13 +54,13 @@ export function createHccOutreachSlice(set, get) {
       const next = { ...before, ...patch, id: before.id };
       set(s => ({ hccOutreachLogs: s.hccOutreachLogs.map(l => (l.id === before.id ? next : l)) }));
       supabase.from('hcc_outreach_logs').update(hccOutreachToRow(next)).eq('id', String(before.id))
-        .then(({ error }) => { if (error) console.warn('updateHccOutreachLog:', error.message); });
+        .then(({ error }) => { if (error) reportPersistFailure('updateHccOutreachLog', error); });
     },
 
     deleteHccOutreachLog: (id) => {
       set(s => ({ hccOutreachLogs: s.hccOutreachLogs.filter(l => String(l.id) !== String(id)) }));
       supabase.from('hcc_outreach_logs').delete().eq('id', String(id))
-        .then(({ error }) => { if (error) console.warn('deleteHccOutreachLog:', error.message); });
+        .then(({ error }) => { if (error) reportPersistFailure('deleteHccOutreachLog', error); });
     },
   };
 }
