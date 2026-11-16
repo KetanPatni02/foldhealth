@@ -7924,6 +7924,9 @@ export const useAppStore = create((set, get) => ({
         filter: `recipient_id=eq.${me.id}`,
       }, (payload) => {
         if (!payload?.new) return;
+        // A coverage notice is written when the record is saved but waits for
+        // its start date (visible_at); a later fetch picks it up then.
+        if (payload.new.visible_at && Date.parse(payload.new.visible_at) > Date.now()) return;
         const row = mapNotificationRow(payload.new);
         const known = (get().notifications || []).some(n => n.id === row.id);
         set(s => ({

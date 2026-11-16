@@ -55,6 +55,11 @@ AS $$
      AND (p_user_id IS NULL OR c->>'userId' <> p_user_id);
 $$;
 
+-- Only the triggers below call this. It runs with the owner's rights, so keep
+-- it off the API: otherwise anyone with the anon key could list who is out of
+-- office and who covers them.
+REVOKE EXECUTE ON FUNCTION public.ooo_covering_now(text, text) FROM PUBLIC, anon, authenticated;
+
 -- ── Patient messages and missed calls ────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.emit_covering_message_notifications()
 RETURNS trigger
@@ -313,6 +318,9 @@ BEGIN
       );
     END IF;
   END LOOP;
+  RETURN NEW;
+EXCEPTION WHEN others THEN
+  -- A notification must never stop a reassignment job from saving.
   RETURN NEW;
 END;
 $$;
