@@ -24,6 +24,8 @@ import { PersonOption, PersonTip } from './PersonOption';
 import {
   membersForConversation, memberMeta, memberLabel, withForPrefix, keepPrefix, forPrefix,
 } from './smsMembers';
+import { usePracticeLines } from './usePracticeLines';
+import { lineName, lineSnapshot } from './practiceLine';
 import styles from './CommsDrawers.module.css';
 
 const firstName = (name) => String(name || '').trim().split(/\s+/)[0];
@@ -162,6 +164,10 @@ export function NewChatDrawer({ initialType = 'patient', onClose, onCreated, onI
 // ── New SMS (Figma 1:33551, 1:33797) ─────────────────────────────────────
 export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
   const { patients, me, line } = useCommsPeople();
+  // The practice's SMS lines; without any configured, the one default line.
+  const { lines, sample: linesSample } = usePracticeLines();
+  const [viaId, setViaId] = useState(null);
+  const via = lines.find(l => l.id === viaId) || lines[0] || null;
   const [to, setTo] = useState(initialPatient ? String(initialPatient.id) : '');
   const [query, setQuery] = useState('');
   const [body, setBody] = useState('');
@@ -262,12 +268,14 @@ export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
     const meta = secured ? { verifyId, secureLinks: secured.links } : undefined;
     try {
       // One thread for the patient; each picked person gets the text.
-      const conv = await findOrCreateConversation('sms', { ...recipient, phone }, { patient_phone: phone });
+      // A new thread starts on the line picked in Send Via; each text keeps it.
+      const conv = await findOrCreateConversation('sms', { ...recipient, phone }, { patient_phone: phone, ...(via && !linesSample ? { inbox_id: via.id } : {}) });
       const sent = [];
       for (const t of targets) {
         sent.push(await sendSms({
           conversation: conv, sender: { id: me?.id, name: me?.name }, to: toE164(t.phone), body: text, meta,
           loggedFor: logFor ? { id: logFor.id, name: logFor.name } : undefined,
+          line: lineSnapshot(via),
         }));
       }
       const failed = sent.filter(m => m?.status === 'failed');
@@ -303,7 +311,17 @@ export function NewSmsDrawer({ onClose, onSent, initialPatient }) {
     >
       <div className={styles.form}>
         <Banner>{PHI_NOTICE}</Banner>
-        <Select label="Send Via" required options={[{ ...line, label: `${line.label} (Default)` }]} value="default" onValueChange={() => {}} />
+        {lines.length > 0 ? (
+          <Select
+            label="Send Via"
+            required
+            options={lines.map((l, i) => ({ value: l.id, label: `${lineName(l)} (${formatPhone(l.address)})${i === 0 ? ' (Default)' : ''}` }))}
+            value={via?.id}
+            onValueChange={setViaId}
+          />
+        ) : (
+          <Select label="Send Via" required options={[{ ...line, label: `${line.label} (Default)` }]} value="default" onValueChange={() => {}} />
+        )}
         <Select
           label="Patient"
           required

@@ -8,6 +8,7 @@ import { Icon } from '../../../../components/Icon/Icon';
 import { SimpleTableSkeleton } from '../../../../components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { useAppStore } from '../../../../store/useAppStore';
 import { collaboratorsOf, inboxType } from '../../../messages/comms/commsInboxes';
+import { formatPhone } from '../../../messages/comms/commsUtils';
 import { INBOX_TYPES } from './inboxesMock';
 import { UserBadges } from '../UserBadges';
 import { InboxDrawer } from './InboxDrawer';
@@ -108,7 +109,11 @@ export function InboxesSettingsPanel({ searchQuery = '', editing, setEditing }) 
             <tr key={i.id}>
               <td>
                 <button type="button" className={efax.nameLink} onClick={() => setEditing(i)}>{i.name}</button>
-                <div className={styles.address}>{i.address}</div>
+                <div className={styles.address}>
+                  {i.channel === 'sms' && <Icon name="solar:phone-linear" size={12} color="var(--neutral-300)" />}
+                  {i.channel === 'sms' ? formatPhone(i.address) : i.address}
+                  {i.label && ` · ${i.label}`}
+                </div>
               </td>
               <td>
                 <span className={styles.type}>

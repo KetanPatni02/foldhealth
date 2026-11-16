@@ -42,6 +42,7 @@ function formatBytes(n) {
  * @param {string}  [props.initials]     – avatar initials; on 'right', omit to hide the avatar
  * @param {string}  [props.text]
  * @param {string}  [props.time]
+ * @param {string}  [props.timeMeta] – shown before the time with a dot separator (e.g. "Sent from: …")
  * @param {React.ReactNode} [props.status]
  * @param {{ name: string, text: string }} [props.reply]
  * @param {{ url: string, name: string, size?: number, type?: 'image'|'file' }} [props.attachment]
@@ -64,6 +65,7 @@ export function ChatBubble({
   initials,
   text,
   time,
+  timeMeta,
   status,
   reply,
   attachment,
@@ -170,7 +172,7 @@ export function ChatBubble({
 
   const timeRow = (time || status) && (
     <div className={styles.timeRow}>
-      {time && <span className={styles.time}>{time}</span>}
+      {time && <span className={styles.time}>{timeMeta ? `${timeMeta} • ${time}` : time}</span>}
       {status}
     </div>
   );

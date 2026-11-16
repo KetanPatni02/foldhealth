@@ -1,0 +1,25 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  /* Lines up with the table's 16px cell inset, clear of the tab bar. */
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.number {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}

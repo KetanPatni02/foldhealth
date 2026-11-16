@@ -37,6 +37,22 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Which Fold number a patient texted.** SMS threads show the practice
+  line (an SMS inbox) the patient used: in the thread header, with its own
+  icon and label beside the patient's number, and under every text as
+  "Received on: +1 (775) 555-0100 · Main Clinic Line" or "Sent from: …",
+  including automated replies. Each SMS records its line when it's sent or
+  received (`from_addr` / `to_addr` and `meta.line_label`), so relabelling
+  or reassigning a number never rewrites history; replies go out from the
+  line the patient last used, and New SMS's Send Via lists the real lines.
+  The Messages list shows each SMS thread's line and filters by it ("Fold
+  Number"). Settings > Calls > Phone Number lists the SMS numbers with a
+  display label (30 characters, editable with the new Manage Phone Numbers
+  permission) and "Always display incoming number in SMS threads", which is
+  always on for practices with more than one number. Logic:
+  `src/features/messages/comms/practiceLine.js`. Needs
+  `supabase/sms_practice_line_migration.sql` then
+  `supabase/sms_practice_line_seed.sql`.
 - **CMP Bulk Change Assignees dialog.** The CMP bulk bar's Change Assignee now opens **Bulk Change Assignees**: a subtitle with how many members are selected ("4 members selected"), a note that the current owner in the picked sub-programs is replaced, then **Select Role** (Assignee or a care team role) and **Sub Programs** (multi-select with member counts) above the people list, whose search reads "Search <Role> User"; the button is **Apply Changes**. `SelectAssigneeModal` takes `subtitle`, `searchPlaceholder` and `header` (choices above the people list). Portaled `Select` menus now sit above the shared Dialog, so a dropdown opened in a dialog isn't hidden behind it. No migration.
 - **Date range calendars: month and year pickers.** In `DateRangePopover` (the DOB, Create Date, Last Visit and other date-range filter chips) each month's title is now a Month badge and a Year badge, each opening a searchable list. Each calendar also has previous / next year arrows next to the month arrows. The two months move on their own; the other one only shifts when they would meet, so the left month always stays before the right. No migration.
 - **Add availability for multiple users (VBC-26548).** Settings → Calendar → User Availability List view has a checkbox per user and a select-all for the page; a bar above the list shows how many are selected, **Add availability** and **Clear selection** (the selection survives paging and clears after saving). New **Has schedule** filter, and picked options now list first in every filter there (`FilterChip pinSelected`). **Add availability** (also **Add new**, and **Add availability for this type** in the appointment type drawer) opens the availability drawer in bulk mode: a Users field, new schedules or blocks imported from one user (import replaces what's there, asking first), schedule conflict warnings that don't block, and **Review** for more than one user: who will be added, added with warnings (overlaps with existing schedules, no schedule today) or skipped (location not assigned, no applicable appointment type, the import source). Saving adds a separate copy of each schedule to each user in one insert and records who added it. Migration: `supabase/user_availability_created_by_migration.sql`.

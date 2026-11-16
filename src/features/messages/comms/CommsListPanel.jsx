@@ -12,7 +12,7 @@ import listStyles from '../MessagesView.module.css';
 import { useAppStore } from '../../../store/useAppStore';
 import { membersForConversation, threadTitle } from './smsMembers';
 import { formatTime } from '../messageUtils';
-import { CHANNEL_META, initialsOf, isMissedCall } from './commsUtils';
+import { CHANNEL_META, formatPhone, initialsOf, isMissedCall } from './commsUtils';
 import { CommsListEmpty } from './CommsEmptyState';
 import { CommsListHeader } from './CommsListHeader';
 import { updateConversation, markConversationRead, deleteConversation, listStaffSends, subscribeComms } from './commsRepo';
@@ -23,6 +23,8 @@ import { CommsFilterChips } from './CommsFilterChips';
 import { isAutoReply } from './oooAutoReply';
 import { useCovering } from '../../ooo/useCovering';
 import { sameName } from '../../ooo/oooUtils';
+import { Badge } from '../../../components/Badge/Badge';
+import { usePracticeLines } from './usePracticeLines';
 import styles from './Comms.module.css';
 
 const CHANNEL_FILTER = { Chat: 'chat', SMS: 'sms', Calls: 'call', Email: 'email' };
@@ -66,6 +68,8 @@ export function CommsListPanel({
   const inboxes = useAppStore(s => s.commsInboxes);
   const inboxSample = useAppStore(s => s.commsInboxesTableMissing);
   const fetchCommsInboxes = useAppStore(s => s.fetchCommsInboxes);
+  // Which Fold number each SMS thread is on, when the practice shows it.
+  const practice = usePracticeLines();
   const platformUsers = useAppStore(s => s.platformUsers);
   useEffect(() => { fetchCommsInboxes(); }, [fetchCommsInboxes]);
   const listInboxChannels = channel === 'all' ? ['sms', 'email'] : [channel];
@@ -159,6 +163,7 @@ export function CommsListPanel({
           filters={filters}
           onChange={setFilter}
           inboxes={inboxOptions}
+          inboxChipLabel={channel === 'sms' ? 'Fold Number' : 'Inbox'}
           channels={mixed ? Object.keys(CHANNEL_FILTER) : []}
           coveringNames={coveringNames}
         />
@@ -229,6 +234,7 @@ export function CommsListPanel({
                 </div>
                 {c.unread_count > 0 && <span className={listStyles.convUnread}>{c.unread_count}</span>}
               </div>
+              {practice.show && c.channel === 'sms' && <LineTag line={practice.conversationLine(c)} />}
             </div>
           </button>
         ))}
@@ -271,6 +277,16 @@ export function CommsListPanel({
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** The Fold number an SMS thread is on: its label, or the number itself. */
+function LineTag({ line }) {
+  if (!line) return null;
+  return (
+    <div className={styles.listLine} title={`Fold number: ${formatPhone(line.number)}`}>
+      <Badge tone="neutral" size="xs" icon="solar:buildings-2-linear" label={line.label || formatPhone(line.number)} className={styles.lineBadge} />
     </div>
   );
 }
