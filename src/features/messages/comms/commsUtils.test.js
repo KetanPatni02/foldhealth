@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toE164, formatPhone, isMissedCall, callLook, initialsOf, isDialable } from './commsUtils';
+import { toE164, formatPhone, isMissedCall, callLook, initialsOf, isDialable, smsContactMetaParts, phoneAfterName } from './commsUtils';
 
 describe('commsUtils', () => {
   it('normalises US numbers to E.164', () => {
@@ -36,5 +36,20 @@ describe('commsUtils', () => {
   it('takes initials from words, skipping symbols', () => {
     expect(initialsOf('Juanita Douglas Jr.')).toBe('JD');
     expect(initialsOf('+1 (584) 555-0142')).toBe('#');
+  });
+});
+
+describe('SMS header', () => {
+  it('reads a matched contact as a Patient with gender and DOB, an unmatched one as a Lead', () => {
+    expect(smsContactMetaParts({ gender: 'Female', dob: '1965-05-18' })).toEqual(['Patient', 'F', '05/18/1965']);
+    expect(smsContactMetaParts({ gender: 'M' })).toEqual(['Patient', 'M']);
+    expect(smsContactMetaParts(null)).toEqual(['Lead']);
+  });
+
+  it('puts the phone in brackets after the name, unless the name is the number', () => {
+    expect(phoneAfterName('Amy Phillips', '+919718513584')).toBe('(+919718513584)');
+    expect(phoneAfterName('Amy Phillips', '+15845550142')).toBe('(+1 584-555-0142)');
+    expect(phoneAfterName('+15845550142', '+1 (584) 555-0142')).toBe('');
+    expect(phoneAfterName('Amy Phillips', '')).toBe('');
   });
 });

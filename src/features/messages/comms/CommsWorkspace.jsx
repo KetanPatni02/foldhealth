@@ -7,6 +7,8 @@ import { CommsThread } from './CommsThread';
 import { PatientEmailThread } from './PatientEmailThread';
 import { CommsPanelEmpty } from './CommsEmptyState';
 import { pollInboundSms, SMS_VIA_GATEWAY } from './commsSend';
+import { inboxOf } from './commsInboxes';
+import { lineSnapshot } from './practiceLine';
 import { watchOooAutoReplies } from './oooAutoReply';
 import { useAppStore } from '../../../store/useAppStore';
 import { patientFor, isMissedCall } from './commsUtils';
@@ -75,7 +77,9 @@ export function CommsWorkspace({
     let stopped = false;
     let timer = null;
     const tick = async () => {
-      const { connected } = await pollInboundSms();
+      const { commsInboxes, commsInboxesTableMissing } = useAppStore.getState();
+      const lineFor = conv => lineSnapshot(commsInboxes.find(i => i.channel === 'sms' && i.id === inboxOf(conv, commsInboxesTableMissing)));
+      const { connected } = await pollInboundSms({ lineFor });
       if (!stopped && connected) timer = setTimeout(tick, SMS_POLL_MS);
     };
     tick();

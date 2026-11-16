@@ -7337,6 +7337,9 @@ export const useAppStore = create((set, get) => ({
   // Off by default: a care plan status change only asks for a reason when
   // the org turns this on (org_settings_status_change_reason_migration.sql).
   askStatusChangeReason: false,
+  // "Always display incoming number in SMS threads"; practices with more
+  // than one SMS line show it regardless (sms_practice_line_migration.sql).
+  alwaysShowSmsLine: true,
   orgFeaturesDidFetch: false,
   fetchOrgFeatures: async () => {
     if (useAppStore.getState().orgFeaturesDidFetch) return;
@@ -7349,14 +7352,14 @@ export const useAppStore = create((set, get) => ({
       }
       // Schema-tolerant: a column whose migration hasn't run is dropped from
       // the select and its setting stays on the default.
-      let columns = ['show_patient_app_indicator', 'care_plan_mode', 'ask_status_change_reason'];
+      let columns = ['show_patient_app_indicator', 'care_plan_mode', 'ask_status_change_reason', 'always_show_sms_line'];
       const read = () => supabase
         .from('org_settings')
         .select(columns.join(', '))
         .eq('user_id', session.user.id)
         .maybeSingle();
       let { data, error } = await read();
-      for (let i = 0; i < 2 && error; i += 1) {
+      for (let i = 0; i < 3 && error; i += 1) {
         const missing = columns.find(c => c !== 'show_patient_app_indicator' && (error.message || '').includes(c));
         if (!missing) break;
         columns = columns.filter(c => c !== missing);
@@ -7371,6 +7374,7 @@ export const useAppStore = create((set, get) => ({
         showPatientAppIndicator: !!data?.show_patient_app_indicator,
         carePlanMode: normalizeCarePlanMode(data?.care_plan_mode),
         askStatusChangeReason: !!data?.ask_status_change_reason,
+        alwaysShowSmsLine: data?.always_show_sms_line !== false,
       });
     } catch (err) {
       console.warn('fetchOrgFeatures failed:', err?.message || err);

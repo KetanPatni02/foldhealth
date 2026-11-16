@@ -4,8 +4,8 @@
 // up), so the fallback finds the same people.
 
 export const INBOXES_MOCK = [
-  { id: 'inbox-sms-main', channel: 'sms', name: 'Main Line', address: '+1 (775) 555-0100', collaboratorIds: [], collaboratorNames: ['Navin Jethwani', 'Devanshi Sharma'] },
-  { id: 'inbox-sms-care', channel: 'sms', name: 'Care Management', address: '+1 (775) 555-0142', collaboratorIds: [], collaboratorNames: ['Abhijit Gupta'] },
+  { id: 'inbox-sms-main', channel: 'sms', name: 'Main Line', label: 'Main Clinic Line', address: '+1 (775) 555-0100', collaboratorIds: [], collaboratorNames: ['Navin Jethwani', 'Devanshi Sharma'] },
+  { id: 'inbox-sms-care', channel: 'sms', name: 'Care Management', label: 'CCM Program Line', address: '+1 (775) 555-0142', collaboratorIds: [], collaboratorNames: ['Abhijit Gupta'] },
   { id: 'inbox-email-care', channel: 'email', name: 'Care Team', address: 'care@foldhealth.org', collaboratorIds: [], collaboratorNames: ['Navin Jethwani'] },
   { id: 'inbox-email-referral', channel: 'email', name: 'Referrals', address: 'referrals@foldhealth.org', collaboratorIds: [], collaboratorNames: ['Abhijit Gupta', 'Devanshi Sharma'] },
 ];

@@ -81,7 +81,12 @@ export async function sendEmail({ conversation, sender, from, to, cc, bcc, subje
 /** True when SMS really leaves through the gateway (see the note at the top). */
 export const SMS_VIA_GATEWAY = import.meta.env.VITE_SMS_GATEWAY === 'textbee';
 
-export async function sendSms({ conversation, sender, to, body, meta, loggedFor }) {
+/**
+ * `line`: the practice line it goes out from ({ number, label }, see
+ * practiceLine.js), kept on the message as it is now.
+ */
+export async function sendSms({ conversation, sender, to, body, meta, loggedFor, line }) {
+  const withLine = line?.number ? { ...(meta || {}), line_label: line.label || '' } : meta;
   const message = await addMessage({
     conversation_id: conversation.id,
     kind: 'message',
@@ -89,9 +94,10 @@ export async function sendSms({ conversation, sender, to, body, meta, loggedFor 
     sender_id: sender?.id || null,
     sender_name: sender?.name || '',
     to_addr: to,
+    ...(line?.number ? { from_addr: line.number } : {}),
     body,
     status: SMS_VIA_GATEWAY ? 'queued' : 'sent',
-    ...(meta ? { meta } : {}),
+    ...(withLine ? { meta: withLine } : {}),
     ...(loggedFor ? { logged_for_patient_id: loggedFor.id, logged_for_name: loggedFor.name } : {}),
   });
   if (!message) return null;
@@ -118,8 +124,9 @@ const digits = (p) => String(p || '').replace(/\D/g, '').slice(-10);
  * thread (matched on the last ten digits; an unknown number opens a new
  * thread). Already-filed texts are skipped by their provider id.
  * Resolves to { connected } so the caller can stop polling a missing gateway.
+ * `lineFor(conversation)`: the practice line a thread's texts come in on.
  */
-export async function pollInboundSms() {
+export async function pollInboundSms({ lineFor } = {}) {
   // Only numbers the app has texted (an SMS thread it started) are asked
   // for, so the gateway phone's personal texts never reach the browser.
   const convs = (await listConversations())
@@ -135,12 +142,15 @@ export async function pollInboundSms() {
     const received = new Date(m.receivedAt || Date.now()).getTime();
     const conv = convs.find(c => digits(c.patient_phone) === digits(m.from) && received >= new Date(c.created_at).getTime());
     if (!conv) continue;
+    // The practice line it came in on, as that line is now.
+    const line = lineFor?.(conv);
     await addMessage({
       conversation_id: conv.id,
       kind: 'message',
       direction: 'in',
       sender_name: conv.patient_name,
       from_addr: m.from,
+      ...(line?.number ? { to_addr: line.number, meta: { line_label: line.label || '' } } : {}),
       body: m.body,
       status: 'delivered',
       provider_id: m.id,

@@ -15,8 +15,9 @@ const NONE = [];
  * @param {{ id, name, address }[]} [props.inboxes]
  * @param {string[]} [props.channels]      – channel names to offer
  * @param {string[]} [props.coveringNames] – people I'm covering
+ * @param {string}   [props.inboxChipLabel='Inbox'] – "Fold Number" on the SMS list
  */
-export function CommsFilterChips({ filters, onChange, inboxes = NONE, channels = NONE, coveringNames = NONE }) {
+export function CommsFilterChips({ filters, onChange, inboxes = NONE, channels = NONE, coveringNames = NONE, inboxChipLabel = 'Inbox' }) {
   const inboxPicked = inboxes.find(i => i.id === filters.inbox);
   return (
     <div className={styles.filterRow}>
@@ -28,7 +29,7 @@ export function CommsFilterChips({ filters, onChange, inboxes = NONE, channels =
       />
       {inboxes.length > 0 && (
         <FilterChip
-          label="Inbox"
+          label={inboxChipLabel}
           singleSelect
           options={inboxes.map(inboxLabel)}
           selected={inboxPicked ? [inboxLabel(inboxPicked)] : []}
