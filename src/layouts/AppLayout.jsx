@@ -19,6 +19,7 @@ import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
 import { parseHash } from '../lib/router';
 import { useNotificationsFeed } from '../components/NotificationsPopover/useNotificationsFeed';
+import { useCoveringNotifications } from '../features/ooo/useCoveringNotifications';
 import { splitFullName } from '../lib/nameValidation';
 import { Toaster } from '../components/Toast/Toast';
 import { CallPopoverHost } from '../components/CallPopover/CallPopoverHost';
@@ -315,6 +316,7 @@ export function AppLayout() {
   // Bell feed: resolves the signed-in profile, subscribes to this user's
   // notification rows, and resyncs after the tab/socket comes back.
   useNotificationsFeed();
+  useCoveringNotifications();
 
   useEffect(() => { fetchOrgFeatures(); }, [fetchOrgFeatures]);
 

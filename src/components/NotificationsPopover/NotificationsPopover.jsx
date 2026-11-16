@@ -68,6 +68,10 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   const openReassignmentSummary = useAppStore(s => s.openReassignmentSummary);
   const openAssignedAppointments = useAppStore(s => s.openAssignedAppointments);
   const openBulkSummary = useAppStore(s => s.openBulkSummary);
+  const goToComms = useAppStore(s => s.goToComms);
+  const openCoveredWork = useAppStore(s => s.openCoveredWork);
+  const openAwaySummary = useAppStore(s => s.openAwaySummary);
+  const openEfaxFromNotification = useAppStore(s => s.openEfaxFromNotification);
 
   // Refetch on open. The realtime subscription is the fast path, not the
   // source of truth: a binding created before the table was published, or
@@ -119,11 +123,19 @@ export function NotificationsPopover({ onClose, anchorRef }) {
     } else if (n.action === 'openLockedUsers') {
       openPendingUsersFromNotification?.(['Locked']);
     } else if (n.action === 'openReassignmentSummary' && n.reassignmentJobId) {
-      openReassignmentSummary?.(n.reassignmentJobId);
+      openReassignmentSummary?.(n.reassignmentJobId, { mine: n.type === 'ooo.reassigned' || n.type === 'ooo.covering_started' });
     } else if (n.action === 'openBulkSummary' && n.bulkJobId) {
       openBulkSummary?.(n.bulkJobId);
     } else if (n.action === 'viewAssignedAppointments' && n.reassignmentJobId) {
       openAssignedAppointments?.(n.reassignmentJobId);
+    } else if (n.action === 'openAwaySummary' && n.reassignmentJobId) {
+      openAwaySummary?.(n.reassignmentJobId, n.oooRecordId);
+    } else if (n.action === 'openCoveredWork') {
+      openCoveredWork?.(n.coveringFor);
+    } else if (n.action === 'openCommsConversation' && n.conversationId) {
+      goToComms?.({ channel: n.channel || 'sms', conversationId: n.conversationId });
+    } else if (n.action === 'openEfax' && n.efaxId) {
+      openEfaxFromNotification?.(n.efaxId);
     }
     onClose?.();
   };
@@ -195,7 +207,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
             >
               <span className={styles.entryIcon}>
                 <Icon
-                  name={iconForType(n.type)}
+                  name={iconForType(n.type, n.channel)}
                   size={16}
                   color="var(--primary-300)"
                 />
@@ -206,11 +218,11 @@ export function NotificationsPopover({ onClose, anchorRef }) {
                     16978:129436): what it is, then the counts. */}
                 {/* Appointments moved to me (Figma Eventus 17737:121055): who
                     moved them from whom, then a link to them. */}
-                {n.type === 'appointment.reassigned' ? (
+                {n.type === 'appointment.reassigned' || n.linkLabel ? (
                   <span className={styles.assignedBody}>
                     {n.body && <span className={styles.assignedText}>{n.body}</span>}
                     <span className={styles.assignedLink}>
-                      View Appointments
+                      {n.linkLabel || 'View Appointments'}
                       <Icon name="solar:alt-arrow-right-linear" size={14} />
                     </span>
                   </span>
@@ -243,7 +255,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   );
 }
 
-function iconForType(type) {
+function iconForType(type, channel) {
   if (type === 'task.assigned') return 'solar:user-plus-rounded-linear';
   if (type === 'task.mentioned') return 'solar:mention-square-linear';
   if (type === 'appointment.assigned') return 'solar:calendar-linear';
@@ -251,6 +263,14 @@ function iconForType(type) {
   if (type === 'bulk.summary') return 'solar:calendar-mark-linear';
   if (type === 'appointment.reassigned') return 'solar:calendar-linear';
   if (type === 'message.received') return 'solar:chat-round-linear';
+  // Out of Office: why work reached the covering provider.
+  if (type === 'ooo.covering_started') return 'solar:user-rounded-linear';
+  // A covered patient message wears its channel's icon.
+  if (type === 'message.covering') return { sms: 'solar:chat-square-linear', email: 'solar:letter-linear' }[channel] || 'solar:chat-round-linear';
+  if (type === 'efax.covering') return 'solar:printer-linear';
+  if (type === 'call.missed_covering') return 'solar:end-call-linear';
+  if (type === 'ooo.reassigned') return 'solar:users-group-rounded-linear';
+  if (type === 'ooo.returned') return 'solar:list-check-linear';
   if (type === 'referral.received') return 'solar:square-share-line-linear';
   if (type === 'hcc.extraction_complete') return 'solar:document-text-linear';
   if (type === 'hcc.document_uploaded') return 'solar:file-text-linear';

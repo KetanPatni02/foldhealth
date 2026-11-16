@@ -278,7 +278,9 @@ export function MessagesView() {
   // After a new chat / SMS / email (from here or the top bar), land on it.
   if (commsFocus && commsFocus !== seenCommsFocus) {
     setSeenCommsFocus(commsFocus);
-    if (commsFocus.channel === 'email') {
+    if (commsFocus.channel === 'efax') {
+      setActiveChannel('efax');
+    } else if (commsFocus.channel === 'email') {
       setActiveChannel('email');
       setEmailFocusConvId(commsFocus.conversationId);
     } else {
