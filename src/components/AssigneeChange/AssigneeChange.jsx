@@ -27,6 +27,10 @@ import styles from './AssigneeChange.module.css';
  * picking one fires `onSelect(user)`. Without `users`, the button just
  * fires `onClick` for callers that want to open their own picker.
  *
+ * `portalContainer` (element): mount the picker inside it instead of
+ * document.body, e.g. a native <dialog>, whose top layer would otherwise sit
+ * above a body-level menu. The menu is then placed relative to it.
+ *
  * Hover / keyboard focus fills the pill with a subtle neutral-50
  * background and reveals a chevron (disabled states skip the reveal).
  *
@@ -73,6 +77,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   oooUser,
   oooNote,
   pickerTitle,
+  portalContainer,
   onClick,
   className,
   ariaLabel,
@@ -136,7 +141,10 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
     // close to the right edge (SNP's Assignee column is well inboard so
     // left alignment is almost always fine).
     const left = Math.min(r.left, window.innerWidth - 300);
-    setPos({ top: r.bottom + 4, left });
+    // Inside a container (a transformed <dialog>), fixed positioning is
+    // relative to it, so offset by its box.
+    const c = portalContainer?.getBoundingClientRect();
+    setPos({ top: r.bottom + 4 - (c?.top || 0), left: left - (c?.left || 0) });
   };
   const close = () => setPos(null);
 
@@ -397,7 +405,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
             )}
           </div>
         </div>,
-        document.body,
+        portalContainer || document.body,
       )}
     </>
   );

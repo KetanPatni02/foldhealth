@@ -5,7 +5,6 @@ import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Button } from '../../components/Button/Button';
 import { Select } from '../../components/Select/Select';
-import { Input } from '../../components/Input/Input';
 import { SearchBar } from '../../components/SearchBar/SearchBar';
 import { Checkbox } from '../../components/Checkbox/Checkbox';
 import { Badge } from '../../components/Badge/Badge';
@@ -73,23 +72,19 @@ function GapRow({ whitelist, parent, history, measureYear, checked, config, onTo
         <span className={styles.gapName}>{whitelist.name}</span>
         <span className={styles.gapMeta}>
           {lockNote && <span className={styles.lockNote}>{lockNote}</span>}
+          {/* Picked with no earlier instance: nothing to fill in, just say so. */}
+          {checked && !needsReason && <span className={styles.lockNote}>New gap</span>}
           {parent && <Badge size="sm" tone={STATUS_BADGE_VARIANT[parent.status] || 'neutral'} label={parent.status} />}
         </span>
       </label>
-      {checked && (
+      {checked && needsReason && (
         <div className={styles.gapConfig}>
-          {needsReason ? (
-            <>
-              <span className={styles.subLabel}>Instances in this measure year</span>
-              <GapHistory history={history} />
-              <div className={styles.field}>
-                <span className={styles.label}>Reason<span className={styles.req}>•</span></span>
-                <Select options={toOptions(REASONS)} value={config.reason} placeholder="Why add it again?" onValueChange={(v) => onConfig({ ...config, reason: v })} />
-              </div>
-            </>
-          ) : (
-            <span className={styles.helper}>No instance of this gap in {measureYear} yet. A new care gap will be created.</span>
-          )}
+          <span className={styles.subLabel}>Instances in this measure year</span>
+          <GapHistory history={history} />
+          <div className={styles.field}>
+            <span className={styles.label}>Reason<span className={styles.req}>•</span></span>
+            <Select options={toOptions(REASONS)} value={config.reason} placeholder="Why add it again?" onValueChange={(v) => onConfig({ ...config, reason: v })} />
+          </div>
         </div>
       )}
     </div>
@@ -314,15 +309,6 @@ export function AddCareGapsDrawer() {
             <div className={styles.field}>
               <span className={styles.label}>Measure Year<span className={styles.req}>•</span></span>
               <Select options={yearOptions} value={String(measureYear)} onValueChange={(v) => setMeasureYear(Number(v))} />
-            </div>
-            <div className={styles.field}>
-              <span className={styles.label}>IPA</span>
-              {/* Set by the measure year, not editable: read-only, not a greyed-out dropdown. */}
-              <Input readOnly value={ipa} placeholder="No IPA on file" aria-label="IPA" />
-            </div>
-            <div className={styles.field}>
-              <span className={styles.label}>HP Code</span>
-              <Input readOnly value={hpCode} placeholder="No HP Code on file" aria-label="HP Code" />
             </div>
           </div>
         </section>

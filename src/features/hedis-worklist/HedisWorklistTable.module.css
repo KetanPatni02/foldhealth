@@ -1,10 +1,17 @@
 .wrap {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--neutral-0);
 }
+
+/* Bulk bar: centred on the worklist (so on the pagination, not the window)
+   and 8px above the 48px pagination bar. */
+.bulkBar { position: absolute; bottom: calc(48px + var(--space-2)); }
+/* Room under the last row for the bar (54px tall) plus its gap. */
+.scrollWrapWithBar { padding-bottom: calc(54px + var(--space-4)); }
 
 .scrollWrap {
   flex: 1;

@@ -292,7 +292,9 @@ export function HedisWorklistTable() {
       />
 
       {/* ── Table ── */}
-      <div className={styles.scrollWrap} style={{ flex: 1 }}>
+      {/* While rows are selected the bulk bar floats over the list's foot, so
+          the list gets room to scroll its last rows clear of it. */}
+      <div className={`${styles.scrollWrap} ${selectedIds.length ? styles.scrollWrapWithBar : ''}`} style={{ flex: 1 }}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -384,6 +386,19 @@ export function HedisWorklistTable() {
           filtered={isFiltered}
         />
       </div>
+
+      {/* Floating bulk-action bar: appears when one or more rows are
+          selected via the sticky-left checkbox column. Inside the worklist,
+          centred over the pagination and just above it. Change Assignee is
+          the only wired verb for now; the rest of BulkBar's default cluster
+          (Run Automation / More menu) stays on its shared "coming soon"
+          toast until the HEDIS workflows for those actions exist. */}
+      <BulkBar
+        className={styles.bulkBar}
+        selectedIds={selectedIds}
+        onClear={() => setSelectedIds([])}
+        onChangeAssignee={() => setBulkAssigneeOpen(true)}
+      />
     </div>
 
     {drawerMember && (
@@ -401,16 +416,6 @@ export function HedisWorklistTable() {
       submitLabel="Save"
       onSubmit={(name) => { saveHedisFilter(name); setSaveDialogOpen(false); }}
       onCancel={() => setSaveDialogOpen(false)}
-    />
-    {/* Floating bulk-action bar: appears when one or more rows are
-        selected via the sticky-left checkbox column. Change Assignee is
-        the only wired verb for now; the rest of BulkBar's default cluster
-        (Run Automation / More menu) stays on its shared "coming soon"
-        toast until the HEDIS workflows for those actions exist. */}
-    <BulkBar
-      selectedIds={selectedIds}
-      onClear={() => setSelectedIds([])}
-      onChangeAssignee={() => setBulkAssigneeOpen(true)}
     />
     <BulkChangeHedisAssigneeDialog
       open={bulkAssigneeOpen}

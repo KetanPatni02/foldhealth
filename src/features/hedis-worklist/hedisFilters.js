@@ -126,7 +126,7 @@ export const GAP_STATUS_OPTIONS = [
   'Open', 'Engaged', 'Engaged Requires Follow-Up', 'Submitted',
   'Completed', 'Closed - Data', 'Closed - Do not call', 'Closed - UTR', 'Closed - Other',
 ];
-const gapStatusSection = (status) => gapComplianceLabel({ status });
+export const gapStatusSection = (status) => gapComplianceLabel({ status });
 
 export const FILTER_DEFS = [
   { k: 'memberStatus',        label: 'Member Status', type: 'multi',
