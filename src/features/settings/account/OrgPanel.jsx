@@ -30,6 +30,7 @@ export function OrgPanel() {
   const [showPatientAppIndicator, setShowPatientAppIndicator] = useState(false);
   const [carePlanMode, setCarePlanMode] = useState(DEFAULT_CARE_PLAN_MODE);
   const [askStatusChangeReason, setAskStatusChangeReason] = useState(false);
+  const [hccOutreachEnabled, setHccOutreachEnabled] = useState(false);
   const [primaryColor, setPrimaryColor] = useState('#8C5AE2');
   const [about, setAbout] = useState('');
   const [socials, setSocials] = useState({ twitter: '', instagram: '', facebook: '', linkedin: '', website: '' });
@@ -60,6 +61,7 @@ export function OrgPanel() {
           setShowPatientAppIndicator(!!data.show_patient_app_indicator);
           setCarePlanMode(normalizeCarePlanMode(data.care_plan_mode));
           setAskStatusChangeReason(!!data.ask_status_change_reason);
+          setHccOutreachEnabled(!!data.hcc_outreach_enabled);
           setPrimaryColor(data.primary_color || '#8C5AE2');
           setAbout(data.about || '');
           setLogo(data.logo_url || null);
@@ -149,6 +151,25 @@ export function OrgPanel() {
     }
     useAppStore.setState({ askStatusChangeReason: on });
     showToast(on ? 'Status changes will ask for a reason' : 'Status changes no longer ask for a reason');
+  };
+
+  // HCC Outreach workflow (Astrana): saved when toggled, like the settings above.
+  const toggleHccOutreach = async (on) => {
+    setHccOutreachEnabled(on);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setHccOutreachEnabled(!on); showToast('Not authenticated'); return; }
+    const { data, error } = await supabase
+      .from('org_settings')
+      .update({ hcc_outreach_enabled: on, updated_at: new Date().toISOString() })
+      .eq('user_id', session.user.id)
+      .select('id');
+    if (error || !data?.length) {
+      setHccOutreachEnabled(!on);
+      showToast(error ? 'Could not save the HCC Outreach setting' : 'Save the organization details first');
+      return;
+    }
+    useAppStore.setState({ hccOutreachEnabled: on });
+    showToast(on ? 'HCC Outreach is on' : 'HCC Outreach is off');
   };
 
   const saveOrgData = async () => {
@@ -333,6 +354,18 @@ export function OrgPanel() {
         />
         <p className={styles.fieldHint}>
           When enabled, changing a goal, intervention or barrier's status asks for a reason and an optional note. A reason is required for Met, Resolved, Discontinued and On Hold.
+        </p>
+      </div>
+
+      {/* HCC Outreach workflow (Astrana) */}
+      <div className={styles.formGroup}>
+        <Switch
+          checked={hccOutreachEnabled}
+          onChange={toggleHccOutreach}
+          label="HCC Outreach workflow"
+        />
+        <p className={styles.fieldHint}>
+          When enabled, the HCC chart shows an Outreach tab beside Comments to log outreach to the member or PCP for HCC gaps, with the member's full outreach history. Built for Astrana.
         </p>
       </div>
 

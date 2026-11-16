@@ -149,11 +149,6 @@ export function IcdDosCard({ icd, currentDos = null, focusKey, onFocusRow, selec
             <span className={styles.desc}>
               {icd.desc}
             </span>
-            {(icd.type === 'Suspect' || icd.type === 'Recapture') && (
-              <span className={styles.suspectBadge}>
-                {icd.type === 'Recapture' ? 'Recaptured' : 'Suspected'}
-              </span>
-            )}
           </div>
           {reviewedByLabel(icd.by) && (
             <div className={styles.lastLine}>
@@ -164,6 +159,14 @@ export function IcdDosCard({ icd, currentDos = null, focusKey, onFocusRow, selec
             <Tooltip label={hccDesc}>
               <Badge size="sm" label={hccLabel} />
             </Tooltip>
+            {(icd.type === 'Suspect' || icd.type === 'Recapture') && (
+              // Recaptured in primary, Suspected in info blue.
+              <Badge
+                tone={icd.type === 'Recapture' ? 'primary' : 'info'}
+                size="sm"
+                label={icd.type === 'Recapture' ? 'Recaptured' : 'Suspected'}
+              />
+            )}
 
             {acceptedDos && (
               <Badge

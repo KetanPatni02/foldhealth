@@ -23,6 +23,8 @@ import { getChartDocs, makeUploadedChartDoc } from '../data/chartDocs';
 import { VISIT_TYPES } from '../reference/visitTypes';
 import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
+import { hccOutreachGroups } from '../data/hccOutreachRows';
+import { CardSkeleton } from '../../../components/CardSkeleton/CardSkeleton';
 import { dosSourceLetter } from '../dosSource';
 import { dosKey } from '../assignment/dosState';
 import { staffById } from '../assignment/astranaStaff';
@@ -52,11 +54,14 @@ import styles from './LeftWorkspace.module.css';
 // Tab order: Documents → Claims → Timeline → Comments → Notes → History → Worklog.
 // ("Activity Log" is renamed to "Timeline" per product; the tab key stays
 // 'activity' to keep the store's active-tab persistence stable.)
-const buildTabs = ({ commentsCount, notesCount, claimsCount }) => ([
+// Outreach (Astrana's HCC Outreach workflow, org setting) sits beside Comments
+// at DOS level; it is member-wide, not tied to a DOS or an ICD.
+const buildTabs = ({ commentsCount, notesCount, claimsCount, outreachCount = null }) => ([
   { key: 'documents', label: 'Documents',     countFor: () => null }, // computed from charts
   { key: 'claims',    label: 'Claims',        countFor: () => claimsCount },
   { key: 'activity',  label: 'Timeline',      countFor: () => null },
   { key: 'comments',  label: 'Comments',      countFor: () => commentsCount },
+  ...(outreachCount != null ? [{ key: 'outreach', label: 'Outreach', countFor: () => outreachCount }] : []),
   { key: 'notes',     label: 'Notes',         countFor: () => notesCount },
   { key: 'history',   label: 'History',       countFor: () => null },
   { key: 'worklog',   label: 'Worklog',       countFor: () => null },
@@ -95,6 +100,16 @@ export function LeftWorkspace({
   // through the top-level DiagPanel.
   const fetchHccDiagAncillary = useAppStore(s => s.fetchHccDiagAncillary);
   useEffect(() => { fetchHccDiagAncillary(); }, [fetchHccDiagAncillary]);
+  const fetchOrgFeatures = useAppStore(s => s.fetchOrgFeatures);
+  const fetchHccOutreachLogs = useAppStore(s => s.fetchHccOutreachLogs);
+  const hccOutreachEnabled = useAppStore(s => s.hccOutreachEnabled);
+  const outreachLogs = useAppStore(s => s.hccOutreachLogs);
+  useEffect(() => { fetchOrgFeatures(); }, [fetchOrgFeatures]);
+  useEffect(() => { if (hccOutreachEnabled) fetchHccOutreachLogs(); }, [hccOutreachEnabled, fetchHccOutreachLogs]);
+  const outreachCount = useMemo(
+    () => (hccOutreachEnabled ? outreachForMember(outreachLogs, member).length : null),
+    [hccOutreachEnabled, outreachLogs, member],
+  );
   const dbComments = useAppStore(s => s.hccDiagComments);
   const dbNotes    = useAppStore(s => s.hccDiagNotes);
   // Tab-label count must match what the Comments tab renders for this patient.
@@ -125,12 +140,14 @@ export function LeftWorkspace({
     commentsCount: commentsForCount.length,
     notesCount: notesForCount.length,
     claimsCount: memberClaims.length,
+    outreachCount: icdScope ? null : outreachCount,
   }).filter(t => t.key !== 'history' || !!icdScope);
   // If the user was on History when the ICD scope cleared, snap to the
   // first visible tab so the workspace doesn't render an orphaned pane
   // with no active tab button.
   useEffect(() => {
     if (active === 'history' && !icdScope) onChange?.(tabs[0]?.key || 'documents');
+    if (active === 'outreach' && !tabs.some(t => t.key === 'outreach')) onChange?.('comments');
   }, [active, icdScope, onChange, tabs]);
   // openDocId lives in the store so other surfaces, the DiagPanel Documents
   // toolbar button and DOS-row clicks in IcdDosCard, can jump straight into
@@ -2177,32 +2194,93 @@ function ClaimDetail({ member, claim, onBack }) {
 //   • programs = unique HCC codes the patient has, both associated with the
 //     selected DOS (ICDS) AND not-associated-with-DOS (NOT_LINKED).
 //   • Called To Number is pre-populated with the patient's PCP.
+// The member's outreach logs: by member id when the row has one, else by name
+// (seeded rows are keyed by name).
+function outreachForMember(logs, member) {
+  if (!member) return [];
+  return (logs || []).filter(l => (l.memberId && member.id ? String(l.memberId) === String(member.id) : l.memberName === member.name));
+}
+
+const HCC_CALL_TYPES = ['Provider', 'Member'];
+
+// HCC Outreach (Astrana): the shared outreach widget with the HCC workflow,
+// logged at member level (no gap or DOS picker), and every outreach logged
+// for the member, Member and PCP, by month.
 function OutreachTab({ member }) {
-  const { programs, recipient } = useMemo(() => {
-    // Unique HCC codes across the member's ICDS (associated with DOS) and
-    // NOT_LINKED (not associated). Drop any "HCC Not Linked" placeholder.
-    const set = new Set();
-    [...getIcdsForMember(member?.name), ...getNotLinkedForMember(member?.name)]
-      .forEach(i => {
-        if (!i?.hcc || /not\s*linked/i.test(i.hcc)) return;
-        // ICDS stores "HCC 18 - Diabetes…"; show just the leading HCC code.
-        const m = i.hcc.match(/^HCC\s*\d+/);
-        if (m) set.add(m[0].replace(/\s+/g, ' '));
-      });
-    const programs = [...set].sort();
-    // Recipient defaults to the patient's PCP if available.
-    const pcp = member?.pcp ? `${member.pcp} (PCP)` : null;
-    return { programs, recipient: pcp };
-  }, [member?.name, member?.pcp]);
+  const logs = useAppStore(s => s.hccOutreachLogs);
+  const loading = useAppStore(s => s.hccOutreachLoading);
+  const didFetch = useAppStore(s => s.hccOutreachDidFetch);
+  const hccUserRole = useAppStore(s => s.hccUserRole);
+  const addHccOutreachLogs = useAppStore(s => s.addHccOutreachLogs);
+  const updateHccOutreachLog = useAppStore(s => s.updateHccOutreachLog);
+  const deleteHccOutreachLog = useAppStore(s => s.deleteHccOutreachLog);
+  // More > Log Outreach in the toolbar: open with the form showing.
+  const logRequested = useAppStore(s => s.hccOutreachLogRequested);
+  const logNonce = useAppStore(s => s.hccOutreachLogNonce);
+  const clearLogRequest = useAppStore(s => s.clearHccOutreachLogRequest);
+  const ready = didFetch && !loading;
+  useEffect(() => { if (logRequested && ready) clearLogRequest(); }, [logRequested, ready, clearLogRequest]);
+
+  const memberLogs = useMemo(() => outreachForMember(logs, member), [logs, member]);
+  // Read once when the tab mounts: the widget keeps its own feed after that,
+  // and every save also lands in the store.
+  const initialGroups = useMemo(() => hccOutreachGroups(memberLogs), [memberLogs]);
+
+  // A Member call is provider → member; a Provider call is provider → provider.
+  // Call Via is always a provider contact; Called To follows the Call Type.
+  const pcp = member?.pcp;
+  const renderingProvider = member?.rp;
+  const name = member?.name;
+  const providerContacts = useMemo(() => [...new Set([
+    pcp ? `${pcp} (PCP)` : null,
+    renderingProvider ? `${renderingProvider} (Rendering Provider)` : null,
+    'Practice Line (800 000-0000)',
+  ].filter(Boolean))], [pcp, renderingProvider]);
+  const calledToByCallType = useMemo(() => ({
+    Provider: providerContacts,
+    Member: name ? [`${name} (Member)`] : [],
+  }), [providerContacts, name]);
+
+  if (!ready) return <CardSkeleton />;
+
+  const toLog = (entry) => ({
+    id: String(entry.id),
+    memberId: member?.id ?? null,
+    memberName: member?.name,
+    logDate: entry.logDate,
+    logTime: entry.time,
+    type: entry.type,
+    title: entry.title,
+    author: entry.author,
+    hccs: entry.programs || [],
+    outcome: entry.outcome,
+    outcomes: entry.outcomes,
+    outcomeColor: entry.outcomeColor,
+    note: entry.note,
+    callDetails: entry.callDetails,
+    snoozeUntil: entry.snoozeUntil,
+  });
 
   return (
     <PatientOutreachTab
-      programs={programs}
-      programsLabel="Select HCC Gaps"
-      recipientOptions={recipient ? [recipient] : undefined}
-      defaultCalledTo={recipient || undefined}
+      key={`${member?.id || member?.name}-${logNonce}`}
+      defaultFormOpen={logRequested}
+      memberName={member?.name}
+      callViaOptions={providerContacts}
+      calledToByCallType={calledToByCallType}
       defaultLogFor="hcc-gaps"
       hideLogForRow
+      hideProgramPicker
+      callTypeOptions={HCC_CALL_TYPES}
+      initialLogGroups={initialGroups}
+      authorRole={hccUserRole || 'Coder'}
+      hccWorkflow
+      classicForm
+      onSaved={(entries, { isEdit, editedId }) => {
+        if (isEdit) updateHccOutreachLog(editedId, toLog({ ...entries[0], id: editedId }));
+        else addHccOutreachLogs(entries.map(toLog));
+      }}
+      onDeleted={(log) => deleteHccOutreachLog(log.id)}
     />
   );
 }

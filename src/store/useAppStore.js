@@ -289,6 +289,7 @@ import { rowToCrm, sampleCrmActivities } from '../features/patient/data/crmActiv
 import { rowToReferral, sampleReferralsFor } from '../features/patient/data/patientReferrals';
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
 import { createPharmacyWorklistSlice } from './slices/pharmacyWorklistSlice';
+import { createHccOutreachSlice } from './slices/hccOutreachSlice';
 import { createPatientOrdersSlice } from './slices/patientOrdersSlice';
 import { createPatientPortalSlice } from './slices/patientPortalSlice';
 import { createFeatureReviewsSlice } from './slices/featureReviewsSlice';
@@ -504,6 +505,7 @@ export const useAppStore = create((set, get) => ({
   ...createAutomationsSlice(set, get),
   ...createHccWorklistFiltersSlice(set, get),
   ...createPharmacyWorklistSlice(set, get),
+  ...createHccOutreachSlice(set, get),
   ...createPatientOrdersSlice(set, get),
   ...createPatientPortalSlice(set, get),
   ...createFeatureReviewsSlice(set, get),
@@ -7341,6 +7343,9 @@ export const useAppStore = create((set, get) => ({
   // "Always display incoming number in SMS threads"; practices with more
   // than one SMS line show it regardless (sms_practice_line_migration.sql).
   alwaysShowSmsLine: true,
+  // HCC Outreach workflow (Astrana): the HCC chart's Outreach tab
+  // (org_settings_hcc_outreach_migration.sql).
+  hccOutreachEnabled: false,
   orgFeaturesDidFetch: false,
   fetchOrgFeatures: async () => {
     if (useAppStore.getState().orgFeaturesDidFetch) return;
@@ -7353,14 +7358,14 @@ export const useAppStore = create((set, get) => ({
       }
       // Schema-tolerant: a column whose migration hasn't run is dropped from
       // the select and its setting stays on the default.
-      let columns = ['show_patient_app_indicator', 'care_plan_mode', 'ask_status_change_reason', 'always_show_sms_line'];
+      let columns = ['show_patient_app_indicator', 'care_plan_mode', 'ask_status_change_reason', 'always_show_sms_line', 'hcc_outreach_enabled'];
       const read = () => supabase
         .from('org_settings')
         .select(columns.join(', '))
         .eq('user_id', session.user.id)
         .maybeSingle();
       let { data, error } = await read();
-      for (let i = 0; i < 3 && error; i += 1) {
+      for (let i = 0; i < columns.length && error; i += 1) {
         const missing = columns.find(c => c !== 'show_patient_app_indicator' && (error.message || '').includes(c));
         if (!missing) break;
         columns = columns.filter(c => c !== missing);
@@ -7376,6 +7381,7 @@ export const useAppStore = create((set, get) => ({
         carePlanMode: normalizeCarePlanMode(data?.care_plan_mode),
         askStatusChangeReason: !!data?.ask_status_change_reason,
         alwaysShowSmsLine: data?.always_show_sms_line !== false,
+        hccOutreachEnabled: !!data?.hcc_outreach_enabled,
       });
     } catch (err) {
       console.warn('fetchOrgFeatures failed:', err?.message || err);
@@ -14635,6 +14641,7 @@ export const useAppStore = create((set, get) => ({
   // open for the in-drawer Upload button (Figma 278:162482).
   hccDocsUploaderOpen: false,
   toggleHccDocsUploader: () => set(s => ({ hccDocsUploaderOpen: !s.hccDocsUploaderOpen })),
+  openHccDocsUploader: () => set({ hccDocsUploaderOpen: true }),
   closeHccDocsUploader: () => set({ hccDocsUploaderOpen: false }),
 
   // Live-uploaded documents: appended to the static DOCUMENTS list in the

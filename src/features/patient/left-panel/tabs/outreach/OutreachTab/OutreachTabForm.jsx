@@ -1,4 +1,9 @@
+import { useRef, useState } from 'react';
 import { Icon } from '../../../../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
+import { Textarea } from '../../../../../../components/Textarea/Textarea';
+import { CollapsibleContent } from '../../../../../../components/Collapsible/Collapsible';
+import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { CloseButton } from '../../../../../../components/CloseButton/CloseButton';
 import { AddTaskIcon } from '../../../../../../components/Icon/AddTaskIcon';
 import { Button } from '../../../../../../components/Button/Button';
@@ -10,6 +15,7 @@ import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
 import { FieldDropdown, TypeDropdown } from './OutreachTabDropdowns';
 import { DateTimePicker } from '../../../../../../components/DateTimePicker/DateTimePicker';
 import { NotePanel } from './OutreachTabNotePanel';
+import { AddContactDialog } from './AddContactDialog';
 import { DEFAULT_CALL_TYPES, LOG_FOR_OPTIONS } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
 
@@ -29,6 +35,7 @@ export function OutreachTabForm({
   callDurationMin, setCallDurationMin,
   callDurationSec, setCallDurationSec,
   CALLED_TO_OPTIONS,
+  CALL_VIA_OPTIONS = ['Delores Conn (581 824-1591)', 'Practice Line (800 000-0000)'],
   programsLabel,
   PROGRAM_OPTIONS,
   selectedProgs,
@@ -55,7 +62,25 @@ export function OutreachTabForm({
   hideFooter = false,
   outcomeItems = null,
   callTypeOptions = DEFAULT_CALL_TYPES,
+  // HCC Outreach workflow (Astrana): type stays editable in HCC Gaps mode,
+  // the call gets a transcript, and the Actions row is Add Contact /
+  // Schedule Follow-up / Snooze.
+  hccWorkflow = false,
+  hideProgramPicker = false,
+  transcript = '', setTranscript,
+  snoozeUntil = null, setSnoozeUntil,
+  addContact,
 }) {
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const [snoozeOpen, setSnoozeOpen] = useState(false);
+  const snoozeRef = useRef(null);
+  // Duration arrows step the whole time, so 00:59 + 1 sec is 01:00 (0 to 99:59).
+  const stepDuration = (deltaSec) => {
+    const total = Math.min(99 * 60 + 59, Math.max(0, (Number(callDurationMin) || 0) * 60 + (Number(callDurationSec) || 0) + deltaSec));
+    setCallDurationMin(String(Math.floor(total / 60)).padStart(2, '0'));
+    setCallDurationSec(String(total % 60).padStart(2, '0'));
+  };
   const choiceItemsFor = (progs) => (outcomeItems ? outcomeItems(outcome, progs) : null);
   return (
     <div className={styles.formCard}>
@@ -74,7 +99,7 @@ export function OutreachTabForm({
       )}
 
       <div className={styles.formHeader}>
-        <TypeDropdown value={type} onChange={setType} disabled={isHccGaps} />
+        <TypeDropdown value={type} onChange={setType} disabled={isHccGaps && !hccWorkflow} />
         <DateTimePicker value={datetime} onChange={setDatetime} />
       </div>
 
@@ -121,10 +146,27 @@ export function OutreachTabForm({
             <div className={styles.callDetailsHeader}>
               <span className={styles.callDetailsLabel}>Call Details:</span>
             </div>
-            <div className={styles.callDirectionRow}>
-              <RadioButton checked={callDirection === 'outgoing'} onChange={() => setCallDirection('outgoing')} label="Outgoing" />
-              <RadioButton checked={callDirection === 'incoming'} onChange={() => setCallDirection('incoming')} label="Incoming" />
-            </div>
+            {hccWorkflow ? (
+              // HCC: direction (Call Type) and who the call was with share a row.
+              <div className={styles.callFieldsGrid}>
+                <div className={styles.callFieldWrap}>
+                  <span className={styles.callFieldLabel}>Call Type</span>
+                  <div className={`${styles.callDirectionRow} ${styles.callDirectionRowField}`}>
+                    <RadioButton checked={callDirection === 'outgoing'} onChange={() => setCallDirection('outgoing')} label="Outgoing" />
+                    <RadioButton checked={callDirection === 'incoming'} onChange={() => setCallDirection('incoming')} label="Incoming" />
+                  </div>
+                </div>
+                <div className={styles.callFieldWrap}>
+                  <span className={styles.callFieldLabel}>Call With</span>
+                  <FieldDropdown value={callType} onChange={setCallType} placeholder="Select" options={callTypeOptions} />
+                </div>
+              </div>
+            ) : (
+              <div className={styles.callDirectionRow}>
+                <RadioButton checked={callDirection === 'outgoing'} onChange={() => setCallDirection('outgoing')} label="Outgoing" />
+                <RadioButton checked={callDirection === 'incoming'} onChange={() => setCallDirection('incoming')} label="Incoming" />
+              </div>
+            )}
 
             <div className={styles.callFieldsGrid}>
               <div className={styles.callFieldWrap}>
@@ -133,32 +175,57 @@ export function OutreachTabForm({
                   value={callViaNumber}
                   onChange={setCallViaNumber}
                   placeholder="Select number"
-                  options={['Delores Conn (581 824-1591)', 'Practice Line (800 000-0000)']}
+                  options={CALL_VIA_OPTIONS}
                 />
               </div>
               <div className={styles.callFieldWrap}>
                 <span className={styles.callFieldLabel}>Called To Number</span>
                 <FieldDropdown value={calledToNumber} onChange={setCalledToNumber} placeholder="Select number" options={CALLED_TO_OPTIONS} />
               </div>
-              <div className={styles.callFieldWrap}>
-                <span className={styles.callFieldLabel}>Call Type</span>
-                <FieldDropdown value={callType} onChange={setCallType} placeholder="Select type" options={callTypeOptions} />
-              </div>
+              {!hccWorkflow && (
+                <div className={styles.callFieldWrap}>
+                  <span className={styles.callFieldLabel}>Call Type</span>
+                  <FieldDropdown value={callType} onChange={setCallType} placeholder="Select type" options={callTypeOptions} />
+                </div>
+              )}
               <div className={styles.callFieldWrap}>
                 <span className={styles.callFieldLabel}>Duration</span>
-                <div className={styles.callDurationRow}>
-                  <Input type="number" className={styles.callDurationInput} value={callDurationMin} min={0} max={99}
-                    onChange={e => setCallDurationMin(e.target.value.padStart(2, '0').slice(-2))} />
+                <div className={`${styles.callDurationRow} ${hccWorkflow ? styles.callDurationRowStepper : ''}`}>
+                  <Input type="number" className={hccWorkflow ? styles.callDurationStepper : styles.callDurationInput} value={callDurationMin} min={0} max={99}
+                    onChange={e => setCallDurationMin(e.target.value.padStart(2, '0').slice(-2))}
+                    {...(hccWorkflow ? { onStepUp: () => stepDuration(60), onStepDown: () => stepDuration(-60) } : {})} />
                   <span className={styles.callDurationUnit}>Min</span>
-                  <Input type="number" className={styles.callDurationInput} value={callDurationSec} min={0} max={59}
-                    onChange={e => setCallDurationSec(e.target.value.padStart(2, '0').slice(-2))} />
+                  <Input type="number" className={hccWorkflow ? styles.callDurationStepper : styles.callDurationInput} value={callDurationSec} min={0} max={59}
+                    onChange={e => setCallDurationSec(e.target.value.padStart(2, '0').slice(-2))}
+                    {...(hccWorkflow ? { onStepUp: () => stepDuration(1), onStepDown: () => stepDuration(-1) } : {})} />
                   <span className={styles.callDurationUnit}>Sec</span>
                 </div>
               </div>
             </div>
+
+            {hccWorkflow && (
+              <div className={styles.transcriptSection}>
+                <button type="button" className={styles.transcriptToggle} onClick={() => setTranscriptOpen(v => !v)} aria-expanded={transcriptOpen}>
+                  <Icon name="solar:document-text-linear" size={14} color="var(--neutral-300)" />
+                  <span>Call Transcript</span>
+                  {transcript.trim() && <span className={styles.transcriptAttached}>Attached</span>}
+                  <DownChevronIcon size={12} color="var(--neutral-300)" style={transcriptOpen ? { transform: 'rotate(180deg)' } : undefined} />
+                </button>
+                <CollapsibleContent open={transcriptOpen}>
+                  <Textarea
+                    aria-label="Call transcript"
+                    className={styles.noteTextarea}
+                    placeholder="Paste the call transcript"
+                    value={transcript}
+                    onChange={e => setTranscript?.(e.target.value)}
+                  />
+                </CollapsibleContent>
+              </div>
+            )}
           </div>
         )}
 
+        {!hideProgramPicker && (
         <div className={styles.section}>
           <div className={styles.sectionLabelRow}>
             <span className={styles.sectionLabel}>{programsLabel}</span>
@@ -186,6 +253,7 @@ export function OutreachTabForm({
             })}
           </div>
         </div>
+        )}
 
         <div className={styles.section}>
           <span className={styles.sectionLabel}>Outreach Outcome</span>
@@ -231,6 +299,7 @@ export function OutreachTabForm({
                     onSetOutcomes={list => setOutcomes(prog, list)}
                     onNoteChange={text => handleNoteChange(prog, text)}
                     onToggleSyncText={() => toggleSyncText(prog)}
+                    cannedEntry={hccWorkflow}
                   />
                 );
               })
@@ -252,20 +321,62 @@ export function OutreachTabForm({
                 onSetOutcomes={list => setOutcomes(null, list)}
                 onNoteChange={text => handleNoteChange(null, text)}
                 onToggleSyncText={() => {}}
+                cannedEntry={hccWorkflow}
               />
             )}
           </div>
         )}
 
-        <div className={styles.actionsRow}>
-          <span className={styles.actionsLabel}>Actions:</span>
-          <span className={styles.actionsDivider} />
-          <ActionButton size="sm" tooltip="Add Task" onClick={onAddTask}>
-            <AddTaskIcon size={16} color="var(--neutral-300)" />
-          </ActionButton>
-          <ActionButton size="sm" icon="solar:calendar-add-linear" tooltip="Schedule Appointment" onClick={onSchedule} />
-          <ActionButton size="sm" icon="solar:alarm-linear" tooltip="Set Reminder" />
-        </div>
+        {hccWorkflow ? (
+          <div className={styles.actionsRow}>
+            <span className={styles.actionsLabel}>Actions:</span>
+            <span className={styles.actionsDivider} />
+            <ActionButton size="sm" icon="solar:user-plus-linear" tooltip="Add Contact" onClick={() => setContactOpen(true)} />
+            <ActionButton size="sm" icon="solar:calendar-add-linear" tooltip="Schedule Follow-up" onClick={onSchedule} />
+            <span ref={snoozeRef}>
+              <ActionButton
+                size="sm"
+                icon="solar:alarm-sleep-linear"
+                tooltip="Snooze"
+                iconColor={snoozeUntil ? 'var(--primary-300)' : undefined}
+                onClick={() => setSnoozeOpen(true)}
+              />
+            </span>
+            {snoozeUntil && (
+              <button type="button" className={styles.snoozeChip} onClick={() => setSnoozeUntil?.(null)} title="Remove snooze">
+                Snoozed until {snoozeUntil}
+                <Icon name="solar:close-circle-linear" size={12} color="currentColor" />
+              </button>
+            )}
+            {snoozeOpen && (
+              <MenuPopover
+                anchorRef={snoozeRef}
+                items={SNOOZE_OPTIONS.map(o => ({ key: String(o.days), label: o.label }))}
+                onSelect={(key) => { setSnoozeUntil?.(snoozeDate(Number(key))); setSnoozeOpen(false); }}
+                onClose={() => setSnoozeOpen(false)}
+                width={180}
+                ariaLabel="Snooze outreach"
+              />
+            )}
+            {contactOpen && (
+              <AddContactDialog
+                open
+                onCancel={() => setContactOpen(false)}
+                onSubmit={(name, phone) => { addContact?.(name, phone); setContactOpen(false); }}
+              />
+            )}
+          </div>
+        ) : (
+          <div className={styles.actionsRow}>
+            <span className={styles.actionsLabel}>Actions:</span>
+            <span className={styles.actionsDivider} />
+            <ActionButton size="sm" tooltip="Add Task" onClick={onAddTask}>
+              <AddTaskIcon size={16} color="var(--neutral-300)" />
+            </ActionButton>
+            <ActionButton size="sm" icon="solar:calendar-add-linear" tooltip="Schedule Appointment" onClick={onSchedule} />
+            <ActionButton size="sm" icon="solar:alarm-linear" tooltip="Set Reminder" />
+          </div>
+        )}
 
         {!hideFooter && (
           <div className={styles.formFooter}>
@@ -276,4 +387,18 @@ export function OutreachTabForm({
       </div>
     </div>
   );
+}
+
+const SNOOZE_OPTIONS = [
+  { days: 1, label: '1 Day' },
+  { days: 3, label: '3 Days' },
+  { days: 7, label: '1 Week' },
+  { days: 14, label: '2 Weeks' },
+];
+
+// MM/DD/YYYY, `days` from today.
+function snoozeDate(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
 }
