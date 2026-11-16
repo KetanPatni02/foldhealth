@@ -4,7 +4,8 @@ import { DiagnosisIcon } from '../../../../../../components/Icon/DiagnosisIcon';
 import { ProfileTable } from '../../../../../../components/ProfileTable/ProfileTable';
 import { profileRowClass, profileCellClass } from '../../../../../../components/ProfileTable/profileTableClasses';
 import { getOpenIcdsForMember } from '../../../../../hcc/data/icds';
-import { GAP_TABLE_COLUMNS } from '../gapTableColumns';
+import { GAP_TABLE_COLUMNS, gapRowStatusTone } from '../gapTableColumns';
+import { Badge } from '../../../../../../components/Badge/Badge';
 import styles from './DiagnosisGapsTable.module.css';
 
 function groupByHcc(icds) {
@@ -40,7 +41,7 @@ function DiagnosisGapRow({ item }) {
         </div>
       </td>
       <td className={profileCellClass}>
-        <span className={styles.status}>{item.status}</span>
+        <Badge tone={gapRowStatusTone(item.status)} label={item.status} />
       </td>
       <td className={profileCellClass}>
         <div className={styles.moreBtn}>

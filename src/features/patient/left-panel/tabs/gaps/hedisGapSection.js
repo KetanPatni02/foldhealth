@@ -1,6 +1,7 @@
 import { STATUS_BADGE_VARIANT } from '../../../../hedis-worklist/HedisWorklistRow';
 import { MEASURE_NAMES } from '../../../../hedis-worklist/ClinicalNotePanel.utils';
 import { gapInstanceNo } from '../../../../hedis-worklist/gapInstances';
+import { gapStatusLabel } from '../../../../hedis-worklist/hedisFilters';
 import { evidenceSummary, gapEvidence } from '../../../../hedis-worklist/gapEvidence';
 
 // A HEDIS patient's real gaps as a CareGapSection: one row per gap, the
@@ -22,6 +23,7 @@ export function hedisGapSection(member, evidenceSources) {
       code: g.code,
       title: `${g.code} - ${MEASURE_NAMES[g.code] || g.code}`,
       status: g.status,
+      statusLabel: gapStatusLabel(g.status),
       statusVariant: STATUS_BADGE_VARIANT[g.status] || 'neutral',
       // Measurement year: stamped on gaps added in Fold, else the start year.
       year: g.measureYear ? String(g.measureYear) : (String(g.startDate || '').match(/\d{4}$/)?.[0] || ''),

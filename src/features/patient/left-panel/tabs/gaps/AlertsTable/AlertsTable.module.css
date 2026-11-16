@@ -6,7 +6,6 @@
 .metaDot { font-size: var(--font-base); color: var(--neutral-300); }
 .metaText { font-size: var(--font-base); color: var(--neutral-300); white-space: nowrap; }
 
-.status { font-size: var(--font-base); color: var(--neutral-300); line-height: 1.2; }
 
 .moreBtn { display: flex; align-items: center; opacity: 0; transition: opacity 0.1s; }
 .row:hover .moreBtn { opacity: 1; }

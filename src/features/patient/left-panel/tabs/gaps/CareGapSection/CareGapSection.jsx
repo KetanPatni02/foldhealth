@@ -17,7 +17,7 @@ export function CareGapSection({ section, selectedGaps, onToggleGap, onOpenGap }
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.sectionLabel}>{section.title}</div>
+      {section.title && <div className={styles.sectionLabel}>{section.title}</div>}
       <ProfileTable
         columns={GAP_TABLE_COLUMNS}
         rows={section.items}
