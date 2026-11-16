@@ -11,7 +11,7 @@
    and 8px above the 48px pagination bar. */
 .bulkBar { position: absolute; bottom: calc(48px + var(--space-2)); }
 /* Room under the last row for the bar (54px tall) plus its gap. */
-.scrollWrapWithBar { padding-bottom: calc(54px + var(--space-4)); }
+.scrollWrapWithBar { padding-bottom: calc(var(--space-16) + var(--space-2)); }
 
 .scrollWrap {
   flex: 1;
