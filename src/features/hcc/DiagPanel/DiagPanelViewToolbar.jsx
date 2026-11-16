@@ -1,3 +1,4 @@
+import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
@@ -18,6 +19,12 @@ export function DiagPanelViewToolbar(p) {
     moreOpen, setMoreOpen, moreWrapRef, filters, setFilters,
     icdsRaw, notLinkedRaw, member, diagActivityIcd,
   } = p;
+  // More Action (Figma OIQR1ru428nPupFBrG7HaR 4315:197261): Upload Document,
+  // Log Outreach (HCC Outreach orgs), Tutorial, Provider Report; at narrow
+  // widths it also takes the toolbar icons that no longer fit.
+  const hccOutreachEnabled = useAppStore(s => s.hccOutreachEnabled);
+  const requestHccOutreachLog = useAppStore(s => s.requestHccOutreachLog);
+  const openHccDocsUploader = useAppStore(s => s.openHccDocsUploader);
   return (
     <>
       {/* ── Toolbar: bulk | inline search | + ICD, filter, docs, comments,
@@ -152,8 +159,8 @@ export function DiagPanelViewToolbar(p) {
                   setDiagLeftPanel(closing ? null : 'activity');
                 }}
               />
-              <span className={[styles.divider, styles.showToolbarMore].join(' ')} />
-              <span className={[styles.toolbarMoreWrap, styles.showToolbarMore].join(' ')} ref={moreWrapRef}>
+              <span className={styles.divider} />
+              <span className={styles.toolbarMoreWrap} ref={moreWrapRef}>
                 <ActionButton
                   icon="solar:menu-dots-linear"
                   size="sm"
@@ -162,7 +169,23 @@ export function DiagPanelViewToolbar(p) {
                   className={moreOpen ? styles.activeIcon : ''}
                 />
                 {moreOpen && (
-                  <div className={styles.toolbarMoreDropdown} role="menu">
+                  <div className={styles.toolbarMoreDropdown} role="menu" aria-label="More Action">
+                    <div className={styles.toolbarMoreTitle}>More Action</div>
+                    <button
+                      type="button"
+                      className={styles.toolbarMoreItem}
+                      role="menuitem"
+                      onClick={() => {
+                        // The Documents tab's inline uploader, in the left workspace.
+                        setMoreOpen(false);
+                        setFocusIdx(-1);
+                        setDiagLeftPanel('documents');
+                        openHccDocsUploader();
+                      }}
+                    >
+                      <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--neutral-400)" />
+                      <span>Upload Document</span>
+                    </button>
                     <button
                       type="button"
                       className={[styles.toolbarMoreItem, styles.showBelow460].join(' ')}
@@ -194,6 +217,47 @@ export function DiagPanelViewToolbar(p) {
                     >
                       <Icon name="solar:history-linear" size={16} color="var(--neutral-400)" />
                       <span>Timeline</span>
+                    </button>
+                    {hccOutreachEnabled && (
+                      <button
+                        type="button"
+                        className={styles.toolbarMoreItem}
+                        role="menuitem"
+                        onClick={() => {
+                          setMoreOpen(false);
+                          // Outreach is member-level: leave any ICD scope first.
+                          setFocusIdx(-1);
+                          requestHccOutreachLog();
+                          setDiagLeftPanel('outreach');
+                        }}
+                      >
+                        <Icon name="solar:call-chat-linear" size={16} color="var(--neutral-400)" />
+                        <span>Log Outreach</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={[styles.toolbarMoreItem, diagLeftPanel === 'tutorial' ? styles.toolbarMoreItemActive : ''].filter(Boolean).join(' ')}
+                      role="menuitem"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        setFocusIdx(-1);
+                        setDiagLeftPanel(diagLeftPanel === 'tutorial' ? null : 'tutorial');
+                      }}
+                    >
+                      <Icon name="solar:book-2-linear" size={16} color="var(--neutral-400)" />
+                      <span>Tutorial</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.toolbarMoreItem}
+                      role="menuitem"
+                      aria-disabled="true"
+                      disabled
+                      title="Coming soon"
+                    >
+                      <Icon name="solar:download-minimalistic-linear" size={16} color="var(--neutral-200)" />
+                      <span>Provider Report</span>
                     </button>
                   </div>
                 )}

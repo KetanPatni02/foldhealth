@@ -107,3 +107,19 @@ export function parseDatetime(dt) {
   };
 }
 
+const ORDINAL = (n) => {
+  const v = n % 100;
+  const suffix = v >= 11 && v <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th');
+  return `${n}${suffix}`;
+};
+
+/**
+ * Log id → "4th Outreach", counted oldest first across every logged
+ * outreach (groups are newest month first, newest log first within a month).
+ */
+export function sequenceMap(groups) {
+  const logs = (groups || []).flatMap(g => g.logs);
+  const out = {};
+  logs.forEach((log, i) => { out[log.id] = `${ORDINAL(logs.length - i)} Outreach`; });
+  return out;
+}

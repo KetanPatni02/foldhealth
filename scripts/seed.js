@@ -18,6 +18,8 @@ import { FALLBACK_ICDS } from '../src/lib/icd/catalog.js';
 import { POS_CODES } from '../src/features/hcc/data/posCodes.js';
 import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../src/features/hcc/data/icds.js';
 import { HCC_MEMBER_BY_NAME, HCC_MEMBERS } from '../src/features/hcc/data/mock.js';
+import { HCC_OUTREACH_MOCK } from '../src/features/hcc/data/hccOutreachMock.js';
+import { hccOutreachToRow } from '../src/features/hcc/data/hccOutreachRows.js';
 import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
 import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmActivity.js';
 import { sampleReferralsFor, referralToRow } from '../src/features/patient/data/patientReferrals.js';
@@ -1753,6 +1755,13 @@ async function main() {
     }
     console.log(`  ✓ ${name}: ${rows.length} gaps`);
   }
+
+  // HCC Outreach history (Astrana), keyed by member name.
+  console.log('\nSeeding hcc_outreach_logs...');
+  const { error: hoErr } = await supabase
+    .from('hcc_outreach_logs')
+    .upsert(HCC_OUTREACH_MOCK.map(hccOutreachToRow), { onConflict: 'id' });
+  if (hoErr) { console.error('  ✗', hoErr.message, '(run supabase/hcc_outreach_logs_migration.sql first)'); } else { console.log(`  ✓ ${HCC_OUTREACH_MOCK.length} outreach logs`); }
 
   // Ensure EVERY worklist member has diagnosis gaps, curated where available,
   // deterministically generated (getIcdsForMember/getNotLinkedForMember) for the

@@ -10,7 +10,7 @@ const SMS_ICON = 'solar:chat-round-line-linear';
  * timeline reads like every other activity log: month headers, the icon
  * rail, meta line, headline with program badges, outcome and View Note.
  */
-export function outreachActivityEntries(groups, { onEdit, onDelete } = {}) {
+export function outreachActivityEntries(groups, { onEdit, onDelete, sequenceOf = null } = {}) {
   return (groups || []).flatMap(group => [
     { t: 'group', label: group.label },
     ...group.logs.map(log => {
@@ -24,12 +24,20 @@ export function outreachActivityEntries(groups, { onEdit, onDelete } = {}) {
         time: log.time,
         by,
         role,
-        context: log.outreachSource
-          ? <span className={styles.logMetaSource} title={`Source: ${log.outreachSource}`}>via {log.outreachSource}</span>
-          : null,
+        context: (sequenceOf?.[log.id] || log.outreachSource) ? (
+          <>
+            {sequenceOf?.[log.id]}
+            {sequenceOf?.[log.id] && log.outreachSource && ' • '}
+            {log.outreachSource && <span className={styles.logMetaSource} title={`Source: ${log.outreachSource}`}>via {log.outreachSource}</span>}
+          </>
+        ) : null,
         title: log.title,
+        // An HCC gap pill logs its full name ("HCC 37 - Diabetes…"); the badge reads "HCC 37".
         badges: programs.length
-          ? programs
+          ? programs.map(p => {
+            const hcc = /^(HCC\s*\d+)\s*-/.exec(p);
+            return hcc ? { label: hcc[1], title: p } : p;
+          })
           : [{ label: 'Member Outreach', tone: 'grey', title: 'Member outreach: not tied to a care program' }],
         outcome: log.outcome,
         outcomeColor: log.outcomeColor,

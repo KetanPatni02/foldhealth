@@ -15,6 +15,7 @@ export function OutreachTab(props) {
     hideLogForRow = false,
     hideActivity = false,
     classicForm = false,
+    hideProgramPicker = false,
     ...hookProps
   } = props;
 
@@ -27,6 +28,7 @@ export function OutreachTab(props) {
       hideLogForRow={hideLogForRow}
       hideActivity={hideActivity}
       classicForm={classicForm}
+      hideProgramPicker={hideProgramPicker}
       taskMember={hookProps.memberName}
     />
   );
@@ -48,6 +50,8 @@ export function OutreachTab(props) {
  *                     clicked (host opens its own outreach workspace)
  *   classicForm     : the pre-chat outreach form instead of the composer
  *                     (the patient profile's Outreach tab)
+ *   hideProgramPicker : no Programs/Gaps pills; every log is a Member
+ *                     Outreach (the HCC chart's member-level Outreach tab)
  */
 export function OutreachTabView({
   tab,
@@ -63,6 +67,7 @@ export function OutreachTabView({
   onAppointmentScheduled,
   onLogNew,
   classicForm = false,
+  hideProgramPicker = false,
 }) {
   // A host with its own outcome list (the Pharmacy program's Intervention
   // Schema) keeps the form with the Select Outcome menu: its outcomes drive
@@ -114,6 +119,7 @@ export function OutreachTabView({
           callDurationSec={tab.callDurationSec}
           setCallDurationSec={tab.setCallDurationSec}
           CALLED_TO_OPTIONS={tab.CALLED_TO_OPTIONS}
+          CALL_VIA_OPTIONS={tab.CALL_VIA_OPTIONS}
           programsLabel={tab.isHccGaps ? 'Select HCC Gaps' : programsLabel}
           PROGRAM_OPTIONS={tab.isHccGaps ? tab.HCC_GAP_OPTIONS : tab.PROGRAM_OPTIONS}
           selectedProgs={tab.selectedProgs}
@@ -142,6 +148,13 @@ export function OutreachTabView({
           hideFooter={hideFormFooter}
           outcomeItems={tab.outcomeItems}
           callTypeOptions={tab.callTypeOptions}
+          hccWorkflow={tab.hccWorkflow}
+          hideProgramPicker={hideProgramPicker}
+          transcript={tab.transcript}
+          setTranscript={tab.setTranscript}
+          snoozeUntil={tab.snoozeUntil}
+          setSnoozeUntil={tab.setSnoozeUntil}
+          addContact={tab.addContact}
         />
       )}
 
@@ -161,6 +174,7 @@ export function OutreachTabView({
           filteredLogGroups={tab.filteredLogGroups}
           onEdit={tab.handleEdit}
           onDelete={tab.handleDelete}
+          showSequence={tab.hccWorkflow}
         />
       )}
 

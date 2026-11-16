@@ -37,6 +37,7 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **HCC Outreach workflow (Astrana).** With the new Organization setting "HCC Outreach workflow" on, the HCC chart's workspace has an Outreach tab beside Comments, at DOS level and member-wide (not tied to a DOS). It is the shared outreach widget with the HCC workflow, logged at member level (no gap or DOS picker): outreach type and date, call details (direction, call via, called to, call type, duration) with an expandable Call Transcript, a note with Select Outcome and a "/" canned-message entry point (messages come later), and Add Contact / Schedule Follow-up / Snooze. Below it, every outreach logged for the member, Member and PCP, grouped by collapsible month with date and time, who logged it and their role, the sequence ("4th Outreach"), the HCC codes and the outcome. Logs save to `hcc_outreach_logs`; needs `supabase/hcc_outreach_logs_migration.sql` and `supabase/org_settings_hcc_outreach_migration.sql`, then `bun run seed`. Until then the tab reads the local mock and new logs last for the session.
 - **Which Fold number a patient texted.** SMS threads show the practice
   line (an SMS inbox) the patient used: in the thread header, with its own
   icon and label beside the patient's number, and under every text as

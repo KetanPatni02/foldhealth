@@ -4,6 +4,7 @@ import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { LeftWorkspace } from './LeftWorkspace';
+import { HccTutorialPane } from './HccTutorialPane';
 import { RejectRecordDialog } from './DiagPanelRejectDialog';
 import { RecordsRequestDialog } from './RecordsRequestDialog';
 import { DiagPanelViewHeader } from './DiagPanelViewHeader';
@@ -95,13 +96,17 @@ export function DiagPanelView(props) {
       <div className={styles.contentRow} ref={contentRowRef}>
         {diagLeftPanel && (
           <>
-            <LeftWorkspace
-              active={diagLeftPanel}
-              icdScope={activeIcdCode ?? diagActivityIcd ?? null}
-              onChange={setDiagTab}
-              onClose={() => { setFocusIdx(-1); setDiagLeftPanel(null); }}
-              member={member}
-            />
+            {diagLeftPanel === 'tutorial' ? (
+              <HccTutorialPane onClose={() => setDiagLeftPanel(null)} />
+            ) : (
+              <LeftWorkspace
+                active={diagLeftPanel}
+                icdScope={activeIcdCode ?? diagActivityIcd ?? null}
+                onChange={setDiagTab}
+                onClose={() => { setFocusIdx(-1); setDiagLeftPanel(null); }}
+                member={member}
+              />
+            )}
             <div
               className={styles.resizeHandle}
               onPointerDown={startResize}

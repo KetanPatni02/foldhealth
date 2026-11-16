@@ -5,7 +5,7 @@ import { FilterChip } from '../../../../../../components/FilterChip/FilterChip';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { ActivityLog } from '../../../../../../components/ActivityLog/ActivityLog';
 import { outreachActivityEntries } from './OutreachTabLog';
-import { ACTIVITY_FILTERS } from './OutreachTab.utils';
+import { ACTIVITY_FILTERS, sequenceMap } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
 
 const DATE_RANGES = [
@@ -44,6 +44,7 @@ export function OutreachTabActivity({
   filteredLogGroups,
   onEdit,
   onDelete,
+  showSequence = false,
 }) {
   // Filter chips: the toolbar filter icon toggles the chip row. They narrow
   // the list on top of the status tabs and search above.
@@ -147,7 +148,7 @@ export function OutreachTabActivity({
       )}
 
       <ActivityLog
-        entries={outreachActivityEntries(visibleGroups, { onEdit, onDelete })}
+        entries={outreachActivityEntries(visibleGroups, { onEdit, onDelete, sequenceOf: showSequence ? sequenceMap(logGroups) : null })}
         emptyLabel="No outreach logged yet."
         flushTop
       />

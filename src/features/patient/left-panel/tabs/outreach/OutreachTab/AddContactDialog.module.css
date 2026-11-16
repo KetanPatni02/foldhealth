@@ -1,0 +1,26 @@
+.content {
+  width: 360px;
+  max-width: 90vw;
+  padding: var(--space-4);
+}
+
+.title {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-500);
+  margin-bottom: var(--space-3);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

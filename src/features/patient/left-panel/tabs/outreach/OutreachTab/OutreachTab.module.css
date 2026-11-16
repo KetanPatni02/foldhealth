@@ -304,6 +304,10 @@
   align-items: center;
   gap: 16px;
 }
+/* As a grid field: as tall as the dropdown beside it. */
+.callDirectionRowField {
+  min-height: 32px;
+}
 
 /* 2-column field grid */
 .callFieldsGrid {
@@ -344,6 +348,20 @@
 
 .callDurationInput::-webkit-inner-spin-button,
 .callDurationInput::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Duration with up/down arrows (HCC Outreach): this is the inner <input>;
+   the Input shell around it sizes to the two digits plus the stepper. */
+.callDurationStepper {
+  width: 24px !important;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.callDurationRowStepper > div {
+  flex: none;
+  width: 64px;
+}
+.callDurationStepper::-webkit-inner-spin-button,
+.callDurationStepper::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
 .callDurationUnit {
   font-size: var(--font-sm);
@@ -780,3 +798,42 @@
   transition: color 0.12s;
 }
 .activityFilterClearAll:hover { color: var(--neutral-400); }
+
+/* ── HCC Outreach workflow: call transcript + snooze ── */
+.transcriptSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.transcriptToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) * 1.5);
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+
+.transcriptAttached {
+  font-size: var(--font-sm);
+  color: var(--status-success);
+}
+
+.snoozeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 22px;
+  padding: 0 var(--space-2);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  background: var(--primary-50);
+  font-size: var(--font-sm);
+  color: var(--primary-300);
+  cursor: pointer;
+}

@@ -192,7 +192,8 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
 
       <div className={styles.chips}>
         <Badge size="sm" label={(icd.hcc || '').split(' - ')[0] || 'No HCC'} />
-        {icd.type && <Badge tone="primary" size="sm" label={icd.type} />}
+        {/* Recapture in primary, Suspect in info blue, as everywhere in HCC. */}
+        {icd.type && <Badge tone={icd.type === 'Suspect' ? 'info' : 'primary'} size="sm" label={icd.type} />}
       </div>
 
       <div className={styles.dosRow}>

@@ -55,20 +55,48 @@ export function useOutreachTab({
   // MenuPopover items, or null to keep the default list for those pills.
   outcomeItems = null,
   callTypeOptions,
+  // Logger's role for the feed's "Name (Role)" line, e.g. the HCC user role.
+  authorRole = null,
+  // The HCC Outreach workflow (Astrana): call transcript, Add Contact,
+  // Snooze, and the full entry (call details, contact, snooze) on each log.
+  hccWorkflow = false,
+  // Optional: the Call Via list, and Called To lists per Call Type
+  // ({ Provider: [...], Member: [...] }). Changing Call Type then switches
+  // the Called To list and picks its first contact.
+  callViaOptions,
+  calledToByCallType,
 } = {}) {
   // The program or gaps the outreach is logged from lead the pills.
   const PROGRAM_OPTIONS = [...new Set([...defaultPrograms, ...(programs && programs.length ? programs : PROGRAMS)])];
   // This patient's distinct open HCC gap codes (e.g. "HCC 37").
   const HCC_GAP_OPTIONS = useMemo(
     () => (memberName
-      ? [...new Set(getOpenIcdsForMember(memberName).all.map(i => i.hcc).filter(Boolean))]
+      ? [...new Set(getOpenIcdsForMember(memberName).all.map(i => i.hcc)
+        .filter(h => h && !/not\s*linked/i.test(h)))]
       : []),
     [memberName],
   );
-  const CALLED_TO_OPTIONS = recipientOptions && recipientOptions.length
-    ? recipientOptions
-    : ['Dr. Katherine Moss (581 824-1591)', 'Carlos Hernandez (555 000-0000)'];
-  const INITIAL_CALLED_TO = defaultCalledTo || CALLED_TO_OPTIONS[0];
+  const [callType, setCallType] = useState('Provider');
+  // Contacts added from the form's Add Contact action join the Called To list
+  // (of the Call Type they were added under).
+  const [addedContacts, setAddedContacts] = useState([]);
+  const calledToFor = (ct) => [
+    ...(calledToByCallType
+      ? calledToByCallType[ct] || []
+      : recipientOptions && recipientOptions.length
+        ? recipientOptions
+        : ['Dr. Katherine Moss (581 824-1591)', 'Carlos Hernandez (555 000-0000)']),
+    ...addedContacts.filter(c => !calledToByCallType || c.callType === ct).map(c => c.label),
+  ];
+  const CALLED_TO_OPTIONS = calledToFor(callType);
+  const CALL_VIA_OPTIONS = callViaOptions?.length
+    ? callViaOptions
+    : ['Delores Conn (581 824-1591)', 'Practice Line (800 000-0000)'];
+  const INITIAL_CALL_VIA = CALL_VIA_OPTIONS[0];
+  // The other party: the first contact for the Call Type that isn't our own
+  // number (a Provider call lists providers on both sides).
+  const otherPartyFor = (ct, ours) => calledToFor(ct).find(c => c !== ours) || calledToFor(ct)[0] || '';
+  const INITIAL_CALLED_TO = defaultCalledTo || otherPartyFor('Provider', INITIAL_CALL_VIA);
 
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
@@ -98,7 +126,7 @@ export function useOutreachTab({
   const [sharedPanel, setSharedPanel] = useState({ expanded: true, outcomes: [], note: '', outcomeOpen: false });
   const [callBannerVisible, setCallBannerVisible] = useState(true);
   const [callDirection, setCallDirection] = useState('outgoing');
-  const [callViaNumber, setCallViaNumber] = useState('Delores Conn (581 824-1591)');
+  const [callViaNumber, setCallViaNumber] = useState(INITIAL_CALL_VIA);
   const [calledToNumber, setCalledToNumber] = useState(INITIAL_CALLED_TO);
 
   // Consent and contact checks for the logged channel (Phase 2A.4). Outreach
@@ -109,9 +137,40 @@ export function useOutreachTab({
   const contactWarning = outreachChannel && !consentTableMissing
     ? canContact(consents, preferences, outreachChannel, { value: outreachChannel === 'call' ? numberFromRecipient(calledToNumber) : undefined }).reason
     : null;
-  const [callType, setCallType] = useState('Provider');
   const [callDurationMin, setCallDurationMin] = useState('00');
   const [callDurationSec, setCallDurationSec] = useState('00');
+  const [transcript, setTranscript] = useState('');
+  const [snoozeUntil, setSnoozeUntil] = useState(null);
+
+  // With per-Call-Type lists, an incoming call swaps the sides: the member or
+  // provider who called is the Call Via number, our provider line the Called To.
+  const incomingSwap = !!calledToByCallType && callDirection === 'incoming';
+  const setOtherParty = incomingSwap ? setCallViaNumber : setCalledToNumber;
+
+  const addContact = (name, phone) => {
+    const label = phone ? `${name} (${phone})` : name;
+    setAddedContacts(list => (list.some(c => c.label === label && c.callType === callType) ? list : [...list, { callType, label }]));
+    setOtherParty(label);
+  };
+
+  const changeCallType = (ct) => {
+    setCallType(ct);
+    if (calledToByCallType) setOtherParty(otherPartyFor(ct, incomingSwap ? calledToNumber : callViaNumber));
+  };
+
+  // Place each picked number by role, not by field: our provider line goes to
+  // Call Via on an outgoing call and to Called To on an incoming one.
+  const changeCallDirection = (dir) => {
+    if (calledToByCallType) {
+      const picked = [callViaNumber, calledToNumber];
+      const ours = picked.find(v => CALL_VIA_OPTIONS.includes(v)) || CALL_VIA_OPTIONS[0];
+      const theirList = calledToFor(callType);
+      const theirs = picked.find(v => v !== ours && theirList.includes(v)) || otherPartyFor(callType, ours);
+      setCallViaNumber(dir === 'incoming' ? theirs : ours);
+      setCalledToNumber(dir === 'incoming' ? ours : theirs);
+    }
+    setCallDirection(dir);
+  };
 
   const showCallDetails = type === 'Call';
   const getPanel = (prog) => panels[prog] || { expanded: true, outcomes: [], note: '', syncText: false, outcomeOpen: false };
@@ -246,18 +305,23 @@ export function useOutreachTab({
     setSharedPanel({ expanded: true, outcomes: [], note: '', outcomeOpen: false });
     setCallBannerVisible(true);
     setCallDirection('outgoing');
-    setCallViaNumber('Delores Conn (581 824-1591)');
+    setCallViaNumber(INITIAL_CALL_VIA);
     setCalledToNumber(INITIAL_CALLED_TO);
     setCallType('Provider');
     setCallDurationMin('00');
     setCallDurationSec('00');
+    setTranscript('');
+    setSnoozeUntil(null);
   };
 
   const handleSave = () => {
     if (!canSave) return;
     const { date, time, monthLabel, monthKey } = parseDatetime(datetime);
-    const author = currentUserProfile?.name || 'You';
-    const label = TYPE_LOG_LABEL[type] || type;
+    const name = currentUserProfile?.name || 'You';
+    const author = authorRole ? `${name} (${authorRole})` : name;
+    const label = hccWorkflow && type === 'Call' && callDirection === 'incoming'
+      ? 'Incoming Call'
+      : TYPE_LOG_LABEL[type] || type;
     const now = Date.now();
 
     // No program or gap picked: one Member Outreach entry with no programs.
@@ -277,6 +341,18 @@ export function useOutreachTab({
         outcomes: panelData.outcomes,
         outcomeColor: OUTCOME_COLOR[outcome] || 'var(--neutral-300)',
         note: panelData.note,
+        ...(hccWorkflow ? {
+          logDate: `${monthKey.split('-')[1]}-${date.replace('/', '-')}`,
+          callDetails: showCallDetails ? {
+            direction: callDirection,
+            via: callViaNumber,
+            to: calledToNumber,
+            callType,
+            durationMin: Number(callDurationMin) + Number(callDurationSec) / 60,
+            transcript: transcript.trim() ? [{ speaker: name, t: time, text: transcript.trim() }] : [],
+          } : undefined,
+          snoozeUntil,
+        } : {}),
       };
     });
 
@@ -344,6 +420,8 @@ export function useOutreachTab({
     setSeparateNotes(false);
     setSharedPanel({ expanded: true, outcomes: log.outcome ? [log.outcome] : [], note: log.note || '', outcomeOpen: false });
     if (log.callDetails) {
+      if (log.callDetails.callType) setCallType(log.callDetails.callType);
+      if (log.callDetails.direction) setCallDirection(log.callDetails.direction);
       setCallViaNumber(log.callDetails.via || '');
       setCalledToNumber(log.callDetails.to || '');
       const totalSec = (log.callDetails.durationMin || 0) * 60;
@@ -387,7 +465,8 @@ export function useOutreachTab({
     HCC_GAP_OPTIONS,
     outcomeItems,
     callTypeOptions,
-    CALLED_TO_OPTIONS,
+    CALLED_TO_OPTIONS: incomingSwap ? CALL_VIA_OPTIONS : CALLED_TO_OPTIONS,
+    CALL_VIA_OPTIONS: incomingSwap ? CALLED_TO_OPTIONS : CALL_VIA_OPTIONS,
     patientId,
     scopedProgram,
     addTaskOpen, setAddTaskOpen,
@@ -428,12 +507,16 @@ export function useOutreachTab({
     handleDelete,
     filteredLogGroups,
     callBannerVisible, setCallBannerVisible,
-    callDirection, setCallDirection,
+    callDirection, setCallDirection: changeCallDirection,
     callViaNumber, setCallViaNumber,
     calledToNumber, setCalledToNumber,
-    callType, setCallType,
+    callType, setCallType: changeCallType,
     callDurationMin, setCallDurationMin,
     callDurationSec, setCallDurationSec,
+    transcript, setTranscript,
+    snoozeUntil, setSnoozeUntil,
+    addContact,
+    hccWorkflow,
     addProgramTask,
     addProgramAppointment,
     formatNow,

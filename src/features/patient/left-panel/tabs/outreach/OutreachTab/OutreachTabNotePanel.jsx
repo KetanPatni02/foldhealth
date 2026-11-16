@@ -12,8 +12,19 @@ import styles from './OutreachTab.module.css';
 
 export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOpen, showSyncText,
   onToggleExpand, onToggleOutcomeOpen, onAddOutcome, onRemoveOutcome, onSetOutcomes, onNoteChange, onToggleSyncText,
-  outcomeType, choiceItems = null }) {
+  outcomeType, choiceItems = null, cannedEntry = false }) {
   const outcomeBtnRef = useRef(null);
+  const noteRef = useRef(null);
+  // Canned messages (deferred): typing "/" at the start of a word opens the
+  // picker so the entry point is in place.
+  const [cannedOpen, setCannedOpen] = useState(false);
+  const handleNoteInput = (e) => {
+    const text = e.target.value;
+    if (cannedEntry && text.length > note.length && /(^|\s)\/$/.test(text.slice(0, e.target.selectionStart))) {
+      setCannedOpen(true);
+    }
+    onNoteChange(text);
+  };
   const [anchorRect, setAnchorRect] = useState(null);
   // The menu lists only the outcomes that fit the chosen Outreach Outcome,
   // so it stays disabled until one of those radios is picked. A host can
@@ -122,11 +133,22 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
             </div>
           )}
           <Textarea aria-label="Outreach note"
+            ref={noteRef}
             className={styles.noteTextarea}
-            placeholder="Write note"
+            placeholder={cannedEntry ? 'Write note, or type / for canned messages' : 'Write note'}
             value={note}
-            onChange={e => onNoteChange(e.target.value)}
+            onChange={handleNoteInput}
           />
+          {cannedOpen && (
+            <MenuPopover
+              anchorRef={noteRef}
+              items={[{ key: 'soon', icon: 'solar:chat-square-like-linear', label: 'Canned messages are coming soon', disabled: true }]}
+              onSelect={() => setCannedOpen(false)}
+              onClose={() => setCannedOpen(false)}
+              width={280}
+              ariaLabel="Canned messages"
+            />
+          )}
         </div>
       </CollapsibleContent>
     </div>
