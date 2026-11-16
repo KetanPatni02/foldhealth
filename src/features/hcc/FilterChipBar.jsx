@@ -267,6 +267,7 @@ export function FilterChipBar({
           selected={vals}
           onChange={setVals}
           searchable={def.searchable}
+          sectionOf={def.sectionOf}
           activeSummary={summary}
         />
       );

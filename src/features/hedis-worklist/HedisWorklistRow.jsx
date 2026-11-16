@@ -16,7 +16,7 @@ import { CIS_CODE, cisDueIndicator, evaluateCis } from './cis/cisRules';
 import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import { MEASURE_NAMES } from './ClinicalNotePanel.utils';
 import { gapSourceLabel, gapStatusLabel } from './hedisFilters';
-import { gapInstanceNo } from './gapInstances';
+import { gapInstanceNo, isClosedStatus } from './gapInstances';
 import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import { ActionsMenuPopover } from '../hcc/RowPopovers';
 import styles from './HedisWorklistRow.module.css';
@@ -243,10 +243,11 @@ export const HEDIS_MIDDLE_COLUMNS = [
             ? assignee.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('')
             : (member.assigneeInitials
                 || assignee?.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(''));
+          // A superseded or finished (Completed / Closed) gap's assignee is
+          // read-only; updateGapAssignee acts on the active gap with this code.
+          const locked = !!g.supersededAt || isClosedStatus(g.status);
           const handlePick = (u) => {
-            // A superseded gap's assignee is history; updateGapAssignee acts on
-            // the active gap with this code.
-            if (g.supersededAt || !ctx.updateGapAssignee || !ctx.memberId) return;
+            if (locked || !ctx.updateGapAssignee || !ctx.memberId) return;
             ctx.updateGapAssignee(ctx.memberId, g.code, u?.name || null);
           };
           return (
@@ -260,17 +261,17 @@ export const HEDIS_MIDDLE_COLUMNS = [
                   users={ctx.assigneePickerUsers}
                   pickerTitle="Change assignee"
                   onSelect={handlePick}
-                  disabled={!!g.supersededAt}
+                  disabled={locked}
                 />
               ) : (
                 <AssigneeChange
                   unassigned
-                  unassignedLabel="Assign"
+                  unassignedLabel={locked ? 'Unassigned' : 'Assign'}
                   showRole={false}
                   users={ctx.assigneePickerUsers}
                   pickerTitle="Assign to"
                   onSelect={handlePick}
-                  disabled={!!g.supersededAt}
+                  disabled={locked}
                 />
               )}
             </div>

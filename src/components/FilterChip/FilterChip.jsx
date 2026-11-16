@@ -29,6 +29,8 @@ const EMPTY_SELECTED = [];
  *                                         receives a (0- or 1-element) array
  *                                         so callers don't need a second
  *                                         shape. Popover auto-closes on pick.
+ * @param {function} [props.sectionOf]   – (option) => section name; groups
+ *                                         options under headers.
  * @param {boolean}  [props.disabled]    – Read-only: shows the filter and its
  *                                         value but can't be opened or cleared
  *                                         (e.g. a saved report snapshot).
@@ -47,6 +49,9 @@ export function FilterChip({
   // Passthrough to CheckboxListPopover: (option) => node drawn before each
   // option's label, e.g. a person's avatar in an "Activity By" filter.
   renderOptionLeading,
+  // Passthrough to CheckboxListPopover: (option) => section name, to group
+  // options under headers (options of one section must be adjacent).
+  sectionOf,
   // Extended API for filters whose popover isn't a plain list: the caller
   // decides when the chip counts as "active", what to summarize on the
   // pill, how to clear, and renders the popover body itself. When set, the
@@ -207,6 +212,7 @@ export function FilterChip({
             onClose={() => setRect(null)}
             searchable={searchable}
             renderOptionLeading={renderOptionLeading}
+            sectionOf={sectionOf}
           />
         ))}
     </>

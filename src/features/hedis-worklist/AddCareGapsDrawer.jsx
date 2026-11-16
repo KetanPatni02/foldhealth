@@ -9,7 +9,6 @@ import { Input } from '../../components/Input/Input';
 import { SearchBar } from '../../components/SearchBar/SearchBar';
 import { Checkbox } from '../../components/Checkbox/Checkbox';
 import { Badge } from '../../components/Badge/Badge';
-import { Banner } from '../../components/Banner/Banner';
 import { Icon } from '../../components/Icon/Icon';
 import { SimpleTableSkeleton } from '../../components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { openMeasureYears } from './data/caregapWhitelistMock';
@@ -156,8 +155,10 @@ function MemberField({ members, value, onChange }) {
               onClick={() => { onChange(m); setQuery(''); setOpen(false); }}
             >
               <Avatar variant="patient" initials={m.in} />
-              <span>{m.name}</span>
-              <span className={styles.memberOptionMeta}>{meta(m)}</span>
+              <span className={styles.memberOptionText}>
+                <span>{m.name}</span>
+                <span className={styles.memberOptionMeta}>{meta(m)}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -305,12 +306,6 @@ export function AddCareGapsDrawer() {
           patientId={member.id}
         />
       )}
-
-      {/* Edge to edge under the patient banner (or the drawer header when
-          the Member field names the patient). */}
-      <Banner className={styles.billingBar}>
-        A gap is added to SSD automatically once its clinical note is signed; otherwise close it manually.
-      </Banner>
 
       <div className={styles.container}>
         {picker && <MemberField key={member.id} members={hedisMembers} value={member} onChange={pickMember} />}

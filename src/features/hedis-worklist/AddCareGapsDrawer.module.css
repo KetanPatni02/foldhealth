@@ -196,17 +196,19 @@
   color: var(--neutral-500);
 }
 .memberOption:hover { background: var(--neutral-50); }
+/* Name, then gender, age and member ID on the line below it. */
+.memberOptionText {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+  text-align: left;
+}
 .memberOptionMeta {
-  margin-left: auto;
   font-size: var(--font-xs);
   color: var(--neutral-300);
 }
 
-/* Billing note: full drawer width, no rounded corners. */
-.billingBar {
-  border-radius: 0;
-  border-bottom: 0.5px solid var(--neutral-150);
-}
 .lockNote { font-size: var(--font-sm); color: var(--neutral-300); white-space: nowrap; }
 
 /* Care Gaps title with the "who each gap applies to" info card. */

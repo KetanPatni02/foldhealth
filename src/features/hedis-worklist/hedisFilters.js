@@ -27,8 +27,7 @@ export const MORE_FILTER_ITEMS = [
   { k: 'zip', label: 'Zip Code', primary: true },
   { k: 'assignee', label: 'Assignee', primary: true },
   { k: 'careGaps', label: 'Gaps', primary: true },
-  { k: 'complianceStatus', label: 'Compliance Status', primary: true },
-  { k: 'operationalStatus', label: 'Operational Status', primary: true },
+  { k: 'gapStatus', label: 'Gap Status', primary: true },
   { k: 'gapSource', label: 'Source', primary: true },
   { k: 'gapInstance', label: 'Instance', primary: true },
   { k: 'careGapAddedDate', label: 'Gap Added Date', primary: true },
@@ -99,10 +98,13 @@ export const gapInstanceLabel = (g) => (g.supersededAt ? 'Older' : 'Latest');
 const LEGACY_INSTANCE = { Active: 'Latest', Previous: 'Older' };
 
 // A gap's one status answers two questions, so it's filtered two ways:
-// compliance (has the measure been met?) and operational (where the work
-// stands). Completed is compliant; a Closed status ended without meeting it.
-export const gapComplianceLabel = (g) => (g.status === 'Completed' ? 'Compliant'
-  : String(g.status || '').startsWith('Closed') ? 'Closed' : 'Non-Compliant');
+// compliance (the industry-standard gap status, as in Da Vinci DEQM
+// open-gap / closed-gap) and operational (where the work stands).
+// Completed or any Closed status is Closed; everything else is Open.
+export const gapComplianceLabel = (g) => (g.status === 'Completed' || String(g.status || '').startsWith('Closed') ? 'Closed' : 'Open');
+// Saved filters from when Compliance Status had three values.
+const LEGACY_COMPLIANCE = { Compliant: 'Closed', 'Non-Compliant': 'Open' };
+const complianceValues = (vals) => vals.map(v => LEGACY_COMPLIANCE[v] || v);
 export const gapOperationalLabel = (g) => (!g.status || g.status === 'Open' ? 'Not Started' : g.status);
 
 // Filters that narrow a member's gaps, not just the member list.
@@ -111,19 +113,26 @@ export function gapMatchesGapFilters(g, filters = {}) {
   const inst = pick('gapInstance').map(v => LEGACY_INSTANCE[v] || v);
   return (!pick('gapSource').length || pick('gapSource').includes(gapSourceLabel(g)))
     && (!inst.length || inst.includes(gapInstanceLabel(g)))
-    && (!pick('complianceStatus').length || pick('complianceStatus').includes(gapComplianceLabel(g)))
+    && (!pick('gapStatus').length || pick('gapStatus').includes(g.status))
+    && (!pick('complianceStatus').length || complianceValues(pick('complianceStatus')).includes(gapComplianceLabel(g)))
     && (!pick('operationalStatus').length || pick('operationalStatus').includes(gapOperationalLabel(g)));
 }
-export const GAP_LEVEL_FILTER_KEYS = ['gapSource', 'gapInstance', 'complianceStatus', 'operationalStatus'];
+export const GAP_LEVEL_FILTER_KEYS = ['gapSource', 'gapInstance', 'gapStatus', 'complianceStatus', 'operationalStatus'];
+
+// Gap Status: one filter, its statuses grouped under the industry-standard
+// gap status (Open / Closed). Compliance Status and Operational Status
+// were folded into it; saved filters using them still match (above).
+export const GAP_STATUS_OPTIONS = [
+  'Open', 'Engaged', 'Engaged Requires Follow-Up', 'Submitted',
+  'Completed', 'Closed - Data', 'Closed - Do not call', 'Closed - UTR', 'Closed - Other',
+];
+const gapStatusSection = (status) => gapComplianceLabel({ status });
 
 export const FILTER_DEFS = [
   { k: 'memberStatus',        label: 'Member Status', type: 'multi',
     opts: MEMBER_STATUS_FILTER_OPTIONS },
-  { k: 'complianceStatus',    label: 'Compliance Status', type: 'multi',
-    opts: ['Non-Compliant', 'Compliant', 'Closed'] },
-  { k: 'operationalStatus',   label: 'Operational Status', type: 'multi',
-    opts: ['Not Started', 'Engaged', 'Engaged Requires Follow-Up', 'Submitted', 'Completed',
-           'Closed - Data', 'Closed - Do not call', 'Closed - UTR', 'Closed - Other'] },
+  { k: 'gapStatus',           label: 'Gap Status', type: 'multi',
+    opts: GAP_STATUS_OPTIONS, sectionOf: gapStatusSection },
   { k: 'gapSource',           label: 'Source', type: 'multi',
     opts: ['Claim', 'Manual'] },
   { k: 'gapInstance',         label: 'Instance', type: 'multi',
@@ -224,7 +233,7 @@ function matchOne(m, k, vals) {
       }
       return false;
     }
-    case 'complianceStatus':    return (m.gaps || []).some(g => vals.includes(gapComplianceLabel(g)));
+    case 'complianceStatus':    return (m.gaps || []).some(g => complianceValues(vals).includes(gapComplianceLabel(g)));
     case 'operationalStatus':   return (m.gaps || []).some(g => vals.includes(gapOperationalLabel(g)));
     case 'gapSource':           return (m.gaps || []).some(g => vals.includes(gapSourceLabel(g)));
     case 'gapInstance': {
