@@ -3,6 +3,7 @@
 // and who its collaborators (assignees) are.
 import { FIRST_INBOX_MOCK, INBOX_TAGS_MOCK, INBOX_TYPES } from '../../settings/messages/inboxes/inboxesMock';
 import { sameName } from '../../ooo/oooUtils';
+import { lineName } from './practiceLine';
 
 /**
  * The inbox a conversation came in on: its inbox_id; until the migration has
@@ -21,7 +22,7 @@ export function collaboratorsOf(inbox, users = []) {
   return (inbox?.collaboratorNames || []).map(n => users.find(u => sameName(u.name, n)) || { id: n, name: n });
 }
 
-/** "Main Line · +1 (775) 555-0100" */
-export const inboxLabel = (i) => `${i.name} · ${i.address}`;
+/** "Main Clinic Line · +1 (775) 555-0100": an SMS line's label, else the inbox name. */
+export const inboxLabel = (i) => `${lineName(i)} · ${i.address}`;
 
 export const inboxType = (i) => INBOX_TYPES[i?.channel] || 'SMS';

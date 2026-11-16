@@ -23,6 +23,9 @@ export const PLATFORM_NAV_PERMISSIONS = [
 export const PLATFORM_OTHER_PERMISSIONS = [
   { key: 'patient:details', label: 'Patient Details' },
   { key: 'notes:sign', label: 'Sign and Amend EHR Notes' },
+  // Edit phone number display labels (Settings > Calls > Phone Number).
+  // Everyone with SMS inbox access still sees which number a thread is on.
+  { key: 'phone_numbers:manage', label: 'Manage Phone Numbers' },
 ];
 
 export const PLATFORM_PERMISSIONS = [...PLATFORM_NAV_PERMISSIONS, ...PLATFORM_OTHER_PERMISSIONS];

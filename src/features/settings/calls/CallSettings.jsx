@@ -7,6 +7,7 @@ import { toast } from '../../../components/Toast/sonnerToast';
 import { useAppStore } from '../../../store/useAppStore';
 import { OnCallSchedulesTable } from '../../ooo/OnCallSchedulesTable';
 import { OnCallScheduleDrawer } from '../../ooo/OnCallScheduleDrawer';
+import { PhoneNumbersPanel } from './PhoneNumbersPanel';
 import styles from '../calendar/CalendarSettings.module.css';
 
 const TABS = [
@@ -18,7 +19,7 @@ const TABS = [
   { key: 'blocked', label: 'Blocked Numbers' },
 ];
 
-/** Settings → Calls. On-Call Schedule is built; the other tabs are coming soon. */
+/** Settings → Calls. Phone Number and On-Call Schedule are built; the other tabs are coming soon. */
 export function CallSettings() {
   const [tab, setTab] = useState('oncall');
   const schedules = useAppStore(s => s.onCallSchedules);
@@ -58,6 +59,8 @@ export function CallSettings() {
             onView={(schedule) => setDrawer({ schedule, readOnly: true })}
             onDelete={setToDelete}
           />
+        ) : tab === 'numbers' ? (
+          <PhoneNumbersPanel />
         ) : (
           <div className={styles.empty}>
             <EmptyState icon="solar:phone-linear" title={`${TABS.find(t => t.key === tab)?.label} is coming soon`} />

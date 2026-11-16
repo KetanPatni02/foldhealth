@@ -50,7 +50,9 @@ export async function sendAutoReply(conversation, inbound, plan) {
     });
   }
   if (conversation.channel === 'sms') {
-    return sendSms({ conversation, sender, to: inbound.from_addr || conversation.patient_phone, body: plan.body, meta });
+    // Answers from the practice line the patient wrote to.
+    const line = inbound.to_addr ? { number: inbound.to_addr, label: inbound.meta?.line_label || '' } : undefined;
+    return sendSms({ conversation, sender, to: inbound.from_addr || conversation.patient_phone, body: plan.body, meta, line });
   }
   return addMessage({
     conversation_id: conversation.id, kind: 'message', direction: 'out',

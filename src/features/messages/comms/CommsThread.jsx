@@ -25,12 +25,14 @@ import listStyles from '../MessagesView.module.css';
 import { useCommsMessages } from './useComms';
 import { addMessage, updateConversation, markConversationRead, findOrCreateConversation, logMessagesFor, renameThread, deleteConversation, ensurePatientToken, setSmsSession, assignMessages } from './commsRepo';
 import { sendSms, retrySend, SMS_VIA_GATEWAY } from './commsSend';
+import { usePracticeLines } from './usePracticeLines';
+import { lineText, messageLine, threadLine } from './practiceLine';
 import { useBrowserCall } from './call/useBrowserCall';
 import { IncomingCallCard } from './call/IncomingCallCard';
 import { useAppStore } from '../../../store/useAppStore';
 import { formatDuration } from './call/rtc';
 import {
-  initialsOf, patientMetaParts, callLook, fullStamp, dayLabel, patientLink, openInNewTab, formatPhone,
+  initialsOf, patientMetaParts, smsContactMetaParts, phoneAfterName, callLook, fullStamp, dayLabel, patientLink, openInNewTab, formatPhone,
 } from './commsUtils';
 import { membersForConversation, loggedFor, threadTitle, isUnassigned, withForPrefix, activeSession, forPrefix, keepPrefix } from './smsMembers';
 import { LogForChip, LogForCoachmark, SelectMemberModal, AssignSmsModal, MemberOption } from './SmsAttribution';
@@ -66,6 +68,12 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
   const startCall = useBrowserCall(s => s.start);
   const callStatus = useBrowserCall(s => s.status);
   const channel = conversation.channel;
+  // The Fold practice line: the thread's current one (replies go out from
+  // it), and each SMS's own, shown when the practice shows lines.
+  const practice = usePracticeLines();
+  const conversationLine = practice.conversationLine(conversation);
+  const currentLine = channel === 'sms' ? threadLine(messages, conversationLine) : null;
+  const showLine = channel === 'sms' && practice.show;
   const openCommsDrawer = useAppStore(s => s.openCommsDrawer);
   const openQuickView = useAppStore(s => s.openQuickView);
   const sender = { id: me?.id || null, name: me?.name || 'Care team' };
@@ -323,7 +331,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
         const to = share?.targets?.length ? share.targets : [conversation.patient_phone].filter(Boolean);
         if (!to.length) throw new Error('This patient has no phone number on file.');
         const attribution = shared && logFor ? { id: logFor.id, name: logFor.name } : undefined;
-        for (const phone of to) await sendSms({ conversation, sender, to: phone, body, meta: share?.meta, loggedFor: attribution });
+        for (const phone of to) await sendSms({ conversation, sender, to: phone, body, meta: share?.meta, loggedFor: attribution, line: currentLine });
         // Sent for someone other than the session member: offer to switch.
         setSentFor(session && attribution && attribution.id !== session.member_id ? logFor : null);
         // A one-off send for someone else; Log For goes back to the session member.
@@ -435,9 +443,21 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
           <div className={styles.headerNameRow}>
             {shared ? (
               <>
-                {/* Every member's first name, or the custom name. */}
-                <span ref={titleRef} className={styles.headerName}>{threadTitle(conversation, members)}</span>
-                <ActionButton icon="solar:pen-linear" size="sm" tooltip="Rename Thread" onClick={() => setRenaming(o => !o)} />
+                {/* Every member's first name, or the custom name; click it to rename. */}
+                <button
+                  ref={titleRef}
+                  type="button"
+                  className={`${styles.headerName} ${styles.headerNameEditable}`}
+                  title="Rename thread"
+                  aria-haspopup="dialog"
+                  aria-expanded={renaming}
+                  onClick={() => setRenaming(o => !o)}
+                >
+                  {threadTitle(conversation, members)}
+                </button>
+                {channel === 'sms' && phoneAfterName(threadTitle(conversation, members), conversation.patient_phone) && (
+                  <span className={styles.headerPhone}>{phoneAfterName(threadTitle(conversation, members), conversation.patient_phone)}</span>
+                )}
                 {renaming && (
                   <RenamePopover
                     anchorRef={titleRef}
@@ -451,18 +471,29 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
                 )}
               </>
             ) : (
-              <span className={styles.headerName}>{conversation.patient_name}</span>
+              <>
+                <span className={styles.headerName}>{conversation.patient_name}</span>
+                {channel === 'sms' && phoneAfterName(conversation.patient_name, conversation.patient_phone) && (
+                  <span className={styles.headerPhone}>{phoneAfterName(conversation.patient_name, conversation.patient_phone)}</span>
+                )}
+              </>
             )}
             {!shared && <CaretRightIcon />}
           </div>
-          {/* An SMS thread belongs to a number: its second line is the number and, when shared, who shares it. */}
+          {/* An SMS thread's number sits beside the name; its second line is who it is
+              (Patient or Lead, gender, DOB) or, when shared, who shares it, then
+              the Fold line the patient texted. */}
           <div className={styles.headerMeta}>
             {channel === 'sms' ? (
               <>
-                {conversation.patient_phone && formatPhone(conversation.patient_phone)}
+                {!shared && smsContactMetaParts(patient).map((part, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && ' • '}
+                    {i === 1 && patient?.gender ? <span className={styles.metaGender}>{part}</span> : part}
+                  </Fragment>
+                ))}
                 {shared && (
                   <>
-                    {conversation.patient_phone && ' • '}
                     <button
                       ref={membersRef}
                       type="button"
@@ -474,6 +505,14 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
                       {members.length} members
                     </button>
                   </>
+                )}
+                {showLine && currentLine && <span className={styles.metaDivider} aria-hidden="true" />}
+                {showLine && currentLine && (
+                  <span className={styles.practiceLine} title="The Fold number this patient texted">
+                    <Icon name="solar:buildings-2-linear" size={14} />
+                    {currentLine.label && <span className={styles.practiceLineLabel}>{currentLine.label}</span>}
+                    {formatPhone(currentLine.number)}
+                  </span>
                 )}
               </>
             ) : (
@@ -625,6 +664,7 @@ export function CommsThread({ conversation, patient, me, focusMessageId, showInt
               conversation={conversation}
               attributed={shared}
               canLogFor={shared && !selecting}
+              lineNote={showLine ? lineText(m, messageLine(m, conversationLine)) : ''}
               onAction={onMessageAction}
             />
           );
@@ -799,7 +839,7 @@ const sameMember = (a, b) => (a.logged_for_patient_id || null) === (b.logged_for
  * `attributed`: the number is shared, so an SMS reads "Sender → Member"
  * (ours) or the member's name (theirs).
  */
-function ThreadItem({ message: m, prev, conversation, attributed = false, canLogFor = false, onAction }) {
+function ThreadItem({ message: m, prev, conversation, attributed = false, canLogFor = false, lineNote = '', onAction }) {
   const own = m.direction === 'out';
   const sameSender = prev && prev.direction === m.direction && prev.sender_name === m.sender_name
     && prev.kind === m.kind && !!prev.internal === !!m.internal && sameMember(prev, m)
@@ -869,6 +909,7 @@ function ThreadItem({ message: m, prev, conversation, attributed = false, canLog
       status={own && !m.internal ? <MessageStatus status={statusOf(m)} onResend={() => retrySend(m)} /> : null}
       menuItems={menuItems}
       onMenuSelect={onMenu}
+      timeMeta={lineNote || undefined}
       footer={m.status === 'failed' && m.failure_reason ? <div className={styles.failedRow}>{m.failure_reason}</div> : null}
     />
   );

@@ -11,6 +11,7 @@ export function rowToInbox(r) {
     channel: r.channel || 'sms',
     name: r.name || '',
     address: r.address || '',
+    label: r.label || '',
     collaboratorIds: Array.isArray(r.collaborator_ids) ? r.collaborator_ids : [],
     updatedBy: r.updated_by || '',
     updatedAt: r.updated_at || null,
@@ -22,6 +23,7 @@ function patchToRow(patch) {
   if ('channel' in patch) row.channel = patch.channel;
   if ('name' in patch) row.name = patch.name;
   if ('address' in patch) row.address = patch.address;
+  if ('label' in patch) row.label = String(patch.label || '').trim() || null;
   if ('collaboratorIds' in patch) row.collaborator_ids = patch.collaboratorIds || [];
   if ('updatedBy' in patch) row.updated_by = patch.updatedBy || null;
   return row;

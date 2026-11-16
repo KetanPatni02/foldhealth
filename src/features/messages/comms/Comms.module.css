@@ -256,6 +256,30 @@
   white-space: nowrap;
 }
 
+/* A shared thread's name doubles as its rename control: a hover tint, and
+   a click opens the rename popover in place. Negative margin keeps the text
+   where a plain name would sit. */
+.headerNameEditable {
+  margin: 0 calc(var(--space-1) * -1);
+  padding: calc(var(--space-1) / 2) var(--space-1);
+  border: none;
+  border-radius: var(--space-1);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.headerNameEditable:hover,
+.headerNameEditable[aria-expanded='true'] { background: var(--neutral-100); }
+.headerNameEditable:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+
+/* An SMS contact's number, in brackets after their name. */
+.headerPhone {
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
 .headerMeta {
   font-size: var(--font-base);
   line-height: 1.2;
@@ -266,6 +290,30 @@
 }
 
 .metaGender { color: var(--secondary-300); }
+
+/* The Fold practice line the patient texted: its own icon and tint so it
+   reads apart from the patient's number beside it. */
+/* Between who the thread is with and the Fold line chip. */
+.metaDivider {
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  margin: 0 var(--space-2);
+  background: var(--neutral-150);
+  vertical-align: middle;
+}
+
+.practiceLine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--space-1);
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+  vertical-align: middle;
+}
+.practiceLineLabel { font-weight: 500; }
 
 /* "3 members": opens who shares the number. */
 .membersCount {
@@ -310,3 +358,17 @@
    Quick View docked beside it (604px, as laid out with the channels menu
    folded). */
 .threadPanel { min-width: 37.75rem; }
+
+/* Messages list: which Fold number an SMS thread is on, as a grey badge. */
+.listLine {
+  display: flex;
+  min-width: 0;
+  margin-top: var(--space-1);
+}
+.lineBadge {
+  --badge-fg: var(--neutral-200);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
