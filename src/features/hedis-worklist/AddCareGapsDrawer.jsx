@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
@@ -91,73 +91,46 @@ function GapRow({ whitelist, parent, history, measureYear, checked, config, onTo
   );
 }
 
-// Member field, as in HCC's Add Manually: the field is the search input;
-// focus shows the matches, a picked member shows avatar, name and details
-// and clicking it searches again.
+// Member field: the design system's searchable Select. Each option shows the
+// avatar, name and demographics; the picked member reads the same, compact.
 function MemberField({ members, value, onChange }) {
-  const [query, setQuery] = useState('');
-  const [open, setOpen] = useState(!value);
-  const wrapRef = useRef(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
-    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-  const q = query.trim().toLowerCase();
-  const matches = (q
-    ? members.filter(m => m.name.toLowerCase().includes(q) || String(m.memberId || '').toLowerCase().includes(q))
-    : members).slice(0, 20);
   const meta = (m) => [m.gender, m.age, m.memberId].filter(Boolean).join(' • ');
+  const options = members.map(m => ({
+    value: m.id,
+    searchText: `${m.name} ${m.memberId || ''}`,
+    label: (
+      <span className={styles.memberOption}>
+        <Avatar variant="patient" size="XS" initials={m.in} />
+        <span className={styles.memberOptionText}>
+          <span>{m.name}</span>
+          <span className={styles.memberOptionMeta}>{meta(m)}</span>
+        </span>
+      </span>
+    ),
+    triggerLabel: (
+      <span className={styles.memberOption}>
+        <Avatar variant="patient" size="XS" initials={m.in} />
+        <span className={styles.memberSelectedText}>
+          <span className={styles.memberName}>{m.name}</span>
+          <span className={styles.memberMeta}>{meta(m)}</span>
+        </span>
+      </span>
+    ),
+  }));
   return (
-    <div className={styles.memberSection} ref={wrapRef}>
+    <div className={styles.memberSection}>
       <span className={styles.label}>Member<span className={styles.req}>•</span></span>
-      <div className={styles.memberField}>
-        {value && !open ? (
-          <button type="button" className={styles.memberSelected} onClick={() => { setQuery(''); setOpen(true); }}>
-            <Avatar variant="patient" initials={value.in} />
-            <span className={styles.memberName}>{value.name}</span>
-            <span className={styles.memberMeta}>({meta(value)})</span>
-          </button>
-        ) : (
-          <input
-            type="text"
-            className={styles.memberInput}
-            placeholder="Search and Select Member"
-            value={query}
-            autoFocus
-            onFocus={() => setOpen(true)}
-            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-            aria-label="Search and select member"
-          />
-        )}
-        <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-      </div>
-      {open && (
-        <div className={styles.memberPop} role="listbox" aria-label="Members">
-          {matches.length === 0 ? (
-            <div className={styles.memberEmpty}>No matches</div>
-          ) : matches.map(m => (
-            <button
-              key={m.id}
-              type="button"
-              role="option"
-              aria-selected={value?.id === m.id}
-              className={styles.memberOption}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { onChange(m); setQuery(''); setOpen(false); }}
-            >
-              <Avatar variant="patient" initials={m.in} />
-              <span className={styles.memberOptionText}>
-                <span>{m.name}</span>
-                <span className={styles.memberOptionMeta}>{meta(m)}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      <Select
+        searchable
+        portal
+        defaultOpen={!value}
+        options={options}
+        value={value?.id ?? ''}
+        placeholder="Search and Select Member"
+        searchPlaceholder="Search and Select Member"
+        aria-label="Member"
+        onValueChange={(id) => { const m = members.find(x => x.id === id); if (m) onChange(m); }}
+      />
     </div>
   );
 }
