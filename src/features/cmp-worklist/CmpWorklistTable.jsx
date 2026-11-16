@@ -314,7 +314,7 @@ export function CmpWorklistTable() {
       <SelectAssigneeModal
         open={assignOpen}
         title="Bulk Change Assignees"
-        subtitle={<>You’re about to update {assignRoleLabel.toLowerCase()} for the selected <strong>{selectedIds.length} member{selectedIds.length === 1 ? '' : 's'}</strong>.</>}
+        subtitle={`${selectedIds.length} member${selectedIds.length === 1 ? '' : 's'} selected`}
         searchPlaceholder={`Search ${assignRoleLabel} User`}
         confirmLabel="Apply Changes"
         onClose={() => setAssignOpen(false)}
