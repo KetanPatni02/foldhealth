@@ -3,7 +3,14 @@ import { reportPersistFailure } from './reportPersistFailure';
 
 // Supabase I/O for `comms_inboxes` (supabase/comms_inboxes_migration.sql).
 
-const MISSING_TABLE_RE = /comms_inboxes|does not exist|schema cache/i;
+/**
+ * Whether the table itself isn't there yet (comms_inboxes_migration.sql not
+ * run): Postgres 42P01 or PostgREST PGRST205. Matched on the code, not the
+ * message: a permission error also names the table ("violates row-level
+ * security policy for table comms_inboxes") and must be reported, not taken
+ * as "keep edits for this session only".
+ */
+export const isMissingTable = (error) => error?.code === '42P01' || error?.code === 'PGRST205';
 
 export function rowToInbox(r) {
   return {
@@ -33,7 +40,7 @@ function patchToRow(patch) {
 export async function fetchInboxRows() {
   const { data, error } = await supabase.from('comms_inboxes').select('*').order('name');
   if (error) {
-    const missing = MISSING_TABLE_RE.test(error.message || '');
+    const missing = isMissingTable(error);
     if (!missing) console.warn('fetchCommsInboxes failed:', error.message);
     return { rows: [], missing };
   }
@@ -44,7 +51,7 @@ export async function fetchInboxRows() {
 export async function persistInboxInsert(i) {
   const { error } = await supabase.from('comms_inboxes').insert({ id: i.id, ...patchToRow(i), created_by: i.updatedBy || null });
   if (!error) return { missing: false };
-  if (MISSING_TABLE_RE.test(error.message || '')) return { missing: true };
+  if (isMissingTable(error)) return { missing: true };
   reportPersistFailure(`persistInboxInsert(${i.id})`, error);
   return { missing: false };
 }
