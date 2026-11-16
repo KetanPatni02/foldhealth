@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { WorklistShell } from '../worklists/WorklistShell';
 import { SelectAssigneeModal } from '../../components/SelectAssigneeModal/SelectAssigneeModal';
-import { Checkbox } from '../../components/Checkbox/Checkbox';
+import { Banner } from '../../components/Banner/Banner';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
 import styles from './CmpWorklistTable.module.css';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
@@ -258,12 +258,12 @@ export function CmpWorklistTable() {
     setAssignRole('assignee');
     setAssignOpen(true);
   };
-  const toggleAssignSubProgram = (sp, on) => setAssignSubPrograms(cur => (on ? [...cur, sp] : cur.filter(x => x !== sp)));
+  const assignRoleLabel = CMP_OWNER_ROLES.find(r => r.key === assignRole)?.label || 'Assignee';
   const assignSelected = async (user) => {
     setAssignOpen(false);
     const rows = selectedEnrollments.filter(e => assignSubPrograms.includes(e.subProgram));
     const memberCount = new Set(rows.map(memberKey)).size;
-    const roleLabel = CMP_OWNER_ROLES.find(r => r.key === assignRole)?.label || 'Assignee';
+    const roleLabel = assignRoleLabel;
     const ok = await setCmpCareTeam(rows.map(e => e.id), assignRole, user);
     showToast(ok
       ? `${user.name} set as ${roleLabel} for ${memberCount} member${memberCount === 1 ? '' : 's'} (${assignSubPrograms.join(', ')})`
@@ -313,35 +313,41 @@ export function CmpWorklistTable() {
       />
       <SelectAssigneeModal
         open={assignOpen}
-        title={`Change ${CMP_OWNER_ROLES.find(r => r.key === assignRole)?.label || 'Assignee'} · ${selectedIds.length} member${selectedIds.length === 1 ? '' : 's'}`}
-        confirmLabel="Assign"
+        title="Bulk Change Assignees"
+        subtitle={<>You’re about to update {assignRoleLabel.toLowerCase()} for the selected <strong>{selectedIds.length} member{selectedIds.length === 1 ? '' : 's'}</strong>.</>}
+        searchPlaceholder={`Search ${assignRoleLabel} User`}
+        confirmLabel="Apply Changes"
         onClose={() => setAssignOpen(false)}
         onConfirm={assignSelected}
         confirmDisabled={!assignSubPrograms.length}
-      >
-        <div className={styles.rolePick}>
-          <Select
-            label="Role to change"
-            size="sm"
-            portal
-            options={CMP_OWNER_ROLES.map(r => ({ value: r.key, label: r.label }))}
-            value={assignRole}
-            onValueChange={setAssignRole}
-          />
-        </div>
-        {subProgramCounts.length > 1 && (
-          <fieldset className={styles.subProgramPick}>
-            <legend className={styles.subProgramLegend}>Sub-programs to reassign</legend>
-            {subProgramCounts.map(([sp, n]) => (
-              <label key={sp} className={styles.subProgramRow}>
-                <Checkbox checked={assignSubPrograms.includes(sp)} onCheckedChange={v => toggleAssignSubProgram(sp, !!v)} />
-                <span className={styles.subProgramName}>{sp}</span>
-                <span className={styles.subProgramCount}>{n} member{n === 1 ? '' : 's'}</span>
-              </label>
-            ))}
-          </fieldset>
+        header={(
+          <div className={styles.assignSetup}>
+            <Banner size="sm">
+              The current {assignRoleLabel.toLowerCase()} in the selected sub-programs will be replaced with the user you pick.
+            </Banner>
+            <Select
+              label="Select Role"
+              portal
+              options={CMP_OWNER_ROLES.map(r => ({ value: r.key, label: r.label }))}
+              value={assignRole}
+              onValueChange={setAssignRole}
+            />
+            {subProgramCounts.length > 1 && (
+              <Select
+                label="Sub Programs"
+                portal
+                multiple
+                checkboxes
+                placeholder="Select sub programs"
+                options={subProgramCounts.map(([sp, n]) => ({ value: sp, label: `${sp} (${n})` }))}
+                value={assignSubPrograms}
+                onValueChange={setAssignSubPrograms}
+              />
+            )}
+            <span className={styles.assignDivider} />
+          </div>
         )}
-      </SelectAssigneeModal>
+      />
     </>
   );
 }

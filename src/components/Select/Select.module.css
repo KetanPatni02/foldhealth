@@ -210,7 +210,9 @@
   bottom: auto;
   left: auto;
   right: auto;
-  z-index: 9800;
+  /* Above the shared Dialog (9999), so a portaled menu opened from inside
+     a dialog isn't drawn behind it. */
+  z-index: 10000;
   /* Radix modals (AlertDialog / Dialog) set `body { pointer-events: none }`
      while open. A portaled menu is a body child, so it inherits that and
      stops accepting clicks + wheel events. Explicitly re-enable them so
