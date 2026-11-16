@@ -255,7 +255,7 @@ export function AddCareGapsDrawer() {
 
   return (
     <Drawer
-      title={picker ? `Add Care Gaps for ${member.name}` : 'Add Care Gaps'}
+      title="Add Care Gaps"
       onClose={close}
       headerRight={headerRight}
       noCloseDivider
