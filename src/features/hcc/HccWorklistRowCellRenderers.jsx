@@ -1,3 +1,4 @@
+import { LastOutreachCell } from './outreach/LastOutreachCell';
 import { dosSourceLetter } from './dosSource';
 import { deriveClaimId } from './claimId';
 import { RafTooltip } from './RowPopovers';
@@ -242,5 +243,11 @@ export const CELL_RENDERERS = {
     <td key="fr" data-col="fr" className={styles.colFr}>
       <span className={styles.numText}>{member.fr}</span>
     </td>
+  ),
+  lastOutreachDate: ({ member }) => (
+    <LastOutreachCell key="lastOutreachDate" member={member} kind="date" className={styles.colLastOutreach} textClassName={styles.codeText} mutedClassName={styles.muted} />
+  ),
+  lastOutreachOutcome: ({ member }) => (
+    <LastOutreachCell key="lastOutreachOutcome" member={member} kind="outcome" className={styles.colLastOutreach} textClassName={styles.codeText} mutedClassName={styles.muted} />
   ),
 };

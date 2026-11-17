@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button/Button';
 import { Input } from '../../../components/Input/Input';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Switch } from '../../../components/Switch/Switch';
+import { OutreachOutcomesSettings } from '../../hcc/outreach/OutreachOutcomesSettings';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { CARE_PLAN_MODES, DEFAULT_CARE_PLAN_MODE, normalizeCarePlanMode } from '../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanMode';
 import { FoldHealthLogo } from '../../../components/FoldHealthLogo/FoldHealthLogo';
@@ -31,6 +32,7 @@ export function OrgPanel() {
   const [carePlanMode, setCarePlanMode] = useState(DEFAULT_CARE_PLAN_MODE);
   const [askStatusChangeReason, setAskStatusChangeReason] = useState(false);
   const [hccOutreachEnabled, setHccOutreachEnabled] = useState(true);
+  const [outreachDefaultRecipient, setOutreachDefaultRecipient] = useState('pcp');
   const [primaryColor, setPrimaryColor] = useState('#8C5AE2');
   const [about, setAbout] = useState('');
   const [socials, setSocials] = useState({ twitter: '', instagram: '', facebook: '', linkedin: '', website: '' });
@@ -62,6 +64,7 @@ export function OrgPanel() {
           setCarePlanMode(normalizeCarePlanMode(data.care_plan_mode));
           setAskStatusChangeReason(!!data.ask_status_change_reason);
           setHccOutreachEnabled(data.hcc_outreach_enabled !== false);
+          setOutreachDefaultRecipient(data.outreach_default_recipient === 'member' ? 'member' : 'pcp');
           setPrimaryColor(data.primary_color || '#8C5AE2');
           setAbout(data.about || '');
           setLogo(data.logo_url || null);
@@ -170,6 +173,26 @@ export function OrgPanel() {
     }
     useAppStore.setState({ hccOutreachEnabled: on });
     showToast(on ? 'HCC Outreach is on' : 'HCC Outreach is off');
+  };
+
+  // Patient Outreach default recipient: saved when picked, like the settings above.
+  const selectOutreachDefaultRecipient = async (value) => {
+    const previous = outreachDefaultRecipient;
+    setOutreachDefaultRecipient(value);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setOutreachDefaultRecipient(previous); showToast('Not authenticated'); return; }
+    const { data, error } = await supabase
+      .from('org_settings')
+      .update({ outreach_default_recipient: value, updated_at: new Date().toISOString() })
+      .eq('user_id', session.user.id)
+      .select('id');
+    if (error || !data?.length) {
+      setOutreachDefaultRecipient(previous);
+      showToast(error ? 'Could not save the default recipient' : 'Save the organization details first');
+      return;
+    }
+    useAppStore.setState({ outreachDefaultRecipient: value });
+    showToast(`Log Outreach now defaults to ${value === 'member' ? 'Member' : 'PCP / PCP Office'}`);
   };
 
   const saveOrgData = async () => {
@@ -368,6 +391,30 @@ export function OrgPanel() {
           When enabled, the HCC chart shows an Outreach tab beside Comments to log outreach to the member or PCP for HCC gaps, with the member's full outreach history. Built for Astrana.
         </p>
       </div>
+
+      {hccOutreachEnabled && (
+        <>
+          <div className={styles.formGroup}>
+            <span className={styles.label}>Log Outreach default recipient</span>
+            <div className={styles.radioGroup} role="radiogroup" aria-label="Log Outreach default recipient">
+              {[{ value: 'pcp', label: 'PCP / PCP Office' }, { value: 'member', label: 'Member' }].map(o => (
+                <div key={o.value} className={styles.radioOption}>
+                  <RadioButton
+                    name="outreach-default-recipient"
+                    value={o.value}
+                    label={o.label}
+                    checked={outreachDefaultRecipient === o.value}
+                    onChange={() => selectOutreachDefaultRecipient(o.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className={styles.formGroup}>
+            <OutreachOutcomesSettings />
+          </div>
+        </>
+      )}
 
       {/* About */}
       <div className={styles.formGroup}>

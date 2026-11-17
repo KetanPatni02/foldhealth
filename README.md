@@ -37,6 +37,23 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **HCC PCP Outreach, call widget and outreach history.** On the HCC
+  worklist: a floating call widget (bottom right) places a call to a Member,
+  PCP or User (simulated, demo numbers); the draggable call card has Mute,
+  Hold, End Call and Log Outreach, which opens that member's Log Outreach
+  drawer or PCP Outreach on the call and docks beside it; ending the call
+  fills Duration. PCP Outreach (header button) logs one call / email / visit
+  with a PCP for several patients: the HCC Outreach form, then the patients
+  discussed (or not discussed, when unsuccessful), with optional per-patient
+  details and Draft with AI; each patient gets an entry in the HCC outreach
+  log. Row ⋯ > Log Outreach opens the outreach form in a drawer with the
+  patient bar. The header's ⋯ menu holds Export and History; History has a
+  new Outreach tab listing all HCC outreach. The Outreach form: Log Outreach
+  With, matching titles, a boxless note panel, Actions dividers. New
+  `custom:outreach` icon. Needs `supabase/patient_outreach_migration.sql` and
+  `supabase/org_settings_outreach_default_recipient_migration.sql` (ask Alok);
+  until then PCP Outreach's own records fail to save (its patient entries
+  still land in `hcc_outreach_logs`).
 - **HCC Outreach: Outreach To, duration and call transcript.** The HCC
   chart's Outreach form opens with Outreach To (PCP / PCP Office or Member),
   which replaces Call With and sets the Called To list. Call Direction and

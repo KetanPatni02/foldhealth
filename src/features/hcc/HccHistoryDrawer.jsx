@@ -15,6 +15,7 @@ import {
   historyTimelineStyles as htStyles,
 } from '../../components/HistoryTimeline/HistoryTimeline';
 import { timelineStatusIcon } from './StatusIcon';
+import { logActivityCategory } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab.utils';
 import styles from './DiagPanel/LeftWorkspace.module.css';
 import hccStyles from './HccHistoryDrawer.module.css';
 
@@ -265,6 +266,7 @@ export function HccHistoryDrawer() {
   const loading = useAppStore(s => s.hccActivityFeedLoading);
   const fetchFeed = useAppStore(s => s.fetchHccActivityFeed);
   const reopenHccSkippedReview = useAppStore(s => s.reopenHccSkippedReview);
+  const hccOutreachEnabled = useAppStore(s => s.hccOutreachEnabled);
 
   // Tab toggle: 'activity' (timeline) vs 'documents' (one card per upload).
   const [tab, setTab] = useState('activity');
@@ -316,19 +318,22 @@ export function HccHistoryDrawer() {
   const hasItems = filteredRows.length > 0;
 
   return (
-    <Drawer title="HCC Activity History" onClose={close}>
+    <Drawer title="HCC Activity History" onClose={close} bodyClassName={hccStyles.drawerBody}>
       {/* Tab toggle: Activity timeline vs Documents (one card per upload).
           Uses the shared TabStrip primitive so tab styling matches the app's
           top-level TabBar. Bleeds edge-to-edge inside the drawer body. */}
       <Tabs
         items={[
-          { key: 'activity',  label: 'Activity',  icon: 'solar:history-linear' },
-          { key: 'documents', label: 'Documents', icon: 'solar:document-text-linear' },
+          { key: 'activity',  label: 'Activity' },
+          { key: 'documents', label: 'Documents' },
+          ...(hccOutreachEnabled ? [{ key: 'outreach', label: 'Outreach' }] : []),
         ]}
         value={tab}
         onValueChange={setTab}
       />
-      {tab === 'documents' ? (
+      {tab === 'outreach' ? (
+        <OutreachHistoryTab />
+      ) : tab === 'documents' ? (
         <DocumentsTab
           feed={feed}
           loading={loading}
@@ -420,6 +425,170 @@ export function HccHistoryDrawer() {
       </>
       )}
     </Drawer>
+  );
+}
+
+// ── Outreach tab ────────────────────────────────────────────────────
+// Every outreach logged in HCC, in this drawer's own layout: the same
+// filter row, collapsible month groups and HistoryTimelineEntry as the
+// Activity tab. Read only; entries are changed in the patient's chart.
+const OUTREACH_TYPE_ICON = {
+  Call: 'solar:phone-calling-linear',
+  Email: 'solar:letter-linear',
+  'In Person': 'solar:user-linear',
+  Virtual: 'solar:videocamera-linear',
+  Chat: 'solar:chat-round-linear',
+  SMS: 'solar:chat-line-linear',
+  Letter: 'solar:letter-opened-linear',
+};
+const OUTREACH_TONE = { Successful: 'success', Unsuccessful: 'error', Note: 'warning' };
+
+// "Ketan Patni (Coder)" → { name, role }.
+const splitAuthor = (author = '') => {
+  const m = /^(.*?)\s*\(([^)]+)\)\s*$/.exec(author);
+  return m ? { name: m[1], role: m[2] } : { name: author, role: undefined };
+};
+
+// "2026-11-17" → "11/17/2026"; month label "Nov 2026".
+const outreachDate = (iso) => {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return { date: '', monthLabel: '' };
+  return {
+    date: `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}/${y}`,
+    monthLabel: new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' }),
+  };
+};
+
+// "14:42" → "2:42 PM" (as the Activity tab shows times); other text as given.
+const outreachTime = (t) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
+  if (!m) return t || undefined;
+  const h = Number(m[1]);
+  return `${((h + 11) % 12) + 1}:${m[2]} ${h >= 12 ? 'PM' : 'AM'}`;
+};
+
+const EMPTY_OUTREACH_FILTERS = { patient: [], outcome: [], type: [], by: [], date: [] };
+
+function OutreachHistoryTab() {
+  const logs = useAppStore(s => s.hccOutreachLogs);
+  const loading = useAppStore(s => s.hccOutreachLoading);
+  const fetchLogs = useAppStore(s => s.fetchHccOutreachLogs);
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  const [filters, setFilters] = useState(EMPTY_OUTREACH_FILTERS);
+  const setFilter = (k, v) => setFilters(prev => ({ ...prev, [k]: v }));
+  const hasAnyFilter = Object.values(filters).some(v => v.length > 0);
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const toggleGroup = (label) => setCollapsed(prev => {
+    const next = new Set(prev);
+    if (next.has(label)) next.delete(label); else next.add(label);
+    return next;
+  });
+
+  const rows = useMemo(() => (logs || [])
+    .map(l => ({ ...l, ...outreachDate(l.logDate), category: logActivityCategory(l), by: splitAuthor(l.author) }))
+    .filter(l => l.date)
+    .sort((a, b) => `${b.logDate} ${b.logTime}`.localeCompare(`${a.logDate} ${a.logTime}`)), [logs]);
+
+  const cmp = (a, b) => a.localeCompare(b);
+  const uniq = (vals) => [...new Set(vals.filter(Boolean))].sort(cmp);
+  const options = useMemo(() => ({
+    patient: uniq(rows.map(r => r.memberName)),
+    outcome: ['Successful', 'Unsuccessful', 'Note'],
+    type: uniq(rows.map(r => r.type)),
+    by: uniq(rows.map(r => r.by.name)),
+    date: DATE_PRESETS,
+  }), [rows]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const shown = rows.filter(r => {
+    if (filters.patient.length && !filters.patient.includes(r.memberName)) return false;
+    if (filters.outcome.length && !filters.outcome.includes(r.category)) return false;
+    if (filters.type.length && !filters.type.includes(r.type)) return false;
+    if (filters.by.length && !filters.by.includes(r.by.name)) return false;
+    if (filters.date.length) {
+      const d = parseUiDate(r.date);
+      if (!d || !filters.date.some(p => matchesDatePreset(d, p))) return false;
+    }
+    return true;
+  });
+  const groups = [];
+  for (const r of shown) {
+    const last = groups[groups.length - 1];
+    if (last && last.monthLabel === r.monthLabel) last.items.push(r);
+    else groups.push({ monthLabel: r.monthLabel, items: [r] });
+  }
+
+  return (
+    <>
+      <div className={hccStyles.filterRow}>
+        <Icon name="solar:filter-linear" size={20} color="var(--neutral-300)" />
+        <div className={hccStyles.filterChips}>
+          <FilterChip label="Patient"     options={options.patient} selected={filters.patient} onChange={(v) => setFilter('patient', v)} />
+          <FilterChip label="Outcome"     options={options.outcome} selected={filters.outcome} onChange={(v) => setFilter('outcome', v)} />
+          <FilterChip label="Type"        options={options.type}    selected={filters.type}    onChange={(v) => setFilter('type', v)} />
+          <FilterChip label="Recorded By" options={options.by}      selected={filters.by}      onChange={(v) => setFilter('by', v)} />
+          <FilterChip label="Date"        options={options.date}    selected={filters.date}    onChange={(v) => setFilter('date', v)} />
+        </div>
+        <button type="button" className={hccStyles.clearAll} onClick={() => setFilters(EMPTY_OUTREACH_FILTERS)} disabled={!hasAnyFilter}>
+          <Icon name="solar:close-circle-linear" size={12} color={hasAnyFilter ? 'var(--primary-300)' : 'var(--neutral-200)'} />
+          Clear All
+        </button>
+      </div>
+
+      {loading && rows.length === 0 ? (
+        <div style={{ padding: 48, textAlign: 'center', color: 'var(--neutral-300)' }}>
+          <Icon name="solar:call-chat-linear" size={32} color="var(--neutral-200)" />
+          <p>Loading outreach…</p>
+        </div>
+      ) : shown.length === 0 ? (
+        <div style={{ padding: 48, textAlign: 'center', color: 'var(--neutral-300)' }}>
+          <Icon name="solar:call-chat-linear" size={32} color="var(--neutral-200)" />
+          <p>{hasAnyFilter ? 'No outreach matches the selected filters.' : 'No outreach logged yet.'}</p>
+        </div>
+      ) : (
+        <div className={styles.timeline}>
+          {groups.map((g) => {
+            const isCollapsed = collapsed.has(g.monthLabel);
+            return (
+              <div key={g.monthLabel}>
+                <button
+                  type="button"
+                  className={[styles.activityGroup, isCollapsed ? styles.activityGroupCollapsed : ''].join(' ')}
+                  onClick={() => toggleGroup(g.monthLabel)}
+                  aria-expanded={!isCollapsed}
+                >
+                  <span>{g.monthLabel}</span>
+                  <span className={styles.activityGroupChevron}>
+                    <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-400)" />
+                  </span>
+                </button>
+                {!isCollapsed && g.items.map((r, i) => {
+                  const tone = TONE[OUTREACH_TONE[r.category]] || TONE.neutral;
+                  const outcome = r.outcome ? ` · ${r.outcome}` : '';
+                  return (
+                    <HistoryTimelineEntry
+                      key={r.id}
+                      item={{
+                        date: r.date,
+                        time: outreachTime(r.logTime),
+                        by: r.by.name || undefined,
+                        role: r.by.role,
+                        patient: r.memberName || undefined,
+                        headline: `${r.title || r.type}${outcome}`,
+                        commentBody: r.note || undefined,
+                      }}
+                      isFirst={i === 0}
+                      isLast={i === g.items.length - 1}
+                      iconConfig={{ icon: OUTREACH_TYPE_ICON[r.type] || 'solar:call-chat-linear', color: tone.color, bg: tone.bg, border: tone.border }}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 

@@ -1,0 +1,112 @@
+/* Floating phone button, bottom right, under drawers (400) so an open drawer
+   covers it; the live call card sits above drawers (410) so a call can be
+   ended while its outreach drawer is open. */
+.fab {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: 390;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--primary-300);
+  box-shadow: var(--shadow-popover);
+  cursor: pointer;
+}
+.fab:hover { background: var(--primary-400); }
+
+.panel {
+  position: fixed;
+  right: var(--space-6);
+  bottom: calc(var(--space-6) + 56px);
+  z-index: 390;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 340px;
+  padding: var(--space-4);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-popover);
+}
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panelTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.callCard {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: 410;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 340px;
+  padding: var(--space-3) var(--space-4);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-popover);
+}
+/* With the outreach drawer open (700px wide, 8px from the right edge), the
+   card docks to its left instead of covering the form. */
+.callCardBesideDrawer { right: calc(700px + 8px + var(--space-4)); }
+.callCard { cursor: grab; touch-action: none; user-select: none; }
+.callCard:active { cursor: grabbing; }
+
+.callHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-success);
+}
+.callStatus {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--status-success);
+}
+.callClock {
+  margin-left: auto;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+}
+.callWho {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.callName {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.callMeta {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.callActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+.grow { flex: 1; }

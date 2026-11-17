@@ -41,4 +41,6 @@ export const COL_CLASS = {
   rl:       rowStyles.colRl,
   ad:       rowStyles.colAd,
   fr:       rowStyles.colFr,
+  lastOutreachDate:    rowStyles.colLastOutreach,
+  lastOutreachOutcome: rowStyles.colLastOutreach,
 };

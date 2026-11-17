@@ -15,6 +15,8 @@ import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import styles from './AwvWorklistRow.module.css';
 import { OutreachStatus } from '../../components/OutreachStatus/OutreachStatus';
 import { outreachFromCount } from '../../components/OutreachStatus/outreachStatusModel';
+import { PatientOutreachDrawer } from '../hcc/outreach/PatientOutreachDrawer';
+import { canLogOutreach } from '../hcc/outreach/outreachModel';
 
 /**
  * Map AWV Program Sub Status → shared Badge variant. Uses the awv-*
@@ -226,6 +228,14 @@ export function AwvWorklistRow({ member, columns, hiddenSet, selected, onToggle,
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const callBtnRef = useRef(null);
   const [statusAnchor, setStatusAnchor] = useState(null);
+  // More > Log Outreach: the shared patient-level outreach, tagged AWV.
+  const moreBtnRef = useRef(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [outreachOpen, setOutreachOpen] = useState(false);
+  const hccOutreachEnabled = useAppStore(s => s.hccOutreachEnabled);
+  const hccUserRole = useAppStore(s => s.hccUserRole);
+  const requestPatientOutreachLog = useAppStore(s => s.requestPatientOutreachLog);
+  const canLog = hccOutreachEnabled && canLogOutreach(hccUserRole);
   const quickViewPayload = { id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, memberId: member.memberId, language: member.language };
   const handleMemberCellClick = (e) => {
     e.stopPropagation();
@@ -320,11 +330,26 @@ export function AwvWorklistRow({ member, columns, hiddenSet, selected, onToggle,
             }}
           />
           <span className={styles.actionDivider} />
-          <ActionButton
-            icon="solar:menu-dots-linear"
-            tooltip="More"
-            onClick={() => showToast(`More actions for ${member.name}, coming soon`)}
-          />
+          <span ref={moreBtnRef}>
+            <ActionButton
+              icon="solar:menu-dots-linear"
+              tooltip="More"
+              onClick={() => (canLog ? setMoreOpen(true) : showToast(`More actions for ${member.name}, coming soon`))}
+            />
+          </span>
+          {moreOpen && (
+            <MenuPopover
+              anchorRef={moreBtnRef}
+              items={[{ key: 'log-outreach', icon: 'solar:call-chat-linear', label: 'Log Outreach' }]}
+              onSelect={() => { setMoreOpen(false); requestPatientOutreachLog(); setOutreachOpen(true); }}
+              onClose={() => setMoreOpen(false)}
+              width={200}
+              ariaLabel="More actions"
+            />
+          )}
+          {outreachOpen && (
+            <PatientOutreachDrawer member={member} program="AWV" onClose={() => setOutreachOpen(false)} />
+          )}
         </div>
       </td>
     </tr>

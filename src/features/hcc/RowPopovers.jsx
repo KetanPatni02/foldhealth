@@ -308,7 +308,7 @@ const ACTION_ITEMS = [
 ];
 
 // `leadingItems` go above the standard list (e.g. Log Outreach when the org
-// has HCC Outreach).
+// has HCC Outreach and the user's role can log).
 export function ActionsMenuPopover({ anchorRect, onClose, onAction, leadingItems = [] }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };

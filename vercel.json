@@ -82,6 +82,14 @@
       "destination": "/api/ai?route=patient-recap-summary"
     },
     {
+      "source": "/api/outreach-summary",
+      "destination": "/api/ai?route=outreach-summary"
+    },
+    {
+      "source": "/api/pcp-outreach-split",
+      "destination": "/api/ai?route=pcp-outreach-split"
+    },
+    {
       "source": "/api/template-optimization",
       "destination": "/api/ai?route=template-optimization"
     },

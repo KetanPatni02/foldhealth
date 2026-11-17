@@ -20,7 +20,9 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
   // HCC Outreach: the same panel without the box around it.
   plain = false,
   // HCC Outreach: one outcome, shown on the Select Outcome badge itself.
-  singleOutcome = false }) {
+  singleOutcome = false,
+  // The outcomes per Successful / Unsuccessful / Note, when not the default list.
+  outcomeChoices = OUTCOME_CHOICES_BY_STATUS }) {
   const hasTranscript = typeof transcript === 'string';
   const outcomeBtnRef = useRef(null);
   const noteRef = useRef(null);
@@ -42,8 +44,8 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
   const menuItems = choiceItems
     ? choiceItems
     : singleOutcome
-      ? (OUTCOME_CHOICES_BY_STATUS[outcomeType] || []).map(val => ({ key: val, label: val, selected: outcomes[0] === val }))
-      : (OUTCOME_CHOICES_BY_STATUS[outcomeType] || []).filter(o => !outcomes.includes(o)).map(val => ({ key: val, label: val }));
+      ? (outcomeChoices[outcomeType] || []).map(val => ({ key: val, label: val, selected: outcomes[0] === val }))
+      : (outcomeChoices[outcomeType] || []).filter(o => !outcomes.includes(o)).map(val => ({ key: val, label: val }));
   const picked = singleOutcome ? outcomes[0] : null;
   const choice = useMemo(() => {
     const keys = [], label = {}, section = {};
@@ -94,7 +96,7 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
                   <>
                     <Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" />
                     <span>Select Outcome</span>
-                    {outcomes.length === 0 && <span className={styles.mandatoryDot} aria-hidden="true" />}
+                    {outcomes.length === 0 && !(singleOutcome && outcomeType && !menuItems.length) && <span className={styles.mandatoryDot} aria-hidden="true" />}
                   </>
                 )}
               </button>

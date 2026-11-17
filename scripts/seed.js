@@ -20,6 +20,8 @@ import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../sr
 import { HCC_MEMBER_BY_NAME, HCC_MEMBERS } from '../src/features/hcc/data/mock.js';
 import { HCC_OUTREACH_MOCK } from '../src/features/hcc/data/hccOutreachMock.js';
 import { hccOutreachToRow } from '../src/features/hcc/data/hccOutreachRows.js';
+import { PATIENT_OUTREACH_MOCK } from '../src/features/hcc/outreach/patientOutreachMock.js';
+import { patientOutreachToRow } from '../src/features/hcc/outreach/patientOutreachRows.js';
 import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
 import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmActivity.js';
 import { sampleReferralsFor, referralToRow } from '../src/features/patient/data/patientReferrals.js';
@@ -1762,6 +1764,25 @@ async function main() {
     .from('hcc_outreach_logs')
     .upsert(HCC_OUTREACH_MOCK.map(hccOutreachToRow), { onConflict: 'id' });
   if (hoErr) { console.error('  ✗', hoErr.message, '(run supabase/hcc_outreach_logs_migration.sql first)'); } else { console.log(`  ✓ ${HCC_OUTREACH_MOCK.length} outreach logs`); }
+
+  // Patient-level outreach, keyed by Member ID: looked up by name from
+  // hcc_members, so a patient's rows land on all of their HCC records.
+  console.log('\nSeeding patient_outreach...');
+  {
+    const { data: members, error: pmErr } = await supabase.from('hcc_members').select('name, member_id');
+    if (pmErr) {
+      console.error('  ✗ could not read hcc_members:', pmErr.message);
+    } else {
+      const keyByName = new Map((members || []).filter(m => m.member_id).map(m => [m.name, m.member_id]));
+      const rows = PATIENT_OUTREACH_MOCK
+        .filter(e => keyByName.has(e.patientName))
+        .map(e => patientOutreachToRow({ ...e, patientKey: keyByName.get(e.patientName), program: 'RA' }));
+      const { error: poErr } = rows.length
+        ? await supabase.from('patient_outreach').upsert(rows, { onConflict: 'id' })
+        : { error: null };
+      if (poErr) { console.error('  ✗', poErr.message, '(run supabase/patient_outreach_migration.sql first)'); } else { console.log(`  ✓ ${rows.length} outreach entries`); }
+    }
+  }
 
   // Ensure EVERY worklist member has diagnosis gaps, curated where available,
   // deterministically generated (getIcdsForMember/getNotLinkedForMember) for the
