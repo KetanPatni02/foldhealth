@@ -7,12 +7,17 @@ import { CollapsibleContent } from '../../../../../../components/Collapsible/Col
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { CheckboxListPopover } from '../../../../../../components/CheckboxListPopover/CheckboxListPopover';
 import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
+import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { OUTCOME_CHOICES_BY_STATUS } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
 
 export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOpen, showSyncText,
   onToggleExpand, onToggleOutcomeOpen, onAddOutcome, onRemoveOutcome, onSetOutcomes, onNoteChange, onToggleSyncText,
-  outcomeType, choiceItems = null, cannedEntry = false }) {
+  outcomeType, choiceItems = null, cannedEntry = false,
+  // HCC calls: a transcript block above the note. `transcript` is undefined
+  // until it's added (by hand or from the call's transcript).
+  transcript, onAddTranscript, onTranscriptChange, onRemoveTranscript }) {
+  const hasTranscript = typeof transcript === 'string';
   const outcomeBtnRef = useRef(null);
   const noteRef = useRef(null);
   // Canned messages (deferred): typing "/" at the start of a word opens the
@@ -104,6 +109,13 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
               />
             )}
           </div>
+          {onAddTranscript && (
+            <>
+              <span className={styles.panelDivider} />
+              <ActionButton size="sm" icon="solar:document-add-linear" tooltip={hasTranscript ? 'Transcript added' : 'Add Transcript'}
+                tooltipBelow tooltipLeft disabled={hasTranscript} onClick={onAddTranscript} />
+            </>
+          )}
           {showSyncText && (
             <>
               <span className={styles.panelDivider} />
@@ -130,6 +142,20 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
                   <Icon name="solar:close-circle-linear" size={10} color="currentColor" />
                 </button>
               ))}
+            </div>
+          )}
+          {hasTranscript && (
+            <div className={styles.noteTranscript}>
+              <span className={styles.noteTranscriptBar} aria-hidden="true" />
+              <Textarea
+                aria-label="Call transcript"
+                className={styles.noteTranscriptText}
+                autoFocus={!transcript}
+                placeholder="Paste the call transcript"
+                value={transcript}
+                onChange={e => onTranscriptChange(e.target.value)}
+              />
+              <ActionButton size="sm" icon="solar:trash-bin-trash-linear" tooltip="Remove transcript" tooltipBelow tooltipLeft onClick={onRemoveTranscript} />
             </div>
           )}
           <Textarea aria-label="Outreach note"

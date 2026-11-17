@@ -123,3 +123,15 @@ export function sequenceMap(groups) {
   logs.forEach((log, i) => { out[log.id] = `${ORDINAL(logs.length - i)} Outreach`; });
   return out;
 }
+
+// The last call's transcript, loaded by "Use This" on the Last Call banner
+// (demo data until calls are recorded; the banner's call is demo data too).
+export const LAST_CALL_TRANSCRIPT = [
+  'Delores Conn (00:04): Hi, Dr. Moss. This is Delores from Astrana, calling about your patient Annette Brave.',
+  'Dr. Katherine Moss (00:12): Hi, Delores. Sure, what do you need?',
+  'Delores Conn (00:18): We have open diagnosis gaps for her diabetes with complications and her heart failure. Did you see her this year?',
+  'Dr. Katherine Moss (00:31): Yes, she was in last month. I addressed both and documented the echo results.',
+  'Delores Conn (00:42): Great. Could you send the visit note so our coders can review it?',
+  'Dr. Katherine Moss (00:50): I’ll have my office upload it to the portal this week.',
+  'Delores Conn (00:56): Thank you. I’ll follow up next week if it isn’t there.',
+].join('\n');

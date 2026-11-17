@@ -2201,7 +2201,8 @@ function outreachForMember(logs, member) {
   return (logs || []).filter(l => (l.memberId && member.id ? String(l.memberId) === String(member.id) : l.memberName === member.name));
 }
 
-const HCC_CALL_TYPES = ['Provider', 'Member'];
+// Outreach To: the member's PCP (or the PCP's office) or the member.
+const HCC_CALL_TYPES = ['PCP / PCP Office', 'Member'];
 
 // HCC Outreach (Astrana): the shared outreach widget with the HCC workflow,
 // logged at member level (no gap or DOS picker), and every outreach logged
@@ -2237,9 +2238,11 @@ function OutreachTab({ member }) {
     'Practice Line (800 000-0000)',
   ].filter(Boolean))], [pcp, renderingProvider]);
   const calledToByCallType = useMemo(() => ({
+    // Provider stays for Called To on outreach logged before Outreach To.
+    'PCP / PCP Office': [pcp ? `${pcp} (PCP)` : null, 'PCP Office'].filter(Boolean),
     Provider: providerContacts,
     Member: name ? [`${name} (Member)`] : [],
-  }), [providerContacts, name]);
+  }), [pcp, providerContacts, name]);
 
   if (!ready) return <CardSkeleton />;
 

@@ -307,7 +307,9 @@ const ACTION_ITEMS = [
   { icon: 'solar:chat-round-unread-linear',    label: 'Comms Preference',trail: false },
 ];
 
-export function ActionsMenuPopover({ anchorRect, onClose, onAction }) {
+// `leadingItems` go above the standard list (e.g. Log Outreach when the org
+// has HCC Outreach).
+export function ActionsMenuPopover({ anchorRect, onClose, onAction, leadingItems = [] }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     document.addEventListener('keydown', onKey);
@@ -329,7 +331,7 @@ export function ActionsMenuPopover({ anchorRect, onClose, onAction }) {
         role="menu"
         aria-label="Member actions"
       >
-        {ACTION_ITEMS.map((item) => (
+        {[...leadingItems, ...ACTION_ITEMS].map((item) => (
           <button
             key={item.label}
             type="button"

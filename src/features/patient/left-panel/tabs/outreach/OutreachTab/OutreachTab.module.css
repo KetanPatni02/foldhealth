@@ -68,6 +68,13 @@
   border-bottom: 0.5px solid var(--neutral-100);
 }
 
+.outreachToRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
 .logForLabel {
   font-size: var(--font-base);
   font-weight: 500;
@@ -349,19 +356,63 @@
 .callDurationInput::-webkit-inner-spin-button,
 .callDurationInput::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* Duration with up/down arrows (HCC Outreach): this is the inner <input>;
-   the Input shell around it sizes to the two digits plus the stepper. */
-.callDurationStepper {
-  width: 24px !important;
-  text-align: center;
-  -moz-appearance: textfield;
+/* HCC Outreach duration: [00 ⇅ min] : [00 ⇅ sec] (as the Care Plan
+   due-date offset). The stepper sits on the input's white background; only
+   the unit gets the grey pill. */
+.durationRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
-.callDurationRowStepper > div {
-  flex: none;
-  width: 64px;
+/* The two boxes share the column's width, so the row lines up with the
+   fields below it at any panel width. */
+.durationInput {
+  flex: 1;
+  min-width: 0;
 }
-.callDurationStepper::-webkit-inner-spin-button,
-.callDurationStepper::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.durationInput > div > span:last-child {
+  padding: 0;
+  border-left: 0;
+  background: transparent;
+}
+.durationTrailing {
+  display: inline-flex;
+  align-items: stretch;
+  height: 100%;
+}
+.durationSpinner {
+  display: flex;
+  flex-direction: column;
+  border-left: 0.5px solid var(--neutral-150);
+  border-right: 0.5px solid var(--neutral-150);
+}
+.durationSpinnerBtn {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.durationSpinnerBtn:hover { background: var(--neutral-50); }
+.durationSpinnerBtn + .durationSpinnerBtn { border-top: 0.5px solid var(--neutral-150); }
+.durationUnitPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border-radius: 0 4px 4px 0;
+  background: var(--neutral-50);
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.durationColon {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
 
 .callDurationUnit {
   font-size: var(--font-sm);
@@ -800,29 +851,38 @@
 .activityFilterClearAll:hover { color: var(--neutral-400); }
 
 /* ── HCC Outreach workflow: call transcript + snooze ── */
-.transcriptSection {
+/* The note's transcript block (Figma 2383:121686): a light purple bar on the
+   left, the pasted or added transcript, and a remove action. */
+.noteTranscript {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
   gap: var(--space-2);
+  padding: var(--space-1);
+  border: 0.5px solid var(--placeholder-text);
+  border-radius: 4px;
 }
-
-.transcriptToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-1) * 1.5);
-  align-self: flex-start;
-  padding: 0;
+.noteTranscriptBar {
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 3px;
+  border-radius: 13px;
+  background: var(--primary-200);
+}
+.noteTranscriptText {
+  flex: 1;
+  min-height: 104px;
+  max-height: 160px;
+  padding: var(--space-1) 0;
   border: 0;
-  background: none;
-  font-size: var(--font-md);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--font-base);
+  line-height: 1.2;
   color: var(--neutral-400);
-  cursor: pointer;
+  resize: none;
+  overflow-y: auto;
 }
-
-.transcriptAttached {
-  font-size: var(--font-sm);
-  color: var(--status-success);
-}
+.noteTranscriptText:focus { outline: none; box-shadow: none; }
 
 .snoozeChip {
   display: inline-flex;

@@ -6,6 +6,7 @@ import { INITIAL_LOG_GROUPS } from '../../../../data/outreachLogMock';
 import { canContact } from '../../../../data/consentRules';
 import { OUTREACH_CHANNEL, numberFromRecipient } from '../../../../data/patientPreferences';
 import { usePatientConsent } from '../../../../hooks/usePatientConsent';
+import { parseTranscript } from '../../../../../../components/CallTranscript/transcript';
 
 import {
   PROGRAMS,
@@ -76,7 +77,9 @@ export function useOutreachTab({
       : []),
     [memberName],
   );
-  const [callType, setCallType] = useState('Provider');
+  // The first option leads (HCC: PCP / PCP Office).
+  const INITIAL_CALL_TYPE = callTypeOptions?.[0] || 'Provider';
+  const [callType, setCallType] = useState(INITIAL_CALL_TYPE);
   // Contacts added from the form's Add Contact action join the Called To list
   // (of the Call Type they were added under).
   const [addedContacts, setAddedContacts] = useState([]);
@@ -96,7 +99,7 @@ export function useOutreachTab({
   // The other party: the first contact for the Call Type that isn't our own
   // number (a Provider call lists providers on both sides).
   const otherPartyFor = (ct, ours) => calledToFor(ct).find(c => c !== ours) || calledToFor(ct)[0] || '';
-  const INITIAL_CALLED_TO = defaultCalledTo || otherPartyFor('Provider', INITIAL_CALL_VIA);
+  const INITIAL_CALLED_TO = defaultCalledTo || otherPartyFor(INITIAL_CALL_TYPE, INITIAL_CALL_VIA);
 
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
@@ -307,7 +310,7 @@ export function useOutreachTab({
     setCallDirection('outgoing');
     setCallViaNumber(INITIAL_CALL_VIA);
     setCalledToNumber(INITIAL_CALLED_TO);
-    setCallType('Provider');
+    setCallType(INITIAL_CALL_TYPE);
     setCallDurationMin('00');
     setCallDurationSec('00');
     setTranscript('');
@@ -349,7 +352,7 @@ export function useOutreachTab({
             to: calledToNumber,
             callType,
             durationMin: Number(callDurationMin) + Number(callDurationSec) / 60,
-            transcript: transcript.trim() ? [{ speaker: name, t: time, text: transcript.trim() }] : [],
+            transcript: parseTranscript(transcript.trim() ? transcript : panelData.transcript),
           } : undefined,
           snoozeUntil,
         } : {}),

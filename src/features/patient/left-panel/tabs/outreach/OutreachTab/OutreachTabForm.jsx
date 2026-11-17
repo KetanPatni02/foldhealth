@@ -1,8 +1,6 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../../../../../components/Icon/Icon';
-import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { Textarea } from '../../../../../../components/Textarea/Textarea';
-import { CollapsibleContent } from '../../../../../../components/Collapsible/Collapsible';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { CloseButton } from '../../../../../../components/CloseButton/CloseButton';
 import { AddTaskIcon } from '../../../../../../components/Icon/AddTaskIcon';
@@ -16,7 +14,9 @@ import { FieldDropdown, TypeDropdown } from './OutreachTabDropdowns';
 import { DateTimePicker } from '../../../../../../components/DateTimePicker/DateTimePicker';
 import { NotePanel } from './OutreachTabNotePanel';
 import { AddContactDialog } from './AddContactDialog';
-import { DEFAULT_CALL_TYPES, LOG_FOR_OPTIONS } from './OutreachTab.utils';
+import { DEFAULT_CALL_TYPES, LOG_FOR_OPTIONS, LAST_CALL_TRANSCRIPT } from './OutreachTab.utils';
+import { CallTranscript } from '../../../../../../components/CallTranscript/CallTranscript';
+import { parseTranscript, formatTranscriptBlock } from '../../../../../../components/CallTranscript/transcript';
 import styles from './OutreachTab.module.css';
 
 export function OutreachTabForm({
@@ -71,7 +71,21 @@ export function OutreachTabForm({
   snoozeUntil = null, setSnoozeUntil,
   addContact,
 }) {
-  const [transcriptOpen, setTranscriptOpen] = useState(false);
+  const transcriptLines = parseTranscript(transcript);
+  // The note's transcript block (HCC calls): added by hand next to Select
+  // Outcome, or from the call's transcript with Add to Note. Each selected
+  // gap's note gets it when notes are separate.
+  const patchNotes = (patch) => {
+    if (useSeparate) selectedProgs.forEach(p => patchPanel(p, patch));
+    else patchShared(patch);
+  };
+  const addTranscriptToNote = (lines) => patchNotes({ transcript: formatTranscriptBlock(lines) });
+  const transcriptProps = (ps, patch) => (hccWorkflow && showCallDetails ? {
+    transcript: ps.transcript,
+    onAddTranscript: () => patch({ transcript: '', expanded: true }),
+    onTranscriptChange: text => patch({ transcript: text }),
+    onRemoveTranscript: () => patch({ transcript: undefined }),
+  } : {});
   const [contactOpen, setContactOpen] = useState(false);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const snoozeRef = useRef(null);
@@ -81,6 +95,52 @@ export function OutreachTabForm({
     setCallDurationMin(String(Math.floor(total / 60)).padStart(2, '0'));
     setCallDurationSec(String(total % 60).padStart(2, '0'));
   };
+  // HCC: [00 ⇅ min] : [00 ⇅ sec], the same number field with a stepper and
+  // unit pill as the Care Plan due-date offset.
+  const durationPart = (value, setValue, max, unit, step) => (
+    <Input
+      value={value}
+      inputMode="numeric"
+      aria-label={`Duration ${unit}`}
+      wrapperClassName={styles.durationInput}
+      onChange={e => setValue(String(Math.min(max, Number(e.target.value.replace(/\D/g, '').slice(-2)) || 0)).padStart(2, '0'))}
+      trailingTextSegment
+      trailingText={(
+        <span className={styles.durationTrailing}>
+          <span className={styles.durationSpinner}>
+            <button type="button" className={styles.durationSpinnerBtn} aria-label={`Increase ${unit}`} onClick={() => stepDuration(step)}>
+              <Icon name="solar:alt-arrow-up-linear" size={10} color="var(--neutral-300)" />
+            </button>
+            <button type="button" className={styles.durationSpinnerBtn} aria-label={`Decrease ${unit}`} onClick={() => stepDuration(-step)}>
+              <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+            </button>
+          </span>
+          <span className={styles.durationUnitPill}>{unit}</span>
+        </span>
+      )}
+    />
+  );
+  const durationField = (
+    <div className={styles.callFieldWrap}>
+      <span className={styles.callFieldLabel}>Duration</span>
+      {hccWorkflow ? (
+        <div className={styles.durationRow}>
+          {durationPart(callDurationMin, setCallDurationMin, 99, 'min', 60)}
+          <span className={styles.durationColon} aria-hidden="true">:</span>
+          {durationPart(callDurationSec, setCallDurationSec, 59, 'sec', 1)}
+        </div>
+      ) : (
+        <div className={styles.callDurationRow}>
+          <Input type="number" className={styles.callDurationInput} value={callDurationMin} min={0} max={99}
+            onChange={e => setCallDurationMin(e.target.value.padStart(2, '0').slice(-2))} />
+          <span className={styles.callDurationUnit}>Min</span>
+          <Input type="number" className={styles.callDurationInput} value={callDurationSec} min={0} max={59}
+            onChange={e => setCallDurationSec(e.target.value.padStart(2, '0').slice(-2))} />
+          <span className={styles.callDurationUnit}>Sec</span>
+        </div>
+      )}
+    </div>
+  );
   const choiceItemsFor = (progs) => (outcomeItems ? outcomeItems(outcome, progs) : null);
   return (
     <div className={styles.formCard}>
@@ -94,6 +154,17 @@ export function OutreachTabForm({
               onChange={() => handleLogForChange(opt.key)}
               label={opt.label}
             />
+          ))}
+        </div>
+      )}
+
+      {/* HCC: who the outreach is to (it also picks
+          the Called To list). */}
+      {hccWorkflow && (
+        <div className={styles.outreachToRow}>
+          <span className={styles.logForLabel}>Outreach To</span>
+          {callTypeOptions.map(opt => (
+            <RadioButton key={opt} checked={callType === opt} onChange={() => setCallType(opt)} label={opt} />
           ))}
         </div>
       )}
@@ -128,6 +199,7 @@ export function OutreachTabForm({
                     setCalledToNumber('Dr. Katherine Moss (581 824-1591)');
                     setCallDurationMin('05');
                     setCallDurationSec('29');
+                    if (hccWorkflow) setTranscript?.(LAST_CALL_TRANSCRIPT);
                     // The last call is now in the fields below; the card is done.
                     setCallBannerVisible(false);
                   }}
@@ -147,19 +219,16 @@ export function OutreachTabForm({
               <span className={styles.callDetailsLabel}>Call Details:</span>
             </div>
             {hccWorkflow ? (
-              // HCC: direction (Call Type) and who the call was with share a row.
+              // HCC: Call Direction and Duration share a row.
               <div className={styles.callFieldsGrid}>
                 <div className={styles.callFieldWrap}>
-                  <span className={styles.callFieldLabel}>Call Type</span>
+                  <span className={styles.callFieldLabel}>Call Direction</span>
                   <div className={`${styles.callDirectionRow} ${styles.callDirectionRowField}`}>
                     <RadioButton checked={callDirection === 'outgoing'} onChange={() => setCallDirection('outgoing')} label="Outgoing" />
                     <RadioButton checked={callDirection === 'incoming'} onChange={() => setCallDirection('incoming')} label="Incoming" />
                   </div>
                 </div>
-                <div className={styles.callFieldWrap}>
-                  <span className={styles.callFieldLabel}>Call With</span>
-                  <FieldDropdown value={callType} onChange={setCallType} placeholder="Select" options={callTypeOptions} />
-                </div>
+                {durationField}
               </div>
             ) : (
               <div className={styles.callDirectionRow}>
@@ -188,39 +257,18 @@ export function OutreachTabForm({
                   <FieldDropdown value={callType} onChange={setCallType} placeholder="Select type" options={callTypeOptions} />
                 </div>
               )}
-              <div className={styles.callFieldWrap}>
-                <span className={styles.callFieldLabel}>Duration</span>
-                <div className={`${styles.callDurationRow} ${hccWorkflow ? styles.callDurationRowStepper : ''}`}>
-                  <Input type="number" className={hccWorkflow ? styles.callDurationStepper : styles.callDurationInput} value={callDurationMin} min={0} max={99}
-                    onChange={e => setCallDurationMin(e.target.value.padStart(2, '0').slice(-2))}
-                    {...(hccWorkflow ? { onStepUp: () => stepDuration(60), onStepDown: () => stepDuration(-60) } : {})} />
-                  <span className={styles.callDurationUnit}>Min</span>
-                  <Input type="number" className={hccWorkflow ? styles.callDurationStepper : styles.callDurationInput} value={callDurationSec} min={0} max={59}
-                    onChange={e => setCallDurationSec(e.target.value.padStart(2, '0').slice(-2))}
-                    {...(hccWorkflow ? { onStepUp: () => stepDuration(1), onStepDown: () => stepDuration(-1) } : {})} />
-                  <span className={styles.callDurationUnit}>Sec</span>
-                </div>
-              </div>
+              {!hccWorkflow && durationField}
             </div>
 
-            {hccWorkflow && (
-              <div className={styles.transcriptSection}>
-                <button type="button" className={styles.transcriptToggle} onClick={() => setTranscriptOpen(v => !v)} aria-expanded={transcriptOpen}>
-                  <Icon name="solar:document-text-linear" size={14} color="var(--neutral-300)" />
-                  <span>Call Transcript</span>
-                  {transcript.trim() && <span className={styles.transcriptAttached}>Attached</span>}
-                  <DownChevronIcon size={12} color="var(--neutral-300)" style={transcriptOpen ? { transform: 'rotate(180deg)' } : undefined} />
-                </button>
-                <CollapsibleContent open={transcriptOpen}>
-                  <Textarea
-                    aria-label="Call transcript"
-                    className={styles.noteTextarea}
-                    placeholder="Paste the call transcript"
-                    value={transcript}
-                    onChange={e => setTranscript?.(e.target.value)}
-                  />
-                </CollapsibleContent>
-              </div>
+            {/* Only a Fold call's transcript ("Use This" on the Last Call
+                banner) shows here; a manual one goes in the note. */}
+            {hccWorkflow && transcriptLines.length > 0 && (
+              <CallTranscript
+                defaultOpen
+                lines={transcriptLines}
+                isStaff={speaker => String(callViaNumber || '').toLowerCase().startsWith(speaker.toLowerCase())}
+                onAddToNote={addTranscriptToNote}
+              />
             )}
           </div>
         )}
@@ -300,6 +348,7 @@ export function OutreachTabForm({
                     onNoteChange={text => handleNoteChange(prog, text)}
                     onToggleSyncText={() => toggleSyncText(prog)}
                     cannedEntry={hccWorkflow}
+                    {...transcriptProps(ps, patch => patchPanel(prog, patch))}
                   />
                 );
               })
@@ -322,6 +371,7 @@ export function OutreachTabForm({
                 onNoteChange={text => handleNoteChange(null, text)}
                 onToggleSyncText={() => {}}
                 cannedEntry={hccWorkflow}
+                {...transcriptProps(sharedPanel, patchShared)}
               />
             )}
           </div>
