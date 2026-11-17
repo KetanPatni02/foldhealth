@@ -65,3 +65,10 @@ export function hccOutreachGroups(logs) {
   }
   return groups;
 }
+
+// The member's outreach logs: by member id when the row has one, else by name
+// (seeded rows are keyed by name).
+export function outreachForMember(logs, member) {
+  if (!member) return [];
+  return (logs || []).filter(l => (l.memberId && member.id ? String(l.memberId) === String(member.id) : l.memberName === member.name));
+}

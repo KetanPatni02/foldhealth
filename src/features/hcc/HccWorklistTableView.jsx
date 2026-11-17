@@ -1,14 +1,19 @@
+import { useRef, useState } from 'react';
 import { HccWorklistRow, HccEmptyPatientRow } from './HccWorklistRow';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
 import { Checkbox } from '../../components/Checkbox/Checkbox';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { Button } from '../../components/Button/Button';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { SortPopover } from '../../components/SortPopover/SortPopover';
 import { DUE_OPTIONS } from './dueDateFilter';
 import { SavedFiltersChip } from './SavedFiltersChip';
+import { PcpOutreachDrawer } from './outreach/PcpOutreachDrawer';
+import { HccCallWidget } from './outreach/HccCallWidget';
+import { canLogOutreach } from './outreach/outreachModel';
 import { FilterChipBar } from './FilterChipBar';
 import { FilterNameDialog } from '../../components/FilterBar/FilterNameDialog';
 import { ColumnConfigPopover } from '../../components/ColumnConfigPopover/ColumnConfigPopover';
@@ -42,15 +47,24 @@ export function HccWorklistTableView({
   const setCurrentPage = useAppStore(s => s.setCurrentPage);
   const perPage = useAppStore(s => s.perPage);
   const setPerPage = useAppStore(s => s.setPerPage);
+  // PCP Outreach: log one call / email / visit with a PCP office for several patients.
+  const hccOutreachEnabled = useAppStore(s => s.hccOutreachEnabled);
+  const hccUserRole = useAppStore(s => s.hccUserRole);
+  const [pcpOutreachOpen, setPcpOutreachOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef(null);
   return (
     <div className={styles.wrap}>
       <HccUploadProgressRibbon />
+      {pcpOutreachOpen && <PcpOutreachDrawer onClose={() => setPcpOutreachOpen(false)} />}
+      {/* Bottom-right call widget: call a Member, PCP or User, then log it. */}
+      {hccOutreachEnabled && canLogOutreach(hccUserRole) && <HccCallWidget />}
       {/* Header (SectionTitleBar · variant 2 · titleWithDropdown).
           `activeSubnavList` (from SubNav) drives the title so renaming a
           worklist in the SubNav ripples here without a second source of
           truth. Due Date routes through FilterChip singleSelect via the
-          shared component; SavedFiltersChip / Export / UploadMenu / History
-          keep their HCC-specific popovers via rightExtras. */}
+          shared component; SavedFiltersChip / UploadMenu keep their HCC-specific
+          popovers via rightExtras, and Export / History sit in the ⋯ menu. */}
       <SectionTitleBar
         variant="titleWithDropdown"
         leadingElement={<SubnavToggle />}
@@ -59,25 +73,46 @@ export function HccWorklistTableView({
         dropdownOptions={DUE_OPTIONS}
         dropdownValue={hccDueDateFilter}
         onDropdownChange={setHccDueDateFilter}
-        actions={['search', 'filter', 'history']}
+        actions={['search', 'filter']}
         searchPlaceholder="Search by member name…"
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
         filterActive={filterOpen}
         filterBadgeCount={activeFilterCount}
         onFilter={() => setFilterOpen(v => !v)}
-        onHistory={openHccHistoryDrawer}
+        // Last on the bar: ⋯ with Export and History (Activity, Documents, Outreach).
+        trailingExtras={(
+          <span ref={moreRef}>
+            <ActionButton icon="solar:menu-dots-linear" tooltip="More" tooltipBelow tooltipLeft active={moreOpen} onClick={() => setMoreOpen(v => !v)} />
+            {moreOpen && (
+              <MenuPopover
+                anchorRef={moreRef}
+                items={[
+                  { key: 'export', icon: 'custom:export', label: 'Export' },
+                  { key: 'history', icon: 'solar:history-linear', label: 'History' },
+                ]}
+                onSelect={(key) => {
+                  setMoreOpen(false);
+                  if (key === 'export') showToast('Export: coming soon');
+                  else openHccHistoryDrawer();
+                }}
+                onClose={() => setMoreOpen(false)}
+                width={180}
+                ariaLabel="More actions"
+              />
+            )}
+          </span>
+        )}
         rightExtras={
           <>
             <SavedFiltersChip />
             <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-            <ActionButton
-              icon="custom:export"
-              tooltip="Export"
-              tooltipBelow
-              onClick={() => showToast('Export: coming soon')}
-            />
-            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+            {hccOutreachEnabled && canLogOutreach(hccUserRole) && (
+              <>
+                <ActionButton icon="custom:outreach" tooltip="PCP Outreach" tooltipBelow onClick={() => setPcpOutreachOpen(true)} />
+                <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+              </>
+            )}
             <UploadMenuButton
               onUploadDocument={() => { startHccUpload(null); setHccUploadPhase('picker'); }}
               onAddManually={() => { startHccUpload(null); setHccUploadPhase('single'); }}

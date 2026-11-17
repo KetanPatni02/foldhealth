@@ -1,0 +1,303 @@
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Between the header's actions and the close button (Drawer noCloseDivider). */
+.headerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+
+/* No padding of its own: the Drawer body already pads the content. */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* The setup form straight on the drawer: the HCC Outreach form's spacing
+   without its card. */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+/* The outreach card: tighter than the shared HCC form (8px in, 12px between
+   sections). `.form` in front outranks the shared card's own rules. */
+.form .detailsCard {
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  gap: var(--space-2);
+}
+.form .detailsBody { gap: var(--space-3); }
+
+/* Per-Patient Details under the outreach card. */
+.reviewInline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionLabel {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.count,
+.hint {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.empty {
+  padding: var(--space-3);
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  text-align: center;
+}
+
+.pickTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.cardChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.pickTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--placeholder-text);
+}
+.requiredDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+}
+
+/* Search to add: the matches open right under the field. */
+.picker { position: relative; }
+.results {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: var(--space-1);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-popover);
+}
+.resultRow {
+  display: flex;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.resultRow:hover { background: var(--neutral-50); }
+.resultsEmpty {
+  padding: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+/* Selected Patients (Figma 40:136697). */
+.selectedBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.selectedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.selectedTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.selectedActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+/* A selected patient without per-patient details: just the avatar row. */
+.patientRowPlain { padding: calc(var(--space-1) / 2) 0; }
+
+.selectedRule {
+  height: 0.5px;
+  background: var(--neutral-150);
+}
+.selectedRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: calc(var(--space-1) / 2) 0;
+}
+
+.patientLine {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.patientInfo {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.patientName {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.patientDemo {
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+}
+.patientMeta {
+  font-size: var(--font-sm);
+  color: var(--placeholder-text);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  background: var(--status-warning-light);
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.cardFlagged { border-color: var(--status-warning); }
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.flag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 4px;
+  background: var(--status-warning-light);
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+.flagText {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.flagActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.moveSelect { width: 200px; }
+
+.text {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+.actions {
+  margin: 0;
+  padding-left: var(--space-4);
+  list-style: disc;
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+.error,
+.errorBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--status-error);
+}
+.errorBar { padding: 0 var(--space-4) var(--space-4); }

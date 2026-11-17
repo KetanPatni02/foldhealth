@@ -1024,6 +1024,7 @@ th.stickyMember { left: 36px; border-right: 0.5px solid var(--neutral-150); }
 .colRl          { min-width: 90px; }
 .colAd          { min-width: 90px; }
 .colFr          { min-width: 80px; }
+.colLastOutreach { min-width: 150px; }
 .colActions     { min-width: 90px; }
 
 .actionsCell {
@@ -1194,3 +1195,8 @@ th.stickyMember { left: 36px; border-right: 0.5px solid var(--neutral-150); }
   gap: 4px;
 }
 .openIcdsOpenBtn:hover { text-decoration: underline; }
+
+/* Log Outreach drawer: the outreach form pads itself (12px), so the drawer
+   body adds only enough to make the usual 16px edge (doubled class to beat
+   the Drawer's own padding). */
+.outreachDrawerBody.outreachDrawerBody { padding: var(--space-1); }

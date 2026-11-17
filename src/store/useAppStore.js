@@ -290,6 +290,7 @@ import { rowToReferral, sampleReferralsFor } from '../features/patient/data/pati
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
 import { createPharmacyWorklistSlice } from './slices/pharmacyWorklistSlice';
 import { createHccOutreachSlice } from './slices/hccOutreachSlice';
+import { createPatientOutreachSlice } from './slices/patientOutreachSlice';
 import { createPatientOrdersSlice } from './slices/patientOrdersSlice';
 import { createPatientPortalSlice } from './slices/patientPortalSlice';
 import { createFeatureReviewsSlice } from './slices/featureReviewsSlice';
@@ -506,6 +507,7 @@ export const useAppStore = create((set, get) => ({
   ...createHccWorklistFiltersSlice(set, get),
   ...createPharmacyWorklistSlice(set, get),
   ...createHccOutreachSlice(set, get),
+  ...createPatientOutreachSlice(set, get),
   ...createPatientOrdersSlice(set, get),
   ...createPatientPortalSlice(set, get),
   ...createFeatureReviewsSlice(set, get),
@@ -7346,6 +7348,9 @@ export const useAppStore = create((set, get) => ({
   // HCC Outreach workflow (Astrana): the HCC chart's Outreach tab
   // (org_settings_hcc_outreach_migration.sql). On unless the org turns it off.
   hccOutreachEnabled: true,
+  // Patient Outreach: Outreach To default, 'pcp' or 'member'
+  // (org_settings_outreach_default_recipient_migration.sql).
+  outreachDefaultRecipient: 'pcp',
   orgFeaturesDidFetch: false,
   fetchOrgFeatures: async () => {
     if (useAppStore.getState().orgFeaturesDidFetch) return;
@@ -7358,7 +7363,7 @@ export const useAppStore = create((set, get) => ({
       }
       // Schema-tolerant: a column whose migration hasn't run is dropped from
       // the select and its setting stays on the default.
-      let columns = ['show_patient_app_indicator', 'care_plan_mode', 'ask_status_change_reason', 'always_show_sms_line', 'hcc_outreach_enabled'];
+      let columns = ['show_patient_app_indicator', 'care_plan_mode', 'ask_status_change_reason', 'always_show_sms_line', 'hcc_outreach_enabled', 'outreach_default_recipient'];
       const read = () => supabase
         .from('org_settings')
         .select(columns.join(', '))
@@ -7382,6 +7387,7 @@ export const useAppStore = create((set, get) => ({
         askStatusChangeReason: !!data?.ask_status_change_reason,
         alwaysShowSmsLine: data?.always_show_sms_line !== false,
         hccOutreachEnabled: data?.hcc_outreach_enabled !== false,
+        outreachDefaultRecipient: data?.outreach_default_recipient === 'member' ? 'member' : 'pcp',
       });
     } catch (err) {
       console.warn('fetchOrgFeatures failed:', err?.message || err);

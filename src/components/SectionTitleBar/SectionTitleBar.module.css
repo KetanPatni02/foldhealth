@@ -69,6 +69,13 @@
   align-items: center;
   gap: 10px;
 }
+/* The bar mixes custom 20px icons (filter, upload, export: 1px lines on a
+   20-unit grid) with Solar icons (24-unit grid, forced to stroke 1, so
+   0.83px at 20px). 1.2 on the 24-unit grid draws Solar at 1px too, so every
+   toolbar icon has the same line weight. */
+.right :global(svg.iconify[width="20"]) [stroke]:not([stroke="none"]) {
+  stroke-width: 1.2 !important;
+}
 
 .iconDivider {
   width: 1px;

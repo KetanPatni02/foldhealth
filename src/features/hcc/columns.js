@@ -43,6 +43,10 @@ export const HCC_COLUMNS = [
   { k: 'rl',       lb: 'Risk Level',    sortable: true,  sortField: 'rl',    sortType: 'priority' },
   { k: 'ad',       lb: 'Adv. Illness',  sortable: true,  sortField: 'ad',    sortType: 'generic' },
   { k: 'fr',       lb: 'Frailty',       sortable: true,  sortField: 'fr',    sortType: 'generic' },
+  // Patient-level outreach (Successful / Unsuccessful only), the same on every
+  // DOS row for the patient ("-" until there is one).
+  { k: 'lastOutreachDate',    lb: 'Last Outreach Date',    sortable: false },
+  { k: 'lastOutreachOutcome', lb: 'Last Outreach Outcome', sortable: false },
 ];
 
 export const HCC_COL_MAP = Object.fromEntries(HCC_COLUMNS.map(c => [c.k, c]));

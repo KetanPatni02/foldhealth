@@ -4,8 +4,8 @@
   flex-wrap: wrap;
   gap: 6px;
   padding: 10px 16px;
-  /* Bleed edge-to-edge inside the drawer body's 24px horizontal padding. */
-  margin: 0 -24px;
+  /* Bleed edge-to-edge inside the drawer body's horizontal padding. */
+  margin: 0 calc(-1 * var(--drawer-body-padding-x, var(--space-4)));
   background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-150);
   position: sticky;
@@ -270,4 +270,11 @@
 }
 .docSkippedDos {
   color: var(--neutral-300);
+}
+
+/* The tab bar sits right under the drawer header, and it and the filter row
+   bleed to the drawer's edges (the Drawer pads its body 16px). */
+.drawerBody.drawerBody {
+  --drawer-body-padding-x: var(--space-4);
+  padding-top: 0;
 }

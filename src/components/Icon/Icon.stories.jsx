@@ -44,7 +44,7 @@ const CLINICAL_ICONS = [
 
 const COMMON_ICONS = [
   'solar:home-2-linear', 'solar:users-group-rounded-linear', 'solar:settings-linear',
-  'custom:filter', 'solar:magnifer-linear', 'solar:add-circle-linear',
+  'custom:filter', 'custom:outreach', 'solar:magnifer-linear', 'solar:add-circle-linear',
   'solar:phone-calling-linear', 'solar:chat-round-linear', 'solar:history-linear',
   'solar:check-circle-linear', 'solar:close-circle-linear', 'solar:menu-dots-bold',
   'solar:pen-linear', 'solar:trash-bin-minimalistic-linear', 'solar:file-text-linear',

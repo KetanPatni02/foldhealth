@@ -6,6 +6,7 @@ import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 import { makeCard } from './IcdCard.utils';
 import { DiagPanelFilterBar } from './DiagPanelFilterBar';
 import { EMPTY_FILTERS } from './DiagPanelFilterBar.utils';
+import { canLogOutreach } from '../outreach/outreachModel';
 import styles from './DiagPanel.module.css';
 
 export function DiagPanelViewToolbar(p) {
@@ -218,7 +219,7 @@ export function DiagPanelViewToolbar(p) {
                       <Icon name="solar:history-linear" size={16} color="var(--neutral-400)" />
                       <span>Timeline</span>
                     </button>
-                    {hccOutreachEnabled && (
+                    {hccOutreachEnabled && canLogOutreach(hccUserRole) && (
                       <button
                         type="button"
                         className={styles.toolbarMoreItem}

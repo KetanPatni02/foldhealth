@@ -40,10 +40,11 @@ export function FieldDropdown({ value, onChange, options, placeholder }) {
 // Kept as a hand-rolled popover rather than MenuPopover: items need a
 // per-row custom icon component (SmsIcon) and a horizontal flip transform,
 // neither of which MenuPopover's string-only `icon` field supports.
-export function TypeDropdown({ value, onChange, disabled = false }) {
+// `options` narrows the list (e.g. PCP Outreach: Call, Email, In Person).
+export function TypeDropdown({ value, onChange, disabled = false, options = TYPE_OPTIONS }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
-  const selected = TYPE_OPTIONS.find(o => o.label === value) || TYPE_OPTIONS[0];
+  const selected = options.find(o => o.label === value) || options[0];
   const rect = triggerRef.current?.getBoundingClientRect();
 
   return (
@@ -70,7 +71,7 @@ export function TypeDropdown({ value, onChange, disabled = false }) {
             style={{ top: rect ? rect.bottom + 4 : 0, left: rect ? rect.left : 0 }}
             onClick={e => e.stopPropagation()}
           >
-            {TYPE_OPTIONS.map(opt => {
+            {options.map(opt => {
               const isSelected = value === opt.label;
               const iconColor = isSelected ? 'var(--primary-300)' : 'var(--neutral-400)';
               return (

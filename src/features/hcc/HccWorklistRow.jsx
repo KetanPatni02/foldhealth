@@ -10,7 +10,9 @@ import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { Button } from '../../components/Button/Button';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { ChartPopover, ActionsMenuPopover } from './RowPopovers';
+import { canLogOutreach } from './outreach/outreachModel';
 import { ChartDetailDrawer } from './ChartDetailDrawer';
+import { HccLogOutreachDrawer } from './HccLogOutreachDrawer';
 import { DocPreviewDrawer } from './DocPreviewDrawer';
 import { getChartDocs } from './data/chartDocs';
 import { mentionsUser } from './data/ancillary';
@@ -69,7 +71,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
   const [actionsRect, setActionsRect] = useState(null);
   const hccRole = useAppStore(s => s.hccUserRole);
   const hccOutreachEnabled = useAppStore(s => s.hccOutreachEnabled);
-  const requestHccOutreachLog = useAppStore(s => s.requestHccOutreachLog);
+  const [outreachOpen, setOutreachOpen] = useState(false);
   const addedCharts = useAppStore(s => s.hccAddedCharts[member.id]);
   const chartStatus = useAppStore(s => s.hccChartStatus[member.id]);
   const removedCharts = useAppStore(s => s.hccRemovedCharts[member.id]);
@@ -325,6 +327,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
         onViewMore={() => { setChartRect(null); setChartDetail({ id: null }); }}
       />
     )}
+    {outreachOpen && <HccLogOutreachDrawer member={member} onClose={() => setOutreachOpen(false)} />}
     {chartDetail && (
       hccRole === 'Support' ? (
         <ChartDetailDrawer
@@ -346,14 +349,14 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
       <ActionsMenuPopover
         anchorRect={actionsRect}
         onClose={() => setActionsRect(null)}
-        leadingItems={hccOutreachEnabled
+        leadingItems={hccOutreachEnabled && canLogOutreach(hccRole)
           ? [{ icon: 'solar:call-chat-linear', label: 'Log Outreach', trail: false }]
           : []}
         onAction={(label) => {
           if (label === 'Log Outreach') {
-            // Member-level: opens the chart on Outreach with a blank form.
-            requestHccOutreachLog();
-            openDiagPanel(member.id, { leftPanel: 'outreach' });
+            // Logged right here on the worklist, in the chart's Outreach form.
+            setActionsRect(null);
+            setOutreachOpen(true);
             return;
           }
           if (label === 'Make a Call') {

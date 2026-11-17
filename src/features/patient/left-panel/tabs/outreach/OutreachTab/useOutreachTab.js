@@ -31,6 +31,12 @@ export function useOutreachTab({
   programs,
   recipientOptions,
   defaultCalledTo,
+  // A call placed from the HCC call widget: the form opens on it (Call With,
+  // our line, no Last Call banner) and takes its duration once it ends.
+  initialCallType,
+  defaultCallVia,
+  hideCallBanner = false,
+  liveCallEnd = null,
   defaultLogFor = 'hcc-gaps',
   defaultPrograms = [],
   defaultFormOpen = false,
@@ -78,7 +84,7 @@ export function useOutreachTab({
     [memberName],
   );
   // The first option leads (HCC: PCP / PCP Office).
-  const INITIAL_CALL_TYPE = callTypeOptions?.[0] || 'Provider';
+  const INITIAL_CALL_TYPE = initialCallType || callTypeOptions?.[0] || 'Provider';
   const [callType, setCallType] = useState(INITIAL_CALL_TYPE);
   // Contacts added from the form's Add Contact action join the Called To list
   // (of the Call Type they were added under).
@@ -95,7 +101,7 @@ export function useOutreachTab({
   const CALL_VIA_OPTIONS = callViaOptions?.length
     ? callViaOptions
     : ['Delores Conn (581 824-1591)', 'Practice Line (800 000-0000)'];
-  const INITIAL_CALL_VIA = CALL_VIA_OPTIONS[0];
+  const INITIAL_CALL_VIA = defaultCallVia || CALL_VIA_OPTIONS[0];
   // The other party: the first contact for the Call Type that isn't our own
   // number (a Provider call lists providers on both sides).
   const otherPartyFor = (ct, ours) => calledToFor(ct).find(c => c !== ours) || calledToFor(ct)[0] || '';
@@ -127,7 +133,7 @@ export function useOutreachTab({
   const [separateNotes, setSeparateNotes] = useState(false);
   const [panels, setPanels] = useState({});
   const [sharedPanel, setSharedPanel] = useState({ expanded: true, outcomes: [], note: '', outcomeOpen: false });
-  const [callBannerVisible, setCallBannerVisible] = useState(true);
+  const [callBannerVisible, setCallBannerVisible] = useState(!hideCallBanner);
   const [callDirection, setCallDirection] = useState('outgoing');
   const [callViaNumber, setCallViaNumber] = useState(INITIAL_CALL_VIA);
   const [calledToNumber, setCalledToNumber] = useState(INITIAL_CALLED_TO);
@@ -142,6 +148,15 @@ export function useOutreachTab({
     : null;
   const [callDurationMin, setCallDurationMin] = useState('00');
   const [callDurationSec, setCallDurationSec] = useState('00');
+  // When the widget's call ends, its length fills Duration once (adjusted
+  // during render, as React recommends for state that follows a prop).
+  const [seenCallEnd, setSeenCallEnd] = useState(null);
+  if (liveCallEnd && liveCallEnd.id !== seenCallEnd) {
+    setSeenCallEnd(liveCallEnd.id);
+    const secs = Math.min(99 * 60 + 59, Math.max(0, Math.round(liveCallEnd.durationSec || 0)));
+    setCallDurationMin(String(Math.floor(secs / 60)).padStart(2, '0'));
+    setCallDurationSec(String(secs % 60).padStart(2, '0'));
+  }
   const [transcript, setTranscript] = useState('');
   const [snoozeUntil, setSnoozeUntil] = useState(null);
 

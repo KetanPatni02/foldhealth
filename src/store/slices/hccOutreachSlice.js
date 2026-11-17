@@ -21,6 +21,17 @@ export function createHccOutreachSlice(set, get) {
     requestHccOutreachLog: () => set(s => ({ hccOutreachLogRequested: true, hccOutreachLogNonce: s.hccOutreachLogNonce + 1 })),
     clearHccOutreachLogRequest: () => set({ hccOutreachLogRequested: false }),
 
+    // The worklist's floating call widget: one call at a time.
+    // { id, kind: 'member' | 'pcp' | 'user', name, number, via, member?, pcp?,
+    //   startedAt, endedAt } (ms). Ending it keeps it until the outreach is
+    // logged or the drawer closes, so the form can read the duration.
+    hccLiveCall: null,
+    startHccLiveCall: (call) => set({ hccLiveCall: { ...call, id: `call-${Date.now()}`, startedAt: Date.now(), endedAt: null } }),
+    endHccLiveCall: () => set(s => (s.hccLiveCall && !s.hccLiveCall.endedAt
+      ? { hccLiveCall: { ...s.hccLiveCall, endedAt: Date.now() } }
+      : {})),
+    clearHccLiveCall: () => set({ hccLiveCall: null }),
+
     fetchHccOutreachLogs: async () => {
       if (get().hccOutreachDidFetch) return;
       set({ hccOutreachDidFetch: true, hccOutreachLoading: true });

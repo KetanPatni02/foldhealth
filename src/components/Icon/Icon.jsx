@@ -25,6 +25,7 @@ import { CollapseSidebarIcon } from './CollapseSidebarIcon';
 import { BulkSelectIcon } from './BulkSelectIcon';
 import { BulkSelectCloseIcon } from './BulkSelectCloseIcon';
 import { UploadIcon } from './UploadIcon';
+import { OutreachIcon } from './OutreachIcon';
 import { TableIcon } from './TableIcon';
 import { BarrierIcon } from './BarrierIcon';
 import { CarePlanIcon } from './CarePlanIcon';
@@ -88,6 +89,7 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:bulk-select') return <BulkSelectIcon size={size} color={color} />;
   if (name === 'custom:bulk-select-close') return <BulkSelectCloseIcon size={size} color={color} />;
   if (name === 'custom:upload') return <UploadIcon size={size} color={color} />;
+  if (name === 'custom:outreach') return <OutreachIcon size={size} color={color || 'currentColor'} style={style} className={className} />;
   if (name === 'custom:table') return <TableIcon size={size} color={color} />;
   if (name === 'custom:barrier') return <BarrierIcon size={size} color={color} />;
   if (name === 'custom:care-plan') return <CarePlanIcon size={size} color={color} />;

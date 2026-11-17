@@ -13,6 +13,7 @@ import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
 import { FieldDropdown, TypeDropdown } from './OutreachTabDropdowns';
 import { DateTimePicker } from '../../../../../../components/DateTimePicker/DateTimePicker';
 import { NotePanel } from './OutreachTabNotePanel';
+import { DurationField } from './DurationField';
 import { AddContactDialog } from './AddContactDialog';
 import { DEFAULT_CALL_TYPES, LOG_FOR_OPTIONS, LAST_CALL_TRANSCRIPT } from './OutreachTab.utils';
 import { CallTranscript } from '../../../../../../components/CallTranscript/CallTranscript';
@@ -89,46 +90,11 @@ export function OutreachTabForm({
   const [contactOpen, setContactOpen] = useState(false);
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const snoozeRef = useRef(null);
-  // Duration arrows step the whole time, so 00:59 + 1 sec is 01:00 (0 to 99:59).
-  const stepDuration = (deltaSec) => {
-    const total = Math.min(99 * 60 + 59, Math.max(0, (Number(callDurationMin) || 0) * 60 + (Number(callDurationSec) || 0) + deltaSec));
-    setCallDurationMin(String(Math.floor(total / 60)).padStart(2, '0'));
-    setCallDurationSec(String(total % 60).padStart(2, '0'));
-  };
-  // HCC: [00 ⇅ min] : [00 ⇅ sec], the same number field with a stepper and
-  // unit pill as the Care Plan due-date offset.
-  const durationPart = (value, setValue, max, unit, step) => (
-    <Input
-      value={value}
-      inputMode="numeric"
-      aria-label={`Duration ${unit}`}
-      wrapperClassName={styles.durationInput}
-      onChange={e => setValue(String(Math.min(max, Number(e.target.value.replace(/\D/g, '').slice(-2)) || 0)).padStart(2, '0'))}
-      trailingTextSegment
-      trailingText={(
-        <span className={styles.durationTrailing}>
-          <span className={styles.durationSpinner}>
-            <button type="button" className={styles.durationSpinnerBtn} aria-label={`Increase ${unit}`} onClick={() => stepDuration(step)}>
-              <Icon name="solar:alt-arrow-up-linear" size={10} color="var(--neutral-300)" />
-            </button>
-            <button type="button" className={styles.durationSpinnerBtn} aria-label={`Decrease ${unit}`} onClick={() => stepDuration(-step)}>
-              <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
-            </button>
-          </span>
-          <span className={styles.durationUnitPill}>{unit}</span>
-        </span>
-      )}
-    />
-  );
   const durationField = (
     <div className={styles.callFieldWrap}>
       <span className={styles.callFieldLabel}>Duration</span>
       {hccWorkflow ? (
-        <div className={styles.durationRow}>
-          {durationPart(callDurationMin, setCallDurationMin, 99, 'min', 60)}
-          <span className={styles.durationColon} aria-hidden="true">:</span>
-          {durationPart(callDurationSec, setCallDurationSec, 59, 'sec', 1)}
-        </div>
+        <DurationField min={callDurationMin} sec={callDurationSec} onMinChange={setCallDurationMin} onSecChange={setCallDurationSec} />
       ) : (
         <div className={styles.callDurationRow}>
           <Input type="number" className={styles.callDurationInput} value={callDurationMin} min={0} max={99}
@@ -158,11 +124,11 @@ export function OutreachTabForm({
         </div>
       )}
 
-      {/* HCC: who the outreach is to (it also picks
+      {/* HCC: who the outreach is to, as in Patient Outreach (it also picks
           the Called To list). */}
       {hccWorkflow && (
         <div className={styles.outreachToRow}>
-          <span className={styles.logForLabel}>Outreach To</span>
+          <span className={styles.logForLabel}>Log Outreach With:</span>
           {callTypeOptions.map(opt => (
             <RadioButton key={opt} checked={callType === opt} onChange={() => setCallType(opt)} label={opt} />
           ))}
@@ -216,7 +182,7 @@ export function OutreachTabForm({
             )}
 
             <div className={styles.callDetailsHeader}>
-              <span className={styles.callDetailsLabel}>Call Details:</span>
+              <span className={hccWorkflow ? styles.hccTitle : styles.callDetailsLabel}>Call Details:</span>
             </div>
             {hccWorkflow ? (
               // HCC: Call Direction and Duration share a row.
@@ -304,7 +270,7 @@ export function OutreachTabForm({
         )}
 
         <div className={styles.section}>
-          <span className={styles.sectionLabel}>Outreach Outcome</span>
+          <span className={hccWorkflow ? styles.hccTitle : styles.sectionLabel}>Outreach Outcome</span>
           <div className={styles.outcomeRow2}>
             <div className={styles.radios}>
               {['Successful', 'Unsuccessful', 'Note'].map(opt => (
@@ -381,7 +347,7 @@ export function OutreachTabForm({
 
         {hccWorkflow ? (
           <div className={styles.actionsRow}>
-            <span className={styles.actionsLabel}>Actions:</span>
+            <span className={styles.hccTitle}>Actions:</span>
             <ActionButton size="sm" icon="solar:user-plus-linear" tooltip="Add Contact" onClick={() => setContactOpen(true)} />
             <span className={styles.actionsDivider} />
             <ActionButton size="sm" icon="solar:calendar-add-linear" tooltip="Schedule Follow-up" onClick={onSchedule} />
