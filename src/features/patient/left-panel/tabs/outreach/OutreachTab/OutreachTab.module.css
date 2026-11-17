@@ -521,6 +521,11 @@
   padding-top: var(--space-2);
 }
 
+.notePanelPlain {
+  display: flex;
+  flex-direction: column;
+}
+
 .notePanelHeader {
   display: flex;
   align-items: center;
@@ -851,6 +856,35 @@
 .activityFilterClearAll:hover { color: var(--neutral-400); }
 
 /* ── HCC Outreach workflow: call transcript + snooze ── */
+/* The note box when it holds a transcript: the box (same look as
+   .noteTextarea) wraps the transcript block and a borderless note below it. */
+.noteFieldBare { display: contents; }
+.noteField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  background: var(--neutral-0);
+}
+.noteField:focus-within { border-color: var(--neutral-300); }
+.noteTextareaInner {
+  width: 100%;
+  min-height: 60px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  resize: none;
+  outline: none;
+}
+.noteTextareaInner:focus { border: 0; box-shadow: none; }
+.noteTextareaInner::placeholder { color: var(--neutral-200); }
+
 /* The note's transcript block (Figma 2383:121686): a light purple bar on the
    left, the pasted or added transcript, and a remove action. */
 .noteTranscript {

@@ -371,6 +371,8 @@ export function OutreachTabForm({
                 onNoteChange={text => handleNoteChange(null, text)}
                 onToggleSyncText={() => {}}
                 cannedEntry={hccWorkflow}
+                plain={hccWorkflow}
+                singleOutcome={hccWorkflow}
                 {...transcriptProps(sharedPanel, patchShared)}
               />
             )}
@@ -380,9 +382,10 @@ export function OutreachTabForm({
         {hccWorkflow ? (
           <div className={styles.actionsRow}>
             <span className={styles.actionsLabel}>Actions:</span>
-            <span className={styles.actionsDivider} />
             <ActionButton size="sm" icon="solar:user-plus-linear" tooltip="Add Contact" onClick={() => setContactOpen(true)} />
+            <span className={styles.actionsDivider} />
             <ActionButton size="sm" icon="solar:calendar-add-linear" tooltip="Schedule Follow-up" onClick={onSchedule} />
+            <span className={styles.actionsDivider} />
             <span ref={snoozeRef}>
               <ActionButton
                 size="sm"
