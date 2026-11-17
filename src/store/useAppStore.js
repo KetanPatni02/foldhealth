@@ -13547,16 +13547,19 @@ export const useAppStore = create((set, get) => ({
   // Who owns an enrollment: `role` is 'assignee' or a care team role
   // (nurseHealthCoach, coordinator, socialWorker, communityHealthWorker),
   // set to `user` on the given enrollment rows (`rowIds`, cmp_members ids).
-  // Used by the row cells and bulk Change Assignee. Returns false when the
-  // save failed.
+  // `user` null clears the role (Unassigned); only an explicit null does, so
+  // a missing user can't wipe an owner by accident. Used by the row cells and
+  // bulk Change Assignee. Returns false when the save failed.
   setCmpCareTeam: async (rowIds, role, user) => {
     const ids = new Set(rowIds);
     const column = CMP_CARE_TEAM_COLUMN[role];
-    if (!ids.size || !column || !user?.name) return false;
-    const patch = role === 'assignee' ? { assignee: user.name, assigneeIn: user.initials || null } : { [role]: user.name };
+    if (!ids.size || !column || (user !== null && !user?.name)) return false;
+    const name = user?.name ?? null;
+    const initials = user?.initials || null;
+    const patch = role === 'assignee' ? { assignee: name, assigneeIn: initials } : { [role]: name };
     const before = new Map(get().cmpMembers.filter(m => ids.has(m.id)).map(m => [m.id, m]));
     set(s => ({ cmpMembers: s.cmpMembers.map(m => (ids.has(m.id) ? { ...m, ...patch } : m)) }));
-    const row = role === 'assignee' ? { assignee: user.name, assignee_initials: user.initials || null } : { [column]: user.name };
+    const row = role === 'assignee' ? { assignee: name, assignee_initials: initials } : { [column]: name };
     const { error } = await supabase.from('cmp_members').update(row).in('id', [...ids]);
     if (error) {
       console.warn(`Failed to update CMP ${role}:`, error.message);

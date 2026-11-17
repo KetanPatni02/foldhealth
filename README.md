@@ -42,8 +42,9 @@ build requires esbuild ≥ 0.28 on Node 26.
   top (Assignee or a care team role), then one row per CMP sub-program the
   selected members have, with a member count (hover for each member and who
   holds the role now) and its own picker on the right. Each picked user
-  becomes that role on that sub-program for every selected member in it.
-  No migration.
+  becomes that role on that sub-program for every selected member in it;
+  picking Unassigned clears the role. If a sub-program fails to save, the
+  dialog stays open with just that pick so Apply retries it. No migration.
 - **HCC Outreach workflow on by default.** The Organization setting "HCC Outreach workflow" now starts on, so the HCC chart's Outreach tab and More > Log Outreach show without anyone turning them on; an admin can still turn it off in Settings > Organization. The app treats a missing setting as on; `supabase/org_settings_hcc_outreach_default_on_migration.sql` turns it on for existing rows and makes on the column default.
 - **HCC Outreach workflow (Astrana).** With the new Organization setting "HCC Outreach workflow" on, the HCC chart's workspace has an Outreach tab beside Comments, at DOS level and member-wide (not tied to a DOS). It is the shared outreach widget with the HCC workflow, logged at member level (no gap or DOS picker): outreach type and date, call details (direction, call via, called to, call type, duration) with an expandable Call Transcript, a note with Select Outcome and a "/" canned-message entry point (messages come later), and Add Contact / Schedule Follow-up / Snooze. Below it, every outreach logged for the member, Member and PCP, grouped by collapsible month with date and time, who logged it and their role, the sequence ("4th Outreach"), the HCC codes and the outcome. Logs save to `hcc_outreach_logs`; needs `supabase/hcc_outreach_logs_migration.sql` and `supabase/org_settings_hcc_outreach_migration.sql`, then `bun run seed`. Until then the tab reads the local mock and new logs last for the session.
 - **Which Fold number a patient texted.** SMS threads show the practice
