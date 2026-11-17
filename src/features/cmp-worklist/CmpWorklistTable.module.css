@@ -1,8 +1,0 @@
-/* Bulk Change Assignees runs top to bottom: role, sub-programs, then the
-   person, so the setup sits above the people list with a divider under it. */
-.assignSetup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.assignDivider { height: 0.5px; background: var(--neutral-150); }
