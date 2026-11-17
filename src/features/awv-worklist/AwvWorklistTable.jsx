@@ -1,30 +1,37 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
+import { WorklistShell } from '../worklists/WorklistShell';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
-import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { FilterBar } from '../worklists/FilterBar';
+import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
+import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
+import { useCovering } from '../ooo/useCovering';
 import { AwvWorklistRow, AWV_MIDDLE_COLUMNS } from './AwvWorklistRow';
 
-// FilterBar chip definitions — all seven are primary so they show on wide
-// viewports; auto-fit trims the tail into More Filters on narrow screens.
+// FilterBar chip definitions, per the worklist filter spec: always-primary
+// (Assignee; the others aren't on Annual Visit yet), then Program Name and
+// Program Sub Status. The risk scores are secondary, under Clinical in More
+// Filters. Every primary always shows (FilterBar `pinPrimary`).
 const AWV_FILTER_DEFS = [
-  { key: 'progSubStatus', label: 'Program Sub Status', primary: true },
-  { key: 'progName',      label: 'Program Name',       primary: true },
-  { key: 'ri',            label: 'Risk IQ',            primary: true },
-  { key: 'dec',           label: 'Decile',             primary: true },
-  { key: 'ad',            label: 'AdvIllness',         primary: true },
-  { key: 'fr',            label: 'Frailty',            primary: true },
   { key: 'assignee',      label: 'Assignee',           primary: true },
+  { key: 'progName',      label: 'Program Name',       primary: true },
+  { key: 'progSubStatus', label: 'Program Sub Status', primary: true },
+  { key: 'dec',           label: 'Decile',             primary: false, group: 'Clinical' },
+  { key: 'ri',            label: 'Risk IQ',            primary: false, group: 'Clinical' },
+  { key: 'ad',            label: 'Advanced Illness',   primary: false, group: 'Clinical' },
+  { key: 'fr',            label: 'Frailty',            primary: false, group: 'Clinical' },
 ];
-const AWV_MORE_FILTER_ITEMS = AWV_FILTER_DEFS.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary }));
-const AWV_PRIMARY_KEYS = [];
-for (const fd of AWV_FILTER_DEFS) {
-  if (fd.primary) AWV_PRIMARY_KEYS.push(fd.key);
-}
+const AWV_MORE_FILTER_ITEMS = AWV_FILTER_DEFS.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary, group: fd.group }));
+// Shown only while the signed-in user is covering someone out of office.
+// Its value lives in local state, not the store's awvFilters.
+const NO_PICKS = [];
+const COVERING_DEF = { key: 'coveringFor', label: 'Covering for', primary: true };
+const AWV_FILTER_DEFS_COVERING = [AWV_FILTER_DEFS[0], COVERING_DEF, ...AWV_FILTER_DEFS.slice(1)];
+const AWV_MORE_FILTER_ITEMS_COVERING = AWV_FILTER_DEFS_COVERING.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary, group: fd.group }));
 
-// WorklistShell column defs — sticky checkbox + sticky Members col on the
+// WorklistShell column defs: sticky checkbox + sticky Members col on the
 // left, AWV middle columns from AwvWorklistRow (each carries `renderCell`
 // so hide/reorder in the Show Columns popover ripples through the body),
 // sticky Actions on the right.
@@ -42,6 +49,8 @@ export function AwvWorklistTable() {
   const filters = useAppStore(s => s.awvFilters);
   const setFilter = useAppStore(s => s.setAwvFilter);
   const clearFilters = useAppStore(s => s.clearAwvFilters);
+  // A selected saved filter stays selected while edited: Go Back / Save Changes / Copy Filter.
+  const savedActions = useSavedFilterActions('AWV', filters, clearFilters);
   const selectedIds = useAppStore(s => s.selectedAwvIds);
   const selectMember = useAppStore(s => s.selectAwvMember);
   const selectAll = useAppStore(s => s.selectAllAwv);
@@ -55,17 +64,9 @@ export function AwvWorklistTable() {
   const [filterBarOpen, setFilterBarOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  // `null` = uncustomised (FilterBar autoFit picks visible chips from the
-  // primary set). Once the user toggles anything from More Filters, the
-  // custom set takes over.
-  const [visibleKeys, setVisibleKeys] = useState(null);
-  const toggleVisible = (k) => setVisibleKeys(prev => {
-    const base = prev ?? AWV_PRIMARY_KEYS;
-    const next = new Set(base);
-    if (next.has(k)) next.delete(k); else next.add(k);
-    return [...next];
-  });
-  const clearVisible = () => setVisibleKeys([]);
+  const { names: coveringNames, coveringOn } = useCovering();
+  const [coveringPicked, setCoveringPicked] = useState([]);
+  const covering = coveringNames.length > 0 ? coveringPicked : NO_PICKS;
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
@@ -110,8 +111,9 @@ export function AwvWorklistTable() {
       if (!vals || vals.length === 0) return;
       rows = rows.filter(m => vals.includes(m[k]));
     });
+    if (covering.length) rows = rows.filter(m => coveringOn([m.assignee], covering).length > 0);
     return rows;
-  }, [members, searchQuery, filters]);
+  }, [members, searchQuery, filters, covering, coveringOn]);
 
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(filtered, 'due', 'asc');
 
@@ -127,19 +129,23 @@ export function AwvWorklistTable() {
 
   const filterNode = (
     <FilterBar
+      collapsed={!filterBarOpen}
       autoFit
+      pinPrimary
       multiSelect
       leading={null}
-      filterDefs={AWV_FILTER_DEFS}
-      filters={filters}
-      onFilterChange={(k, vals) => setFilter(k, vals)}
-      onClearAll={clearFilters}
+      filterDefs={coveringNames.length ? AWV_FILTER_DEFS_COVERING : AWV_FILTER_DEFS}
+      filters={coveringNames.length ? { ...filters, coveringFor: covering } : filters}
+      onFilterChange={(k, vals) => { if (k === 'coveringFor') { setCoveringPicked(vals); setPage(1); } else setFilter(k, vals); }}
+      onClearAll={() => { setCoveringPicked([]); savedActions.onClearAll(); }}
+      clearAllLabel={savedActions.clearAllLabel}
+      saveLabel={savedActions.saveLabel}
+      saveMenuItems={savedActions.saveMenuItems}
+      onSaveMenuSelect={savedActions.onSaveMenuSelect}
+      hasActive={savedActions.edited || undefined}
       onSaveFilter={(name) => saveSavedFilter('AWV', name)}
-      getOptions={(def) => filterOptions[def.key] || []}
-      moreFilterItems={AWV_MORE_FILTER_ITEMS}
-      {...(visibleKeys !== null ? { visibleKeys } : {})}
-      onToggleVisible={toggleVisible}
-      onClearVisible={clearVisible}
+      getOptions={(def) => (def.key === 'coveringFor' ? coveringNames : filterOptions[def.key] || [])}
+      moreFilterItems={coveringNames.length ? AWV_MORE_FILTER_ITEMS_COVERING : AWV_MORE_FILTER_ITEMS}
     />
   );
 
@@ -149,13 +155,19 @@ export function AwvWorklistTable() {
       leadingElement={<SubnavToggle />}
       title="Annual Visit"
       actions={['search', 'filter', 'history', 'download']}
-      searchPlaceholder="Search by name or member ID…"
+      searchPlaceholder="Search by name or Fold ID…"
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
       filterActive={filterBarOpen}
       onFilter={() => setFilterBarOpen(v => !v)}
       onHistory={openHistoryDrawer}
-      onDownload={() => showToast('Export — coming soon')}
+      rightExtras={
+        <>
+          <SavedFiltersChip list="AWV" />
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+        </>
+      }
+      onDownload={() => showToast('Export: coming soon')}
     />
   );
 
@@ -163,7 +175,8 @@ export function AwvWorklistTable() {
     <WorklistShell
       header={header}
       worklistKey="awv"
-      showFilters={filterBarOpen}
+      // Always passed: when closed, the bar shows just the applied filters.
+      showFilters
       filters={filterNode}
       columns={AWV_SHELL_COLUMNS}
       sortKey={sortKey}

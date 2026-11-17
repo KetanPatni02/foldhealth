@@ -10,14 +10,14 @@ export default {
   parameters: {
     docs: {
       description: {
-        component: 'The clickable "#10070" Member ID shown on every worklist row. Hover shows "Click to copy Member ID"; clicking copies it and swaps the tooltip to "Copied: #10070" for a beat instead of firing a toast. The label swap fades in — see FoldIdTag.module.css.',
+        component: 'The clickable "#10070" Fold ID shown on every worklist row. Hover shows "Click to copy Fold ID"; clicking copies it and swaps the tooltip to "Copied: #10070" for a beat instead of firing a toast. The label swap fades in, see FoldIdTag.module.css.',
       },
     },
   },
   argTypes: {
     id: {
       control: 'text',
-      description: 'Raw Member ID to copy — formatted for display via formatFoldId unless `display` is passed',
+      description: 'Raw Fold ID to copy: formatted for display via formatFoldId unless `display` is passed',
       table: { type: { summary: 'string | number' } },
     },
     display: {
@@ -28,7 +28,7 @@ export default {
     label: {
       control: 'text',
       description: 'Hover tooltip text before a copy',
-      table: { type: { summary: 'string' }, defaultValue: { summary: 'Click to copy Member ID' } },
+      table: { type: { summary: 'string' }, defaultValue: { summary: 'Click to copy Fold ID' } },
     },
   },
 };
@@ -52,7 +52,7 @@ export const Playground = {
         className="foldId-storybook-preview"
       />
       <p style={{ marginTop: 32, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>
-        Hover the ID above to see "Click to copy Member ID", then click to trigger the "Copied" transition.
+        Hover the ID above to see "Click to copy Fold ID", then click to trigger the "Copied" transition.
       </p>
       <style>{previewStyles}</style>
     </div>
@@ -63,7 +63,7 @@ export const Playground = {
  * Auto-cycles between the "idle" and "copied" tooltip states so the fade
  * animation is visible without needing to hover or click. This renders a
  * mock of the Tooltip bubble (same styling, always open) with the same
- * `.labelFade` keyed span the real component uses — the swap fades in
+ * `.labelFade` keyed span the real component uses, the swap fades in
  * every 1.6s so the animation loops for anyone reviewing the story.
  */
 export const TransitionDemo = {
@@ -84,8 +84,8 @@ export const TransitionDemo = {
     return (
       <div style={{ padding: '96px 48px 48px', fontFamily: 'Inter, sans-serif', fontSize: 'var(--font-md)', textAlign: 'center' }}>
         <div style={{ display: 'inline-block', position: 'relative' }}>
-          {/* Mock of the Tooltip bubble — same neutral-500 background,
-              same 6px radius, same 12/font shadow — anchored above a
+          {/* Mock of the Tooltip bubble: same neutral-500 background,
+              same 6px radius, same 12/font shadow, anchored above a
               plain #10070 span so the label swap is watchable. */}
           <div
             role="tooltip"
@@ -105,7 +105,7 @@ export const TransitionDemo = {
             }}
           >
             <span key={copied ? 'copied' : 'idle'} className={styles.labelFade}>
-              {copied ? `Copied: ${shown}` : 'Click to copy Member ID'}
+              {copied ? `Copied: ${shown}` : 'Click to copy Fold ID'}
             </span>
           </div>
           <span className="foldId-storybook-preview">{shown}</span>

@@ -4,6 +4,8 @@
  * `appointments` and saves it (reassignment_jobs).
  */
 import { findConflict } from './reassignUtils';
+import { dueEnd } from './openWork';
+import { sameName } from './oooUtils';
 
 // The bits of an appointment the summary shows, kept on the job so it
 // still reads right after the appointment has moved or been cancelled.
@@ -14,6 +16,38 @@ export const snapshot = (a) => ({
   timeEnd: a.time_end,
   type: a.appointment_type_name || '',
   location: (a.location || '').trim() || 'No Department',
+});
+
+/** What a reassigned task shows in the summary. */
+export const taskSnapshot = (t) => ({
+  name: t.name || 'Task',
+  priority: t.priority || null,
+  due_date: t.due_date || null,
+  status: t.status || null,
+  member: t.member || null,
+  location: (t.location || '').trim() || 'No Department',
+});
+
+/** What a reassigned care program enrollment shows in the summary. */
+export const programSnapshot = (p) => ({
+  code: p.code || '',
+  name: p.name || '',
+  status: p.status || '',
+  patientName: p.patientName || null,
+  startDate: p.startDate || null,
+  progress: p.progress || 0,
+  location: (p.location || '').trim() || 'No Department',
+});
+
+/** What kind of item a result is (appointment results from before had none). */
+export const kindOf = (r) => r.kind || 'appointment';
+
+/** A job's counts, from all its results. */
+export const jobCounts = (results) => ({
+  reassignedCount: results.filter(r => r.outcome === 'reassigned').length,
+  cancelledCount: results.filter(r => r.outcome === 'cancelled').length,
+  conflictingCount: results.filter(r => r.conflict).length,
+  failedCount: results.filter(r => r.outcome === 'failed').length,
 });
 
 /**
@@ -99,3 +133,58 @@ export const rowToJob = (r) => ({
 });
 
 export const TYPE_LABELS = { ooo: 'Out of Office Reassignment', permanent: 'Permanent Reassignment', other: 'One-time Reassignment' };
+
+/**
+ * Tasks an Out of Office reassignment moved to a covering provider, while
+ * that cover still runs (the job's dates haven't ended): task id → { fromUser,
+ * fromUserId, to, toId }. The latest job wins when a task moved twice.
+ */
+export function coveredTasks(jobs, now = new Date()) {
+  const t = new Date(now).getTime();
+  const out = new Map();
+  [...(jobs || [])]
+    .filter(j => j.type === 'ooo' && (!j.windowEnd || new Date(j.windowEnd).getTime() > t))
+    .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))
+    .forEach(j => (j.results || []).forEach((r) => {
+      if (r.kind === 'task' && r.outcome === 'reassigned' && r.taskId != null) {
+        out.set(String(r.taskId), { fromUser: j.fromUser, fromUserId: j.fromUserId || null, to: r.to, toId: r.toId || null });
+      }
+    }));
+  return out;
+}
+
+/**
+ * What goes back to the user when their Out of Office record is deleted or
+ * shortened: the tasks and care programs its reassignment jobs moved, while
+ * they're still with whoever covered them (anything since reassigned by hand,
+ * or a task completed, stays put).
+ *   - Deleted (no `ranges`): every such task and care program.
+ *   - Shortened (`ranges` [{ from, to }] in ms, the dates taken off): tasks
+ *     due on those dates. Care programs have no dates, and don't return when
+ *     the record ends either, so they stay with the covering provider.
+ * Returns { taskIds, programs: [{ id, to }] }; programs are checked against
+ * their current assignee by the caller.
+ */
+export function workToReturn(jobs, { recordId, tasks = [], ranges = null }) {
+  const DAY = 24 * 60 * 60 * 1000;
+  const taskById = new Map((tasks || []).map(t => [String(t.id), t]));
+  const taskIds = new Set();
+  const programs = new Map();
+  (jobs || [])
+    .filter(j => j.type === 'ooo' && recordId && j.oooRecordId === recordId)
+    .forEach(j => (j.results || []).forEach((r) => {
+      if (r.outcome !== 'reassigned') return;
+      if (r.kind === 'task') {
+        const t = taskById.get(String(r.taskId));
+        if (!t || t.status === 'completed' || !sameName(t.assigned_to, r.to)) return;
+        if (ranges) {
+          const end = dueEnd(t.due_date);
+          if (Number.isNaN(end) || !ranges.some(x => end >= x.from && end - DAY < x.to)) return;
+        }
+        taskIds.add(t.id);
+      } else if (r.kind === 'program' && !ranges && r.programId != null) {
+        programs.set(String(r.programId), { id: r.programId, to: r.to });
+      }
+    }));
+  return { taskIds: [...taskIds], programs: [...programs.values()] };
+}

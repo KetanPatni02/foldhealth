@@ -1,0 +1,192 @@
+/* PanelSection: one inline inset (--space-2) for header and body, so titles,
+   rows, badges and header actions share the same left and right edges. */
+.section {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-2);
+}
+
+.section + .section {
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--space-10);
+}
+
+/* Inside an Overview card: same header rule and full-width rows as DashboardCard. */
+.embedded {
+  padding: 0;
+}
+
+.embedded .header {
+  /* One height whether or not the header carries buttons, so titles line up. */
+  min-height: calc(var(--space-10) + var(--space-1));
+  padding: var(--space-2) var(--space-4);
+}
+
+.embedded .title {
+  font-size: var(--font-lg);
+}
+
+.embedded .body {
+  padding-bottom: 0;
+}
+
+.embedded .item {
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+/* Inside a card, rows are separated by space rather than rules. */
+.embedded .item + .item {
+  border-top: none;
+}
+
+.embedded .more {
+  margin-left: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+.titleBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+button.titleBtn {
+  cursor: pointer;
+}
+
+.chevron {
+  transition: transform var(--duration-medium) var(--ease-out);
+}
+
+.title {
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.divider {
+  width: 0.5px;
+  height: var(--space-4);
+  background: var(--neutral-150);
+}
+
+/* ── Body ── */
+.body {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-3);
+}
+
+/* ── List row ── */
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+/* Lines a full-bleed card list up with the card's header. */
+.inset {
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+.alignTop {
+  align-items: flex-start;
+}
+
+.item + .item {
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+.leading {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.itemTitle {
+  /* A dashboard can set one type scale for every row (the patient Overview). */
+  font-size: var(--item-title-size, var(--font-md));
+  font-weight: 400;
+  line-height: var(--leading-normal);
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Long names wrap to two lines at most; the full name is the title tooltip. */
+.wrap {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  font-size: var(--item-meta-size, var(--font-sm));
+  line-height: var(--leading-normal);
+  color: var(--neutral-200);
+}
+
+.dot {
+  color: var(--neutral-150);
+}
+
+.trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Ghost button text lines up with the rows' left edge. */
+.more {
+  align-self: flex-start;
+  margin-top: var(--space-1);
+  margin-left: calc(-1 * var(--space-2));
+}

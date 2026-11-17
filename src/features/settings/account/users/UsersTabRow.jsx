@@ -5,7 +5,7 @@ import { ROLE_COLORS } from '../AccountPanel.constants';
 import { statusBadge, formatDate, formatRelative } from './UsersTab.utils';
 import { UserActions } from './UserActions';
 import { OverflowBadge } from './OverflowBadge';
-import { lockLine } from './accountLock';
+import { accountStatus, isLocked, formatLockTime } from './accountLock';
 import styles from './UserRow.module.css';
 
 export function UsersTabRow({
@@ -15,6 +15,7 @@ export function UsersTabRow({
   onEdit,
   onViewOoo,
   onResetPassword,
+  onUnlock,
   onToggleStatus,
   onReviewSignup,
   onDelete,
@@ -22,7 +23,8 @@ export function UsersTabRow({
   selected = false,
   onToggleSelect,
 }) {
-  const sb = statusBadge(user.status);
+  const status = accountStatus(user);
+  const sb = statusBadge(status);
   const rel = formatRelative(user.lastActiveAt);
 
   return (
@@ -39,20 +41,24 @@ export function UsersTabRow({
           className={styles.userCell}
           onClick={() => (bulkMode ? onToggleSelect?.(user.id) : onView(user))}
         >
-          <Avatar variant="staff" size="M" initials={user.initials} userName={user.name} />
+          <Avatar variant="staff" size="M" initials={user.initials} userName={user.name} locked={status === 'Locked'} />
           <div className={styles.userInfo}>
             <span className={styles.userName}>{user.name}</span>
             <span className={styles.userEmail}>{user.email}</span>
-            {lockLine(user.lock) && <span className={styles.userLockLine}>{lockLine(user.lock)}</span>}
           </div>
         </button>
       </td>
       <td className={styles.td}>
-        <Badge variant={sb.variant} icon={sb.icon} label={user.status} />
+        <div className={styles.statusStack}>
+          <Badge tone={sb.variant} icon={sb.icon} label={status} />
+          {isLocked(user.lock) && (
+            <span className={styles.lockSince}>Since {formatLockTime(user.lock.locked_at)}</span>
+          )}
+        </div>
       </td>
       <td className={styles.td}>
         <div className={styles.rolesCell}>
-          <Badge variant={ROLE_COLORS[user.role] || 'ai-neutral'} label={user.role} />
+          <Badge tone={ROLE_COLORS[user.role] || 'neutral'} label={user.role} />
           {user.extraRoles > 0 && (
             <OverflowBadge count={user.extraRoles} items={user.clinicalRoles?.slice(1) || []} />
           )}
@@ -67,7 +73,7 @@ export function UsersTabRow({
             )}
           </div>
         ) : (
-          <span className={styles.emptyDash}>—</span>
+          <span className={styles.emptyDash}>-</span>
         )}
       </td>
       <td className={styles.td}>{formatDate(user.createdAt)}</td>
@@ -85,7 +91,9 @@ export function UsersTabRow({
         <UserActions
           user={user}
           isAdmin={isCurrentUserAdmin}
+          locked={status === 'Locked'}
           onResetPassword={() => onResetPassword(user)}
+          onUnlock={() => onUnlock(user)}
           onToggleStatus={() => onToggleStatus(user)}
           onApprove={() => onReviewSignup(user, true)}
           onReject={() => onReviewSignup(user, false)}

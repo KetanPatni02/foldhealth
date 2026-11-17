@@ -41,24 +41,24 @@ const QUEUED_MEMBERS = [
 ];
 
 const ALL_PATIENTS = [
-  { initials: 'JW', name: 'James Wilson', gender: 'Male', age: 67, memberId: '#219384756102', raf: '4.234', rafChange: '+0.512' },
-  { initials: 'OC', name: 'Olivia Clark', gender: 'Female', age: 45, memberId: '#219384756103', raf: '2.110', rafChange: '+0.080' },
-  { initials: 'MR', name: 'Michael Roberts', gender: 'Male', age: 58, memberId: '#219384756104', raf: '3.450', rafChange: '+0.230' },
-  { initials: 'MG', name: 'Mia Garcia', gender: 'Female', age: 22, memberId: '#219384756105', raf: '1.200', rafChange: '+0.000' },
-  { initials: 'AS', name: 'Ava Smith', gender: 'Female', age: 34, memberId: '#219384756106', raf: '1.890', rafChange: '+0.120' },
-  { initials: 'CT', name: 'Christopher Taylor', gender: 'Male', age: 71, memberId: '#219384756107', raf: '5.120', rafChange: '+0.340' },
-  { initials: 'LW', name: 'Liam White', gender: 'Male', age: 52, memberId: '#219384756108', raf: '2.780', rafChange: '+0.190' },
-  { initials: 'EM', name: 'Emma Martinez', gender: 'Female', age: 39, memberId: '#219384756109', raf: '1.560', rafChange: '+0.070' },
-  { initials: 'SL', name: 'Sophia Lee', gender: 'Female', age: 61, memberId: '#219384756110', raf: '3.890', rafChange: '+0.410' },
-  { initials: 'DK', name: 'Daniel Kim', gender: 'Male', age: 48, memberId: '#219384756111', raf: '2.340', rafChange: '+0.150' },
-  { initials: 'RH', name: 'Rachel Harris', gender: 'Female', age: 55, memberId: '#219384756112', raf: '3.010', rafChange: '+0.280' },
-  { initials: 'NP', name: 'Nathan Patel', gender: 'Male', age: 73, memberId: '#219384756113', raf: '4.780', rafChange: '+0.610' },
-  { initials: 'LJ', name: 'Laura Jackson', gender: 'Female', age: 41, memberId: '#219384756114', raf: '1.440', rafChange: '+0.050' },
-  { initials: 'BT', name: 'Brian Thomas', gender: 'Male', age: 66, memberId: '#219384756115', raf: '3.670', rafChange: '+0.320' },
-  { initials: 'KA', name: 'Karen Anderson', gender: 'Female', age: 79, memberId: '#219384756116', raf: '5.890', rafChange: '+0.740' },
-  { initials: 'JC', name: 'Jason Chen', gender: 'Male', age: 37, memberId: '#219384756117', raf: '1.120', rafChange: '+0.030' },
-  { initials: 'MW', name: 'Maria Williams', gender: 'Female', age: 63, memberId: '#219384756118', raf: '2.950', rafChange: '+0.210' },
-  { initials: 'DP', name: 'David Park', gender: 'Male', age: 50, memberId: '#219384756119', raf: '2.560', rafChange: '+0.170' },
+  { initials: 'JW', name: 'James Wilson', gender: 'Male', age: 67, memberId: '11065', raf: '4.234', rafChange: '+0.512' },
+  { initials: 'OC', name: 'Olivia Clark', gender: 'Female', age: 45, memberId: '18433', raf: '2.110', rafChange: '+0.080' },
+  { initials: 'MR', name: 'Michael Roberts', gender: 'Male', age: 58, memberId: '18434', raf: '3.450', rafChange: '+0.230' },
+  { initials: 'MG', name: 'Mia Garcia', gender: 'Female', age: 22, memberId: '18435', raf: '1.200', rafChange: '+0.000' },
+  { initials: 'AS', name: 'Ava Smith', gender: 'Female', age: 34, memberId: '18436', raf: '1.890', rafChange: '+0.120' },
+  { initials: 'CT', name: 'Christopher Taylor', gender: 'Male', age: 71, memberId: '18437', raf: '5.120', rafChange: '+0.340' },
+  { initials: 'LW', name: 'Liam White', gender: 'Male', age: 52, memberId: '18438', raf: '2.780', rafChange: '+0.190' },
+  { initials: 'EM', name: 'Emma Martinez', gender: 'Female', age: 39, memberId: '18439', raf: '1.560', rafChange: '+0.070' },
+  { initials: 'SL', name: 'Sophia Lee', gender: 'Female', age: 61, memberId: '18440', raf: '3.890', rafChange: '+0.410' },
+  { initials: 'DK', name: 'Daniel Kim', gender: 'Male', age: 48, memberId: '18441', raf: '2.340', rafChange: '+0.150' },
+  { initials: 'RH', name: 'Rachel Harris', gender: 'Female', age: 55, memberId: '18442', raf: '3.010', rafChange: '+0.280' },
+  { initials: 'NP', name: 'Nathan Patel', gender: 'Male', age: 73, memberId: '18443', raf: '4.780', rafChange: '+0.610' },
+  { initials: 'LJ', name: 'Laura Jackson', gender: 'Female', age: 41, memberId: '18444', raf: '1.440', rafChange: '+0.050' },
+  { initials: 'BT', name: 'Brian Thomas', gender: 'Male', age: 66, memberId: '18445', raf: '3.670', rafChange: '+0.320' },
+  { initials: 'KA', name: 'Karen Anderson', gender: 'Female', age: 79, memberId: '18446', raf: '5.890', rafChange: '+0.740' },
+  { initials: 'JC', name: 'Jason Chen', gender: 'Male', age: 37, memberId: '18447', raf: '1.120', rafChange: '+0.030' },
+  { initials: 'MW', name: 'Maria Williams', gender: 'Female', age: 63, memberId: '18448', raf: '2.950', rafChange: '+0.210' },
+  { initials: 'DP', name: 'David Park', gender: 'Male', age: 50, memberId: '18449', raf: '2.560', rafChange: '+0.170' },
 ];
 
 const CALL_TIMES_POOL = ['10:50 PM', '09:24 PM', '08:15 PM', '07:33 PM', '06:48 PM', '05:19 PM', '05:10 PM', '04:37 PM', '04:33 PM', '03:45 PM', '02:58 PM', '02:15 PM', '01:45 PM', '01:12 PM', '12:30 PM', '11:45 AM', '11:30 AM', '10:15 AM'];
@@ -107,7 +107,7 @@ const TABS = ['Ongoing Call', 'In Queue', 'Call Log'];
 
 /* ── Shared components ── */
 
-// Presentational only — the enclosing <tr> owns the row's click behaviour.
+// Presentational only: the enclosing <tr> owns the row's click behaviour.
 function MemberCell({ initials, name, subtitle, selected }) {
   return (
     <div className={`${styles.memberCell} ${selected ? styles.memberCellSelected : ''}`}>
@@ -165,7 +165,7 @@ export function GoalDetailPanel({ call }) {
           <div className={styles.goalProgressHeader}>
             <span className={styles.goalProgressLabel}>Goal Progress</span>
             <Badge
-              variant={goalsMet ? 'compliance-pass' : 'compliance-fail'}
+              tone={goalsMet ? 'success' : 'danger'}
               label={goalsMet ? 'Goals Met' : 'Goals Not Met'}
               icon="solar:info-circle-linear"
             />
@@ -187,7 +187,7 @@ export function GoalDetailPanel({ call }) {
                   <span className={styles.goalCardName}>{g.name}</span>
                   <span className={styles.goalCardDesc}>{g.desc}</span>
                 </div>
-                <Badge variant={g.pass ? 'compliance-pass' : 'compliance-fail'} label={g.pass ? 'Pass' : 'Fail'} />
+                <Badge tone={g.pass ? 'success' : 'danger'} label={g.pass ? 'Pass' : 'Fail'} />
               </div>
             ))}
           </div>
@@ -204,7 +204,7 @@ export function GoalDetailPanel({ call }) {
                   <span className={styles.goalCardName}>{g.name}</span>
                   <span className={styles.goalCardDesc}>{g.desc}</span>
                 </div>
-                <Badge variant={g.pass ? 'compliance-pass' : 'compliance-fail'} label={g.pass ? 'Pass' : 'Fail'} />
+                <Badge tone={g.pass ? 'success' : 'danger'} label={g.pass ? 'Pass' : 'Fail'} />
               </div>
             ))}
           </div>
@@ -245,7 +245,7 @@ export function GoalDetailPanel({ call }) {
             <div className={styles.callQualitySentiment}>
               <span className={styles.callQualitySentimentLabel}>Sentiment &middot; From Transcript</span>
               <div>
-                <Badge variant={goalsMet ? 'sentiment-positive' : 'sentiment-negative'} label={goalsMet ? 'Positive' : 'Negative'} />
+                <Badge tone={goalsMet ? 'success' : 'danger'} label={goalsMet ? 'Positive' : 'Negative'} />
               </div>
               <span className={styles.callQualitySentimentDesc}>Based on the end of the conversation (LLM). Re-check the transcript if needed.</span>
             </div>
@@ -298,9 +298,9 @@ function OngoingCallTab({ searchQuery }) {
                   <Icon name="solar:translation-2-linear" size={16} color="var(--neutral-300)" />
                   Live Transcript
                 </button>
-                <ActionButton icon="solar:headphones-round-sound-linear" size="L" tooltip="Listen" />
+                <ActionButton icon="solar:headphones-round-sound-linear" tooltip="Listen" />
                 <span className={styles.actionDivider} />
-                <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" />
+                <ActionButton icon="solar:menu-dots-bold" tooltip="More Options" />
               </div>
             </td>
           </tr>
@@ -378,9 +378,9 @@ function InQueueTab({ searchQuery }) {
                     <Icon name="solar:alt-arrow-down-linear" size={16} color="var(--neutral-300)" />
                   </button>
                 </div>
-                <ActionButton icon="solar:close-circle-linear" size="L" tooltip="Remove from Queue" onClick={() => removeMember(idx)} />
+                <ActionButton icon="solar:close-circle-linear" tooltip="Remove from Queue" onClick={() => removeMember(idx)} />
                 <span className={styles.actionDivider} />
-                <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" />
+                <ActionButton icon="solar:menu-dots-bold" tooltip="More Options" />
               </div>
             </td>
           </tr>
@@ -489,7 +489,7 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
           </div>
 
           <div className={styles.dateGroupContent}>
-            {/* The expander is the inner button, not the header row — the row
+            {/* The expander is the inner button, not the header row, the row
                 also holds an ActionButton, and nesting controls is invalid. */}
             <div className={styles.dateGroupHeader}>
               <button
@@ -512,7 +512,7 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
                   />
                 </div>
               </button>
-              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More Options" />
+              <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More Options" />
             </div>
 
             {!collapsedGroups[gi] && (
@@ -546,7 +546,7 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
                               />
                             </td>
                             <td>
-                              <Badge variant={isFailed ? 'status-failed' : 'status-completed'} label={call.status} />
+                              <Badge tone={isFailed ? 'danger' : 'success'} label={call.status} />
                             </td>
                             <td>
                               <span className={isFailed ? styles.durationFailed : styles.duration}>
@@ -557,14 +557,14 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
                             <td>
                               <div className={styles.rowActions} onClick={e => e.stopPropagation()}>
                                 {isFailed ? (
-                                  <ActionButton icon="solar:refresh-linear" size="L" tooltip="Retry" />
+                                  <ActionButton icon="solar:refresh-linear" tooltip="Retry" />
                                 ) : (
                                   <>
-                                    <ActionButton icon="solar:document-text-linear" size="L" tooltip="Summary" />
-                                    <ActionButton icon="solar:play-linear" size="L" tooltip="Play Recording" />
+                                    <ActionButton icon="solar:document-text-linear" tooltip="Summary" />
+                                    <ActionButton icon="solar:play-linear" tooltip="Play Recording" />
                                   </>
                                 )}
-                                <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" />
+                                <ActionButton icon="solar:menu-dots-bold" tooltip="More Options" />
                               </div>
                             </td>
                           </tr>
@@ -723,8 +723,8 @@ export function CallQueueDrawer({ agent, onClose, initialTab }) {
               </div>
             </div>
             <div className={styles.bannerActions}>
-              <Button variant="secondary" size="M" leadingIcon="solar:pen-linear">Edit Configuration</Button>
-              <Button variant="error" size="M" leadingIcon="solar:forbidden-circle-linear">Stop</Button>
+              <Button variant="outline" leadingIcon="solar:pen-linear">Edit Configuration</Button>
+              <Button variant="soft" tone="danger" leadingIcon="solar:forbidden-circle-linear">Stop</Button>
             </div>
           </div>
 
@@ -742,11 +742,11 @@ export function CallQueueDrawer({ agent, onClose, initialTab }) {
               ))}
             </div>
             <div className={styles.tabActions}>
-              <ActionButton icon="solar:refresh-linear" size="L" tooltip="Refresh" />
+              <ActionButton icon="solar:refresh-linear" tooltip="Refresh" />
               <span className={styles.tabDivider} />
-              <ActionButton icon="custom:filter" size="L" tooltip="Filter" />
+              <ActionButton icon="custom:filter" tooltip="Filter" />
               <span className={styles.tabDivider} />
-              <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" onClick={() => { setSearchOpen(v => !v); if (searchOpen) setSearchQuery(''); }} />
+              <ActionButton icon="solar:magnifer-linear" tooltip="Search" onClick={() => { setSearchOpen(v => !v); if (searchOpen) setSearchQuery(''); }} />
             </div>
           </div>
 

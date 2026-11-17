@@ -1,23 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Checkbox } from '../../components/Checkbox/Checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
-import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { FilterBar } from '../worklists/FilterBar';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { DobFilter } from '../../components/DobFilter/DobFilter';
+import { dobInRange } from '../../components/DateRangePopover/yearSpan';
+import { GENDER_FILTER_OPTIONS, LANGUAGE_FILTER_OPTIONS, MEMBER_STATUS_FILTER_OPTIONS, memberGenderLabel, memberLanguageLabel } from '../../lib/memberFilters';
+import { DUE_OPTIONS } from '../hcc/dueDateFilter';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
+import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
 import { SnpWorklistRow, SNP_MIDDLE_COLUMNS } from './SnpWorklistRow';
 import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
-import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
+import { useWorklistColumns } from '../worklists/useWorklistColumns';
+import { useCovering } from '../ooo/useCovering';
 import { CarePlanReviewDrawer } from '../patient/right-panel/tabs/care-programs/care-plan/drawers/CarePlanReviewDrawer/CarePlanReviewDrawer';
 import styles from './SnpWorklistTable.module.css';
 
-// Sortable columns — each maps to a field on the enriched row. Tags and
+// Sortable columns: each maps to a field on the enriched row. Tags and
 // Outreach are intentionally omitted (visual composite cells with no natural
 // ordering). Dates surface as `<field>Sort` timestamps computed in enrichment
 // so MM/DD/YYYY strings sort chronologically instead of lexicographically.
@@ -41,65 +48,107 @@ const parseMdy = (s) => {
   return Date.UTC(+m[3], +m[1] - 1, +m[2]);
 };
 
-// Filter chips — each is a multi-select of string buckets derived per row.
+// Filter chips: each is a multi-select of string buckets derived per row.
 // `primary: true` chips render by default; extended chips are opt-in via the
 // More Filters popover. The extended set mirrors the full SNP-filter roster
 // (Member Status → Tags) even when the underlying member data doesn't yet
-// carry those fields — filtering on those is a no-op today.
+// carry those fields: filtering on those is a no-op today.
 const FILTER_KEYS = [
+  // Spec 2.1: always-primary, then the SNP workflow filters (UTR Flag isn't
+  // on SNP yet). Every primary always shows, in this order (FilterBar `pinPrimary`).
+  { key: 'memberStatus', label: 'Member Status', primary: true },
+  { key: 'dob', label: 'DOB', primary: true },
+  { key: 'gender', label: 'Gender', primary: true },
+  { key: 'language', label: 'Language', primary: true },
+  { key: 'tags', label: 'Tags', primary: true },
+  { key: 'zipCode', label: 'Zip Code', primary: true },
+  { key: 'assignee', label: 'Assignee', primary: true },
   { key: 'programSubStatus', label: 'Program Sub Status', primary: true },
-  { key: 'carePlanStatus',   label: 'Care Plan Status',   primary: true },
-  { key: 'assignee',         label: 'Assigned to',        primary: true },
-  { key: 'trigger',          label: 'Trigger',            primary: true },
-  { key: 'riskIq',           label: 'Risk IQ',            primary: true },
-  { key: 'outreach',         label: 'Outreach',           primary: true },
-  // Extended (hidden by default — opt in via More Filters).
-  { key: 'memberStatus',      label: 'Member Status',        primary: false },
-  { key: 'phone',             label: 'Phone Number',         primary: false },
-  { key: 'dob',               label: 'DOB',                  primary: false },
-  { key: 'gender',            label: 'Gender',               primary: false },
-  { key: 'language',          label: 'Language',             primary: false },
-  { key: 'programDueDate',    label: 'Program Due Date',     primary: false },
-  { key: 'nextActionDueDate', label: 'Next Action Due Date', primary: false },
-  { key: 'triggerDate',       label: 'Trigger Date',         primary: false },
-  { key: 'triggerType',       label: 'Trigger Type',         primary: false },
-  { key: 'lastOutreachDate',  label: 'Last Outreach Date',   primary: false },
-  { key: 'lastOutreachOutcome', label: 'Last Outreach Outcome', primary: false },
-  { key: 'programStartDate',  label: 'Program Start Date',   primary: false },
-  { key: 'lastAdmissionDate', label: 'Last Admission Date',  primary: false },
-  { key: 'ipa',               label: 'IPA',                  primary: false },
-  { key: 'hpCodes',           label: 'HP Codes',             primary: false },
-  { key: 'isOwnedIpa',        label: 'Is Owned IPA',         primary: false },
-  { key: 'lob',               label: 'LOB',                  primary: false },
-  { key: 'hpGroup',           label: 'HP Group',             primary: false },
-  { key: 'contractType',      label: 'Contract Type',        primary: false },
-  { key: 'snpType',           label: 'SNP Type',             primary: false },
-  { key: 'networkMarket',     label: 'Network Market',       primary: false },
-  { key: 'zipCode',           label: 'Zip Code',             primary: false },
-  { key: 'city',              label: 'City',                 primary: false },
-  { key: 'preferredCallTime', label: 'Preferred Call Time',  primary: false },
-  { key: 'pcp',               label: 'PCP',                  primary: false },
-  { key: 'pcpCounty',         label: 'PCP County',           primary: false },
-  { key: 'pcpState',          label: 'PCP State',            primary: false },
-  { key: 'pcpPod',            label: 'PCP Pod',              primary: false },
-  { key: 'pcpVendor',         label: 'PCP Vendor',           primary: false },
-  { key: 'tags',              label: 'Tags',                 primary: false },
+  { key: 'carePlanStatus', label: 'Care Plan Status', primary: true },
+  { key: 'nextActionDueDate', label: 'Next Action Due Date', primary: true },
+  { key: 'programDueDate', label: 'Program Due Date', primary: true },
+  { key: 'snpType', label: 'SNP Type', primary: true },
+  { key: 'triggerType', label: 'Trigger Type', primary: true },
+  { key: 'lastOutreachOutcome', label: 'Last Outreach Outcome', primary: true },
+  // Spec 2.3: secondary, by domain in More Filters. Trigger, Outreach and
+  // Network Market aren't in the spec; they're kept under the closest domain.
+  { key: 'phone', label: 'Phone Number', primary: false, group: 'Member' },
+  { key: 'preferredCallTime', label: 'Preferred Call Time', primary: false, group: 'Member' },
+  { key: 'lob', label: 'LOB', primary: false, group: 'Member' },
+  { key: 'ipa', label: 'IPA', primary: false, group: 'Member' },
+  { key: 'isOwnedIpa', label: 'Is Owned IPA', primary: false, group: 'Member' },
+  { key: 'hpCodes', label: 'HP Codes', primary: false, group: 'Member' },
+  { key: 'hpGroup', label: 'HP Group', primary: false, group: 'Member' },
+  { key: 'contractType', label: 'Contract Type', primary: false, group: 'Member' },
+  { key: 'programStartDate', label: 'Program Start Date', primary: false, group: 'Workflow Status' },
+  { key: 'lastOutreachDate', label: 'Last Outreach Date', primary: false, group: 'Workflow Status' },
+  { key: 'triggerDate', label: 'Trigger Date', primary: false, group: 'Workflow Status' },
+  { key: 'trigger', label: 'Trigger', primary: false, group: 'Workflow Status' },
+  { key: 'outreach', label: 'Outreach', primary: false, group: 'Workflow Status' },
+  { key: 'pcp', label: 'PCP', primary: false, group: 'Assignment' },
+  { key: 'pcpPod', label: 'PCP Pod', primary: false, group: 'Assignment' },
+  { key: 'pcpVendor', label: 'PCP Vendor', primary: false, group: 'Assignment' },
+  { key: 'city', label: 'City', primary: false, group: 'Geography' },
+  { key: 'pcpCounty', label: 'PCP County', primary: false, group: 'Geography' },
+  { key: 'pcpState', label: 'PCP State', primary: false, group: 'Geography' },
+  { key: 'networkMarket', label: 'Network Market', primary: false, group: 'Geography' },
+  { key: 'lastAdmissionDate', label: 'Last Admission Date', primary: false, group: 'Clinical' },
+  { key: 'riskIq', label: 'Risk IQ', primary: false, group: 'Clinical' },
 ];
 
-// Only the six primary keys have live bucket functions today; extended keys
-// return empty option pools so their chips render but don't filter yet.
+// Next Action Due Date in the same buckets as HCC's Due Date filter.
+const NO_DUE_DATE = 'No Due Date';
+const dueBucket = (mdy) => {
+  const due = parseMdy(mdy);
+  if (due == null) return NO_DUE_DATE;
+  const now = new Date();
+  const days = Math.round((due - Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+  if (days < 0) return 'Overdue';
+  if (days === 0) return 'Due Today';
+  if (days <= 7) return 'Due This Week';
+  if (days <= 14) return 'Due Next Week';
+  return 'Due More Than 2 Weeks';
+};
+
+// Keys with a bucket function filter; the rest (Zip Code, SNP Type, Program
+// Due Date, ...) have no SNP data yet, so their chips render empty. A bucket
+// may return several values (Tags): a row matches when any is selected.
 const BUCKET_FN = {
+  // SNP rows carry no member status; every member counts as Active (as CCM).
+  memberStatus:     (m) => m.memberStatus || 'Active',
+  nextActionDueDate: (m) => dueBucket(m.nextActionDue),
+  tags:             (m) => (m.tags || []).map(t => (typeof t === 'string' ? t : t?.label)).filter(Boolean),
+  triggerType:      (m) => m.trigger || 'None',
+  lastOutreachOutcome: (m) => m.outreach?.status || 'None',
   programSubStatus: (m) => m.programSubStatus || 'None',
   carePlanStatus:   (m) => m.carePlanStatus || 'None',
   assignee:         (m) => m.assigneeName || 'Unassigned',
   trigger:          (m) => m.trigger || 'None',
   riskIq:           (m) => m.riskIq || 'Undetermined',
   outreach:         (m) => (m.outreach ? m.outreach.status : 'None'),
-  gender:           (m) => m.gender || null,
-  language:         (m) => m.language || null,
+  gender:           (m) => memberGenderLabel(m.gender),
+  language:         (m) => memberLanguageLabel(m.language),
 };
 
-const MORE_FILTER_ITEMS = FILTER_KEYS.map(f => ({ k: f.key, label: f.label, primary: f.primary }));
+// Member filters show the vocabulary every worklist shares, not the values
+// that happen to be in the rows.
+const STATIC_OPTIONS = {
+  memberStatus: MEMBER_STATUS_FILTER_OPTIONS,
+  gender: GENDER_FILTER_OPTIONS,
+  language: LANGUAGE_FILTER_OPTIONS,
+  nextActionDueDate: [...DUE_OPTIONS, NO_DUE_DATE],
+};
+
+const MORE_FILTER_ITEMS = FILTER_KEYS.map(f => ({ k: f.key, label: f.label, primary: f.primary, group: f.group }));
+// Shown only while the signed-in user is covering someone (see useCovering).
+const NO_PICKS = [];
+const COVERING_DEF = { key: 'coveringFor', label: 'Covering for', primary: true };
+const FILTER_KEYS_COVERING = (() => {
+  const defs = [...FILTER_KEYS];
+  defs.splice(defs.findIndex(f => f.key === 'assignee') + 1, 0, COVERING_DEF);
+  return defs;
+})();
+const MORE_FILTER_ITEMS_COVERING = FILTER_KEYS_COVERING.map(f => ({ k: f.key, label: f.label, primary: f.primary, group: f.group }));
 const PRIMARY_FILTER_KEYS = [];
 for (const f of FILTER_KEYS) {
   if (f.primary) PRIMARY_FILTER_KEYS.push(f.key);
@@ -156,18 +205,27 @@ export function SnpWorklistTable() {
   const filters = useAppStore(s => s.snpFilters);
   const setFilter = useAppStore(s => s.setSnpFilter);
   const clearFilters = useAppStore(s => s.clearSnpFilters);
+  // A selected saved filter stays selected while edited: Go Back / Update it.
+  // Save as New opens FilterBar's own name dialog.
+  const savedActions = useSavedFilterActions('SNP', filters, clearFilters);
   const storedVisible = useAppStore(s => s.snpVisibleFilterKeys);
   const setVisibleFilterKeys = useAppStore(s => s.setSnpVisibleFilterKeys);
   const clearVisibleFilters = useAppStore(s => s.clearSnpVisibleFilters);
   const saveSnpFilter = useAppStore(s => s.saveSnpFilter);
 
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  // Local, not in snpFilters: covering is about who's out today, so it
+  // shouldn't be saved into a saved filter.
+  const [coveringFor, setCoveringFor] = useState([]);
+  const covering = useCovering();
+  const showCovering = covering.names.length > 0;
+  const coveringPicked = showCovering ? coveringFor : NO_PICKS;
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
-  // Ensure the row-level assignee picker has users to show — one-shot
+  // Ensure the row-level assignee picker has users to show, one-shot
   // fetch, guarded in the store so repeat mounts don't re-round-trip.
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
@@ -181,13 +239,12 @@ export function SnpWorklistTable() {
       for (const { key } of FILTER_KEYS) {
         const bucket = BUCKET_FN[key];
         if (!bucket) continue;
-        const val = bucket(m);
-        if (val) sets[key].add(val);
+        for (const val of [].concat(bucket(m))) if (val) sets[key].add(val);
       }
     }
     const opts = {};
     for (const { key } of FILTER_KEYS) {
-      opts[key] = sets[key] ? [...sets[key]].toSorted() : [];
+      opts[key] = STATIC_OPTIONS[key] || (sets[key] ? [...sets[key]].toSorted() : []);
     }
     return opts;
   }, [members]);
@@ -218,12 +275,17 @@ export function SnpWorklistTable() {
       const bucket = BUCKET_FN[key];
       if (!bucket || !vals || !vals.length) continue;
       const valSet = new Set(vals);
-      rows = rows.filter(m => valSet.has(bucket(m)));
+      rows = rows.filter(m => [].concat(bucket(m)).some(v => valSet.has(v)));
+    }
+    // DOB is a date range (Years or Custom Dates), not a bucket.
+    rows = rows.filter(m => dobInRange(m.dob, m.age, filters.dob));
+    if (coveringPicked.length) {
+      rows = rows.filter(m => covering.coveringOn([m.assigneeName], coveringPicked).length > 0);
     }
     return rows;
-  }, [enriched, searchQuery, filters]);
+  }, [enriched, searchQuery, filters, coveringPicked, covering]);
 
-  // Shared sort hook — click cycles asc → desc → cleared, same as HCC.
+  // Shared sort hook: click cycles asc → desc → cleared, same as HCC.
   const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered);
   const handleSort = (field) => {
     if (sortKey === field) {
@@ -236,7 +298,7 @@ export function SnpWorklistTable() {
   };
 
   // Visible chips = primary set (or user-customised set) plus any chip that
-  // has an active value — otherwise applying a saved filter could hide the
+  // has an active value: otherwise applying a saved filter could hide the
   // very chip whose value it just set.
   const activeKeys = useMemo(() => {
     const keys = [];
@@ -257,10 +319,12 @@ export function SnpWorklistTable() {
     setVisibleFilterKeys([...next]);
   };
 
+  // A filter can leave fewer pages than the one we're on; show the last one.
+  const pageNow = Math.min(page, Math.max(1, Math.ceil(sorted.length / perPage)));
   const paginated = useMemo(() => {
-    const start = (page - 1) * perPage;
+    const start = (pageNow - 1) * perPage;
     return sorted.slice(start, start + perPage);
-  }, [sorted, page, perPage]);
+  }, [sorted, pageNow, perPage]);
 
   const allIds = paginated.map(r => r.id);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id));
@@ -278,7 +342,7 @@ export function SnpWorklistTable() {
     return next;
   });
 
-  // Column prefs — bespoke table, wire useWorklistColumns directly.
+  // Column prefs: bespoke table, wire useWorklistColumns directly.
   const columnPrefs = useWorklistColumns('snp', SNP_MIDDLE_COLUMNS);
   const visibleMiddle = columnPrefs.visibleColumns;
   const orderedColumnsForRow = useMemo(() => (
@@ -312,7 +376,6 @@ export function SnpWorklistTable() {
             <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
             <ActionButton
               icon="solar:upload-minimalistic-linear"
-              size="L"
               tooltip="Upload Document"
               tooltipBelow
               onClick={() => showToast('Upload Document – coming soon')}
@@ -322,22 +385,52 @@ export function SnpWorklistTable() {
         }
       />
 
-      {filterBarOpen && (
-        <FilterBar
-          filterDefs={FILTER_KEYS}
-          filters={filters}
-          onFilterChange={(k, vals) => setFilter(k, vals)}
-          onClearAll={clearFilters}
-          onSaveFilter={(name) => saveSnpFilter(name)}
-          getOptions={(def) => filterOptions[def.key] || []}
-          multiSelect
-          visibleKeys={visibleKeys}
-          onToggleVisible={toggleVisible}
-          onClearVisible={clearVisibleFilters}
-          moreFilterItems={MORE_FILTER_ITEMS}
-          leading={null}
-        />
-      )}
+      <FilterBar
+        collapsed={!filterBarOpen}
+        filterDefs={showCovering ? FILTER_KEYS_COVERING : FILTER_KEYS}
+        filters={showCovering ? { ...filters, coveringFor: coveringPicked } : filters}
+        onFilterChange={(k, vals) => (k === 'coveringFor' ? setCoveringFor(vals || []) : setFilter(k, vals))}
+        onClearAll={() => { setCoveringFor([]); savedActions.onClearAll(); }}
+        clearAllLabel={savedActions.clearAllLabel}
+        saveLabel={savedActions.saveLabel}
+        saveMenuItems={savedActions.saveMenuItems}
+        onSaveMenuSelect={savedActions.onSaveMenuSelect}
+        hasActive={savedActions.edited || undefined}
+        onSaveFilter={(name) => saveSnpFilter(name)}
+        getOptions={(def) => filterOptions[def.key] || []}
+        multiSelect
+        visibleKeys={visibleKeys}
+        onToggleVisible={toggleVisible}
+        onClearVisible={clearVisibleFilters}
+        moreFilterItems={showCovering ? MORE_FILTER_ITEMS_COVERING : MORE_FILTER_ITEMS}
+        leading={null}
+        pinPrimary
+        // DOB gets the Years | Custom Dates picker; every other chip is the usual multi-select.
+        renderChip={(k) => {
+          if (k === 'dob') return <DobFilter value={filters.dob || []} onChange={vals => setFilter('dob', vals)} />;
+          if (k === 'coveringFor') {
+            return (
+              <FilterChip
+                label={COVERING_DEF.label}
+                options={covering.names}
+                selected={coveringPicked}
+                onChange={setCoveringFor}
+              />
+            );
+          }
+          const def = FILTER_KEYS.find(f => f.key === k);
+          if (!def) return null;
+          return (
+            <FilterChip
+              label={def.label}
+              options={filterOptions[k] || []}
+              selected={filters[k] || []}
+              onChange={vals => setFilter(k, vals)}
+              searchable={k === 'language'}
+            />
+          );
+        }}
+      />
 
       <div className={styles.tableScroll}>
         {loading && members.length === 0 ? (
@@ -402,10 +495,10 @@ export function SnpWorklistTable() {
       </div>
 
       <Pagination
-        currentPage={page}
+        currentPage={pageNow}
         totalItems={filtered.length}
         totalCount={enriched.length}
-        filtered={!!searchQuery.trim() || Object.values(filters).some(v => v?.length)}
+        filtered={!!searchQuery.trim() || Object.values(filters).some(v => v?.length) || coveringPicked.length > 0}
         perPage={perPage}
         onPageChange={setPage}
         onPerPageChange={(n) => { setPerPage(n); setPage(1); }}

@@ -8,6 +8,9 @@
  *              and intervention is met, closed otherwise) and a new one starts,
  *              with the old items kept as history
  */
+
+import { gbiCompletion } from './gbiStatus';
+
 export const TEMPLATE_RENEWALS = {
   extend: {
     label: 'Extend',
@@ -35,7 +38,6 @@ export const INSTANCE_STATUS = {
   closed: { label: 'Closed', tone: 'grey' },
 };
 
-const DONE = new Set(['Met', 'Completed', 'Resolved']);
 const UNIT_DAYS = { day: 1, week: 7 };
 
 function addDuration(from, amount, unit) {
@@ -68,14 +70,17 @@ export function templateEndsOn(template, libraryGoals = [], from = new Date()) {
   return latest ? isoDay(latest) : null;
 }
 
-/** Completed when every goal and intervention is met; closed otherwise. */
+/**
+ * Completed when every goal and intervention that's judged is met; closed
+ * otherwise. Discontinued / Not Applicable items aren't judged (lib/gbiStatus),
+ * so they neither block completion nor count in done / total.
+ */
 export function instanceOutcome({ goals = [], interventions = [] }) {
-  const items = [...goals, ...interventions];
-  const done = items.filter(i => DONE.has(i.status)).length;
+  const { achieved, counted } = gbiCompletion([...goals, ...interventions]);
   return {
-    status: items.length > 0 && done === items.length ? 'completed' : 'closed',
-    done,
-    total: items.length,
+    status: counted > 0 && achieved === counted ? 'completed' : 'closed',
+    done: achieved,
+    total: counted,
   };
 }
 

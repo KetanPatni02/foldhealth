@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { FilterIcon } from '../../components/Icon/FilterIcon';
-import { Collapse } from '../../components/Collapse/Collapse';
+import { CollapsibleContent } from '../../components/Collapsible/Collapsible';
 import { CollapseAllIcon } from '../../components/Icon/CollapseAllIcon';
 import { ExpandAllIcon } from '../../components/Icon/ExpandAllIcon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
@@ -11,11 +11,11 @@ import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { Icon } from '../../components/Icon/Icon';
-import { InfoBar } from '../../components/InfoBar/InfoBar';
+import { Banner } from '../../components/Banner/Banner';
 import { Link } from '../../components/Link/Link';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
-import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
-import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { EmptyState } from '../../components/EmptyState/EmptyState';
+import { Checkbox } from '../../components/Checkbox/Checkbox';
 import { UserPickerPopover } from '../../components/UserPickerPopover/UserPickerPopover';
 import { useAppStore } from '../../store/useAppStore';
 import { initialsOf, samePerson } from './oooUtils';
@@ -31,7 +31,7 @@ const checkState = (ids, selected) => {
 const pickerUser = (u) => ({ id: u.id, name: u.name, initials: u.initials, role: u.clinicalRoles?.[0] || u.role || '' });
 
 /**
- * "Select Reassignment Providers" with real appointments (Figma Eventus
+ * "Select Covering Providers" with real appointments (Figma Eventus
  * 16978:129171 and the frames around it). The away provider's appointments
  * in scope, by department:
  *   - departments someone else covers: pick a covering provider for the
@@ -49,8 +49,9 @@ const pickerUser = (u) => ({ id: u.id, name: u.name, initials: u.initials, role:
  * @param {{ from, to }} props.timeWindow
  * @param {object}   props.plan        – appointment id → { action, to? }
  * @param {function} props.onPlan      – (updater: plan => plan) => void
+ * @param {{ id?, name }[]} [props.suggested] – The record's covering providers, first under Suggested
  */
-export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPlan }) {
+export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPlan, suggested }) {
   const users = useAppStore(s => (s.platformPeople?.length ? s.platformPeople : s.platformUsers));
   const oooRecords = useAppStore(s => s.oooRecords);
   const locations = useAppStore(s => s.practiceLocations);
@@ -74,14 +75,24 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
     && (!typeF.length || typeF.includes(a.appointment_type_name))
     && (!stateF.length || stateF.includes(stateOf.get(a.location)))), [appointments, deptF, typeF, stateF, stateOf]);
 
-  // Who can cover each department, worked out once.
+  // The record's covering providers, listed first in every picker.
+  const suggestedKeys = (suggested || []).flatMap(c => [c.id, c.name].filter(Boolean));
+  const withNote = (list) => list.map(u => (suggestedKeys.includes(u.id) || suggestedKeys.includes(u.name) ? { ...u, note: `Covering for ${awayUser?.name}` } : u));
+
+  // Who can cover each department, worked out once. The record's covering
+  // providers can take any department's visits, even where they don't work.
   const covering = useMemo(() => {
+    const coverers = (suggested || []).map(c => {
+      const u = (users || []).find(x => (c.id && x.id === c.id) || x.name === c.name);
+      return u ? pickerUser(u) : { id: c.id || c.name, name: c.name, role: '' };
+    });
     const map = new Map();
     groupByDepartment(appointments).forEach(({ name }) => {
-      map.set(name, coveringProviders(name, users, { awayUser, oooRecords, window: timeWindow }).map(pickerUser));
+      const here = coveringProviders(name, users, { awayUser, oooRecords, window: timeWindow }).map(pickerUser);
+      map.set(name, [...coverers.filter(c => !here.some(h => h.id === c.id || h.name === c.name)), ...here]);
     });
     return map;
-  }, [appointments, users, awayUser, oooRecords, timeWindow]);
+  }, [appointments, users, awayUser, oooRecords, timeWindow, suggested]);
   const groups = groupByDepartment(shown);
   const coveredGroups = groups.filter(g => covering.get(g.name)?.length);
   const uncoveredGroups = groups.filter(g => !covering.get(g.name)?.length);
@@ -104,7 +115,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
     const picked = [...new Set(ids.map(id => plan[id]?.toId || plan[id]?.to).filter(Boolean))];
     setPicker({
       rect: e.currentTarget.getBoundingClientRect(),
-      users: list,
+      users: withNote(list),
       selected: picked.length === 1 ? picked[0] : undefined,
       onPick: (u) => assign(ids, u),
       onUnassign: picked.length ? () => clear(ids) : undefined,
@@ -151,8 +162,8 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
   };
   const cancelledTag = (ids) => (
     <span className={styles.cancelledTag}>
-      <Badge tone="error" size="S" label="Cancelled" />
-      <ActionButton icon="solar:undo-left-linear" size="S" tooltip="Undo Cancellation" tooltipLeft onClick={() => clear(ids)} />
+      <Badge tone="danger" size="sm" label="Cancelled" />
+      <ActionButton icon="solar:undo-left-linear" size="sm" tooltip="Undo Cancellation" tooltipLeft onClick={() => clear(ids)} />
     </span>
   );
   const markLink = (ids, label = 'Mark to Cancel') => (
@@ -178,7 +189,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
         ? (
           <span className={styles.controls}>
             {assigneeFor(ids, deptOf.get(a.id))}
-            <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More Options" tooltipLeft onClick={(e) => openMenu(e, ids, true)} />
+            <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More Options" tooltipLeft onClick={(e) => openMenu(e, ids, true)} />
           </span>
         )
         : markLink(ids);
@@ -193,7 +204,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
         ? (
           <span className={styles.controls}>
             {assigneeFor(ids, g.name)}
-            <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More Options" tooltipLeft onClick={(e) => openMenu(e, ids, true)} />
+            <ActionButton icon="solar:menu-dots-linear" size="sm" tooltip="More Options" tooltipLeft onClick={(e) => openMenu(e, ids, true)} />
           </span>
         )
         : markLink(ids);
@@ -229,7 +240,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
         icon: 'solar:user-plus-rounded-linear',
         onClick: (ids, e) => {
           if (!common.length) { showToast?.('No One Covers All the Selected Departments. Pick Fewer Departments.'); return; }
-          setPicker({ rect: e.currentTarget.getBoundingClientRect(), users: common, onPick: (u) => { assign(ids, u); setSelected(new Set()); } });
+          setPicker({ rect: e.currentTarget.getBoundingClientRect(), users: withNote(common), onPick: (u) => { assign(ids, u); setSelected(new Set()); } });
         },
       },
       { label: 'Cancel', icon: 'solar:calendar-mark-linear', variant: 'destructive', onClick: (ids) => setConfirm({ ids, clearSelection: true }) },
@@ -239,9 +250,9 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
   if (!appointments.length) {
     return (
       <div className={styles.planner}>
-        <span className={styles.plannerTitle}>Select Reassignment Providers</span>
+        <span className={styles.plannerTitle}>Select Covering Providers</span>
         <div className={ooo.providersEmpty}>
-          <RingEmptyState size="S" icon="solar:calendar-linear" label="No upcoming appointments to reassign for these dates" />
+          <EmptyState size="sm" icon="solar:calendar-linear" title="No upcoming appointments to reassign for these dates" />
         </div>
       </div>
     );
@@ -255,17 +266,17 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
   return (
     <div className={styles.planner}>
       <div className={styles.plannerHead}>
-        <span className={styles.plannerTitle}>Select Reassignment Providers</span>
+        <span className={styles.plannerTitle}>Select Covering Providers</span>
         <span className={styles.plannerTools}>
-          <ActionButton size="L" tooltip="Filters" count={filterCount || undefined} active={filtersOpen} onClick={() => setFiltersOpen(o => !o)}>
+          <ActionButton tooltip="Filters" count={filterCount || undefined} active={filtersOpen} onClick={() => setFiltersOpen(o => !o)}>
             <FilterIcon size={20} color="var(--neutral-300)" />
           </ActionButton>
           <span className={ooo.actionDivider} aria-hidden="true" />
           <span className={ooo.viewToggle} role="group" aria-label="View">
-            <ActionButton size="L" tooltip="Collapse All" className={view === 'collapsed' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'collapsed'} onClick={() => setView('collapsed')}>
+            <ActionButton tooltip="Collapse All" className={view === 'collapsed' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'collapsed'} onClick={() => setView('collapsed')}>
               <CollapseAllIcon size={20} color="var(--neutral-300)" />
             </ActionButton>
-            <ActionButton size="L" tooltip="Expand All" tooltipLeft className={view === 'expanded' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'expanded'} onClick={() => setView('expanded')}>
+            <ActionButton tooltip="Expand All" tooltipLeft className={view === 'expanded' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'expanded'} onClick={() => setView('expanded')}>
               <ExpandAllIcon size={20} color="var(--neutral-300)" />
             </ActionButton>
           </span>
@@ -278,7 +289,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
           <FilterChip size="S" label="Appointment Type" options={[...new Set(appointments.map(a => a.appointment_type_name).filter(Boolean))].sort()} selected={typeF} onChange={setTypeF} searchable />
         </div>
       )}
-      <InfoBar tone="info" variant="inline">Appointments are cancelled with the original provider and rebooked on the covering provider&apos;s EHR calendar. Double-booking may occur if that slot is already taken.</InfoBar>
+      <Banner tone="info" size="sm">Appointments are cancelled with the original provider and rebooked on the covering provider&apos;s EHR calendar. Double-booking may occur if that slot is already taken.</Banner>
 
       {!shown.length ? (
         <span className={styles.empty}>No appointments match these filters.</span>
@@ -297,12 +308,12 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
                   </button>
                   {allCancelled(uncoveredIds) ? cancelledTag(uncoveredIds) : markLink(uncoveredIds, 'Mark to Cancel All')}
                 </div>
-                <Collapse open={noUsersOpen}>
+                <CollapsibleContent open={noUsersOpen}>
                   <div className={styles.noUsersBody}>
                     <label className={styles.selectAll}>{box(uncoveredIds, 'Select all without covering providers')}Select All</label>
                     {uncoveredGroups.map(g => deptCard(g, false))}
                   </div>
-                </Collapse>
+                </CollapsibleContent>
               </div>
             )}
           </div>
@@ -327,6 +338,8 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
           onClose={() => setPicker(null)}
           emptyText="No one else works at this department."
           align="right"
+          titleCaseSections
+          pinned={suggestedKeys.length ? { label: 'Suggested', keys: suggestedKeys } : null}
         />
       )}
       {menu && (

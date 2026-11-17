@@ -3,20 +3,18 @@ import { historyTimelineStyles as htStyles } from '../../../../../../../componen
 import { Avatar } from '../../../../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../../../../components/Badge/Badge';
 import { Icon } from '../../../../../../../components/Icon/Icon';
+import { CollapsibleContent } from '../../../../../../../components/Collapsible/Collapsible';
 import { adherenceTone, goalProgressTone } from './goalMetrics';
+import { GBI_STATUS_META } from './gbiStatus';
 import styles from './carePlanLogItem.module.css';
 
 const LIVE_CHANGE_TYPES = new Set(['status', 'priority', 'progress', 'title', 'assignment']);
 
 // A status change wears the icon of the status it moved to (the rail tile
 // already takes that status's colour), as HCC status entries do.
-const STATUS_ICON = {
-  'Not Started': 'solar:minus-circle-linear',
-  'In Progress': 'custom:pending',
-  'On Hold': 'solar:pause-circle-linear',
-  Met: 'solar:check-circle-linear',
-  'Not Met': 'solar:close-circle-linear',
-};
+const STATUS_ICON = Object.fromEntries(
+  Object.entries(GBI_STATUS_META).map(([status, meta]) => [status, meta.icon]),
+);
 const CHANGE_ICON = {
   priority: 'solar:ranking-linear',
   title: 'solar:pen-linear',
@@ -34,7 +32,7 @@ export function versionContext(versionNumber, current) {
   return (
     <span className={styles.versionTag}>
       v{versionNumber}
-      <Badge size="S" tone="grey" label="Current" className={styles.currentBadge} />
+      <Badge size="sm" label="Current" className={styles.currentBadge} />
     </span>
   );
 }
@@ -73,9 +71,9 @@ export function carePlanLogItem(e, { meta = {}, noteOpen = false, onToggleNote }
             <span className={htStyles.headline}>{base.title}</span>
           </div>
           <div className={htStyles.transition}>
-            <Badge size="S" tone={toneOf(e.from)} label={e.from || 'None'} />
+            <Badge size="sm" tone={toneOf(e.from)} label={e.from || 'None'} />
             <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            <Badge size="S" tone={toTone} label={e.to || 'None'} />
+            <Badge size="sm" tone={toTone} label={e.to || 'None'} />
           </div>
         </>
       ),
@@ -106,9 +104,9 @@ export function carePlanLogItem(e, { meta = {}, noteOpen = false, onToggleNote }
               <ViewMoreButton expanded={noteOpen} onToggle={onToggleNote} label="View Note" leadingDot />
             )}
           </div>
-          {noteOpen && (
-            // Laid out like an HCC details card: what the note is on, the
-            // note itself, then what it replaced.
+          <CollapsibleContent open={noteOpen}>
+            {/* Laid out like an HCC details card: what the note is on, the
+                note itself, then what it replaced. */}
             <div className={htStyles.detailsCard}>
               <div className={htStyles.detailRow}>
                 <div className={htStyles.detailText}>
@@ -123,7 +121,7 @@ export function carePlanLogItem(e, { meta = {}, noteOpen = false, onToggleNote }
                 </div>
               </div>
             </div>
-          )}
+          </CollapsibleContent>
         </>
       ),
     };

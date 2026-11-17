@@ -34,6 +34,7 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
         provider={drawer.provider}
         setProvider={drawer.setProvider}
         profileUsers={drawer.profileUsers}
+        providerOoo={drawer.providerOoo}
         setSectionOpen={drawer.setSectionOpen}
         date={drawer.date}
         setDate={drawer.setDate}
@@ -88,6 +89,8 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
       provider={drawer.provider}
       setProvider={drawer.setProvider}
       profileUsers={drawer.profileUsers}
+      providerOoo={drawer.providerOoo}
+      providerOooError={drawer.providerOooError}
       secondaryUsers={drawer.secondaryUsers}
       setSecondaryUsers={drawer.setSecondaryUsers}
       date={drawer.date}

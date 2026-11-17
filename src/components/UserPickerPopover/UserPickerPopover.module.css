@@ -1,32 +1,48 @@
 .menu {
-  position: fixed; z-index: 10000; width: 280px;
   display: flex; flex-direction: column; gap: var(--space-2);
   padding: var(--space-2);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150); border-radius: 8px;
-  box-shadow: var(--shadow-popover);
-  animation: userPickerIn var(--duration-medium) var(--ease-out);
 }
-@keyframes userPickerIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .menu { animation: none; } }
 .title { padding: var(--space-1) var(--space-1) 0; font-size: var(--font-base); color: var(--neutral-300); }
-.search {
-  display: flex; align-items: center; gap: var(--space-2);
-  height: 32px; padding: 0 var(--space-2);
-  border: 0.5px solid var(--neutral-200); border-radius: 4px;
-}
-.search:focus-within { border-color: var(--primary-300); }
-.searchInput { flex: 1; min-width: 0; border: none; outline: none; background: none; font-size: var(--font-base); color: var(--neutral-400); }
-.searchInput::placeholder { color: var(--neutral-200); }
 .list { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; }
+/* One scroll for Unassign and the users: the inner list keeps its full height
+   instead of shrinking and scrolling on its own (which pinned Unassign). */
+.list > [role="listbox"] { flex-shrink: 0; overflow: visible; }
 .row {
-  display: flex; align-items: center; gap: var(--space-3);
+  display: flex; align-items: center; gap: var(--space-1);
   padding: var(--space-2); border: none; border-radius: 4px;
   background: none; text-align: left; cursor: pointer;
 }
 .row:hover, .row:focus-visible { background: var(--neutral-50); outline: none; }
-.rowActive { background: var(--primary-50); }
-.text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .name { font-size: var(--font-base); color: var(--neutral-500); }
-.role { font-size: var(--font-sm); color: var(--neutral-300); }
-.empty { padding: var(--space-3) var(--space-2); font-size: var(--font-sm); color: var(--neutral-300); text-align: center; }
+/* Multi-select rows: checkbox, avatar, name over role (Figma 16978:128250). */
+.check { flex-shrink: 0; pointer-events: none; }
+.bulk {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.selectAll {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: 0; border: none; background: none; cursor: pointer;
+  font-size: var(--font-base); color: var(--neutral-400);
+}
+.clearAll {
+  padding: 0; border: none; background: none; cursor: pointer;
+  font-size: var(--font-base); font-weight: 500; color: var(--status-error);
+}
+.clearAll:hover:not(:disabled) { text-decoration: underline; }
+.clearAll:disabled { color: var(--neutral-150); cursor: default; }
+
+/* A user with a badge (e.g. Limited Access): name, then the badge at the end. */
+.nameRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); width: 100%; min-width: 0; }
+.nameText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* titleCaseSections: the list's section headers keep their case. */
+.titleSections [role="presentation"] { text-transform: none; letter-spacing: normal; }
+/* Rows as in Figma 16978:128278: 8px around and between the avatar and the
+   text, 4px between rows, 2px between the lines. */
+.list, .list > [role="listbox"] { gap: var(--space-1); }
+.row, .list [role="option"] { gap: var(--space-2); padding: var(--space-2); line-height: var(--leading-tight); }
+.desc { display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); margin-top: calc(var(--space-1) / 2); }
+[role="option"]:not([aria-disabled="true"]) .desc { color: var(--neutral-200); }
+/* `note`: a grey line under the role (e.g. "Covering for …"). */
+[role="option"]:not([aria-disabled="true"]) .desc .note { color: var(--neutral-300); }

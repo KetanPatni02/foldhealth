@@ -1,10 +1,10 @@
 import { Button } from '@/components/Button/Button';
-import { RingEmptyState } from '@/components/RingEmptyState/RingEmptyState';
+import { EmptyState } from '@/components/EmptyState/EmptyState';
 import { AddIconMinimalist } from '@/components/Icon/AddIconMinimalist';
 import { DownChevronIcon } from '@/components/Icon/DownChevronIcon';
 import styles from './CarePlanView.module.css';
 
-export const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+export { GBI_STATUSES } from '../lib/gbiStatus';
 export const PRIORITIES = ['high', 'medium', 'low'];
 export const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
 
@@ -42,11 +42,10 @@ export function SectionTitle({ label, count, open, onToggle }) {
 export function SectionEmptyState({ icon, label, onAdd }) {
   return (
     <div className={styles.sectionEmpty}>
-      <RingEmptyState icon={icon} label={label} iconSize={31} />
+      <EmptyState icon={icon} title={label} iconSize={31} />
       <div className={styles.sectionEmptyActions}>
         <Button
-          variant="tertiary"
-          size="L"
+          variant="soft"
           leadingIconElement={<AddIconMinimalist size={16} />}
           onClick={onAdd}
         >

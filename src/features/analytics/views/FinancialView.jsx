@@ -101,7 +101,7 @@ function TcocTab({ data, highCost, showToast, editing = false, resetTick = 0 }) 
   const hcRows = safeTableRows(highCost);
 
   const renderCostByProvider = () => (
-    <Card title="Cost by Setting — Provider Hierarchy" flush>
+    <Card title="Cost by Setting: Provider Hierarchy" flush>
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead>
@@ -132,11 +132,11 @@ function TcocTab({ data, highCost, showToast, editing = false, resetTick = 0 }) 
   );
 
   const renderHighCost = () => (
-    <Card title="High-Cost Claimants" flush actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Exporting high-cost claimant list...')}>Export</Button>}>
+    <Card title="High-Cost Claimants" flush actions={<Button variant="ghost" size="sm" onClick={() => showToast?.('Exporting high-cost claimant list...')}>Export</Button>}>
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead>
-            <tr><th>Member ID</th><th>Diagnosis</th><th className={s.r}>Total Cost</th><th className={s.r}>IP Admits</th><th>Status</th></tr>
+            <tr><th>Fold ID</th><th>Diagnosis</th><th className={s.r}>Total Cost</th><th className={s.r}>IP Admits</th><th>Status</th></tr>
           </thead>
           <tbody>
             {highCost === null && (
@@ -524,7 +524,7 @@ function SnfPostAcuteTab({ data, scorecard, showToast, editing = false, resetTic
   );
 
   const renderSnfScorecard = () => (
-    <Card title="SNF Quality Scorecard" flush actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Exporting SNF scorecard...')}>Export</Button>}>
+    <Card title="SNF Quality Scorecard" flush actions={<Button variant="ghost" size="sm" onClick={() => showToast?.('Exporting SNF scorecard...')}>Export</Button>}>
       <div className={s.tblWrap}>
         <table className={s.tbl}>
           <thead><tr><th>SNF</th><th className={s.r}>Admits</th><th className={s.r}>Readmit%</th><th className={s.r}>Avg LOS</th><th className={s.r}>CMS Stars</th><th>Status</th></tr></thead>

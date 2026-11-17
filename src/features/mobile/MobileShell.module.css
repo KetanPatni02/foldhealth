@@ -1,0 +1,99 @@
+.shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  background: var(--neutral-0);
+  padding-top: env(safe-area-inset-top);
+  box-sizing: border-box;
+}
+.content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Bottom tab bar (Figma Nav Menu Provider 759:19104) ── */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Safari on iOS reports its toolbar and the home indicator as the bottom
+     safe area. That space already separates the tabs from the toolbar, so
+     the Figma 12px bottom padding only applies when there is no inset
+     (adding both left a tall empty strip under the tabs). */
+  padding: 0 var(--space-3) max(var(--space-3), env(safe-area-inset-bottom));
+  background: var(--primary-300);
+}
+.navItem {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-2);
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.navIcon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  border-radius: 12px;
+  color: var(--on-color);
+}
+.navItemActive .navIcon { background: var(--surface-on-color-active); }
+.navBadge {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+/* Phone turned sideways: little height, so a slimmer tab bar. */
+@media (max-height: 500px) {
+  .navItem {
+    min-height: 0;
+    padding: var(--space-1) var(--space-2);
+  }
+  .navIcon { padding: var(--space-2); }
+}
+
+/* Touch feedback (Apple HIG: respond on press, not on release). No grey
+   iOS tap flash; every button dips slightly the instant it's pressed. */
+.shell { -webkit-tap-highlight-color: transparent; }
+.shell :where(button, [role='button']):active:not(:disabled) { transform: scale(0.98); }
+
+/* A pushed screen slides in from the right edge, the way iOS navigation
+   does; going back uses the browser's own back gesture. */
+.pushed { animation: push-in 0.35s cubic-bezier(0.32, 0.72, 0, 1); }
+@keyframes push-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell :where(button, [role='button']):active:not(:disabled) { transform: none; }
+  .pushed { animation: push-fade 0.15s ease-out; }
+}
+@keyframes push-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+}
+
+/* The slide-in starts off the right edge: never let it scroll the page. */
+.content { overflow: clip; }

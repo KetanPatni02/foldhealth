@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
+import { Badge } from '../../components/Badge/Badge';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { useAppStore } from '../../store/useAppStore';
 import { MONTH_NAMES, formatDateFriendly, parseTaskDate } from './TasksView.utils';
 import { usePopoverPosition } from './usePopoverPosition';
@@ -63,9 +65,9 @@ export function TaskDatePicker({ value, onSelect, overdue, compact = false }) {
             onClick={e => e.stopPropagation()}
           >
             <div className={styles.calendarHeader}>
-              <ActionButton icon="solar:alt-arrow-left-linear" size="S" onClick={() => setViewDate(new Date(year, month - 1, 1))} />
+              <ActionButton icon="solar:alt-arrow-left-linear" size="sm" onClick={() => setViewDate(new Date(year, month - 1, 1))} />
               <span className={styles.calendarTitle}>{MONTH_NAMES[month]} {year}</span>
-              <ActionButton icon="solar:alt-arrow-right-linear" size="S" onClick={() => setViewDate(new Date(year, month + 1, 1))} />
+              <ActionButton icon="solar:alt-arrow-right-linear" size="sm" onClick={() => setViewDate(new Date(year, month + 1, 1))} />
             </div>
             <div className={styles.calendarGrid}>
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={i} className={styles.calendarDayLabel}>{d}</div>)}
@@ -155,7 +157,17 @@ export function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
   );
 }
 
-export function DetailDropdown({ value, options, onSelect, renderOption, children, searchable = true, multiSelect, selected, align = 'left', disabled = false }) {
+const NOBODY_OUT = () => null;
+const mdY = (v) => { const d = new Date(v); return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`; };
+
+// `renderOption(option, { note, away })`: `note` is a covering line to stack
+// under the name; `away` marks someone out of office (still pickable), and
+// `badge` is their Out of Office badge, to sit right after the name.
+// `outOfOffice` (option) => { startAt, endAt, coveredBy: string[] } | null:
+// as when booking, people who are out can't be picked. They're listed last
+// under Not Available with who covers them; searching for one puts whoever
+// covers them on top, under Suggested.
+export function DetailDropdown({ value, options, onSelect, renderOption, children, searchable = true, multiSelect, selected, align = 'left', disabled = false, outOfOffice = NOBODY_OUT }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
@@ -167,6 +179,67 @@ export function DetailDropdown({ value, options, onSelect, renderOption, childre
     const label = typeof opt === 'string' ? opt : opt.label;
     return label.toLowerCase().includes(search.toLowerCase());
   });
+  const valOf = (opt) => (typeof opt === 'string' ? opt : opt.value);
+  const away = filtered.filter(o => outOfOffice(o));
+  const covering = new Map(); // covering name → names they cover
+  if (search) {
+    away.forEach(o => (outOfOffice(o).coveredBy || []).forEach((n) => {
+      covering.set(n, [...(covering.get(n) || []), valOf(o)]);
+    }));
+  }
+  const suggested = options.filter(o => covering.has(valOf(o)) && !outOfOffice(o));
+  const available = filtered.filter(o => !outOfOffice(o) && !covering.has(valOf(o)));
+
+  // A row's content: the caller's (avatar, name), with any covering line
+  // stacked under the name, as in booking's provider picker.
+  const content = (opt, extra = {}) => (renderOption
+    ? renderOption(opt, extra)
+    : (
+      <span className={styles.dropItemText}>
+        <span className={styles.dropItemNameRow}>{typeof opt === 'string' ? opt : opt.label}{extra.badge}</span>
+        {extra.note && <span className={styles.dropItemNote}>{extra.note}</span>}
+      </span>
+    ));
+  const item = (opt, note) => {
+    const val = valOf(opt);
+    const isChecked = multiSelect && selectedSet.has(val);
+    return (
+      <button key={val} className={styles.simpleDropItem} onClick={() => {
+        onSelect(val);
+        if (!multiSelect) { setOpen(false); setSearch(''); }
+      }} type="button" role={multiSelect ? 'menuitemcheckbox' : undefined} aria-checked={multiSelect ? isChecked : undefined}>
+        {multiSelect && <CheckboxTick checked={isChecked} size={15} />}
+        {content(opt, { note })}
+      </button>
+    );
+  };
+
+  // Not Available: first while searching (so whoever was searched for shows),
+  // last otherwise.
+  const searching = !!search.trim();
+  const awaySection = away.length > 0 && (
+    <>
+      <div className={styles.dropGroup}>Not Available</div>
+      {/* Tasks can still go to someone who's out: they stay pickable,
+          with who covers them and the Out of Office badge. */}
+      {away.map((opt) => {
+        const out = outOfOffice(opt);
+        return (
+          <button key={valOf(opt)} type="button" className={styles.simpleDropItem} onClick={() => { onSelect(valOf(opt)); setOpen(false); setSearch(''); }}>
+            {content(opt, {
+              away: true,
+              note: out.coveredBy?.length ? `Covered by: ${out.coveredBy.join(', ')}` : 'No covering provider',
+              badge: (
+                <Tooltip label={`Out of office ${mdY(out.startAt)} - ${mdY(out.endAt)}`} placement="top" align="left">
+                  <Badge tone="magenta" size="sm" label="Out of Office" />
+                </Tooltip>
+              ),
+            })}
+          </button>
+        );
+      })}
+    </>
+  );
 
   return (
     <div style={{ position: 'relative' }}>
@@ -182,12 +255,12 @@ export function DetailDropdown({ value, options, onSelect, renderOption, childre
           setOpen(v => !v);
         }}
       >
-        {children || value || '—'}
+        {children || value || '-'}
       </button>
       {open && !disabled && pos && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }}>
           <div
-            className={styles.simpleDropdown}
+            className={outOfOffice !== NOBODY_OUT ? `${styles.simpleDropdown} ${styles.dropPeople}` : styles.simpleDropdown}
             style={{
               position: 'fixed',
               // When placement flips to 'top', anchor via the bottom edge so
@@ -197,7 +270,7 @@ export function DetailDropdown({ value, options, onSelect, renderOption, childre
                 ? { bottom: Math.max(8, window.innerHeight - pos.top) }
                 : { top: pos.top }),
               // 'right' aligns the popover's right edge to the trigger's right
-              // edge so it opens leftward — used when the trigger sits near
+              // edge so it opens leftward: used when the trigger sits near
               // the right rail of a drawer and a left-anchored popover would
               // overflow the viewport (Figma 4523:*).
               ...(align === 'right'
@@ -213,20 +286,13 @@ export function DetailDropdown({ value, options, onSelect, renderOption, childre
                 <input aria-label="Search options" className={styles.dropdownSearchInput} placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
               </div>
             )}
-            {filtered.map(opt => {
-              const label = typeof opt === 'string' ? opt : opt.label;
-              const val = typeof opt === 'string' ? opt : opt.value;
-              const isChecked = multiSelect && selectedSet.has(val);
-              return (
-                <button key={val} className={styles.simpleDropItem} onClick={() => {
-                  onSelect(val);
-                  if (!multiSelect) { setOpen(false); setSearch(''); }
-                }} type="button" role={multiSelect ? 'menuitemcheckbox' : undefined} aria-checked={multiSelect ? isChecked : undefined}>
-                  {multiSelect && <CheckboxTick checked={isChecked} size={15} />}
-                  {renderOption ? renderOption(opt) : label}
-                </button>
-              );
-            })}
+            {/* Searching for someone out shows them first, then who covers them. */}
+            {searching && awaySection}
+            {suggested.length > 0 && <div className={styles.dropGroup}>Suggested</div>}
+            {suggested.map(opt => item(opt, `Covering for ${covering.get(valOf(opt)).join(', ')}`))}
+            {(suggested.length > 0 || (searching && away.length > 0)) && available.length > 0 && <div className={styles.dropGroup}>All Users</div>}
+            {available.map(opt => item(opt))}
+            {!searching && awaySection}
             {filtered.length === 0 && <div className={styles.simpleDropItem} style={{ color: 'var(--neutral-200)', cursor: 'default' }}>No results</div>}
           </div>
         </div>,

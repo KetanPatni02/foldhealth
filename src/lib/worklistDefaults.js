@@ -4,15 +4,17 @@ export function normalizeWorklistLabel(label) {
   return label;
 }
 
-/** Default SubNav worklist order — mirrors SubNav.jsx WORKLISTS. */
+/** Default SubNav worklist order: mirrors SubNav.jsx WORKLISTS. */
 export const DEFAULT_WORKLIST_LABELS = [
   'SNP',
   'Annual Visit',
   'TOC IP',
   'HCC',
+  'Pharmacy',
   'HEDIS',
   'CCM',
   'JSA',
+  'CMP',
   'High Utilizers',
   'DM',
   'TCM',

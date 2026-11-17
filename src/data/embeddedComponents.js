@@ -66,7 +66,7 @@ export const CONDITION_OPTIONS = [
 export const TOKEN_LIFETIME_OPTIONS = [
   { value: 5, label: '5 min (default)' },
   { value: 15, label: '15 min' },
-  { value: 30, label: '30 min — for long workflows' },
+  { value: 30, label: '30 min: for long workflows' },
 ];
 
 export const CONTEXT_FIELDS = [
@@ -308,7 +308,7 @@ export const COMPONENTS = [
   },
 ];
 
-/* ── Tab Widgets — existing widgets per patient profile tab (from Excel) ── */
+/* ── Tab Widgets: existing widgets per patient profile tab (from Excel) ── */
 export const TAB_WIDGETS = {
   'Gaps': ['Care Gaps', 'Diagnosis Gaps'],
   'Insight': ['Health Radar', 'Patient Synopsis', 'Care Plan Recommendation', 'Prior Authorization Request', 'Alerts', 'Diagnoses Surfacing', 'Recent Clinical Events', 'PAMI', 'Vitals', 'History', 'Home Monitoring', 'Lab Trends'],
@@ -329,7 +329,7 @@ export const MOCK_PATIENTS = [
     age: 65,
     gender: 'F',
     dob: '03/12/1961',
-    memberId: '#194039',
+    memberId: '19401',
     language: 'Spanish',
     conditions: ['Type 2 Diabetes', 'Hypertension'],
     openGaps: 3,
@@ -343,7 +343,7 @@ export const MOCK_PATIENTS = [
     age: 78,
     gender: 'M',
     dob: '08/22/1947',
-    memberId: '#281057',
+    memberId: '18450',
     language: 'English',
     conditions: ['CHF', 'CKD Stage 3', 'COPD', 'A-fib'],
     openGaps: 7,
@@ -357,7 +357,7 @@ export const MOCK_PATIENTS = [
     age: 42,
     gender: 'M',
     dob: '11/05/1983',
-    memberId: '#305821',
+    memberId: '18451',
     language: 'Korean',
     conditions: [],
     openGaps: 0,
@@ -371,7 +371,7 @@ export const MOCK_PATIENTS = [
     age: 8,
     gender: 'F',
     dob: '06/14/2017',
-    memberId: '#412093',
+    memberId: '18452',
     language: 'Chinese',
     conditions: ['Asthma'],
     openGaps: 1,

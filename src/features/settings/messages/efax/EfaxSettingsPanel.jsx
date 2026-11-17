@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
-import { AvatarGroup } from '../../../../components/AvatarGroup/AvatarGroup';
 import { Button } from '../../../../components/Button/Button';
 import { ConfirmDialog } from '../../../../components/ConfirmDialog/ConfirmDialog';
-import { RingEmptyState } from '../../../../components/RingEmptyState/RingEmptyState';
+import { EmptyState } from '../../../../components/EmptyState/EmptyState';
 import { SimpleTableSkeleton } from '../../../../components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { Switch } from '../../../../components/Switch/Switch';
 import { useAppStore } from '../../../../store/useAppStore';
+import { UserBadges } from '../UserBadges';
 import { EfaxNumberDrawer } from './EfaxNumberDrawer';
 import styles from './EfaxSettings.module.css';
-
-const initialsOf = (name) => String(name || '?').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
 /**
  * Settings > Messages > eFax: the practice's eFax numbers with their linked
@@ -78,8 +76,8 @@ export function EfaxSettingsPanel({ searchQuery = '', editing, setEditing }) {
   if (!efaxNumbers.length) {
     return (
       <div className={styles.empty}>
-        <RingEmptyState icon="solar:printer-linear" label="No eFax numbers added yet" />
-        <Button variant="primary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setEditing('new')}>Add eFax</Button>
+        <EmptyState icon="solar:printer-linear" title="No eFax numbers added yet" />
+        <Button leadingIcon="solar:add-circle-linear" onClick={() => setEditing('new')}>Add eFax</Button>
         {drawer}
       </div>
     );
@@ -108,18 +106,7 @@ export function EfaxSettingsPanel({ searchQuery = '', editing, setEditing }) {
               <td className={styles.number}>{n.number}</td>
               <td>
                 {n.users.length ? (
-                  <div className={styles.users}>
-                    <AvatarGroup
-                      variant="staff"
-                      size="S"
-                      max={3}
-                      people={n.users.map(u => ({ id: u.id, name: u.name, initials: u.initials || initialsOf(u.name) }))}
-                    />
-                    <span className={styles.usersText}>
-                      {n.users[0].name}
-                      {n.users.length > 1 && <span className={styles.usersMore}> +{n.users.length - 1}</span>}
-                    </span>
-                  </div>
+                  <UserBadges users={n.users} />
                 ) : (
                   <span className={styles.muted}>No users linked</span>
                 )}
@@ -134,9 +121,9 @@ export function EfaxSettingsPanel({ searchQuery = '', editing, setEditing }) {
               </td>
               <td>
                 <div className={styles.actions}>
-                  <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit eFax" onClick={() => setEditing(n)} />
+                  <ActionButton icon="solar:pen-linear" tooltip="Edit eFax" onClick={() => setEditing(n)} />
                   <span className={styles.divider} />
-                  <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete eFax" tooltipLeft onClick={() => setToDelete(n)} />
+                  <ActionButton icon="solar:trash-bin-minimalistic-linear" tooltip="Delete eFax" tooltipLeft onClick={() => setToDelete(n)} />
                 </div>
               </td>
             </tr>

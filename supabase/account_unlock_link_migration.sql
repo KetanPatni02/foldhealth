@@ -1,13 +1,17 @@
 -- Account lockout, part 2 (run after account_lockout_migration.sql).
 --
--- 1. A locked account stays locked even before the Password Verification
---    Hook is enabled: the access-token hook (already enabled for sign-up
---    approval) now refuses password sign-ins while an account is locked or
---    waiting for a new password, and the sign-in page reports failures
---    through record_sign_in_failure() (skipped when the hook already
---    counted that attempt, so nothing is counted twice).
+-- 1. Works on the Supabase free plan; the paid Password Verification Hook is
+--    optional. The access-token hook (already enabled for sign-up approval)
+--    refuses password sign-ins while an account is locked or waiting for a
+--    new password. The sign-in page reports each failure through
+--    record_sign_in_failure(email, password), which counts it only after
+--    checking that the password really is wrong for that account, so a
+--    caller can't lock someone out without actually guessing wrong. (It's
+--    skipped when the hook already counted that attempt.) Guesses sent
+--    straight to the Auth API, bypassing the app, aren't counted; Supabase's
+--    own per-IP rate limit covers those.
 -- 2. Unlocking is administrator-only: a locked user asks with
---    request_account_unlock(); an admin unlocks (api/account-unlock.js),
+--    request_account_unlock(); an admin unlocks (api/_handlers/account-unlock.js),
 --    which emails the user their User ID and a one-time link (24 hours) to
 --    set a new password. Until they do, password sign-in stays refused.
 -- 3. Every step is written to audit_logs (entity UserProfile), which the
@@ -56,7 +60,7 @@ create table if not exists public.account_unlock_tokens (
 );
 create index if not exists account_unlock_tokens_user_idx on public.account_unlock_tokens (user_id, created_at desc);
 alter table public.account_unlock_tokens enable row level security;
--- No policies: only the service role (api/account-unlock.js) reaches it.
+-- No policies: only the service role (api/_handlers/account-unlock.js) reaches it.
 
 -- ── One failed attempt (shared by the hook and the sign-in page) ─────────────
 -- Returns true when the account is (now) locked.
@@ -78,7 +82,7 @@ begin
          first_failed_at      = coalesce(first_failed_at, now()),
          last_failed_at       = now(),
          last_hook_failure_at = case when from_hook then now() else last_hook_failure_at end,
-         failed_apps          = case when 'Web' = any(failed_apps) then failed_apps else failed_apps || 'Web' end,
+         failed_apps          = case when 'Web' = any(failed_apps) then failed_apps else array_append(failed_apps, 'Web') end,
          updated_at           = now()
    where user_id = uid
   returning * into rec;
@@ -151,18 +155,27 @@ grant execute on function public.hook_password_verification_attempt(jsonb) to su
 revoke execute on function public.hook_password_verification_attempt(jsonb) from public, anon, authenticated;
 
 -- ── Sign-in page reports (work without the Password Verification Hook) ──────
--- Same answer whether or not the email has an account.
-create or replace function public.record_sign_in_failure(p_email text)
+-- Anyone can call this, so it only counts a failure after checking that
+-- p_password really is wrong for the account: locking someone out takes as
+-- many wrong guesses as signing in would. A right password (or an empty one)
+-- counts nothing. Returns nothing either way, and the same for an email with
+-- no account, so the answer never reveals whether a guess or an email exists.
+drop function if exists public.record_sign_in_failure(text);
+create or replace function public.record_sign_in_failure(p_email text, p_password text)
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   uid uuid;
+  stored text;
 begin
-  select id into uid from auth.users where lower(email) = lower(trim(p_email)) limit 1;
-  if uid is null then return; end if;
+  if coalesce(p_password, '') = '' then return; end if;
+  select id, encrypted_password into uid, stored
+    from auth.users where lower(email) = lower(trim(p_email)) limit 1;
+  if uid is null or coalesce(stored, '') = '' then return; end if;
+  if extensions.crypt(p_password, stored) = stored then return; end if;
   -- The hook already counted this attempt.
   if exists (select 1 from public.account_lockouts
               where user_id = uid and last_hook_failure_at > now() - interval '15 seconds') then
@@ -171,8 +184,8 @@ begin
   perform public.account_register_failure(uid, false);
 end;
 $$;
-revoke execute on function public.record_sign_in_failure(text) from public;
-grant execute on function public.record_sign_in_failure(text) to anon, authenticated;
+revoke execute on function public.record_sign_in_failure(text, text) from public;
+grant execute on function public.record_sign_in_failure(text, text) to anon, authenticated;
 
 create or replace function public.record_sign_in_success()
 returns void
@@ -244,7 +257,7 @@ grant execute on function public.request_account_unlock(text) to anon, authentic
 
 -- ── Admin unlock: always ends in a new password ─────────────────────────────
 -- Same signature as before; `require_reset` is now always on, because the
--- user comes back in through the emailed link (api/account-unlock.js sends
+-- user comes back in through the emailed link (api/_handlers/account-unlock.js sends
 -- it right after this call).
 create or replace function public.admin_unlock_account(
   target uuid,
@@ -429,7 +442,7 @@ commit;
 --   Re-run signup_confirmation_hook_fix_migration.sql and
 --   account_lockout_migration.sql, then:
 --   drop function if exists public.request_account_unlock(text);
---   drop function if exists public.record_sign_in_failure(text);
+--   drop function if exists public.record_sign_in_failure(text, text);
 --   drop function if exists public.record_sign_in_success();
 --   drop function if exists public.account_register_failure(uuid, boolean);
 --   drop function if exists public.account_security_audit(uuid, text, text, text);

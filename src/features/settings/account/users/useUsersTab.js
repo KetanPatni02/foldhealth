@@ -5,7 +5,8 @@ import { FALLBACK_USERS } from '../../fallbackUsers';
 import { getInitials } from '../AccountPanel.constants';
 import { ROLE_FIELDS } from './UsersTab.utils';
 import { apiFetch } from '../../../../lib/apiFetch';
-import { isLocked } from './accountLock';
+import { accountStatus } from './accountLock';
+import { flushSecurityEmails } from '../../../auth/accountSecurity';
 
 // Map a raw `profiles` row to the user shape the table renders. Shared by the
 // list fetch and the single-row save so a save can update just its own row
@@ -33,7 +34,9 @@ function mapProfileRow(u) {
   };
 }
 
-export function useUsersTab() {
+// `initialStatus`: a status filter to open with (the phone's alert links pass
+// ['Pending'] or ['Locked'] as a screen prop instead of the store signal).
+export function useUsersTab({ initialStatus } = {}) {
   const showToast = useAppStore(s => s.showToast);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,9 +46,9 @@ export function useUsersTab() {
   const [showInvite, setShowInvite] = useState(false);
   // A notification can hand over a status filter ("Pending") either before
   // this tab mounts (seeded here) or while it is already open (subscription).
-  const [filterOpen, setFilterOpen] = useState(() => !!useAppStore.getState().pendingUsersStatusFilter);
+  const [filterOpen, setFilterOpen] = useState(() => !!(initialStatus?.length || useAppStore.getState().pendingUsersStatusFilter));
   const [userFilters, setUserFilters] = useState(() => ({
-    status: useAppStore.getState().pendingUsersStatusFilter || [], roles: [], location: [],
+    status: initialStatus || useAppStore.getState().pendingUsersStatusFilter || [], roles: [], location: [],
   }));
   useEffect(() => {
     useAppStore.getState().clearPendingUsersStatusFilter();
@@ -58,7 +61,7 @@ export function useUsersTab() {
   }, []);
   const currentUserIdRef = useRef(null);
   // Signed-in user's id, and the dev-bypass flag for "no session at all".
-  // Only `getSession()` runs here — it reads the locally persisted session and
+  // Only `getSession()` runs here: it reads the locally persisted session and
   // costs no round trip, unlike `getUser()`.
   const [meId, setMeId] = useState(null);
   const [noSession, setNoSession] = useState(false);
@@ -76,7 +79,7 @@ export function useUsersTab() {
   // `profiles?select=role,clinical_roles,admin_role&id=eq.<me>` round trip,
   // which is redundant: `fetchUsers` below already pulls every profile row
   // including the signed-in user's, with these three columns in it. Verified
-  // against the live table — the current user is present in that response.
+  // against the live table: the current user is present in that response.
   //
   // One deliberate behaviour change: if the list query fails and `users` falls
   // back to FALLBACK_USERS (no `_raw`), this is now false rather than
@@ -84,7 +87,7 @@ export function useUsersTab() {
   // practice the standalone query hit the same table under the same RLS, so it
   // would have failed too.
   const isCurrentUserAdmin = useMemo(() => {
-    if (noSession) return true;   // dev bypass — unchanged
+    if (noSession) return true;   // dev bypass, unchanged
     if (!meId) return false;
     const raw = users.find(u => u.id === meId)?._raw;
     if (!raw) return false;
@@ -113,7 +116,7 @@ export function useUsersTab() {
     setLoading(false);
   }, []);
 
-  // One profiles query per session — revisiting the Users tab reuses the
+  // One profiles query per session: revisiting the Users tab reuses the
   // local list; mutations (toggle/invite/edit) keep it in sync.
   const fetchedRef = useRef(false);
   useEffect(() => {
@@ -137,7 +140,7 @@ export function useUsersTab() {
     [users, lockouts],
   );
 
-  // Unlock (api/account-unlock.js): records the reason, then emails the user
+  // Unlock (api/_handlers/account-unlock.js): records the reason, then emails the user
   // their User ID and a one-time link to set a new password.
   const postUnlock = async (body) => {
     const res = await apiFetch('/api/account-unlock', {
@@ -160,7 +163,7 @@ export function useUsersTab() {
       return false;
     }
     if (r.lock) setLockouts(prev => ({ ...prev, [user.id]: r.lock }));
-    showToast(`${user.name} unlocked. We emailed them a link to set a new password.`);
+    showToast(r.emailSent === false ? r.message : `${user.name} unlocked. We emailed them a link to set a new password.`);
     return true;
   };
 
@@ -205,21 +208,25 @@ export function useUsersTab() {
 
     if (!error && data && data.length > 0) {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+      // Approval queues the "Sign-up Approved" email (account_email_templates_migration.sql).
+      if (approve) flushSecurityEmails();
       showToast(`${user.name} ${approve ? 'approved' : 'rejected'}`);
     } else {
       showToast(error?.message || 'Failed to update sign-up request (Check permissions)');
     }
   };
 
-  const deleteUser = async (user) => {
+  // `confirmed`: the caller already asked (the phone confirms in a bottom
+  // sheet). Resolves true once the user is gone.
+  const deleteUser = async (user, { confirmed = false } = {}) => {
     if (!isCurrentUserAdmin) {
       showToast('Only Admin/Practice Manager can delete users');
-      return;
+      return false;
     }
-    if (!confirm(`Delete ${user.name}? This will permanently remove them from the platform.`)) return;
+    if (!confirmed && !confirm(`Delete ${user.name}? This will permanently remove them from the platform.`)) return false;
 
     const removeFromUI = () => setUsers(prev => prev.filter(u => u.id !== user.id));
-    const fail = (msg) => { showToast(msg); fetchUsers(); };
+    const fail = (msg) => { showToast(msg); fetchUsers(); return false; };
 
     try {
       const { error: fnError } = await supabase.functions.invoke('delete-user', {
@@ -229,13 +236,10 @@ export function useUsersTab() {
       if (!fnError) {
         removeFromUI();
         showToast(`${user.name} deleted`);
-        return;
+        return true;
       }
       const fnMessage = await fnError.context?.json?.().then(b => b?.error).catch(() => null);
-      if (fnMessage) {
-        fail(fnMessage);
-        return;
-      }
+      if (fnMessage) return fail(fnMessage);
 
       const { data, error } = await supabase
         .from('profiles')
@@ -243,19 +247,17 @@ export function useUsersTab() {
         .eq('id', user.id)
         .select();
 
-      if (error || !data || data.length === 0) {
-        fail(error?.message || 'Failed to delete user (Check permissions)');
-        return;
-      }
+      if (error || !data || data.length === 0) return fail(error?.message || 'Failed to delete user (Check permissions)');
 
       removeFromUI();
       showToast(`${user.name} deleted`);
+      return true;
     } catch (err) {
-      fail(err?.message || 'Failed to delete user');
+      return fail(err?.message || 'Failed to delete user');
     }
   };
 
-  // Bulk delete — same edge-function-then-profiles-fallback path as
+  // Bulk delete: same edge-function-then-profiles-fallback path as
   // deleteUser, run per id in parallel. The bulk confirm dialog replaces the
   // per-row confirm(). Returns true if at least one deletion succeeded.
   const deleteUsersBulk = async (ids) => {
@@ -285,7 +287,7 @@ export function useUsersTab() {
       return;
     }
     if (!user.email) { showToast('No email address for this user'); return; }
-    // A 6-digit code to the email on file (api/password-reset.js). Admins
+    // A 6-digit code to the email on file (api/_handlers/password-reset.js). Admins
     // never see or set the password.
     try {
       const res = await apiFetch('/api/password-reset', {
@@ -307,7 +309,7 @@ export function useUsersTab() {
     if (!isCurrentUserAdmin) {
       if (!isSelf) {
         showToast('Only Admin/Practice Manager can edit other users');
-        return;
+        return false;
       }
       const stripped = { ...updates };
       for (const f of ROLE_FIELDS) delete stripped[f];
@@ -322,22 +324,23 @@ export function useUsersTab() {
 
     if (error || !data || data.length === 0) {
       showToast(`Error: ${error?.message || 'Permission denied'}`);
-      return;
+      return false;
     }
 
     // Update just this row from the UPDATE's returned record instead of
-    // re-fetching every profile — the full-table refetch (with a loading
+    // re-fetching every profile: the full-table refetch (with a loading
     // skeleton flash) was what made Save feel slow.
     setUsers(prev => prev.map(u => (u.id === userId ? mapProfileRow(data[0]) : u)));
     showToast('Profile updated');
     setEditingUser(null);
+    return true;
   };
 
   const filteredUsers = useMemo(() => {
     let list = usersWithLock;
     if (userFilters.status.length) {
       const statusSet = new Set(userFilters.status);
-      list = list.filter(u => statusSet.has(u.status) || (statusSet.has('Locked') && isLocked(u.lock)));
+      list = list.filter(u => statusSet.has(accountStatus(u)));
     }
     if (userFilters.roles.length) {
       const rolesSet = new Set(userFilters.roles);
@@ -364,7 +367,7 @@ export function useUsersTab() {
       if (u.location) locations.add(u.location);
     }
     return {
-      status: ['Active', 'Pending', 'Invited', 'Inactive', 'Suspended', 'Rejected', 'Locked'],
+      status: ['Active', 'Pending', 'Invited', 'Inactive', 'Suspended', 'Rejected', 'Locked', 'Unlocked'],
       roles: [...roles].sort(),
       location: [...locations].sort(),
     };

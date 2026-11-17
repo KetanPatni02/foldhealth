@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
-import { Toggle } from '../../../components/Toggle/Toggle';
+import { SegmentedControl } from '../../../components/SegmentedControl/SegmentedControl';
 import { SearchBar } from '../../../components/SearchBar/SearchBar';
-import boneStyles from '../../../components/TableSkeleton/TableSkeleton.module.css';
+import { Skeleton } from '../../../components/Skeleton/Skeleton';
 import { useAppStore } from '../../../store/useAppStore';
 import listStyles from '../MessagesView.module.css';
 import commsStyles from '../comms/Comms.module.css';
 import { formatTime } from '../messageUtils';
 import { CommsListHeader } from '../comms/CommsListHeader';
+import { CommsFilterChips } from '../comms/CommsFilterChips';
+import { useCommsFilters, useEfaxInboxes } from '../comms/useCommsFilters';
 import { CommsListEmpty, CommsPanelEmpty } from '../comms/CommsEmptyState';
 import { useCommsPeople } from '../comms/useCommsPeople';
+import { activeOooFor, samePerson } from '../../ooo/oooUtils';
 import { EfaxThread } from './EfaxThread';
 import { CreateEfaxDrawer } from './CreateEfaxDrawer';
 import styles from './Efax.module.css';
@@ -33,6 +36,7 @@ export function EfaxWorkspace({ navCollapsed, onToggleNav }) {
   const faxes = useAppStore(s => s.efaxes);
   const loading = useAppStore(s => s.efaxesLoading);
   const fetchEfaxes = useAppStore(s => s.fetchEfaxes);
+  const oooRecords = useAppStore(s => s.oooRecords);
   const addEfax = useAppStore(s => s.addEfax);
   const { patients, me } = useCommsPeople();
   const [selectedId, setSelectedId] = useState(null);
@@ -49,14 +53,32 @@ export function EfaxWorkspace({ navCollapsed, onToggleNav }) {
     [patients],
   );
 
+  // Filters drawer: By Date (received), By Inbox (the practice's eFax
+  // numbers) and Covering for (a number's linked users are its assignees).
+  // A fax from before numbers were recorded came in on the first line.
+  const filt = useCommsFilters();
+  const efaxInboxes = useEfaxInboxes();
+  const numberOf = (fax) => fax.efaxNumberId || efaxInboxes[0]?.id || null;
+
   const q = query.trim().toLowerCase();
   const list = faxes.filter((f) => {
     if (tab === 'open' && f.linked) return false;
     if (tab === 'linked' && !f.linked) return false;
+    if (!filt.inWindow(f.receivedAt)) return false;
+    if (filt.filters.inbox && numberOf(f) !== filt.filters.inbox) return false;
+    if (filt.filters.covering.length && !filt.coveredBy(efaxInboxes.find(i => i.id === numberOf(f))?.users)) return false;
     if (!q) return true;
     return `${f.senderName} ${f.documentType} ${f.linked?.name || ''} ${f.extracted?.name || ''}`.toLowerCase().includes(q);
   });
   const selected = list.find(f => f.id === selectedId) || null;
+  // Every linked user of a number is its assignee, so the open fax warns
+  // when any of them (other than me) is out of office.
+  const outMembers = selected
+    ? (efaxInboxes.find(i => i.id === numberOf(selected))?.members || [])
+      .filter(u => !samePerson(u, me))
+      .map(u => ({ name: u.name, record: activeOooFor(oooRecords, { id: u.id || null, name: u.name }) }))
+      .filter(u => u.record)
+    : [];
   const notLinked = faxes.filter(f => !f.linked).length;
 
   const create = (fax) => {
@@ -78,10 +100,15 @@ export function EfaxWorkspace({ navCollapsed, onToggleNav }) {
           onToggleNav={onToggleNav}
           searchActive={searchOpen}
           onSearch={() => { setSearchOpen(v => !v); setQuery(''); }}
+          filterActive={filt.open || filt.active}
+          onFilter={() => filt.setOpen(v => !v)}
         />
         <div className={listStyles.convTabs}>
-          <Toggle items={TABS} active={tab} onChange={setTab} size="S" />
+          <SegmentedControl items={TABS} value={tab} onValueChange={setTab} size="sm" />
         </div>
+        {filt.open && (
+          <CommsFilterChips filters={filt.filters} onChange={filt.setFilter} inboxes={efaxInboxes} coveringNames={filt.coveringNames} />
+        )}
         {searchOpen && (
           <div className={styles.listSearch}>
             <SearchBar
@@ -97,10 +124,10 @@ export function EfaxWorkspace({ navCollapsed, onToggleNav }) {
           {loading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className={listStyles.convItem} aria-hidden>
-                <span className={`${boneStyles.bone} ${commsStyles.boneAvatar}`} />
+                <Skeleton className={commsStyles.boneAvatar} />
                 <div className={listStyles.convInfo}>
-                  <span className={`${boneStyles.bone} ${commsStyles.boneLine}`} />
-                  <span className={`${boneStyles.bone} ${commsStyles.boneLineShort}`} />
+                  <Skeleton className={commsStyles.boneLine} />
+                  <Skeleton className={commsStyles.boneLineShort} />
                 </div>
               </div>
             ))
@@ -135,7 +162,7 @@ export function EfaxWorkspace({ navCollapsed, onToggleNav }) {
         </div>
 
         <div className={styles.listFooter}>
-          <Button variant="secondary" size="L" fullWidth leadingIcon="solar:add-circle-linear" onClick={() => setCreating(true)}>
+          <Button variant="outline" fullWidth leadingIcon="solar:add-circle-linear" onClick={() => setCreating(true)}>
             Create Test eFax
           </Button>
         </div>
@@ -148,6 +175,7 @@ export function EfaxWorkspace({ navCollapsed, onToggleNav }) {
           reading={reading.includes(selected.id)}
           patients={patients}
           me={me}
+          outMembers={outMembers}
         />
       ) : (
         <CommsPanelEmpty viewKey="efax" hasConversations={faxes.length > 0} onCreate={() => {}} />

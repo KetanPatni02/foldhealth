@@ -2,12 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { resolveCurrentAssignee } from './HccWorklistRow.utils';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
-import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
+import { useWorklistColumns } from '../worklists/useWorklistColumns';
 import { HCC_COLUMNS } from './columns';
 import { memberMatchesFilters, countActiveFilters } from './filters';
 import { getChartDocs } from './data/chartDocs';
 import { slaDueCategory } from './sla';
 import { GAP_ONLY_FILTER_KEYS } from './HccWorklistTableParts.constants';
+import { useCovering } from '../ooo/useCovering';
+
+// Every assignee a record can carry: the current one and each role's owner.
+const assigneeNamesOf = (m) => [m.assigneeName, m.sup, m.cdr, m.r1, m.r2, m.r3];
+const NO_PICKS = [];
 
 const normFoldId = (v) => (v == null ? '' : String(v).replace(/^#/, '').trim().toLowerCase());
 
@@ -15,10 +20,10 @@ export function useHccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
-  // Patient slices — drive the "Patients Without Open Gaps" secondary section
+  // Patient slices: drive the "Patients Without Open Gaps" secondary section
   // (every patient in the system that isn't already in hccMembers). We union
   // every worklist's patient list because the standalone `patients` /
-  // `all_patients` Supabase tables can be empty in some environments — SubNav
+  // `all_patients` Supabase tables can be empty in some environments, SubNav
   // already unions these same slices for its "All Patients" count, so the HCC
   // empty-rows source has to match to stay in sync.
   const patients = useAppStore(s => s.patients);
@@ -37,7 +42,7 @@ export function useHccWorklistTable() {
   const currentUserId = useAppStore(s => s.currentUserProfile?.id);
   const fetchHccChartStatus = useAppStore(s => s.fetchHccChartStatus);
   const fetchHccRemovedCharts = useAppStore(s => s.fetchHccRemovedCharts);
-  // Chart slices — source of truth for a record's LIVE document count (seeded
+  // Chart slices: source of truth for a record's LIVE document count (seeded
   // defaults + uploads/added, minus removed). The static `m.ch` seed doesn't
   // track later attachments, so the enriched memo below computes the real
   // count from these and exposes it as `docCount` for the doc-count filter.
@@ -74,7 +79,7 @@ export function useHccWorklistTable() {
   const clearHccColumnOrder = columnPrefs.onReset;
   // Historically HCC had separate `clearHccColumnOrder` and
   // `clearHccHiddenCols` calls; the shared slice resets both at once, so we
-  // alias the second call to a no-op — the first `onReset` already cleared
+  // alias the second call to a no-op, the first `onReset` already cleared
   // hidden + order.
   const clearHccHiddenCols = () => {};
 
@@ -103,7 +108,7 @@ export function useHccWorklistTable() {
   useEffect(() => { fetchHccRemovedCharts(); }, [fetchHccRemovedCharts]);
   // The five patient slices below feed exactly one thing: the "Patients
   // Without Open Gaps" section, which returns [] unless the user is actively
-  // searching (see `patientsWithoutGaps` — `if (!q) return []`). They used to
+  // searching (see `patientsWithoutGaps`: `if (!q) return []`). They used to
   // be fetched on mount, five separate effects, which cost ~183 KB
   // (all_patients 100.6 + patients 51.3 + awv 14.7 + snp 9.4 + ccm 6.6) to
   // populate a section that renders nothing on arrival. It was the single
@@ -145,19 +150,19 @@ export function useHccWorklistTable() {
   // mid-navigation. When it ran during a Pagination render, React 18
   // logged "Cannot update Pagination while rendering OpenIcdsCell" and,
   // on pages containing spawned rows that re-triggered profile fetches,
-  // livelocked the renderer — the pagination click never committed and
+  // livelocked the renderer: the pagination click never committed and
   // the app appeared to crash on page 5. The reset is now atomic inside
   // the store setters (setHccFilter / clearHccFilters / setHccDueDateFilter /
   // setSearchQuery), so no effect is needed here.
 
   // Deduplicate hccMembers by patient (fold ID) BEFORE enrichment. The local
-  // data model has one row per coding record — a patient with multiple
+  // data model has one row per coding record, a patient with multiple
   // records shows up multiple times (e.g. Annette Brave appears 4x, once per
   // record). Prod's worklist is one row per patient with all DOS entries
   // nested inside a single dos_list, so we mirror that by keeping the first
   // occurrence for each fold ID and merging every other record's dos_list
   // into it. Downstream sort/filter/pagination all operate on the deduped
-  // list — the count in SubNav matches this same rule.
+  // list: the count in SubNav matches this same rule.
   const dedupedMembers = useMemo(() => {
     const byKey = new Map();
     for (const m of hccMembers) {
@@ -198,7 +203,7 @@ export function useHccWorklistTable() {
       resolved?.kind === 'unassigned' ? `~Awaiting ${resolved.role}` :  // ~ pushes to end of A-Z sort
       resolved?.kind === 'billing'    ? '~Billing Ready'             :
       '';
-    // Live document count — matches exactly what the Documents column renders
+    // Live document count: matches exactly what the Documents column renders
     // (getChartDocs), so the doc-count filter agrees with what the user sees.
     // Passes the original `m` (not a mutated ch) so getChartDocs' own
     // `ch == null` seed-suppression sentinel keeps working.
@@ -218,9 +223,22 @@ export function useHccWorklistTable() {
     };
   }), [dedupedMembers, hccDosAssignments, hccAddedCharts, hccChartStatus, hccRemovedCharts]);
 
+  // "Covering for" filter: local, not in hccFilters, so saved filters and
+  // role defaults never carry it.
+  const setCurrentPage = useAppStore(s => s.setCurrentPage);
+  const { names: coveringNames, coveringOn } = useCovering();
+  const [coveringPicked, setCoveringPicked] = useState([]);
+  const covering = coveringNames.length > 0 ? coveringPicked : NO_PICKS;
+  const coveringChip = useMemo(() => ({
+    names: coveringNames,
+    selected: coveringPicked,
+    onChange: (next) => { setCoveringPicked(next); setCurrentPage(1); },
+  }), [coveringNames, coveringPicked, setCurrentPage]);
+
   const filtered = useMemo(() => {
     let rows = enriched;
-    // SLA-based Due Date filter — matches the computed Created-Date colours.
+    if (covering.length) rows = rows.filter(m => coveringOn(assigneeNamesOf(m), covering).length > 0);
+    // SLA-based Due Date filter: matches the computed Created-Date colours.
     if (hccDueDateFilter) rows = rows.filter(m => slaDueCategory(m) === hccDueDateFilter);
     if (Object.keys(hccFilters).length) rows = rows.filter(m => memberMatchesFilters(m, hccFilters));
     const q = searchQuery?.trim().toLowerCase();
@@ -230,20 +248,20 @@ export function useHccWorklistTable() {
       m.id?.toLowerCase().includes(q)
     );
     return rows;
-  }, [enriched, searchQuery, hccDueDateFilter, hccFilters]);
+  }, [enriched, searchQuery, hccDueDateFilter, hccFilters, covering, coveringOn]);
 
-  // Any filter that can scope rows out — chip filters or the Due Date chip.
+  // Any filter that can scope rows out, chip filters or the Due Date chip.
   // Drives the "change your filters" empty state vs the true-empty one.
-  const filtersActive = !!hccDueDateFilter || countActiveFilters(hccFilters) > 0;
+  const filtersActive = !!hccDueDateFilter || countActiveFilters(hccFilters) > 0 || covering.length > 0;
 
-  // SLA default (Astrana DOS worklist): Created Date ascending — oldest first,
+  // SLA default (Astrana DOS worklist): Created Date ascending, oldest first,
   // so records closest to breaching the 14-day window surface at the top.
   const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered, 'date', 'asc');
 
-  // "Patients Without Open Gaps" — every patient not represented in
+  // "Patients Without Open Gaps", every patient not represented in
   // hccMembers gets a compact row. Linking key: the shared Fold ID that
   // lives on both `patients.memberId` and `hccMembers.memberId` (post-
-  // unification, id === memberId on both slices — see
+  // unification, id === memberId on both slices, see
   // supabase/patient_id_unification_migration.sql). Falls back to the
   // row's `id` for any legacy row that hasn't been backfilled yet.
   const hccMemberIds = useMemo(() => {
@@ -255,20 +273,20 @@ export function useHccWorklistTable() {
     return s;
   }, [hccMembers]);
 
-  // Any of these filters is gap-specific — a patient with no open gaps or
+  // Any of these filters is gap-specific, a patient with no open gaps or
   // DOS can't possibly match, so we hide the "Patients Without Open Gaps"
   // section whenever any of them has a value. The primary section's own
   // filter path handles the actual row filtering; this set exists only to
   // decide whether the secondary section is meaningful.
   const gapOnlyFilterActive = useMemo(() => {
-    if (hccDueDateFilter) return true;
+    if (hccDueDateFilter || covering.length) return true;
     for (const k of Object.keys(hccFilters)) {
       if (!GAP_ONLY_FILTER_KEYS.has(k)) continue;
       const v = hccFilters[k];
       if (Array.isArray(v) ? v.length > 0 : v != null) return true;
     }
     return false;
-  }, [hccFilters, hccDueDateFilter]);
+  }, [hccFilters, hccDueDateFilter, covering]);
 
   const patientsWithoutGaps = useMemo(() => {
     if (gapOnlyFilterActive) return [];
@@ -276,7 +294,7 @@ export function useHccWorklistTable() {
     // Only surface the "Patients Without Open Gaps" section while the user is
     // actively searching. Without a query the primary HCC rows filled the
     // paginated list; mixing empty "Add DOS" rows in with the last primary
-    // page (3 primary + 7 empty on page 6) reads as broken — the empty rows
+    // page (3 primary + 7 empty on page 6) reads as broken, the empty rows
     // are a search-scoped "did you mean this patient? add DOS for them"
     // affordance, not part of the default HCC worklist. Prod behaves this
     // way too.
@@ -306,13 +324,13 @@ export function useHccWorklistTable() {
         (p.id || '').toString().toLowerCase().includes(q)
       );
     });
-    // Sort by patient name ascending — HCC-specific sort keys don't apply here.
+    // Sort by patient name ascending: HCC-specific sort keys don't apply here.
     list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     return list;
   }, [patients, allPatients, awvMembers, ccmWorklistMembers, snpWorklistMembers, hccMemberIds, searchQuery, gapOnlyFilterActive]);
 
   // Flat combined row list: primary records, then a section-header sentinel
-  // Empty-patient rows follow the primary rows directly — no section header.
+  // Empty-patient rows follow the primary rows directly, no section header.
   const combinedRows = useMemo(() => {
     const rows = sorted.map(m => ({ kind: 'primary', key: m.id, member: m }));
     for (const p of patientsWithoutGaps) {
@@ -321,14 +339,14 @@ export function useHccWorklistTable() {
     return rows;
   }, [sorted, patientsWithoutGaps]);
 
-  // Flat table — one row per record (Figma 4680:138476). A record whose
+  // Flat table: one row per record (Figma 4680:138476). A record whose
   // dos_list bundles multiple visits shows a "View More N" expander in
   // its own row (handled inside HccWorklistRow); the table itself just
   // paginates the record list.
   const startIdx = (currentPage - 1) * perPage;
   const paginated = combinedRows.slice(startIdx, startIdx + perPage);
 
-  // Selection lives only on primary rows — empty-patient rows have no
+  // Selection lives only on primary rows, empty-patient rows have no
   // bulk actions, so header select-all should ignore them.
   const visibleIds = useMemo(() => {
     const ids = [];
@@ -347,7 +365,7 @@ export function useHccWorklistTable() {
   };
 
   const hiddenSet = columnPrefs.hiddenSet;
-  const activeFilterCount = countActiveFilters(hccFilters);
+  const activeFilterCount = countActiveFilters(hccFilters) + (covering.length ? 1 : 0);
 
   return {
     totalRecordCount: enriched.length,
@@ -376,6 +394,7 @@ export function useHccWorklistTable() {
     patientsWithoutGaps,
     filtersActive,
     clearHccFilters,
+    coveringChip,
     scrollWrapRef,
     someSelected,
     allSelected,

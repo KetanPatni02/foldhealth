@@ -1,0 +1,45 @@
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--space-2);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.tile:hover {
+  background: var(--neutral-50);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 1px;
+}
+
+.label {
+  max-width: 100%;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  line-height: var(--leading-normal);
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-error);
+}

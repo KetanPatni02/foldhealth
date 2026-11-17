@@ -4,11 +4,22 @@ const PATIENT_SLICES = [
   'awvMembers',
   'ccmWorklistMembers',
   'snpWorklistMembers',
+  'pharmacyWorklistMembers',
   'hedisMembers',
   'allPatients',
 ];
 
 const normMemberId = (v) => String(v || '').replace(/^#/, '').trim();
+
+/**
+ * Id for a new worklist source-table row. Since PR #372 these ids equal the
+ * patient's member id (Fold ID) so P360 tables keyed by member_id find the
+ * patient; a minted id (e.g. `snpw-<timestamp>`) splits their identity.
+ * Falls back to the source row id only when there is no member id.
+ */
+export function worklistRowId(src) {
+  return normMemberId(src?.memberId) || src?.id || null;
+}
 
 /**
  * Map a URL member id / selectedPatientId to the canonical store row id

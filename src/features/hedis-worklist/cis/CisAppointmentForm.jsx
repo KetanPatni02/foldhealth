@@ -2,7 +2,7 @@ import { useId } from 'react';
 import { Input } from '../../../components/Input/Input';
 import { Select } from '../../../components/Select/Select';
 import { Textarea } from '../../../components/Textarea/Textarea';
-import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Checkbox } from '../../../components/Checkbox/Checkbox';
 import { TIME_SLOTS } from '../../../components/ScheduleDrawer/scheduleDrawerConstants';
 import { todayIso } from '../useCareGapReminderForm';
 import { CisStatusBadge } from './CisStatus';
@@ -11,7 +11,7 @@ import { appointmentForDose, apptDate, doseKey } from './cisAppointments';
 import styles from './CisAppointmentForm.module.css';
 
 /**
- * Care Gap drawer — "Schedule Vaccine Reminder" pane body (CIS-CMB10):
+ * Care Gap drawer: "Schedule Vaccine Reminder" pane body (CIS-CMB10):
  * a visit booked with the child's own provider. Pass the object returned by
  * `useCisAppointmentForm()` as `form`, evaluateCis() output as `result`,
  * and the member's appointments so doses already booked can't be picked
@@ -29,6 +29,7 @@ export function CisAppointmentForm({ form, result, appointments = [] }) {
       .map(r => ({ a, r, key: doseKey(a.key, r.number) })))
     .sort((x, y) => (x.r.nextDue ?? x.r.start) - (y.r.nextDue ?? y.r.start));
 
+  const chosenDoses = new Set(values.doses);
   return (
     <div className={styles.form}>
       <p className={styles.hint}>
@@ -47,7 +48,7 @@ export function CisAppointmentForm({ form, result, appointments = [] }) {
           label="Time"
           options={TIME_SLOTS.map(t => ({ value: t, label: t }))}
           value={values.time}
-          onChange={set('time')}
+          onValueChange={set('time')}
           placeholder="Select Time"
         />
       </div>
@@ -66,13 +67,14 @@ export function CisAppointmentForm({ form, result, appointments = [] }) {
         {doses.length === 0 ? <p className={styles.empty}>Every dose has been given.</p> : (
           <div className={styles.doseList}>
             {doses.map(({ a, r, key }) => {
+              const chosen = chosenDoses.has(key);
               // Already on another scheduled appointment: one booking per dose.
               const booked = appointmentForDose(others, a.key, r);
               return (
                 <label key={key} htmlFor={`${uid}-${key}`} className={`${styles.dose} ${booked ? styles.doseBooked : ''}`}>
                   <Checkbox
                     id={`${uid}-${key}`}
-                    checked={!booked && values.doses.includes(key)}
+                    checked={!booked && chosen}
                     disabled={!!booked}
                     onCheckedChange={(on) => toggleDose(key, on === true)}
                   />
@@ -96,7 +98,7 @@ export function CisAppointmentForm({ form, result, appointments = [] }) {
         title="Note"
         rows={3}
         value={values.note}
-        onChange={set('note')}
+        onValueChange={set('note')}
         placeholder="Add details for this appointment"
       />
     </div>

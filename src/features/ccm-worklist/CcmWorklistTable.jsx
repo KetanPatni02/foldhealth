@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Checkbox } from '../../components/Checkbox/Checkbox';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
-import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { FilterBar } from '../worklists/FilterBar';
+import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
+import { DobFilter } from '../../components/DobFilter/DobFilter';
+import { dobInRange } from '../../components/DateRangePopover/yearSpan';
+import { GENDER_FILTER_OPTIONS, LANGUAGE_FILTER_OPTIONS, MEMBER_STATUS_FILTER_OPTIONS, memberGenderLabel, memberLanguageLabel } from '../../lib/memberFilters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { CcmWorklistRow, CCM_MIDDLE_COLUMNS } from './CcmWorklistRow';
 import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
-import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
+import { useWorklistColumns } from '../worklists/useWorklistColumns';
+import { useCovering } from '../ooo/useCovering';
 import {
   TimeFilterPopover,
 } from './TimeFilterChip';
@@ -31,12 +36,14 @@ const EMPTY_TIME_FILTER = { user: ALL_USERS, threshold: null };
 // numeric / date fields we derive a bucket label per row via BUCKET_FN
 // below. Order here matches the Figma chip row left → right.
 const FILTER_KEYS = [
+  // Member filters first, in the order every worklist uses.
+  { key: 'memberStatus',        label: 'Member Status' },
   { key: 'dob',                 label: 'DOB' },
   { key: 'gender',              label: 'Gender' },
   { key: 'language',            label: 'Language' },
+  { key: 'assignee',            label: 'Assignee' },
   { key: 'utrFlag',             label: 'UTR Flag' },
   { key: 'utrAge',              label: 'UTR Age' },
-  { key: 'assignee',            label: 'Assigned to' },
   { key: 'status',              label: 'Status' },
   { key: 'programDueDate',      label: 'Program Due Date' },
   { key: 'lastOutreachDate',    label: 'Last Outreach Date' },
@@ -44,14 +51,11 @@ const FILTER_KEYS = [
   { key: 'assignmentDate',      label: 'Assignment Date' },
   { key: 'ipa',                 label: 'IPA' },
   { key: 'hpCode',              label: 'HP Code' },
-  { key: 'memberStatus',        label: 'Member Status' },
   // billableMins / unloggedMins are rendered via TimeFilterChip below (they
   // compose a user selector + threshold radio, not a multi-select bucket),
   // so they don't live in this key list.
   { key: 'unloggedUser',        label: 'Unlogged User' },
 ];
-
-const LANG_LABEL = { en: 'English', ch: 'Chinese', es: 'Spanish', ko: 'Korean', vi: 'Vietnamese' };
 
 // Parse an "MM/DD/YYYY" string; returns null when the input is missing or
 // malformed so callers can bucket that as 'None' / 'Never'.
@@ -98,18 +102,13 @@ const utrAgeBucket = (days) => {
   if (days <= 30) return '8-30 days';
   return '30+ days';
 };
-const dobDecade = (iso) => {
-  if (!iso) return 'Unknown';
-  return `${iso.slice(0, 3)}0s`;
-};
 
 // A single per-row → bucket lookup used both for populating the FilterChip
-// option lists AND for evaluating each row against a selected filter — keeps
+// option lists AND for evaluating each row against a selected filter, keeps
 // the two branches consistent by construction.
 const BUCKET_FN = {
-  dob:                 (m) => dobDecade(m.dob),
-  gender:              (m) => m.gender || 'Unknown',
-  language:            (m) => LANG_LABEL[m.language] || 'Other',
+  gender:              (m) => memberGenderLabel(m.gender),
+  language:            (m) => memberLanguageLabel(m.language),
   utrFlag:             (m) => m.utrFlag || 'No',
   utrAge:              (m) => utrAgeBucket(m.utrAgeDays),
   assignee:            (m) => m.assigneeName || 'Unassigned',
@@ -124,34 +123,57 @@ const BUCKET_FN = {
   unloggedUser:        (m) => m.assigneeName || 'Unassigned',
 };
 
-const EMPTY_FILTERS = Object.fromEntries(FILTER_KEYS.map(f => [f.key, []]));
+// Member filters show the vocabulary every worklist shares, not the values
+// that happen to be in the rows.
+const MEMBER_OPTIONS = {
+  memberStatus: MEMBER_STATUS_FILTER_OPTIONS,
+  gender: GENDER_FILTER_OPTIONS,
+  language: LANGUAGE_FILTER_OPTIONS,
+};
 
-// Chip definitions for the shared FilterBar. First 8 chips are `primary`
-// (rendered by default, on one line — the shared FilterBar's autoFit packer
+// Chip definitions for the shared FilterBar. The CCM_PRIMARY_KEYS chips are `primary`
+// (rendered by default, on one line, the shared FilterBar's autoFit packer
 // hides overflow into More Filters); the rest are extended (hidden by
 // default, opt-in via More Filters).
 const CCM_PRIMARY_KEYS = new Set([
-  'dob', 'gender', 'language', 'utrFlag',
-  'utrAge', 'assignee', 'status', 'programDueDate',
+  'memberStatus', 'dob', 'gender', 'language',
+  'assignee', 'utrFlag', 'utrAge', 'status', 'programDueDate',
 ]);
+// More Filters domain for each secondary filter.
+const CCM_GROUP = {
+  ipa: 'Member', hpCode: 'Member',
+  lastOutreachDate: 'Workflow Status', lastOutreachOutcome: 'Workflow Status',
+  assignmentDate: 'Assignment',
+};
 const CCM_FILTER_DEFS = (() => {
   const defs = [];
   for (const f of FILTER_KEYS) {
     if (f.key === 'unloggedUser') continue;
-    defs.push({ ...f, primary: CCM_PRIMARY_KEYS.has(f.key) });
+    defs.push({ ...f, primary: CCM_PRIMARY_KEYS.has(f.key), group: CCM_GROUP[f.key] });
   }
   defs.push(
-    { key: 'billableMins', label: 'Billable Mins', primary: false },
-    { key: 'unloggedMins', label: 'Unlogged Mins', primary: false },
-    { key: 'unloggedUser', label: 'Unlogged User', primary: false },
+    { key: 'billableMins', label: 'Billable Mins', primary: false, group: 'Workflow Status' },
+    { key: 'unloggedMins', label: 'Unlogged Mins', primary: false, group: 'Workflow Status' },
+    { key: 'unloggedUser', label: 'Unlogged User', primary: false, group: 'Assignment' },
   );
   return defs;
 })();
-const CCM_MORE_FILTER_ITEMS = CCM_FILTER_DEFS.map(fd => ({
+// Shown only while the signed-in user is covering someone (see useCovering).
+const NO_PICKS = [];
+const COVERING_DEF = { key: 'coveringFor', label: 'Covering for', primary: true };
+const CCM_FILTER_DEFS_COVERING = (() => {
+  const defs = [...CCM_FILTER_DEFS];
+  defs.splice(defs.findIndex(d => d.key === 'assignee') + 1, 0, COVERING_DEF);
+  return defs;
+})();
+const toMoreItems = (defs) => defs.map(fd => ({
   k: fd.key,
   label: fd.label,
   primary: fd.primary,
+  group: fd.group,
 }));
+const CCM_MORE_FILTER_ITEMS = toMoreItems(CCM_FILTER_DEFS);
+const CCM_MORE_FILTER_ITEMS_COVERING = toMoreItems(CCM_FILTER_DEFS_COVERING);
 
 const thStyle = {
   padding: '8px 14px',
@@ -185,20 +207,33 @@ export function CcmWorklistTable() {
   const loading = useAppStore(s => s.ccmWorklistLoading);
   const fetchMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   // Search query + filter-bar visibility are both owned by the shared TabBar
-  // (via useAppStore.searchQuery / .showFilterBar) — the TOC pattern —
+  // (via useAppStore.searchQuery / .showFilterBar), the TOC pattern,
   // so the top-bar Filter icon toggles CCM's chip row the same way it
   // toggles TOC's <FilterBar />.
   const searchQuery = useAppStore(s => s.searchQuery);
   const showFilterBar = useAppStore(s => s.showFilterBar);
-  const showToast = useAppStore(s => s.showToast);
 
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [billableFilter, setBillableFilter] = useState(EMPTY_TIME_FILTER);
-  const [unloggedFilter, setUnloggedFilter] = useState(EMPTY_TIME_FILTER);
-  // `null` = default (FilterBar's autoFit packer picks visible chips); a
-  // populated array = user-customized set from the More Filters popover.
-  const [visibleKeys, setVisibleKeys] = useState(null);
+  // Filters live in the store (ccmFilters) so saved filters work for CCM:
+  // the bucket chips are string arrays; the two time filters sit under
+  // billableMins / unloggedMins while they're set.
+  const filters = useAppStore(s => s.ccmFilters);
+  const setCcmFilter = useAppStore(s => s.setCcmFilter);
+  const clearFilters = useAppStore(s => s.clearCcmFilters);
+  const saveSavedFilter = useAppStore(s => s.saveSavedFilter);
+  // FilterBar's own fallback for onFilterChange (More Filters unchecks).
+  const setStoreFilter = useAppStore(s => s.setFilter);
+  const savedActions = useSavedFilterActions('CCM', filters, clearFilters);
+  const billableFilter = filters.billableMins || EMPTY_TIME_FILTER;
+  const unloggedFilter = filters.unloggedMins || EMPTY_TIME_FILTER;
+  const setBillableFilter = (v) => setCcmFilter('billableMins', isTimeFilterActive(v) ? v : null);
+  const setUnloggedFilter = (v) => setCcmFilter('unloggedMins', isTimeFilterActive(v) ? v : null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  // Local, not in ccmFilters: covering is about who's out today, so it
+  // shouldn't be saved into a saved filter.
+  const [coveringFor, setCoveringFor] = useState([]);
+  const covering = useCovering();
+  const showCovering = covering.names.length > 0;
+  const coveringPicked = showCovering ? coveringFor : NO_PICKS;
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
@@ -211,13 +246,14 @@ export function CcmWorklistTable() {
     const sets = Object.fromEntries(FILTER_KEYS.map(({ key }) => [key, new Set()]));
     for (const m of members) {
       for (const { key } of FILTER_KEYS) {
+        if (!BUCKET_FN[key]) continue;
         const val = BUCKET_FN[key](m);
         if (val) sets[key].add(val);
       }
     }
     const opts = {};
     for (const { key } of FILTER_KEYS) {
-      opts[key] = [...sets[key]].toSorted();
+      opts[key] = MEMBER_OPTIONS[key] || [...sets[key]].toSorted();
     }
     return opts;
   }, [members]);
@@ -235,15 +271,21 @@ export function CcmWorklistTable() {
       const vals = filters[key];
       if (vals && vals.length) {
         const valSet = new Set(vals);
+        if (!BUCKET_FN[key]) continue;
         rows = rows.filter(m => valSet.has(BUCKET_FN[key](m)));
       }
     }
+    // DOB is a date range (Years or Custom Dates), not a bucket.
+    rows = rows.filter(m => dobInRange(m.dob, m.age, filters.dob));
     // Billable + Unlogged filters compose user + threshold so we can't
     // fold them into the bucket-based FILTER_KEYS loop.
     rows = rows.filter(m => matchTimeFilter(m.billableSeconds, m.assigneeName, billableFilter));
     rows = rows.filter(m => matchTimeFilter(m.unloggedSeconds, m.assigneeName, unloggedFilter));
+    if (coveringPicked.length) {
+      rows = rows.filter(m => covering.coveringOn([m.assigneeName], coveringPicked).length > 0);
+    }
     return rows;
-  }, [members, searchQuery, filters, billableFilter, unloggedFilter]);
+  }, [members, searchQuery, filters, billableFilter, unloggedFilter, coveringPicked, covering]);
 
   const userOptions = useMemo(() => {
     const names = new Set();
@@ -274,18 +316,14 @@ export function CcmWorklistTable() {
     return next;
   });
 
-  const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
-  const clearFilters = () => {
-    setFilters(EMPTY_FILTERS);
-    setBillableFilter(EMPTY_TIME_FILTER);
-    setUnloggedFilter(EMPTY_TIME_FILTER);
-  };
+  const setFilter = (key, vals) => setCcmFilter(key, vals);
   const hasAnyActive =
-    Object.values(filters).some(v => v.length > 0) ||
+    FILTER_KEYS.some(({ key }) => filters[key]?.length > 0) ||
     isTimeFilterActive(billableFilter) ||
-    isTimeFilterActive(unloggedFilter);
+    isTimeFilterActive(unloggedFilter) ||
+    coveringPicked.length > 0;
 
-  // Column prefs — bespoke table, wire useWorklistColumns directly.
+  // Column prefs: bespoke table, wire useWorklistColumns directly.
   const columnPrefs = useWorklistColumns('ccm', CCM_MIDDLE_COLUMNS);
   const visibleMiddle = columnPrefs.visibleColumns;
   const orderedColumnsForRow = useMemo(() => (
@@ -299,104 +337,112 @@ export function CcmWorklistTable() {
   return (
     <div className={styles.wrap}>
       {/* The shared TabBar (rendered by AppLayout for CCM) sits above this
-          component and owns the title + right-side action icons — same
+          component and owns the title + right-side action icons, same
           chrome TOC uses. Below it we render just the filter chip row
           and the sticky-column table. */}
 
       {/* Filter chip row. Visible only when the TabBar's Filter icon has
-          been toggled on (showFilterBar) — same pattern TOC uses for its
+          been toggled on (showFilterBar): same pattern TOC uses for its
           FilterBar. All the bucket-based chips render from FILTER_KEYS;
           Billable Mins + Unlogged Mins slot in between memberStatus and
           unloggedUser to match the Figma order. */}
-      {showFilterBar && (
-        <FilterBar
-          autoFit
-          leading={null}
-          filterDefs={CCM_FILTER_DEFS}
-          moreFilterItems={CCM_MORE_FILTER_ITEMS}
-          filters={{
-            ...filters,
-            // Mirror the two time-filter chips into FilterBar's `filters` bag
-            // so autoFit treats them as active (always visible) when set.
-            billableMins: isTimeFilterActive(billableFilter) ? ['active'] : [],
-            unloggedMins: isTimeFilterActive(unloggedFilter) ? ['active'] : [],
-          }}
-          multiSelect
-          onClearAll={clearFilters}
-          onSaveFilter={(name) => showToast(`Saved filter "${name}"`)}
-          hasActive={hasAnyActive}
-          visibleKeys={visibleKeys ?? undefined}
-          onToggleVisible={(k) => {
-            setVisibleKeys(prev => {
-              const seed = prev ?? CCM_FILTER_DEFS.reduce((keys, fd) => {
-                if (fd.primary) keys.push(fd.key);
-                return keys;
-              }, []);
-              const next = new Set(seed);
-              if (next.has(k)) next.delete(k); else next.add(k);
-              return [...next];
-            });
-          }}
-          onClearVisible={() => setVisibleKeys([])}
-          renderChip={(k /* , mirror */) => {
-            if (k === 'billableMins') {
-              return (
-                <FilterChip
-                  key={k}
-                  label="Billable Mins"
-                  active={isTimeFilterActive(billableFilter)}
-                  activeSummary={summarizeTimeFilter(billableFilter)}
-                  onClear={() => setBillableFilter(EMPTY_TIME_FILTER)}
-                  renderPopover={({ anchorRect, onClose }) => (
-                    <TimeFilterPopover
-                      anchorRect={anchorRect}
-                      onClose={onClose}
-                      label="Billable Mins"
-                      thresholds={BILLABLE_THRESHOLDS}
-                      userOptions={userOptions}
-                      value={billableFilter}
-                      onChange={setBillableFilter}
-                    />
-                  )}
-                />
-              );
-            }
-            if (k === 'unloggedMins') {
-              return (
-                <FilterChip
-                  key={k}
-                  label="Unlogged Mins"
-                  active={isTimeFilterActive(unloggedFilter)}
-                  activeSummary={summarizeTimeFilter(unloggedFilter)}
-                  onClear={() => setUnloggedFilter(EMPTY_TIME_FILTER)}
-                  renderPopover={({ anchorRect, onClose }) => (
-                    <TimeFilterPopover
-                      anchorRect={anchorRect}
-                      onClose={onClose}
-                      label="Unlogged Mins"
-                      thresholds={UNLOGGED_THRESHOLDS}
-                      userOptions={userOptions}
-                      value={unloggedFilter}
-                      onChange={setUnloggedFilter}
-                    />
-                  )}
-                />
-              );
-            }
-            const def = CCM_FILTER_DEFS.find(d => d.key === k);
-            if (!def) return null;
+      <FilterBar
+        collapsed={!showFilterBar}
+        autoFit
+        pinPrimary
+        leading={null}
+        filterDefs={showCovering ? CCM_FILTER_DEFS_COVERING : CCM_FILTER_DEFS}
+        moreFilterItems={showCovering ? CCM_MORE_FILTER_ITEMS_COVERING : CCM_MORE_FILTER_ITEMS}
+        filters={{
+          ...filters,
+          // Mirror the two time-filter chips into FilterBar's `filters` bag
+          // so autoFit treats them as active (always visible) when set.
+          billableMins: isTimeFilterActive(billableFilter) ? ['active'] : [],
+          unloggedMins: isTimeFilterActive(unloggedFilter) ? ['active'] : [],
+          coveringFor: coveringPicked,
+        }}
+        multiSelect
+        onFilterChange={(k, vals) => (k === 'coveringFor' ? setCoveringFor(vals || []) : setStoreFilter(k, vals))}
+        onClearAll={() => { setCoveringFor([]); savedActions.onClearAll(); }}
+        clearAllLabel={savedActions.clearAllLabel}
+        saveLabel={savedActions.saveLabel}
+        saveMenuItems={savedActions.saveMenuItems}
+        onSaveMenuSelect={savedActions.onSaveMenuSelect}
+        onSaveFilter={(name) => saveSavedFilter('CCM', name)}
+        hasActive={hasAnyActive || savedActions.edited}
+        renderChip={(k /* , mirror */) => {
+          if (k === 'billableMins') {
             return (
               <FilterChip
                 key={k}
-                label={def.label}
-                options={filterOptions[k] || []}
-                selected={filters[k] || []}
-                onChange={vals => setFilter(k, vals)}
+                label="Billable Mins"
+                active={isTimeFilterActive(billableFilter)}
+                activeSummary={summarizeTimeFilter(billableFilter)}
+                onClear={() => setBillableFilter(EMPTY_TIME_FILTER)}
+                renderPopover={({ anchorRect, onClose }) => (
+                  <TimeFilterPopover
+                    anchorRect={anchorRect}
+                    onClose={onClose}
+                    label="Billable Mins"
+                    thresholds={BILLABLE_THRESHOLDS}
+                    userOptions={userOptions}
+                    value={billableFilter}
+                    onChange={setBillableFilter}
+                  />
+                )}
               />
             );
-          }}
-        />
-      )}
+          }
+          if (k === 'unloggedMins') {
+            return (
+              <FilterChip
+                key={k}
+                label="Unlogged Mins"
+                active={isTimeFilterActive(unloggedFilter)}
+                activeSummary={summarizeTimeFilter(unloggedFilter)}
+                onClear={() => setUnloggedFilter(EMPTY_TIME_FILTER)}
+                renderPopover={({ anchorRect, onClose }) => (
+                  <TimeFilterPopover
+                    anchorRect={anchorRect}
+                    onClose={onClose}
+                    label="Unlogged Mins"
+                    thresholds={UNLOGGED_THRESHOLDS}
+                    userOptions={userOptions}
+                    value={unloggedFilter}
+                    onChange={setUnloggedFilter}
+                  />
+                )}
+              />
+            );
+          }
+          if (k === 'coveringFor') {
+            return (
+              <FilterChip
+                key={k}
+                label={COVERING_DEF.label}
+                options={covering.names}
+                selected={coveringPicked}
+                onChange={setCoveringFor}
+              />
+            );
+          }
+          if (k === 'dob') {
+            return <DobFilter key={k} value={filters.dob || []} onChange={vals => setFilter('dob', vals)} />;
+          }
+          const def = CCM_FILTER_DEFS.find(d => d.key === k);
+          if (!def) return null;
+          return (
+            <FilterChip
+              key={k}
+              label={def.label}
+              options={filterOptions[k] || []}
+              selected={filters[k] || []}
+              onChange={vals => setFilter(k, vals)}
+              searchable={k === 'language'}
+            />
+          );
+        }}
+      />
 
       {/* Table body. Uses the same inline th styles + sticky columns as
           src/features/toc/worklist/WorklistTable.jsx. */}
@@ -449,7 +495,7 @@ export function CcmWorklistTable() {
         currentPage={page}
         totalItems={filtered.length}
         totalCount={members.length}
-        filtered={!!searchQuery.trim() || Object.values(filters).some(v => v?.length) || filtered.length !== members.length}
+        filtered={!!searchQuery.trim() || Object.values(filters).some(v => v?.length) || coveringPicked.length > 0 || filtered.length !== members.length}
         perPage={perPage}
         onPageChange={setPage}
         onPerPageChange={(n) => { setPerPage(n); setPage(1); }}

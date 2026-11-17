@@ -201,7 +201,7 @@ export function generateCisSchedulePdf({ member, result, notes, startedOn, mode 
   const gender = member?.gender === 'F' ? 'Female' : member?.gender === 'M' ? 'Male' : member?.gender;
   const given = result.antigens.reduce((n, a) => n + a.rows.filter(r => r.kind === 'given').length, 0);
   facts(
-    [['Patient Name', member?.name], ['Date Of Birth', dobAge], ['Gender', gender], ['Member ID', member?.memberId ? `#${String(member.memberId).replace(/^#/, '')}` : '-']],
+    [['Patient Name', member?.name], ['Date Of Birth', dobAge], ['Gender', gender], ['Fold ID', member?.memberId ? `#${String(member.memberId).replace(/^#/, '')}` : '-']],
     [
       ['Care Gap', 'CIS-CMB10 (Combo 10)'],
       isRecord ? ['Doses On Record', String(given)] : ['Doses Complete', `${result.doses.completed}/${result.doses.total}`],

@@ -12,6 +12,7 @@ import { CampaignBoldIcon } from './CampaignBoldIcon';
 import { PhoneLinearIcon } from './PhoneLinearIcon';
 import { PhoneCallingLinearIcon } from './PhoneCallingLinearIcon';
 import { CallHistoryIcon } from './CallHistoryIcon';
+import { AddCallIcon } from './AddCallIcon';
 import { IncomingCallIcon } from './IncomingCallIcon';
 import { OutgoingCallIcon } from './OutgoingCallIcon';
 import { EndCallIcon } from './EndCallIcon';
@@ -35,6 +36,7 @@ import { LinkIcon } from './LinkIcon';
 import { AllergyIcon } from './AllergyIcon';
 import { ScalpelIcon } from './ScalpelIcon';
 import { ImagingIcon } from './ImagingIcon';
+import { ReferIcon } from './ReferIcon';
 import { MedicalHistoryIcon } from './MedicalHistoryIcon';
 import { FamilyHistoryIcon } from './FamilyHistoryIcon';
 import { SocialHistoryIcon } from './SocialHistoryIcon';
@@ -97,6 +99,7 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:allergy') return <AllergyIcon size={size} color={color} />;
   if (name === 'custom:scalpel') return <ScalpelIcon size={size} color={color} />;
   if (name === 'custom:imaging') return <ImagingIcon size={size} color={color} />;
+  if (name === 'custom:refer') return <ReferIcon size={size} color={color} />;
   if (name === 'custom:medical-history') return <MedicalHistoryIcon size={size} color={color} />;
   if (name === 'custom:family-history') return <FamilyHistoryIcon size={size} color={color} />;
   if (name === 'custom:social-history') return <SocialHistoryIcon size={size} color={color} />;
@@ -113,6 +116,7 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'solar:phone-linear') return <PhoneLinearIcon size={size} color={color} />;
   if (name === 'solar:phone-calling-linear') return <PhoneCallingLinearIcon size={size} color={color} />;
   if (name === 'solar:phone-calling-rounded-linear') return <PhoneCallingLinearIcon size={size} color={color} />;
+  if (name === 'custom:add-call') return <AddCallIcon size={size} color={color} />;
   if (name === 'custom:call-history') return <CallHistoryIcon size={size} color={color} />;
   if (name === 'solar:incoming-call-rounded-linear') return <IncomingCallIcon size={size} color={color} />;
   if (name === 'solar:incoming-call-linear') return <IncomingCallIcon size={size} color={color} />;
@@ -129,6 +133,15 @@ export function Icon({ name, size = 18, color, style, className }) {
       color={color}
       style={style}
       className={className}
+      // Iconify fetches icon data on first use and renders a zero-size span
+      // until it arrives; reserve the box so rows and toolbars don't shift.
+      fallback={
+        <span
+          aria-hidden="true"
+          className={className}
+          style={{ display: 'inline-block', width: size, height: size, flexShrink: 0, ...style }}
+        />
+      }
     />
   );
 }

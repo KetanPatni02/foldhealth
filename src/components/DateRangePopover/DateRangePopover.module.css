@@ -1,18 +1,7 @@
-.overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 8998;
-  background: transparent;
-}
-
 .popover {
-  position: fixed;
-  z-index: 8999;
+  /* The year Selects open their menus inline; don't clip them. */
+  overflow: visible;
   padding: 14px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-100);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
 }
@@ -26,16 +15,31 @@
 
 /* ── Calendar header (chevrons + month labels) ───────────────────────── */
 
+/* Each month's own header row: year and month arrows on the outer edge,
+   the month / year pickers centered in the rest of the row. */
 .calHeader {
+  display: grid;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  margin-bottom: var(--space-2);
+}
+.calHeaderLeft { grid-template-columns: auto 1fr; }
+.calHeaderRight { grid-template-columns: 1fr auto; }
+.navGroup { display: inline-flex; align-items: center; }
+.monthTitle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  justify-content: center;
+  gap: var(--space-1);
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-400);
+  letter-spacing: 0.2px;
 }
 
 .navBtn {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -46,20 +50,6 @@
   transition: background 0.12s;
 }
 .navBtn:hover { background: var(--neutral-50); }
-
-.monthLabels {
-  display: flex;
-  gap: 28px;
-  flex: 1;
-  justify-content: center;
-}
-
-.monthLabels span {
-  font-size: var(--font-md);
-  font-weight: 600;
-  color: var(--neutral-400);
-  letter-spacing: 0.2px;
-}
 
 /* ── Calendar grid ───────────────────────────────────────────────────── */
 
@@ -80,71 +70,6 @@
   width: 220px;
 }
 
-.dowRow {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 2px;
-}
-
-.dow {
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-xs);
-  font-weight: 600;
-  color: var(--neutral-200);
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-}
-
-.cellEmpty {
-  height: 32px;
-}
-
-.cell {
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: var(--font-md);
-  background: transparent;
-  border: none;
-  color: var(--neutral-400);
-  border-radius: 4px;
-  transition: background 0.12s;
-}
-.cell:hover {
-  background: var(--neutral-50);
-}
-
-.cellSelected {
-  background: var(--primary-300);
-  color: var(--neutral-0);
-  font-weight: 600;
-  border-radius: 0;
-}
-.cellSelected:hover {
-  background: var(--primary-300);
-}
-
-.cellRoundFull  { border-radius: 50%; }
-.cellRoundLeft  { border-radius: 50% 0 0 50%; }
-.cellRoundRight { border-radius: 0 50% 50% 0; }
-
-.cellInRange {
-  background: var(--primary-50);
-  color: var(--neutral-400);
-  border-radius: 0;
-}
-.cellInRange:hover {
-  background: var(--primary-50);
-}
-
 /* ── Footer ──────────────────────────────────────────────────────────── */
 
 .footer {
@@ -155,4 +80,24 @@
   margin-top: 12px;
   padding-top: 8px;
   border-top: 0.5px solid var(--neutral-150);
+}
+
+/* ── Years | Custom Dates (the `years` prop) ─────────────────────────── */
+.modeTabs {
+  align-self: flex-start;
+  margin-bottom: var(--space-3);
+}
+.yearRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+/* Plain button carrying the popover semantics; the Badge inside is the pill. */
+.yearTrigger {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
 }

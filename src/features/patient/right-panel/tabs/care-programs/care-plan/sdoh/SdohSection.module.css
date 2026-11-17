@@ -1,0 +1,85 @@
+/* Social Needs (SDOH): one card per domain, needs listed inside. */
+.domains {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-2);
+}
+
+.domain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+  min-width: 0;
+}
+
+.domainHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--space-6);
+}
+.domainLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.none {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+
+.needs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.need {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 0.5px solid var(--neutral-100);
+}
+.need:first-child { padding-top: 0; border-top: none; }
+.needTitle {
+  flex: 1 1 140px;
+  min-width: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.zCode {
+  font-size: var(--font-xs);
+  color: var(--neutral-300);
+  cursor: default;
+}
+.needActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+.referralBtn {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--space-1);
+}
+.referralBtn:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 1px;
+}

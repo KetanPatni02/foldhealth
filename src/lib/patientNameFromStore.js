@@ -7,6 +7,7 @@ export function selectPatientNameFromMemberSlices(state, patientId) {
     || (state.awvMembers || []).find(match)
     || (state.ccmWorklistMembers || []).find(match)
     || (state.snpWorklistMembers || []).find(match)
+    || (state.pharmacyWorklistMembers || []).find(match)
     || (state.hedisMembers || []).find(match)
     || (state.allPatients || []).find(match);
   return src?.name;

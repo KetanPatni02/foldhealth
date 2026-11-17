@@ -1,5 +1,6 @@
 import { parseLocalDate } from '../../lib/localDate';
-// HEDIS worklist filter definitions — parallel to `src/features/hcc/filters.js`
+import { GENDER_FILTER_OPTIONS, LANGUAGE_FILTER_OPTIONS, MEMBER_STATUS_FILTER_OPTIONS, memberGenderLabel, memberLanguageLabel } from '../../lib/memberFilters';
+// HEDIS worklist filter definitions: parallel to `src/features/hcc/filters.js`
 // so the shared FilterChipBar / MoreFiltersPopover can drive both worklists
 // with the same UX (chip → popover, Label|Value active state, More Filters,
 // Clear All, Save Filter). Kept intentionally simpler than HCC's defs: no
@@ -12,63 +13,58 @@ import { parseLocalDate } from '../../lib/localDate';
 //   - date  → DateRangePopover
 //   - range → RangeSliderPopover
 
-// Ordering matches the HEDIS filter-list reference (Figma / product spec):
-// the "More Filters" popover reads top-to-bottom, left-to-right in the
-// exact sequence below. `primary: true` items are the six the chip row
-// shows by default (Member Status, Language, Care Gaps, Gap Status,
-// Assignee, Care Gap Added Date); the rest stay hidden until toggled on.
+// Filter allocation per the worklist filter spec (2.1 primary, 2.3 secondary
+// by domain). The order below is the chip row's order; secondary filters
+// show only when picked from More Filters.
 export const MORE_FILTER_ITEMS = [
-  // ── Row 1 — Identity & outreach essentials ─────────────────────────
-  { k: 'memberStatus',                label: 'Member Status',                primary: true },
-  { k: 'phone',                       label: 'Phone Number',                 primary: false },
-  { k: 'dob',                         label: 'DOB',                          primary: false },
-  { k: 'age',                         label: 'Age Range',                    primary: false },
-  { k: 'gender',                      label: 'Gender',                       primary: false },
-  { k: 'language',                    label: 'Language',                     primary: true },
-  { k: 'gapStatus',                   label: 'Gap Status',                   primary: true },
-  { k: 'assignee',                    label: 'Assignee',                     primary: true },
-  { k: 'lastOutreachDate',            label: 'Last Outreach Date',           primary: false },
-  { k: 'lastOutreachOutcome',         label: 'Last Outreach Outcome',        primary: false },
-  { k: 'ipa',                         label: 'IPA',                          primary: false },
-  // ── Row 2 — Coverage & plan attributes ─────────────────────────────
-  { k: 'hpCode',                      label: 'HP Codes',                     primary: false },
-  { k: 'isOwnedIpa',                  label: 'Is Owned IPA',                 primary: false },
-  { k: 'lob',                         label: 'LOB',                          primary: false },
-  { k: 'hpGroup',                     label: 'HP Group',                     primary: false },
-  { k: 'contractType',                label: 'Contract Type',                primary: false },
-  { k: 'snpType',                     label: 'SNP Type',                     primary: false },
-  { k: 'networkMarket',               label: 'Network Market',               primary: false },
-  { k: 'zip',                         label: 'Zip Code',                     primary: false },
-  { k: 'city',                        label: 'City',                         primary: false },
-  { k: 'preferredCallTime',           label: 'Preferred Call Time',          primary: false },
-  // ── Row 3 — Residence + PCP attribution + care-gap timing ──────────
-  { k: 'state',                       label: 'State of Residence',           primary: false },
-  { k: 'pcp',                         label: 'PCP',                          primary: false },
-  { k: 'pcpCounty',                   label: 'PCP County',                   primary: false },
-  { k: 'pcpPod',                      label: 'PCP Pod',                      primary: false },
-  { k: 'pcpVendor',                   label: 'PCP Vendor',                   primary: false },
-  { k: 'pcpState',                    label: 'PCP State',                    primary: false },
-  { k: 'careGaps',                    label: 'Care Gaps',                    primary: true },
-  { k: 'careGapAddedDate',            label: 'Care Gap Added Date',          primary: true },
-  { k: 'lastCareGapAssessmentDate',   label: 'Last Care Gap Assessment Date',primary: false },
-  // ── Row 4 — Visit + clinical risk scores ───────────────────────────
-  { k: 'lastVisitDate',               label: 'Last Visit Date',              primary: false },
-  { k: 'riskIQ',                      label: 'Risk IQ',                      primary: false },
-  { k: 'advancedIllness',             label: 'Advanced Illness',             primary: false },
-  { k: 'frailty',                     label: 'Frailty',                      primary: false },
+  // Spec 2.1: always-primary (Member Status, DOB, Gender, Language, Zip Code,
+  // Assignee), then the HEDIS workflow filters. Every primary always shows,
+  // in this order (FilterBar `pinPrimary`).
+  { k: 'memberStatus', label: 'Member Status', primary: true },
+  { k: 'dob', label: 'DOB', primary: true },
+  { k: 'gender', label: 'Gender', primary: true },
+  { k: 'language', label: 'Language', primary: true },
+  { k: 'zip', label: 'Zip Code', primary: true },
+  { k: 'assignee', label: 'Assignee', primary: true },
+  { k: 'careGaps', label: 'Gaps', primary: true },
+  { k: 'complianceStatus', label: 'Compliance Status', primary: true },
+  { k: 'operationalStatus', label: 'Operational Status', primary: true },
+  { k: 'gapSource', label: 'Source', primary: true },
+  { k: 'gapInstance', label: 'Instance', primary: true },
+  { k: 'careGapAddedDate', label: 'Gap Added Date', primary: true },
+  { k: 'lastCareGapAssessmentDate', label: 'Last Gap Assessment Date', primary: true },
+  { k: 'lastVisitDate', label: 'Last Visit Date', primary: true },
+  { k: 'lastOutreachDate', label: 'Last Outreach Date', primary: true },
+  { k: 'lastOutreachOutcome', label: 'Last Outreach Outcome', primary: true },
+  { k: 'lob', label: 'LOB', primary: true },
+  // Spec 2.3: secondary, by domain in More Filters. Age Range and Network
+  // Market aren't in the spec; they're kept under the closest domain.
+  { k: 'phone', label: 'Phone Number', primary: false, group: 'Member' },
+  { k: 'preferredCallTime', label: 'Preferred Call Time', primary: false, group: 'Member' },
+  { k: 'ipa', label: 'IPA', primary: false, group: 'Member' },
+  { k: 'isOwnedIpa', label: 'Is Owned IPA', primary: false, group: 'Member' },
+  { k: 'hpCode', label: 'HP Codes', primary: false, group: 'Member' },
+  { k: 'hpGroup', label: 'HP Group', primary: false, group: 'Member' },
+  { k: 'contractType', label: 'Contract Type', primary: false, group: 'Member' },
+  { k: 'snpType', label: 'SNP Type', primary: false, group: 'Member' },
+  { k: 'age', label: 'Age Range', primary: false, group: 'Member' },
+  { k: 'pcp', label: 'PCP', primary: false, group: 'Assignment' },
+  { k: 'pcpPod', label: 'PCP Pod', primary: false, group: 'Assignment' },
+  { k: 'pcpVendor', label: 'PCP Vendor', primary: false, group: 'Assignment' },
+  { k: 'city', label: 'City', primary: false, group: 'Geography' },
+  { k: 'state', label: 'State of Residence', primary: false, group: 'Geography' },
+  { k: 'pcpCounty', label: 'PCP County', primary: false, group: 'Geography' },
+  { k: 'pcpState', label: 'PCP State', primary: false, group: 'Geography' },
+  { k: 'networkMarket', label: 'Network Market', primary: false, group: 'Geography' },
+  { k: 'riskIQ', label: 'Risk IQ', primary: false, group: 'Clinical' },
+  { k: 'advancedIllness', label: 'Advanced Illness', primary: false, group: 'Clinical' },
+  { k: 'frailty', label: 'Frailty', primary: false, group: 'Clinical' },
 ];
 
 export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.reduce((keys, x) => {
   if (x.primary) keys.push(x.k);
   return keys;
 }, []);
-
-// Language display labels; the DB stores ISO 639-1 codes (en, es, …) so the
-// predicate translates each member's code before comparing.
-const LANGUAGE_LABEL = {
-  en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese',
-  ko: 'Korean',  vi: 'Vietnamese', hi: 'Hindi', bn: 'Bengali', ar: 'Arabic',
-};
 
 // Age Range filter bands, in whole months: [min, max) so they don't
 // overlap within a set. The month bands follow the CIS childhood schedule
@@ -88,18 +84,50 @@ const AGE_GROUPS = [
   { label: '75+', min: 75 * 12, max: Infinity },
 ];
 
+// Per-gap Source / Instance, shared with the worklist columns so the filter
+// and the cell always agree. Gaps added in Fold are stamped `fold-native`;
+// a gap closed then re-added stays in the row stamped `supersededAt`.
+export const gapSourceLabel = (g) => (g.source === 'fold-native' ? 'Manual' : 'Claim');
+export const gapInstanceLabel = (g) => (g.supersededAt ? 'Older' : 'Latest');
+// Saved filters from before the rename keep working.
+const LEGACY_INSTANCE = { Active: 'Latest', Previous: 'Older' };
+
+// A gap's one status answers two questions, so it's filtered two ways:
+// compliance (has the measure been met?) and operational (where the work
+// stands). Completed is compliant; a Closed status ended without meeting it.
+export const gapComplianceLabel = (g) => (g.status === 'Completed' ? 'Compliant'
+  : String(g.status || '').startsWith('Closed') ? 'Closed' : 'Non-Compliant');
+export const gapOperationalLabel = (g) => (!g.status || g.status === 'Open' ? 'Not Started' : g.status);
+
+// Filters that narrow a member's gaps, not just the member list.
+export function gapMatchesGapFilters(g, filters = {}) {
+  const pick = (k) => filters[k] || [];
+  const inst = pick('gapInstance').map(v => LEGACY_INSTANCE[v] || v);
+  return (!pick('gapSource').length || pick('gapSource').includes(gapSourceLabel(g)))
+    && (!inst.length || inst.includes(gapInstanceLabel(g)))
+    && (!pick('complianceStatus').length || pick('complianceStatus').includes(gapComplianceLabel(g)))
+    && (!pick('operationalStatus').length || pick('operationalStatus').includes(gapOperationalLabel(g)));
+}
+export const GAP_LEVEL_FILTER_KEYS = ['gapSource', 'gapInstance', 'complianceStatus', 'operationalStatus'];
+
 export const FILTER_DEFS = [
   { k: 'memberStatus',        label: 'Member Status', type: 'multi',
-    opts: ['Active', 'Inactive', 'Suspended'] },
-  { k: 'gapStatus',           label: 'Gap Status', type: 'multi',
-    opts: ['Open', 'Engaged', 'Engaged Requires Follow-Up', 'Submitted', 'Completed',
-           'Closed - Do not call', 'Closed - UTR', 'Closed - Other'] },
+    opts: MEMBER_STATUS_FILTER_OPTIONS },
+  { k: 'complianceStatus',    label: 'Compliance Status', type: 'multi',
+    opts: ['Non-Compliant', 'Compliant', 'Closed'] },
+  { k: 'operationalStatus',   label: 'Operational Status', type: 'multi',
+    opts: ['Not Started', 'Engaged', 'Engaged Requires Follow-Up', 'Submitted', 'Completed',
+           'Closed - Data', 'Closed - Do not call', 'Closed - UTR', 'Closed - Other'] },
+  { k: 'gapSource',           label: 'Source', type: 'multi',
+    opts: ['Claim', 'Manual'] },
+  { k: 'gapInstance',         label: 'Instance', type: 'multi',
+    opts: ['Latest', 'Older'] },
   { k: 'assignee',            label: 'Assignee', type: 'multi',
     dynamic: 'assignee', opts: [], searchable: true },
   { k: 'gender',              label: 'Gender', type: 'multi',
-    opts: ['Male', 'Female'] },
+    opts: GENDER_FILTER_OPTIONS },
   { k: 'language',            label: 'Language', type: 'multi',
-    opts: ['English', 'Spanish', 'Chinese', 'Cantonese', 'Korean', 'Vietnamese', 'Hindi', 'Bengali', 'Arabic'] },
+    opts: LANGUAGE_FILTER_OPTIONS, searchable: true },
   { k: 'lastOutreachOutcome', label: 'Last Outreach Outcome', type: 'multi',
     opts: ['Attended', 'Failed', 'Pending', 'No Answer', 'Voicemail'] },
   { k: 'preferredCallTime',   label: 'Preferred Call Time', type: 'multi',
@@ -112,7 +140,7 @@ export const FILTER_DEFS = [
     dynamic: 'ipa', opts: [] },
   { k: 'hpCode',              label: 'HP Codes', type: 'multi',
     dynamic: 'hpCode', opts: [] },
-  { k: 'dob',                 label: 'DOB', type: 'date', field: 'dob' },
+  { k: 'dob',                 label: 'DOB', type: 'date', field: 'dob', years: true },
   { k: 'age',                 label: 'Age Range', type: 'multi',
     opts: AGE_GROUPS.map(g => g.label) },
   { k: 'lastOutreachDate',    label: 'Last Outreach Date', type: 'date', field: 'outreachDate' },
@@ -141,15 +169,15 @@ export const FILTER_DEFS = [
   { k: 'pcpState',            label: 'PCP State', type: 'multi',
     dynamic: 'pcpState', opts: [] },
   // ── Care-gap volume + timing ───────────────────────────────────────
-  // Care Gaps is the measure filter — pick specific gap codes (CBP,
+  // Care Gaps is the measure filter, pick specific gap codes (CBP,
   // COL, DSF-A, …) to keep the worklist to members carrying any of
   // those gaps. Options are computed from the loaded members at
-  // render time (dynamic: 'careGaps'); labels render as "CODE —
+  // render time (dynamic: 'careGaps'); labels render as "CODE,
   // Measure Name" so the popover reads without needing the codebook.
-  { k: 'careGaps',            label: 'Care Gaps', type: 'multi',
+  { k: 'careGaps',            label: 'Gaps', type: 'multi',
     dynamic: 'careGaps', opts: [], searchable: true },
-  { k: 'careGapAddedDate',    label: 'Care Gap Added Date', type: 'date', field: 'careGapAddedDate' },
-  { k: 'lastCareGapAssessmentDate', label: 'Last Care Gap Assessment Date', type: 'date', field: 'lastCareGapAssessmentDate' },
+  { k: 'careGapAddedDate',    label: 'Gap Added Date', type: 'date', field: 'careGapAddedDate' },
+  { k: 'lastCareGapAssessmentDate', label: 'Last Gap Assessment Date', type: 'date', field: 'lastCareGapAssessmentDate' },
   { k: 'lastVisitDate',       label: 'Last Visit Date', type: 'date', field: 'lastVisitDate' },
   // ── Clinical risk (range sliders) ──────────────────────────────────
   // Advanced Illness + Frailty are integer scores on the member (already
@@ -165,7 +193,7 @@ export const FILTER_DEFS = [
 
 export const FILTER_DEF_MAP = Object.fromEntries(FILTER_DEFS.map(d => [d.k, d]));
 
-// Predicate — returns true when a HEDIS member row passes every active filter.
+// Predicate: returns true when a HEDIS member row passes every active filter.
 // Used by HedisWorklistTable's `filtered` memo. Mirrors the HCC pattern in
 // `filters.js` (memberMatchesFilters + matchOne).
 export function memberMatchesFilters(member, filters) {
@@ -180,10 +208,9 @@ function matchOne(m, k, vals) {
   switch (k) {
     case 'memberStatus':        return vals.includes(m.memberStatus);
     case 'gender': {
-      const long = m.gender === 'M' ? 'Male' : m.gender === 'F' ? 'Female' : m.gender;
-      return vals.includes(m.gender) || vals.includes(long);
+      return vals.includes(m.gender) || vals.includes(memberGenderLabel(m.gender));
     }
-    case 'language':            return vals.includes(LANGUAGE_LABEL[m.language] || m.language);
+    case 'language':            return vals.includes(memberLanguageLabel(m.language));
     case 'gapStatus': {
       const valSet = new Set(vals);
       for (const g of (m.gaps || [])) {
@@ -191,9 +218,16 @@ function matchOne(m, k, vals) {
       }
       return false;
     }
+    case 'complianceStatus':    return (m.gaps || []).some(g => vals.includes(gapComplianceLabel(g)));
+    case 'operationalStatus':   return (m.gaps || []).some(g => vals.includes(gapOperationalLabel(g)));
+    case 'gapSource':           return (m.gaps || []).some(g => vals.includes(gapSourceLabel(g)));
+    case 'gapInstance': {
+      const want = vals.map(v => LEGACY_INSTANCE[v] || v);
+      return (m.gaps || []).some(g => want.includes(gapInstanceLabel(g)));
+    }
     case 'assignee': {
       // Match a member if the row-level assignee OR any per-gap assignee
-      // is in the selected set — same fields the row's Assignee column
+      // is in the selected set: same fields the row's Assignee column
       // renders, so filter and cell agree on who "owns" the row.
       const valSet = new Set(vals);
       if (valSet.has(m.assignee)) return true;
@@ -232,7 +266,7 @@ function matchOne(m, k, vals) {
     case 'pcpState':            return vals.includes(m.pcpState);
     // Care-gap volume + timing
     case 'careGaps': {
-      // Match on the gap CODE — vals are things like 'CBP', 'DSF-A'
+      // Match on the gap CODE: vals are things like 'CBP', 'DSF-A'
       // (pulled from the loaded members via the `careGaps` dynamic
       // options resolver). A member passes when any of their open
       // gaps is in the selected set.

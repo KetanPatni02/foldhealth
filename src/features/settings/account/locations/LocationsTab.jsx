@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../../../../components/ConfirmDialog/ConfirmDialo
 import { BulkCheckboxCell } from '../../../../components/BulkSelect/BulkCheckboxCell';
 import { useTableSort } from '../../../../components/HeaderCell/useTableSort';
 import { EditLocationDrawer } from './EditLocationDrawer';
+import { saveLocation, deleteLocation } from './locationActions';
 import panelStyles from '../AccountPanel.module.css';
 import styles from './LocationRow.module.css';
 
@@ -21,12 +22,12 @@ const LOCATION_COLUMNS = [
   { key: 'actions', label: 'Action',       sticky: 'right',        width: 120 },
 ];
 
-// EHR badge tone map — keeps each EHR visually distinct in the table + the
+// EHR badge tone map: keeps each EHR visually distinct in the table + the
 // filter chip (Fold = primary purple, Elation = teal-adjacent, NEXTGEN = amber).
 const EHR_TONE = {
-  'Fold EHR':          'ai-care',
-  'Elation Montrose':  'toc-engaged',
-  'NEXTGEN':           'ai-social',
+  'Fold EHR':          'primary',
+  'Elation Montrose':  'info',
+  'NEXTGEN':           'warning',
 };
 
 /**
@@ -81,51 +82,16 @@ export function LocationsTab({ tabsForBar, activeTab, setActiveTab }) {
   );
 
   const handleSubmit = async (location) => {
-    // Optimistic: update the local store immediately, then persist to
-    // Supabase. On error we revert-by-refetch so the UI stays honest.
-    upsertLocation(location);
     setEditing(null);
     setCreating(false);
-
-    const row = {
-      id:              location.id,
-      name:            location.name,
-      ehr_instance:    location.ehrInstance,
-      address_line_1: location.addressLine1,
-      address_line_2: location.addressLine2,
-      city:            location.city,
-      state:           location.state,
-      zip_code:        location.zipCode,
-      timezone:        location.timezone,
-      google_map_link: location.googleMapLink,
-      default_phone:   location.defaultPhone,
-      business_hours:  location.businessHours,
-      updated_at:      new Date().toISOString(),
-    };
-    const { error } = await supabase.from('practice_locations').upsert(row, { onConflict: 'id' });
-    if (error) {
-      showToast?.(`Save failed: ${error.message}`);
-      fetchLocations();
-    } else {
-      showToast?.(`${location.name} saved`);
-    }
+    await saveLocation(location, { upsertLocation, fetchLocations, showToast });
   };
 
   const handleConfirmDelete = async () => {
     if (!deleting) return;
     const target = deleting;
     setDeleting(null);
-    removeLocationStore(target.id);
-    const { error } = await supabase
-      .from('practice_locations')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', target.id);
-    if (error) {
-      showToast?.(`Delete failed: ${error.message}`);
-      fetchLocations();
-    } else {
-      showToast?.(`${target.name} deleted`);
-    }
+    await deleteLocation(target, { removeLocation: removeLocationStore, fetchLocations, showToast });
   };
 
   // Soft-delete, matching the single-row path. The shell owns the toggle,
@@ -162,20 +128,20 @@ export function LocationsTab({ tabsForBar, activeTab, setActiveTab }) {
       </td>
       <td className={styles.td}>
         {loc.ehrInstance ? (
-          <Badge variant={EHR_TONE[loc.ehrInstance] || 'ai-neutral'} label={loc.ehrInstance} />
-        ) : <span style={{ color: 'var(--neutral-200)' }}>—</span>}
+          <Badge tone={EHR_TONE[loc.ehrInstance] || 'neutral'} label={loc.ehrInstance} />
+        ) : <span style={{ color: 'var(--neutral-200)' }}>-</span>}
       </td>
       <td className={styles.td}>
         <div className={styles.addressCell}>
-          <span>{loc.addressLine1 || '—'}</span>
+          <span>{loc.addressLine1 || '-'}</span>
           {loc.addressLine2 && <span className={styles.addressLine2}>{loc.addressLine2}</span>}
         </div>
       </td>
-      <td className={styles.td}>{loc.zipCode || '—'}</td>
+      <td className={styles.td}>{loc.zipCode || '-'}</td>
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
-          <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit" onClick={() => setEditing(loc)} />
-          <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete" onClick={() => setDeleting(loc)} />
+          <ActionButton icon="solar:pen-linear" tooltip="Edit" onClick={() => setEditing(loc)} />
+          <ActionButton icon="solar:trash-bin-minimalistic-linear" tooltip="Delete" onClick={() => setDeleting(loc)} />
         </div>
       </td>
     </tr>

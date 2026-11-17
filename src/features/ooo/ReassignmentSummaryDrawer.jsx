@@ -1,14 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Icon } from '../../components/Icon/Icon';
-import { TabStrip } from '../../components/TabStrip/TabStrip';
-import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { CollapseAllIcon } from '../../components/Icon/CollapseAllIcon';
+import { ExpandAllIcon } from '../../components/Icon/ExpandAllIcon';
+import { Tabs } from '../../components/Tabs/Tabs';
+import { SegmentedControl } from '../../components/SegmentedControl/SegmentedControl';
+import { Badge } from '../../components/Badge/Badge';
+import { EmptyState } from '../../components/EmptyState/EmptyState';
 import { useAppStore } from '../../store/useAppStore';
 import { formatDate, initialsOf } from './oooUtils';
-import { TYPE_LABELS } from './reassignJobs';
+import { kindOf, TYPE_LABELS } from './reassignJobs';
+import { PROGRAM_SHAPE, TASK_SHAPE } from './openWorkRows';
 import { ApptRow, DeptGroup } from './ReassignParts';
 import styles from './reassign.module.css';
+import ooo from './ooo.module.css';
 
 const TABS = [
   { key: 'reassigned', label: 'Reassigned', pick: r => r.outcome === 'reassigned' },
@@ -17,10 +24,21 @@ const TABS = [
   { key: 'failed', label: 'Failed Reassignment', pick: r => r.outcome === 'failed' },
 ];
 
+// Tasks and care programs (Out of Office Reassign Open Work) have no
+// Cancelled or Conflicting.
+const ITEM_TABS = TABS.filter(t => t.key === 'reassigned' || t.key === 'failed');
+// What a job moved, by kind: each kind is a tab when the job has it.
+const KINDS = [
+  { key: 'appointment', label: 'Appointments', tabs: TABS },
+  { key: 'task', label: 'Tasks', tabs: ITEM_TABS },
+  { key: 'program', label: 'Care Programs', tabs: ITEM_TABS },
+];
+const snapshotOf = (r) => r.appointment || r.task || r.program || {};
+
 const byDept = (results) => {
   const map = new Map();
   results.forEach((r) => {
-    const d = r.appointment?.location || 'No Department';
+    const d = snapshotOf(r).location || 'No Department';
     if (!map.has(d)) map.set(d, []);
     map.get(d).push(r);
   });
@@ -43,25 +61,38 @@ export function ReassignmentSummaryDrawer({ jobId, onClose }) {
   const jobs = useAppStore(s => s.reassignmentJobs);
   const fetchJobs = useAppStore(s => s.fetchReassignmentJobs);
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
-  const job = jobs.find(j => j.id === jobId);
+  const jobRow = jobs.find(j => j.id === jobId);
+  // A covering provider (not the one who ran it) sees what came to them.
+  const me = useAppStore(s => s.currentUserProfile);
+  const isMine = (r) => r.outcome === 'reassigned'
+    && ((r.toId && me?.id && String(r.toId) === String(me.id)) || (!r.toId && me?.name && r.to === me.name));
+  const coveringView = !!jobRow && !!me?.name && jobRow.createdBy !== me.name && jobRow.results.some(isMine);
+  const job = coveringView ? { ...jobRow, results: jobRow.results.filter(isMine) } : jobRow;
+  // Kinds this job has (an appointments-only job shows no kind tabs).
+  const kinds = job ? KINDS.filter(k => job.results.some(r => kindOf(r) === k.key)) : [];
+  const [kindKey, setKindKey] = useState(null);
+  const kind = kinds.find(k => k.key === kindKey) || kinds[0] || KINDS[0];
+  const ofKind = job ? job.results.filter(r => kindOf(r) === kind.key) : [];
   const [tab, setTab] = useState('reassigned');
-  const groups = useMemo(() => {
-    const t = TABS.find(x => x.key === tab);
-    return job ? byDept(job.results.filter(t.pick)) : [];
-  }, [job, tab]);
+  // Collapse All / Expand All over the department cards; null keeps each
+  // card's own default (open when it's the only one, or off Reassigned).
+  const [view, setView] = useState(null);
+  const activeTab = kind.tabs.find(x => x.key === tab) || kind.tabs[0];
+  const groups = byDept(ofKind.filter(activeTab.pick));
+  const mixed = kinds.length > 1 || (kinds[0] && kinds[0].key !== 'appointment');
 
   const range = job && (job.windowEnd
     ? `${formatDate(job.windowStart)} → ${formatDate(job.windowEnd)}`
     : job?.windowStart ? `From ${formatDate(job.windowStart)}` : '');
 
   return (
-    <Drawer title="Appointment Reassignment Summary" width={640} onClose={onClose}>
+    <Drawer title={mixed ? 'Out of Office Reassignment Summary' : 'Appointment Reassignment Summary'} width={640} onClose={onClose}>
       {!job ? (
-        <RingEmptyState icon="solar:history-linear" label="This reassignment summary isn't available" />
+        <EmptyState icon="solar:history-linear" title="This reassignment summary isn't available" />
       ) : (
         <div className={styles.summary}>
           <div className={styles.summaryField}>
-            <span className={styles.summaryLabel}>Reassigned From:</span>
+            <span className={styles.summaryLabel}>Reassigned From</span>
             <div className={styles.summaryCard}>
               <Avatar variant="staff" initials={initialsOf(job.fromUser)} size="M" />
               <span className={styles.summaryCardText}>
@@ -71,7 +102,7 @@ export function ReassignmentSummaryDrawer({ jobId, onClose }) {
             </div>
           </div>
           <div className={styles.summaryField}>
-            <span className={styles.summaryLabel}>Reassignment Type:</span>
+            <span className={styles.summaryLabel}>Reassignment Type</span>
             <div className={styles.summaryCard}>
               <Avatar type="icon" variant="others" iconName="solar:calendar-linear" size="M" />
               <span className={styles.summaryCardText}>
@@ -81,13 +112,43 @@ export function ReassignmentSummaryDrawer({ jobId, onClose }) {
             </div>
           </div>
           <div className={styles.summaryField}>
-            <span className={styles.summaryLabel}>Appointments Summary</span>
-            <TabStrip
-              items={TABS.map(t => ({ key: t.key, label: `${t.label} (${job.results.filter(t.pick).length})` }))}
-              activeKey={tab}
-              onChange={setTab}
-              fullWidth={false}
+            <span className={styles.summaryLabel}>{mixed ? 'Summary' : 'Appointments Summary'}</span>
+            {coveringView && <span className={styles.summaryNote}>Showing what was reassigned to you.</span>}
+            {/* Modules as underline tabs, flush with the content's left edge;
+                the outcome as a toggle under them. */}
+            {mixed && (
+              <Tabs
+                items={kinds.map(k => ({ key: k.key, label: `${k.label} (${job.results.filter(r => kindOf(r) === k.key).length})` }))}
+                value={kind.key}
+                onValueChange={(k) => { setKindKey(k); setTab('reassigned'); }}
+                fullWidth={false}
+                className={styles.summaryTabsFlush}
+              />
+            )}
+            <div className={mixed ? `${styles.summarySwitchRow} ${styles.summarySwitchUnderTabs}` : styles.summarySwitchRow}>
+            <SegmentedControl
+              // The count as a grey count badge after each label.
+              items={kind.tabs.map(t => ({
+                key: t.key,
+                ariaLabel: `${t.label} (${ofKind.filter(t.pick).length})`,
+                label: <span className={styles.segLabel}>{t.label}<Badge tone="neutral" size="xs" label={String(ofKind.filter(t.pick).length)} /></span>,
+              }))}
+              value={activeTab.key}
+              onValueChange={setTab}
+              size="md"
+              className={styles.summarySwitch}
             />
+            {groups.length > 0 && (
+              <span className={ooo.viewToggle} role="group" aria-label="View">
+                <ActionButton tooltip="Collapse All" className={view === 'collapsed' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'collapsed'} onClick={() => setView('collapsed')}>
+                  <CollapseAllIcon size={20} color="var(--neutral-300)" />
+                </ActionButton>
+                <ActionButton tooltip="Expand All" tooltipLeft className={view === 'expanded' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'expanded'} onClick={() => setView('expanded')}>
+                  <ExpandAllIcon size={20} color="var(--neutral-300)" />
+                </ActionButton>
+              </span>
+            )}
+            </div>
           </div>
           {groups.length === 0 ? (
             <span className={styles.empty}>Nothing here for this reassignment.</span>
@@ -95,13 +156,16 @@ export function ReassignmentSummaryDrawer({ jobId, onClose }) {
             <div className={styles.list}>
               {groups.map(([dept, results]) => (
                 <DeptGroup
-                  key={`${tab}-${dept}`}
+                  key={`${kind.key}-${tab}-${dept}`}
                   title={dept}
                   count={results.length}
-                  defaultOpen={groups.length === 1 || tab !== 'reassigned'}
+                  noun={kind.key === 'task' ? 'Task' : kind.key === 'program' ? 'Program' : 'Appointment'}
+                  defaultOpen={view ? view === 'expanded' : (groups.length === 1 || tab !== 'reassigned')}
                   controls={tab === 'reassigned' ? <CoveringAvatars results={results} /> : null}
                   items={results}
-                  renderItem={(r) => <SummaryRow key={r.appointmentId} result={r} tab={tab} />}
+                  renderItem={(r) => (kindOf(r) === 'appointment'
+                    ? <SummaryRow key={r.appointmentId} result={r} tab={tab} />
+                    : <ItemSummaryRow key={r.taskId || r.programId} result={r} />)}
                 />
               ))}
             </div>
@@ -109,6 +173,29 @@ export function ReassignmentSummaryDrawer({ jobId, onClose }) {
         </div>
       )}
     </Drawer>
+  );
+}
+
+/** A task or care program in the summary: its row, then who it went to or why it failed. */
+function ItemSummaryRow({ result }) {
+  const isTask = kindOf(result) === 'task';
+  const item = isTask ? result.task : result.program;
+  const main = (isTask ? TASK_SHAPE : PROGRAM_SHAPE).renderMain(item || {});
+  return (
+    <div className={[styles.apptRow, result.outcome === 'failed' ? styles.tone_failed : ''].filter(Boolean).join(' ')}>
+      <div className={styles.apptMain}>
+        {main}
+        {result.outcome === 'reassigned' && result.to && (
+          <span className={styles.apptTrail}><Avatar variant="staff" initials={initialsOf(result.to)} size="S" /></span>
+        )}
+      </div>
+      {result.outcome === 'failed' && (
+        <span className={styles.failReason}>
+          <Icon name="solar:info-circle-linear" size={16} color="var(--neutral-300)" />
+          Failure Reason: {result.reason || 'Unknown'}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -135,7 +222,7 @@ function SummaryRow({ result, tab }) {
     return (
       <ApptRow appt={appt} tone="failed">
         <span className={styles.failReason}>
-          <Icon name="solar:info-circle-linear" size={14} color="var(--status-error)" />
+          <Icon name="solar:info-circle-linear" size={16} color="var(--neutral-300)" />
           Failure Reason: {result.reason || 'Unknown'}
         </span>
       </ApptRow>

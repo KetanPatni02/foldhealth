@@ -1,0 +1,78 @@
+name: Database uptime
+
+# Probes the production Supabase data API every 10 minutes and turns failures
+# into a GitHub issue, so a degrading database is noticed before users report
+# it. On 2026-10-21 the database timed out requests for hours before it
+# stopped accepting connections; nothing alerted on it.
+#
+# How it alerts: after 2 consecutive failed probes it opens one issue labelled
+# `db-outage` (GitHub notifies repo watchers by email), comments on that issue
+# while the outage lasts, and closes it when a probe succeeds again.
+#
+# The probe reads one row with the anon key. RLS returns an empty list, but
+# the request still goes through PostgREST into Postgres, so it fails when
+# either is down. Needs repo secrets SUPABASE_URL and SUPABASE_ANON_KEY.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: db-uptime
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe the data API
+        id: probe
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          ok=false
+          for attempt in 1 2; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 \
+              -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+              "$SUPABASE_URL/rest/v1/all_patients?select=id&limit=1" || true)
+            echo "attempt $attempt: HTTP $code"
+            if [ "$code" = "200" ]; then ok=true; break; fi
+            sleep 30
+          done
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update the outage issue
+        if: steps.probe.outputs.ok != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CODE: ${{ steps.probe.outputs.code }}
+        run: |
+          gh label create db-outage --color B60205 --description "Production database unreachable" 2>/dev/null || true
+          open=$(gh issue list --label db-outage --state open --json number --jq '.[0].number')
+          when=$(date -u '+%Y-%m-%d %H:%M UTC')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "Still failing at $when (HTTP $CODE)."
+          else
+            gh issue create --label db-outage \
+              --title "Production database unreachable (HTTP $CODE)" \
+              --body "The uptime probe failed twice in a row at $when (HTTP $CODE; 000 means the request timed out). Check the Supabase project health (management API \`/v1/projects/<ref>/health\`) and the API logs. This issue closes itself when the probe succeeds again."
+          fi
+
+      - name: Close the outage issue on recovery
+        if: steps.probe.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          open=$(gh issue list --label db-outage --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue close "$open" --comment "Recovered at $(date -u '+%Y-%m-%d %H:%M UTC')."
+          fi

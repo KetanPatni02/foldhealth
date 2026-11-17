@@ -9,7 +9,7 @@ import styles from './FilterChip.module.css';
 const EMPTY_SELECTED = [];
 
 /**
- * FilterChip — a labelled filter chip that opens a multi-select popover, the
+ * FilterChip: a labelled filter chip that opens a multi-select popover, the
  * same pattern used by the worklist filter bar. Idle it shows "Label ⌄"; once
  * values are picked it shows "Label | value(s) ✕". The ✕ clears the filter.
  *
@@ -41,13 +41,13 @@ export function FilterChip({
   onChange,
   singleSelect = false,
   size = 'M',
-  // Passthrough to CheckboxListPopover — enables the in-popover search box for
+  // Passthrough to CheckboxListPopover: enables the in-popover search box for
   // long option lists (e.g. Assignee, IPA, HP Code).
   searchable = false,
-  // Passthrough to CheckboxListPopover — (option) => node drawn before each
+  // Passthrough to CheckboxListPopover: (option) => node drawn before each
   // option's label, e.g. a person's avatar in an "Activity By" filter.
   renderOptionLeading,
-  // Extended API for filters whose popover isn't a plain list — the caller
+  // Extended API for filters whose popover isn't a plain list: the caller
   // decides when the chip counts as "active", what to summarize on the
   // pill, how to clear, and renders the popover body itself. When set, the
   // options/selected/onChange trio is ignored and the chip becomes a thin
@@ -61,14 +61,14 @@ export function FilterChip({
   activeSummary,
   onClear,
   // Opt-out of the clear affordance when the field must always carry a
-  // value — e.g. Measurement Year in the HEDIS gap drawer, where clearing
+  // value: e.g. Measurement Year in the HEDIS gap drawer, where clearing
   // "2026" doesn't make sense. In that mode the active pill renders the
   // grey down-chevron (same glyph the idle state uses) instead of the
   // primary "✕", and clicks fall through to toggling the popover.
   noClear = false,
   // By default `noClear` also drops the pill into the neutral grey
   // palette (info-display look). Pass `noClearNeutral={false}` to keep
-  // the primary active tint even for never-empty pickers — used when
+  // the primary active tint even for never-empty pickers, used when
   // the picker is a headline control (e.g. HEDIS worklist Year chip)
   // and should visually match other primary chrome around it.
   noClearNeutral = true,
@@ -79,8 +79,16 @@ export function FilterChip({
   // chevron / clear glyph.
   info,
   disabled = false,
+  // List what's already picked first. The order is fixed when the popover
+  // opens, so rows don't jump as they're ticked.
+  pinSelected = false,
 }) {
   const [rect, setRect] = useState(null);
+  const [pinned, setPinned] = useState([]);
+  const pinnedSet = new Set(pinned);
+  const listOptions = pinSelected && pinned.length
+    ? [...options.filter(o => pinnedSet.has(o)), ...options.filter(o => !pinnedSet.has(o))]
+    : options;
   const custom = typeof renderPopover === 'function';
   const active = custom ? !!activeProp : selected.length > 0;
   const summary = activeSummary != null
@@ -103,7 +111,7 @@ export function FilterChip({
           styles.chip,
           active ? styles.chipActive : '',
           // Never-empty pickers (`noClear`) get the neutral grey palette
-          // even when a value is selected — matches the intent that the
+          // even when a value is selected, matches the intent that the
           // pill is an information display, not a clearable filter.
           active && noClear && noClearNeutral ? styles.chipNeutral : '',
           size === 'S' ? styles.sizeS : '',
@@ -117,6 +125,7 @@ export function FilterChip({
             handleClear(e);
             return;
           }
+          if (!rect && pinSelected) setPinned(selected);
           setRect(rect ? null : e.currentTarget.getBoundingClientRect());
         }}
       >
@@ -149,7 +158,7 @@ export function FilterChip({
             {disabled ? null : noClear ? (
               // Never-empty filters (e.g. Measurement Year) skip the clear
               // ✕ and reuse the idle chevron so users know clicking the
-              // chip re-opens the picker — nothing to clear. The chevron
+              // chip re-opens the picker: nothing to clear. The chevron
               // picks up the pill's palette: neutral grey by default,
               // primary purple when the caller opted into the primary
               // active tint via `noClearNeutral={false}`.
@@ -181,17 +190,18 @@ export function FilterChip({
           <RadioListPopover
             anchorRect={rect}
             label={popoverLabel || label}
-            options={options}
+            options={listOptions}
             selected={selected}
             onChange={(next) => { onChange(next); setRect(null); }}
             onClose={() => setRect(null)}
             showClear={!noClear}
+            searchable={searchable}
           />
         ) : (
           <CheckboxListPopover
             anchorRect={rect}
             label={popoverLabel || label}
-            options={options}
+            options={listOptions}
             selected={selected}
             onChange={onChange}
             onClose={() => setRect(null)}

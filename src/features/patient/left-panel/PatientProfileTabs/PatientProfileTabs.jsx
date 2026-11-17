@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { Fragment, useState, useRef, useEffect, useMemo } from 'react';
 import { DownChevronIcon } from '../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
-import { OverflowTabStrip } from '../../../../components/TabStrip/OverflowTabStrip';
+import { FilterChip } from '../../../../components/FilterChip/FilterChip';
+import { Link } from '../../../../components/Link/Link';
+import { OverflowTabs } from '../../../../components/Tabs/OverflowTabs';
 import { StickyNote } from '../../../../components/StickyNote/StickyNote';
 import { StickyNoteAuditDrawer } from '../../../../components/StickyNoteAuditDrawer/StickyNoteAuditDrawer';
 import { useAppStore } from '../../../../store/useAppStore';
@@ -13,11 +15,16 @@ import { VitalsLabsTab } from '../tabs/vitals-labs/VitalsLabsTab/VitalsLabsTab.j
 import { CommsTab } from '../tabs/comms/CommsTab/CommsTab.jsx';
 import { OutreachTab } from '../tabs/outreach/OutreachTab/OutreachTab.jsx';
 import { SummaryTab } from '../tabs/summary/SummaryTab/SummaryTab.jsx';
-import { TasksTab } from '../tabs/tasks/TasksTab/TasksTab.jsx';
+import { PatientTasksTab } from '../tabs/tasks/PatientTasksTab/PatientTasksTab.jsx';
 import { ProfileTab } from '../tabs/profile/ProfileTab/ProfileTab.jsx';
 import { CrmTab } from '../tabs/crm/CrmTab/CrmTab.jsx';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS, CARE_GAP_TABS_DRAWER } from '../../data/careGapsMock';
 import { CareGapDetailDrawer } from '../../../hedis-worklist/CareGapDetailDrawer';
+import { hedisGapSection } from '../tabs/gaps/hedisGapSection';
+import { useGapEvidenceSources } from '../tabs/gaps/useGapEvidenceSources';
+import { usePatientPanelLayout } from '../../hooks/usePatientPanelLayout';
+import { visibleTabs, visibleWidgets } from '../patientPanelLayout';
+import { PanelCustomizeDrawer } from '../PanelCustomizeDrawer/PanelCustomizeDrawer';
 import styles from './PatientProfileTabs.module.css';
 
 // In the P360 (full-page) surface the right panel already hosts Tasks and
@@ -33,18 +40,27 @@ export function PatientProfileTabs({
   activeTab: controlledActiveTab,
   onTabChange,
   // Hide the panel's own tab strip when the tabs are hosted elsewhere (the
-  // right-panel tab bar) — the sticky note + content still render.
+  // right-panel tab bar): the sticky note + content still render.
   showTabBar = true,
   // Tabs hosted elsewhere that join this strip (the right panel's tabs while
   // a care program owns the right card). The parent renders their content
   // via `renderExtraTab(key)`; pass a stable array.
   extraTabs,
   renderExtraTab,
-  // Trailing action on hosted tabs in the More dropdown (OverflowTabStrip
+  // Trailing action on hosted tabs in the More dropdown (OverflowTabs
   // `itemAction` shape, minus `appliesTo`, which is scoped to extraTabs here).
   extraTabAction,
 }) {
-  const tabs = variant === 'drawer' ? CARE_GAP_TABS_DRAWER : CARE_GAP_TABS;
+  const allTabs = variant === 'drawer' ? CARE_GAP_TABS_DRAWER : CARE_GAP_TABS;
+  // The user's tab order and on/off, and per-tab widget order and on/off
+  // (More > Customize).
+  const { layout, saveLayout } = usePatientPanelLayout();
+  const tabs = useMemo(() => visibleTabs(layout, allTabs), [layout, allTabs]);
+  const [customizing, setCustomizing] = useState(false);
+  const moreActions = useMemo(
+    () => [{ key: 'customize', label: 'Customize', icon: 'solar:tuning-2-linear', onSelect: () => setCustomizing(true) }],
+    [],
+  );
   const tabItems = useMemo(
     () => [...tabs, ...(extraTabs || [])].map(tab => ({ key: tab, label: tab })),
     [tabs, extraTabs],
@@ -54,6 +70,9 @@ export function PatientProfileTabs({
   const setActiveTab = onTabChange ?? setInternalTab;
   const [selectedGaps, setSelectedGaps] = useState([]);
   const [gapsCollapsed, setGapsCollapsed] = useState(false);
+  const [gapFiltersOpen, setGapFiltersOpen] = useState(false);
+  const [gapStatusFilter, setGapStatusFilter] = useState([]);
+  const [gapYearFilter, setGapYearFilter] = useState([]);
   const [diagnosisCollapsed, setDiagnosisCollapsed] = useState(false);
   const [alertsCollapsed, setAlertsCollapsed] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -63,6 +82,7 @@ export function PatientProfileTabs({
   const [careGapDrawer, setCareGapDrawer] = useState(null);
   const searchRef = useRef(null);
   const hedisMembers = useAppStore(s => s.hedisMembers) || [];
+  const openAddCareGaps = useAppStore(s => s.openAddCareGaps);
 
   const stickyNotes = useAppStore(s => s.stickyNotes);
   const fetchStickyNotes = useAppStore(s => s.fetchStickyNotes);
@@ -87,26 +107,44 @@ export function PatientProfileTabs({
   // → "EED"). We resolve the patient's HEDIS member by id or name so the
   // drawer opens with the right measure set. When no HEDIS row exists
   // the toggle-select fallback runs so the click never dead-ends.
+  const hedisMember = (hedisMembers || []).find(m => m
+    && (m.id === patientId || m.patientId === patientId
+      || (patient?.name && (m.name === patient.name))));
+
   const openGap = (item) => {
-    const code = String(item.title || '').split(' - ')[0].trim();
-    const member = (hedisMembers || []).find(m => m
-      && (m.id === patientId || m.patientId === patientId
-        || (patient?.name && (m.name === patient.name))));
+    const code = item.code || String(item.title || '').split(' - ')[0].trim();
+    const member = hedisMember;
     if (!code || !member) {
       toggleGap(item.id);
       return;
     }
-    setCareGapDrawer({ member, gapCode: code, year: new Date().getFullYear() });
+    setCareGapDrawer({ member, gapCode: code, instanceNo: item.openInstanceNo ?? null, year: new Date().getFullYear() });
   };
 
-  const careGapSections = CARE_GAP_SECTIONS_EXTENDED.map(section => ({
+  const evidenceSources = useGapEvidenceSources(hedisMember);
+  const hedisSection = hedisGapSection(hedisMember, evidenceSources);
+  const sourceSections = hedisSection ? [hedisSection] : CARE_GAP_SECTIONS_EXTENDED;
+
+  // Care Gaps filters (Status, Year). A row stays when it, or one of its
+  // previous instances, matches, so a closed status still finds old ones.
+  const allGapItems = sourceSections.flatMap(sec => sec.items.flatMap(it => [it, ...(it.previous || [])]));
+  const gapFilterOptions = {
+    status: [...new Set(allGapItems.map(it => it.status).filter(Boolean))].sort(),
+    year: [...new Set(allGapItems.map(it => it.year).filter(Boolean))].sort().reverse(),
+  };
+  const matchesGapFilters = (it) => (!gapStatusFilter.length || gapStatusFilter.includes(it.status))
+    && (!gapYearFilter.length || gapYearFilter.includes(it.year));
+  const gapFilterCount = gapStatusFilter.length + gapYearFilter.length;
+
+  const careGapSections = sourceSections.map(section => ({
     ...section,
-    items: searchQuery
-      ? section.items.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))
-      : section.items,
+    items: section.items
+      .filter(item => !searchQuery || item.title.toLowerCase().includes(searchQuery.toLowerCase()))
+      .filter(item => !gapFilterCount || matchesGapFilters(item) || (item.previous || []).some(matchesGapFilters)),
   }));
 
-  const activeIdx = useMemo(() => tabs.indexOf(activeTab), [tabs, activeTab]);
+  // A tab switched off while open falls back to the first one shown.
+  const currentTab = tabs.includes(activeTab) ? activeTab : tabs[0];
   const extraActive = !!(extraTabs && renderExtraTab && extraTabs.includes(activeTab));
   const itemAction = useMemo(
     () => (extraTabAction && extraTabs
@@ -114,6 +152,160 @@ export function PatientProfileTabs({
       : undefined),
     [extraTabAction, extraTabs],
   );
+
+  // Gaps tab widgets, keyed so the user's order applies; every header after
+  // the first gets the extra top spacing.
+  const gapWidgets = visibleWidgets(layout, 'Gaps(11)');
+  const headerClass = key => (gapWidgets[0] === key ? styles.sectionHeader : `${styles.sectionHeader} ${styles.diagnosisHeader}`);
+  const gapBlocks = {
+    'care-gaps': (
+          <>
+            {/* Care Gaps header */}
+            <div className={headerClass('care-gaps')}>
+              <span className={styles.sectionTitle}>Care Gaps</span>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setGapsCollapsed(v => !v)}
+                aria-label={gapsCollapsed ? 'Expand Care Gaps' : 'Collapse Care Gaps'}
+                aria-expanded={!gapsCollapsed}
+              >
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={gapsCollapsed ? styles.chevronCollapsed : undefined}
+                />
+              </button>
+              {!gapsCollapsed && (
+                <div className={styles.sectionActions}>
+                  <span className={styles.viewBy}>View By: Action</span>
+                  <DownChevronIcon size={10} />
+                  <span className={styles.filterDivider} />
+                  {/* Same Add Care Gaps drawer as the worklist, already set
+                      to this patient. Only patients on the HEDIS worklist
+                      have gaps to add to. */}
+                  {hedisMember && (
+                    <ActionButton
+                      icon="solar:clipboard-add-linear"
+                      size="sm"
+                      tooltip="Add Care Gap"
+                      onClick={() => openAddCareGaps(hedisMember)}
+                    />
+                  )}
+                  {hedisMember && <span className={styles.filterDivider} />}
+                  <ActionButton
+                    icon="custom:filter"
+                    size="sm"
+                    tooltip="Filter"
+                    active={gapFiltersOpen}
+                    dot={gapFilterCount > 0}
+                    onClick={() => setGapFiltersOpen(v => !v)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className={`${styles.collapseOuter} ${gapsCollapsed ? styles.collapsedSection : ''}`}>
+              <div className={styles.collapseInner}>
+                {gapFiltersOpen && (
+                  <div className={styles.gapFilters}>
+                    <FilterChip label="Status" size="S" options={gapFilterOptions.status} selected={gapStatusFilter} onChange={setGapStatusFilter} />
+                    {gapFilterOptions.year.length > 0 && (
+                      <FilterChip label="Year" size="S" options={gapFilterOptions.year} selected={gapYearFilter} onChange={setGapYearFilter} />
+                    )}
+                    {gapFilterCount > 0 && (
+                      <Link variant="secondary" onClick={() => { setGapStatusFilter([]); setGapYearFilter([]); }}>Clear All</Link>
+                    )}
+                  </div>
+                )}
+                <div className={styles.sections}>
+                  {gapFilterCount > 0 && careGapSections.every(sec => !sec.items.length) && (
+                    <div className={styles.gapFiltersEmpty}>No care gaps match these filters.</div>
+                  )}
+                  {careGapSections.map(section => (
+                    <CareGapSection
+                      key={section.title}
+                      section={section}
+                      selectedGaps={selectedGaps}
+                      onToggleGap={toggleGap}
+                      onOpenGap={openGap}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+    ),
+    'diagnosis-gaps': (
+          <>
+            {/* Diagnosis Gaps header */}
+            <div className={headerClass('diagnosis-gaps')}>
+              <span className={styles.sectionTitle}>Diagnosis Gaps</span>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setDiagnosisCollapsed(v => !v)}
+                aria-label={diagnosisCollapsed ? 'Expand Diagnosis Gaps' : 'Collapse Diagnosis Gaps'}
+                aria-expanded={!diagnosisCollapsed}
+              >
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={diagnosisCollapsed ? styles.chevronCollapsed : undefined}
+                />
+              </button>
+              {!diagnosisCollapsed && (
+                <div className={styles.sectionActions}>
+                  <span className={styles.dosLabel}>DOS:</span>
+                  <span className={styles.dosValue}>03/04/2025</span>
+                  <DownChevronIcon size={10} />
+                  <span className={styles.filterDivider} />
+                  <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
+                </div>
+              )}
+            </div>
+
+            <div className={`${styles.collapseOuter} ${diagnosisCollapsed ? styles.collapsedSection : ''}`}>
+              <div className={styles.collapseInner}>
+                <div className={styles.sections}>
+                  <DiagnosisGapsTable memberName={patient?.name} />
+                </div>
+              </div>
+            </div>
+          </>
+    ),
+    alerts: (
+          <>
+            {/* Alerts header */}
+            <div className={headerClass('alerts')}>
+              <span className={styles.sectionTitle}>Alerts</span>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setAlertsCollapsed(v => !v)}
+                aria-label={alertsCollapsed ? 'Expand Alerts' : 'Collapse Alerts'}
+                aria-expanded={!alertsCollapsed}
+              >
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={alertsCollapsed ? styles.chevronCollapsed : undefined}
+                />
+              </button>
+              {!alertsCollapsed && (
+                <div className={styles.sectionActions}>
+                  <ActionButton icon="custom:filter" size="sm" tooltip="Filter" />
+                </div>
+              )}
+            </div>
+
+            <div className={`${styles.collapseOuter} ${alertsCollapsed ? styles.collapsedSection : ''}`}>
+              <div className={styles.collapseInner}>
+                <div className={styles.sections}>
+                  <AlertsTable />
+                </div>
+              </div>
+            </div>
+          </>
+    ),
+  };
 
   return (
     <div className={styles.panel}>
@@ -136,17 +328,18 @@ export function PatientProfileTabs({
       ) : (
         <div className={styles.tabRow}>
           <div className={styles.tabsArea}>
-            <OverflowTabStrip
+            <OverflowTabs
               items={tabItems}
-              activeKey={activeTab}
-              onChange={setActiveTab}
+              value={extraActive ? activeTab : currentTab}
+              onValueChange={setActiveTab}
               itemAction={itemAction}
+              moreActions={moreActions}
             />
           </div>
           {!extraActive && (
             <ActionButton
               icon="solar:magnifer-linear"
-              size="S"
+              size="sm"
               tooltip="Search gaps"
               className={styles.searchBtn}
               onClick={() => setSearching(true)}
@@ -180,144 +373,49 @@ export function PatientProfileTabs({
           />
         )}
 
-        {activeIdx === 0 && (
+        {currentTab === 'Gaps(11)' && (
           <div className={styles.gapsWrapper}>
-            {/* Care Gaps header */}
-            <div className={styles.sectionHeader}>
-              <span className={styles.sectionTitle}>Care Gaps</span>
-              <button
-                className={styles.collapseToggle}
-                onClick={() => setGapsCollapsed(v => !v)}
-                aria-label={gapsCollapsed ? 'Expand Care Gaps' : 'Collapse Care Gaps'}
-                aria-expanded={!gapsCollapsed}
-              >
-                <DownChevronIcon
-                  size={12}
-                  color="var(--neutral-200)"
-                  className={gapsCollapsed ? styles.chevronCollapsed : undefined}
-                />
-              </button>
-              {!gapsCollapsed && (
-                <div className={styles.sectionActions}>
-                  <span className={styles.viewBy}>View By: Action</span>
-                  <DownChevronIcon size={10} />
-                  <span className={styles.filterDivider} />
-                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-                </div>
-              )}
-            </div>
-
-            <div className={`${styles.collapseOuter} ${gapsCollapsed ? styles.collapsedSection : ''}`}>
-              <div className={styles.collapseInner}>
-                <div className={styles.sections}>
-                  {careGapSections.map(section => (
-                    <CareGapSection
-                      key={section.title}
-                      section={section}
-                      selectedGaps={selectedGaps}
-                      onToggleGap={toggleGap}
-                      onOpenGap={openGap}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Diagnosis Gaps header */}
-            <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
-              <span className={styles.sectionTitle}>Diagnosis Gaps</span>
-              <button
-                className={styles.collapseToggle}
-                onClick={() => setDiagnosisCollapsed(v => !v)}
-                aria-label={diagnosisCollapsed ? 'Expand Diagnosis Gaps' : 'Collapse Diagnosis Gaps'}
-                aria-expanded={!diagnosisCollapsed}
-              >
-                <DownChevronIcon
-                  size={12}
-                  color="var(--neutral-200)"
-                  className={diagnosisCollapsed ? styles.chevronCollapsed : undefined}
-                />
-              </button>
-              {!diagnosisCollapsed && (
-                <div className={styles.sectionActions}>
-                  <span className={styles.dosLabel}>DOS:</span>
-                  <span className={styles.dosValue}>03/04/2025</span>
-                  <DownChevronIcon size={10} />
-                  <span className={styles.filterDivider} />
-                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-                </div>
-              )}
-            </div>
-
-            <div className={`${styles.collapseOuter} ${diagnosisCollapsed ? styles.collapsedSection : ''}`}>
-              <div className={styles.collapseInner}>
-                <div className={styles.sections}>
-                  <DiagnosisGapsTable memberName={patient?.name} />
-                </div>
-              </div>
-            </div>
-
-            {/* Alerts header */}
-            <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
-              <span className={styles.sectionTitle}>Alerts</span>
-              <button
-                className={styles.collapseToggle}
-                onClick={() => setAlertsCollapsed(v => !v)}
-                aria-label={alertsCollapsed ? 'Expand Alerts' : 'Collapse Alerts'}
-                aria-expanded={!alertsCollapsed}
-              >
-                <DownChevronIcon
-                  size={12}
-                  color="var(--neutral-200)"
-                  className={alertsCollapsed ? styles.chevronCollapsed : undefined}
-                />
-              </button>
-              {!alertsCollapsed && (
-                <div className={styles.sectionActions}>
-                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-                </div>
-              )}
-            </div>
-
-            <div className={`${styles.collapseOuter} ${alertsCollapsed ? styles.collapsedSection : ''}`}>
-              <div className={styles.collapseInner}>
-                <div className={styles.sections}>
-                  <AlertsTable />
-                </div>
-              </div>
-            </div>
+            {gapWidgets.map(key => <Fragment key={key}>{gapBlocks[key]}</Fragment>)}
           </div>
         )}
 
-        {activeIdx === 1 && <PAMIHxTab patientId={patientId} />}
+        {currentTab === 'PAMI/Hx' && <PAMIHxTab patientId={patientId} widgets={visibleWidgets(layout, 'PAMI/Hx')} />}
 
-        {activeIdx === 2 && <VitalsLabsTab />}
+        {currentTab === 'Vitals/Labs' && <VitalsLabsTab widgets={visibleWidgets(layout, 'Vitals/Labs')} patientId={patientId} />}
 
-        {activeIdx === 3 && <CommsTab patient={patient} />}
+        {currentTab === 'Comms' && <CommsTab patient={patient} />}
 
-        {activeIdx === 4 && <OutreachTab memberName={patient?.name} />}
+        {currentTab === 'Outreach' && <OutreachTab memberName={patient?.name} classicForm />}
 
-        {activeIdx === 5 && <SummaryTab />}
+        {currentTab === 'Summary' && <SummaryTab widgets={visibleWidgets(layout, 'Summary')} />}
 
-        {/* Tail tabs — index layout depends on variant:
-            - full  (P360 page):   [6] CRM
-            - drawer (QuickView):  [6] Tasks · [7] CRM · [8] Profile
-            Tasks/Profile live only on the right panel in P360, so they're
-            keyed off tabs[idx] rather than a hard-coded index. */}
-        {tabs[activeIdx] === 'Tasks' && <TasksTab />}
+        {/* Tasks and Profile show here only in the QuickView drawer; on the
+            full page they live in the right panel. */}
+        {currentTab === 'Tasks' && <PatientTasksTab patient={patient} />}
 
-        {tabs[activeIdx] === 'CRM' && <CrmTab patientId={patientId} />}
+        {currentTab === 'CRM' && <CrmTab patientId={patientId} />}
 
-        {tabs[activeIdx] === 'Profile' && (
+        {currentTab === 'Profile' && (
           <ProfileTab patient={patient || { id: patientId }} />
         )}
       </div>
       )}
 
+      {customizing && (
+        <PanelCustomizeDrawer
+          layout={layout}
+          available={allTabs}
+          onSave={saveLayout}
+          onClose={() => setCustomizing(false)}
+        />
+      )}
+
       {careGapDrawer && (
         <CareGapDetailDrawer
-          member={careGapDrawer.member}
+          // The live row, so a gap added from inside the drawer shows up.
+          member={hedisMember || careGapDrawer.member}
           gapCode={careGapDrawer.gapCode}
+          instanceNo={careGapDrawer.instanceNo}
           year={careGapDrawer.year}
           onClose={() => setCareGapDrawer(null)}
         />

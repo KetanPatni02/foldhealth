@@ -59,6 +59,14 @@ export function LoginForm({
       </div>
 
       <form className={styles.form} onSubmit={onSubmit}>
+        {/* Errors sit above the fields, where they're seen first. */}
+        {error && (
+          <div className={styles.error}>
+            <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
+            {error}
+          </div>
+        )}
+
         {isSignUp && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className={styles.field}>
@@ -159,13 +167,6 @@ export function LoginForm({
           </div>
         )}
 
-        {error && (
-          <div className={styles.error}>
-            <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
-            {error}
-          </div>
-        )}
-
         {success && (
           <div className={styles.success}>
             <Icon name="solar:check-circle-linear" size={14} color="var(--status-success)" />
@@ -174,8 +175,6 @@ export function LoginForm({
         )}
 
         <Button
-          variant="primary"
-          size="L"
           fullWidth
           disabled={loading}
           type="submit"

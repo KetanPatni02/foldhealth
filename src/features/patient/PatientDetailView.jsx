@@ -10,10 +10,14 @@ import { CareManagementView } from './right-panel/tabs/care-management/CareManag
 import { OverviewTab } from './right-panel/tabs/overview/OverviewTab/OverviewTab';
 import { MonitoringTab } from './right-panel/tabs/monitoring/MonitoringTab';
 import { PatientNotesTab } from './right-panel/tabs/notes/PatientNotesTab';
+import { TimelineTab } from './right-panel/tabs/timeline/TimelineTab';
+import { DocumentsTab } from './right-panel/tabs/documents/DocumentsTab';
+import { AssessmentsTab } from './right-panel/tabs/assessments/AssessmentsTab';
+import { OrdersReferralsTab } from './right-panel/tabs/orders-referrals/OrdersReferralsTab';
 import { ClinicalNotePreviewDrawer } from '../tasks/ClinicalNotePreviewDrawer';
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { ProfileTab } from './left-panel/tabs/profile/ProfileTab/ProfileTab';
-import { TasksTab } from './left-panel/tabs/tasks/TasksTab/TasksTab';
+import { PatientTasksTab } from './left-panel/tabs/tasks/PatientTasksTab/PatientTasksTab';
 import { CcmTimerWidget } from './shell/CcmTimerWidget/CcmTimerWidget';
 import { CcmTimerDockProvider } from './shell/CcmTimerWidget/CcmTimerDockContext';
 import { PatientBreadcrumb } from './shell/PatientBreadcrumb/PatientBreadcrumb';
@@ -26,6 +30,8 @@ const DiagPanel = lazy(() => import('../hcc/DiagPanel/DiagPanel').then(m => ({ d
 import { PatientCarePlanPane } from './right-panel/tabs/care-management/PatientCarePlanPane/PatientCarePlanPane';
 import { programUrlKey } from './right-panel/tabs/care-programs/CareProgramsTab/CareProgramsTab.utils';
 import { CARE_GAP_TABS } from './data/careGapsMock';
+import { usePatientPanelLayout } from './hooks/usePatientPanelLayout';
+import { visibleTabs } from './left-panel/patientPanelLayout';
 import { PROFILE_TABS } from './data/programActivityMock';
 import styles from './PatientDetailView.module.css';
 
@@ -86,18 +92,23 @@ function worklistMemberToPatient(m) {
 
 export function PatientDetailView() {
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
+  const activeSubnavList = useAppStore(s => s.activeSubnavList);
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
   const awvMembers = useAppStore(s => s.awvMembers);
+  const cmpMembers = useAppStore(s => s.cmpMembers);
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers);
+  const pharmacyWorklistMembers = useAppStore(s => s.pharmacyWorklistMembers);
   const hedisMembers = useAppStore(s => s.hedisMembers);
   const allPatients = useAppStore(s => s.allPatients);
   const fetchPatients = useAppStore(s => s.fetchPatients);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
+  const fetchCmpMembers = useAppStore(s => s.fetchCmpMembers);
   const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchPharmacyWorklistMembers = useAppStore(s => s.fetchPharmacyWorklistMembers);
   const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
   const fetchOrgFeatures = useAppStore(s => s.fetchOrgFeatures);
@@ -108,10 +119,14 @@ export function PatientDetailView() {
   const hccMembersDidFetch = useAppStore(s => s.hccMembersDidFetch);
   const awvMembersLoading = useAppStore(s => s.awvMembersLoading);
   const awvMembersDidFetch = useAppStore(s => s.awvMembersDidFetch);
+  const cmpMembersLoading = useAppStore(s => s.cmpMembersLoading);
+  const cmpMembersDidFetch = useAppStore(s => s.cmpMembersDidFetch);
   const ccmWorklistLoading = useAppStore(s => s.ccmWorklistLoading);
   const ccmWorklistDidFetch = useAppStore(s => s.ccmWorklistDidFetch);
   const snpWorklistLoading = useAppStore(s => s.snpWorklistLoading);
   const snpWorklistDidFetch = useAppStore(s => s.snpWorklistDidFetch);
+  const pharmacyWorklistLoading = useAppStore(s => s.pharmacyWorklistLoading);
+  const pharmacyWorklistDidFetch = useAppStore(s => s.pharmacyWorklistDidFetch);
   const hedisLoading = useAppStore(s => s.hedisLoading);
   const hedisDidFetch = useAppStore(s => s.hedisDidFetch);
   const allPatientsLoading = useAppStore(s => s.allPatientsLoading);
@@ -142,6 +157,8 @@ export function PatientDetailView() {
     ? stackState
     : { programKey: primaryKey, ids: ['program'], activeId: 'program' };
   const [leftWidth, setLeftWidth] = useState(496);
+  // Overview > Customize opens from the tab bar, so the state lives here.
+  const [customizingOverview, setCustomizingOverview] = useState(false);
   // The HCC side panel opens at 30 / 35 / 35 (patient card / documents /
   // ICDs); null holds the card at 30% until it's dragged.
   const [diagLeftWidth, setDiagLeftWidth] = useState(null);
@@ -152,11 +169,15 @@ export function PatientDetailView() {
   // Left-panel tab, lifted here so it survives collapse: when the panel is
   // collapsed its tabs flow into the right-panel tab bar and its content
   // renders in the right panel. `showingLeftContent` is only meaningful while
-  // collapsed — true means a flowed-in left tab is the active view.
+  // collapsed: true means a flowed-in left tab is the active view.
   const [leftTabRaw, setLeftTab] = useState(CARE_GAP_TABS[0]);
+  // The left tabs in the user's order, without the ones they switched off
+  // (More > Customize).
+  const { layout: panelLayout } = usePatientPanelLayout();
+  const leftTabs = useMemo(() => visibleTabs(panelLayout, CARE_GAP_TABS), [panelLayout]);
   // The split hosts the right panel's tabs here too; outside it, a hosted
-  // tab has no home in this panel, so fall back to Gaps.
-  const leftTab = programSplit || CARE_GAP_TABS.includes(leftTabRaw) ? leftTabRaw : CARE_GAP_TABS[0];
+  // tab has no home in this panel, so fall back to the first tab.
+  const leftTab = programSplit || leftTabs.includes(leftTabRaw) ? leftTabRaw : leftTabs[0];
   const [showingLeftContent, setShowingLeftContent] = useState(false);
   const dragging = useRef(false);
   const bodyRef = useRef(null);
@@ -164,17 +185,17 @@ export function PatientDetailView() {
   // Collapsed: the tab bar is the merged [right tabs, …left tabs]. Route a
   // click to the correct side and record which content the right panel shows.
   const handleRightTabChange = useCallback((key) => {
-    if (leftCollapsed && CARE_GAP_TABS.includes(key)) {
+    if (leftCollapsed && leftTabs.includes(key)) {
       setLeftTab(key);
       setShowingLeftContent(true);
     } else {
       setActiveTab(key);
       setShowingLeftContent(false);
     }
-  }, [leftCollapsed, setActiveTab]);
+  }, [leftCollapsed, leftTabs, setActiveTab]);
 
   // Once the signed-in user is known, load their saved collapse state (only if
-  // they have one — a new user keeps the device default until they toggle).
+  // they have one: a new user keeps the device default until they toggle).
   useEffect(() => {
     if (!currentUserId) return;
     const saved = readCollapse(currentUserId);
@@ -231,7 +252,7 @@ export function PatientDetailView() {
   }, []);
 
   // Fall back through every worklist slice when the id isn't in the main
-  // patients list — those rows live in separate slices and shouldn't 404.
+  // patients list: those rows live in separate slices and shouldn't 404.
   // Also match by memberId so a deep-link URL with the fold id (from
   // #/population/<list>/patient/<memberId>) resolves before the router's
   // reverse lookup has store data to work with.
@@ -239,12 +260,14 @@ export function PatientDetailView() {
   const patient = patients.find(matchesId)
     || worklistMemberToPatient(hccMembers.find(matchesId))
     || worklistMemberToPatient(awvMembers?.find(matchesId))
+    || worklistMemberToPatient(cmpMembers?.find(matchesId))
     || worklistMemberToPatient(ccmWorklistMembers?.find(matchesId))
     || worklistMemberToPatient(snpWorklistMembers?.find(matchesId))
+    || worklistMemberToPatient(pharmacyWorklistMembers?.find(matchesId))
     || worklistMemberToPatient(hedisMembers?.find(matchesId))
     || worklistMemberToPatient(allPatients?.find(matchesId));
 
-  // Worklist slices don't all carry patient_app_active — merge from the
+  // Worklist slices don't all carry patient_app_active: merge from the
   // patients / all_patients tables when the resolved row is missing it.
   const patientWithAppStatus = useMemo(() => {
     if (!patient) return null;
@@ -257,13 +280,13 @@ export function PatientDetailView() {
     return { ...patient, patientAppActive: source.patientAppActive };
   }, [patient, patients, allPatients]);
 
-  // The app assumes we're always inside a real patient's record — if the id
+  // The app assumes we're always inside a real patient's record: if the id
   // doesn't resolve to a patient (e.g. a stale hash from a deleted row, or a
   // worklist row wired to a placeholder id), bounce straight back to the
   // worklist instead of showing an orphan "Patient not found" screen.
   // A slice is still resolving when it's empty and either hasn't been fetched
   // yet or its fetch is in flight. Wait for every slice before deciding the
-  // patient id is stale — otherwise the first slice to return (often
+  // patient id is stale: otherwise the first slice to return (often
   // `patients`) trips the bounce while SNP/HCC rows are still loading.
   const slicePending = (items, didFetch, loading) =>
     (items?.length || 0) === 0 && (!didFetch || loading);
@@ -271,8 +294,10 @@ export function PatientDetailView() {
     slicePending(patients, patientsDidFetch, patientsLoading)
     || slicePending(hccMembers, hccMembersDidFetch, hccMembersLoading)
     || slicePending(awvMembers, awvMembersDidFetch, awvMembersLoading)
+    || slicePending(cmpMembers, cmpMembersDidFetch, cmpMembersLoading)
     || slicePending(ccmWorklistMembers, ccmWorklistDidFetch, ccmWorklistLoading)
     || slicePending(snpWorklistMembers, snpWorklistDidFetch, snpWorklistLoading)
+    || slicePending(pharmacyWorklistMembers, pharmacyWorklistDidFetch, pharmacyWorklistLoading)
     || slicePending(hedisMembers, hedisDidFetch, hedisLoading)
     || slicePending(allPatients, allPatientsDidFetch, allPatientsLoading)
   );
@@ -291,8 +316,10 @@ export function PatientDetailView() {
     if (patients.length === 0) fetchPatients?.();
     if (hccMembers.length === 0) fetchHccMembers?.();
     if ((awvMembers?.length || 0) === 0) fetchAwvMembers?.();
+    if ((cmpMembers?.length || 0) === 0) fetchCmpMembers?.();
     if ((ccmWorklistMembers?.length || 0) === 0) fetchCcmWorklistMembers?.();
     if ((snpWorklistMembers?.length || 0) === 0) fetchSnpWorklistMembers?.();
+    if ((pharmacyWorklistMembers?.length || 0) === 0) fetchPharmacyWorklistMembers?.();
     if ((hedisMembers?.length || 0) === 0) fetchHedisMembers?.();
     if ((allPatients?.length || 0) === 0) fetchAllPatients?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -319,12 +346,23 @@ export function PatientDetailView() {
   // One renderer for the right panel's tabs, shared by the standard layout
   // and the split (where they render in the patient card or the side panel).
   const renderRightTab = (tab) => (
-    tab === 'Overview' ? <OverviewTab />
+    tab === 'Overview' ? (
+      <OverviewTab
+        patient={patientWithAppStatus}
+        leftPanelOpen={!leftCollapsed}
+        customizing={customizingOverview}
+        onCustomizeClose={() => setCustomizingOverview(false)}
+      />
+    )
       : tab === 'Monitoring' ? <MonitoringTab patient={patientWithAppStatus} />
         : tab === 'Notes' ? <PatientNotesTab patient={patientWithAppStatus} />
+        : tab === 'Timeline' ? <TimelineTab />
+        : tab === 'Documents' ? <DocumentsTab patient={patientWithAppStatus} />
+        : tab === 'Assessments' ? <AssessmentsTab patient={patientWithAppStatus} />
+        : tab === 'Orders & Referrals' ? <OrdersReferralsTab patient={patientWithAppStatus} />
           : tab === 'Care Management' ? <CareManagementView />
             : tab === 'Profile' ? <ProfileTab patient={patientWithAppStatus} />
-              : tab === 'Tasks' ? <TasksTab />
+              : tab === 'Tasks' ? <PatientTasksTab patient={patientWithAppStatus} />
                 : <TabPlaceholder tabName={tab} />
   );
 
@@ -344,7 +382,7 @@ export function PatientDetailView() {
     const openInPanel = (tab) => {
       const id = panelIdFor(tab);
       setStack(base => ({ ids: base.ids.includes(id) ? base.ids : [id, ...base.ids], activeId: id }));
-      if (leftTab === tab) setLeftTab(CARE_GAP_TABS[0]);
+      if (leftTab === tab) setLeftTab(leftTabs[0]);
     };
     const removePanel = (id) => setStack((base) => {
       const idx = base.ids.indexOf(id);
@@ -372,7 +410,7 @@ export function PatientDetailView() {
           <span className={styles.hostedTabTitle}>{tab}</span>
           <ActionButton
             icon="solar:sidebar-minimalistic-linear"
-            size="S"
+            size="sm"
             tooltip="Open in panel"
             onClick={() => openInPanel(tab)}
           />
@@ -415,7 +453,7 @@ export function PatientDetailView() {
         actions: (
           <ActionButton
             icon="solar:sidebar-minimalistic-linear"
-            size="S"
+            size="sm"
             tooltip="Move to patient panel"
             onClick={() => moveToLeftPanel(id)}
           />
@@ -492,7 +530,8 @@ export function PatientDetailView() {
     <CcmTimerDockProvider>
     <div className={styles.wrapper}>
       <PatientP360Banner patient={patientWithAppStatus} />
-      <CcmTimerWidget patient={patient} />
+      {/* The pharmacy adherence workflow isn't time-billed. */}
+      {activeSubnavList !== 'Pharmacy' && <CcmTimerWidget patient={patient} />}
       <div className={styles.body} ref={bodyRef}>
         {leftMounted && (
           <>
@@ -511,7 +550,7 @@ export function PatientDetailView() {
                 />
               </div>
             </div>
-            {/* Drag handle — fades with the panel it borders. */}
+            {/* Drag handle: fades with the panel it borders. */}
             <div
               className={`${styles.dragHandle} ${leftCollapsed ? styles.dragHandleHidden : ''}`}
               onMouseDown={handleMouseDown}
@@ -526,7 +565,16 @@ export function PatientDetailView() {
             onTabChange={handleRightTabChange}
             leftCollapsed={leftCollapsed}
             onToggleLeft={toggleLeft}
-            extraTabs={leftCollapsed ? CARE_GAP_TABS : undefined}
+            extraTabs={leftCollapsed ? leftTabs : undefined}
+            actions={barActiveTab === 'Overview' ? (
+              <ActionButton
+                icon="solar:tuning-2-linear"
+                size="sm"
+                tooltip="Customize Overview"
+                tooltipLeft
+                onClick={() => setCustomizingOverview(true)}
+              />
+            ) : null}
           />
           <div className={styles.tabContent}>
             {leftCollapsed && showingLeftContent ? (
@@ -556,7 +604,7 @@ export function PatientDetailView() {
  * P360-level mount for the standalone `ClinicalNotePreviewDrawer`, driven
  * by the store's `previewNoteFromHover` slice. The P360 Notes tab (and
  * anywhere else on this page that calls `openNotePreview`) needs a mount
- * point — TasksView already owns one for the Tasks page, but P360 didn't
+ * point: TasksView already owns one for the Tasks page, but P360 didn't
  * have one, so the Notes-tab View action was a silent no-op.
  */
 function P360NotePreviewMount() {

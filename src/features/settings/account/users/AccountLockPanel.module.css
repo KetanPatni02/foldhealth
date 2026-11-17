@@ -1,10 +1,8 @@
-/* Lock context on the user profile drawer, under the banner. */
+/* Lock context on the user profile drawer, under the banner: one compact
+   row (icon, title over a details line, action). */
 .panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0 var(--space-3) var(--space-3);
-  padding: var(--space-3);
+  margin: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   background: var(--neutral-25);
@@ -18,38 +16,29 @@
   align-items: center;
   gap: var(--space-2);
 }
-.title {
+.text {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+.title {
   font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
 .locked .title { color: var(--status-error); }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2) var(--space-4);
+.activated {
+  border-color: color-mix(in srgb, var(--status-success) 25%, transparent);
+  background: var(--status-success-light);
 }
-.row {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-1) / 2);
-  min-width: 0;
-}
-.label {
-  font-size: var(--font-sm);
-  color: var(--neutral-200);
-}
-.value {
-  font-size: var(--font-base);
-  color: var(--neutral-400);
-  overflow-wrap: anywhere;
-}
+.activated .title { color: var(--status-success); }
 .note {
-  margin: 0;
   font-size: var(--font-sm);
   color: var(--neutral-300);
 }
+
 /* Unlock dialog checkboxes. */
 .check {
   display: flex;
@@ -58,4 +47,14 @@
   font-size: var(--font-base);
   color: var(--neutral-400);
   cursor: pointer;
+}
+
+/* Resend Link while the email is being sent. */
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+/* Local: CSS Modules renames `spin` here, so the global keyframes don't apply. */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

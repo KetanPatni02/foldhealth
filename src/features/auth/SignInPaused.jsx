@@ -20,10 +20,13 @@ export function SignInPaused({ reason = 'paused', email, onBack }) {
   const ask = async () => {
     setSending(true);
     setError('');
-    const r = await requestAccountUnlock(email);
-    setSending(false);
-    if (r.ok) setSent(true);
-    else setError(r.message);
+    try {
+      const r = await requestAccountUnlock(email);
+      if (r.ok) setSent(true);
+      else setError(r.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -42,8 +45,8 @@ export function SignInPaused({ reason = 'paused', email, onBack }) {
 
       <div className={styles.form}>
         {!sent && (
-          <Button variant="primary" size="L" fullWidth leadingIcon="solar:user-speak-linear" onClick={ask} disabled={sending}>
-            {sending ? 'Sending request...' : waiting ? 'Ask for a New Link' : 'Request Unlock from Administrator'}
+          <Button fullWidth leadingIcon="solar:user-speak-linear" onClick={ask} loading={sending}>
+            {waiting ? 'Ask for a New Link' : 'Request Unlock from Administrator'}
           </Button>
         )}
         {error && (

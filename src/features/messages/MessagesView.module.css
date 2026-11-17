@@ -133,7 +133,7 @@
   position: relative;
 }
 
-/* Input component fills this wrapper — override padding for search icon */
+/* Input component fills this wrapper: override padding for search icon */
 
 .convSearchIcon {
   position: absolute;
@@ -279,7 +279,7 @@
 
 .convUnread {
   background: var(--secondary-300);
-  /* Was --neutral-500 (#16181D, near-black) on the orange fill — it read as
+  /* Was --neutral-500 (#16181D, near-black) on the orange fill, it read as
      grey and did not match the sidebar nav badge, which is the same pill in
      the same colour. --neutral-0 is what that badge uses, so the two now
      agree and both invert together in dark themes. */
@@ -487,6 +487,28 @@
 }
 
 /* Reply preview in compose area */
+/* Internal chat: the other person is out of office. A small inline alert
+   strip, magenta, edge to edge on the composer's top border; its text and
+   close button line up with the message box (16px in). */
+.oooNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-4);
+  border-top: 0.5px solid color-mix(in srgb, var(--accent-magenta) 20%, transparent);
+  background: color-mix(in srgb, var(--accent-magenta) 6%, var(--neutral-0));
+  font-size: var(--font-sm);
+  line-height: var(--leading-tight);
+  color: var(--accent-magenta);
+}
+/* Its dismiss ✕ stays flat: no hover or pressed fill on the tinted strip. */
+/* Pull the ✕ over its own 4px padding so the icon sits 16px from the right
+   edge, matching the text's 16px on the left. */
+.oooNotice > button { margin-right: calc(var(--space-1) * -1); }
+.oooNotice > button:hover,
+.oooNotice > button:active { background: none; }
+
 .replyPreview {
   display: flex;
   align-items: stretch;

@@ -36,7 +36,7 @@ describe('components in the builder', () => {
   it('offers the report header beside saved email headers and starts on it', () => {
     const releaseNote = { id: 7, label: 'Release Note', isDefault: false };
     const headers = withReportHeader([releaseNote]);
-    expect(headers.map(h => h.label)).toEqual(['Print Report Header Option 1', 'Print Report Header Option 2', 'Print Report Header Option 3', 'Print Report Header Option 4', 'Release Note']);
+    expect(headers.map(h => h.label)).toEqual(['Print Report Header Option 1', 'Print Report Header Option 2', 'Print Report Header Option 3', 'Print Report Header Option 4', 'Astrana Report Header', 'Release Note']);
     expect(defaultReportHeader(headers).slug).toBe(REPORT_HEADER_SLUG);
     // Once seeded, the saved copy replaces the local one.
     const seeded = { id: 9, slug: REPORT_HEADER_SLUG, label: 'Print Report Header Option 1', isDefault: true };
@@ -63,6 +63,6 @@ describe('components in the builder', () => {
     const footer = JSON.stringify(PATIENT_SUMMARY_FOOTER_COMPONENT.tree);
     expect(footer).toContain('#1376BC');
     expect(footer).toContain('1607 Grand Ave Unit 22, Glenwood Springs, CO 81601');
-    expect(withReportFooter([]).map(f => f.label)).toEqual(['Print Report Footer Option 1', 'Print Report Footer Option 2', 'Print Report Footer Option 3', 'Print Report Footer Option 4']);
+    expect(withReportFooter([]).map(f => f.label)).toEqual(['Print Report Footer Option 1', 'Print Report Footer Option 2', 'Print Report Footer Option 3', 'Print Report Footer Option 4', 'Astrana Report Footer']);
   });
 });

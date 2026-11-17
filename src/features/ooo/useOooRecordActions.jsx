@@ -19,6 +19,7 @@ import { samePerson } from './oooUtils';
 export function useOooRecordActions({ user, users } = {}) {
   const deleteOooRecord = useAppStore(s => s.deleteOooRecord);
   const restoreReassigned = useAppStore(s => s.restoreReassignedAppointments);
+  const restoreWork = useAppStore(s => s.restoreReassignedWork);
   const [form, setForm] = useState(null); // { record?, user? }
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -35,6 +36,7 @@ export function useOooRecordActions({ user, users } = {}) {
       {form && (
         <OooRecordDrawer
           record={form.record}
+          initialStep={form.step}
           user={form.record ? undefined : (form.user || user)}
           users={users}
           onClose={() => setForm(null)}
@@ -61,7 +63,7 @@ export function useOooRecordActions({ user, users } = {}) {
         <ConfirmDialog
           variant="destructive"
           title="Delete OOO Record?"
-          description="The Out of Office Record will be deleted and reassigned appointments for these dates will return to original user's calendar."
+          description="The Out of Office Record will be deleted and reassigned items (Appointments, tasks, care programs) for these dates will return to original user's calendar."
           confirmLabel="Delete Record"
           cancelLabel="Cancel"
           loading={deleting}
@@ -71,10 +73,12 @@ export function useOooRecordActions({ user, users } = {}) {
             try {
               const ok = await deleteOooRecord(toDelete.id);
               // As the dialog says: appointments reassigned away for these
-              // dates go back to the provider (upcoming ones only).
+              // dates go back to the provider (upcoming ones only), and so do
+              // the tasks and care programs this record moved.
               if (ok) {
                 await restoreReassigned({ id: toDelete.userId, name: toDelete.userName },
                   [{ from: new Date(toDelete.startAt).getTime(), to: new Date(toDelete.endAt).getTime() }]);
+                await restoreWork({ id: toDelete.userId, name: toDelete.userName }, { recordId: toDelete.id });
                 toast.success('Out of Office Record Deleted Successfully');
               }
               setToDelete(null);
@@ -91,6 +95,8 @@ export function useOooRecordActions({ user, users } = {}) {
     // `forUser` fixes who a new record is for (else `user`, else picked).
     openNew: (forUser) => setForm({ user: forUser }),
     openEdit: (record) => setForm({ record }),
+    // A record straight at its second step, Reassign Open Work.
+    openOpenWork: (record) => setForm({ record, step: 2 }),
     askDelete: setToDelete,
     // Reassign Appointments on its own, optionally for a provider ({ id, name })
     // and one of their records.

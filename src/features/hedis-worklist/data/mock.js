@@ -1,4 +1,6 @@
-export const HEDIS_MEMBERS = [
+import { PHARMACY_WORKLIST_MEMBERS } from '../../pharmacy-worklist/data/mock';
+
+const BASE_HEDIS_MEMBERS = [
   {
     id: 'ap-001', in: 'CH', name: 'Carlos Hernandez',
     gender: 'M', age: '69y', memberId: '10023', language: 'es',
@@ -73,7 +75,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/14/2026',
     advIllness: 0, frailty: 0, riskLevel: '2_Mod-High', tasks: null,
     outreachDots: ['success', 'success', 'pending'], outreachDate: '05/15/2026',
-    memberStatus: 'Active', phone: '+917838997914', dob: '09/08/1977',
+    memberStatus: 'Active', phone: '+919175367487', dob: '09/08/1977',
     ipa: 'CFC', hpCode: 'HP-001', zip: '10016', city: 'Manhattan', state: 'NY',
   },
   {
@@ -119,6 +121,53 @@ export const HEDIS_MEMBERS = [
     outreachDots: ['failed', 'failed', 'pending'], outreachDate: '05/09/2026',
     memberStatus: 'Active', phone: '(702) 555-0140', dob: '10/11/1960',
     ipa: 'LA Care', hpCode: 'HP-002', zip: '07501', city: 'Paterson', state: 'NJ',
+  },
+  // Closed - Data demo patients for the Add Care Gaps flow. Each closed gap
+  // carries the dates and owner the drawer shows as the parent gap.
+  {
+    // Re-add a single closed measure: CBP becomes Open, linked to its parent.
+    id: 'ap-cd-01', in: 'GH', name: 'Gloria Hayes',
+    gender: 'F', age: '71y', memberId: '10901', language: 'en',
+    gaps: [
+      { code: 'CBP', status: 'Closed - Data', startDate: '02/10/2026', closedDate: '04/22/2026', assignee: 'Marcus Chen', measureYear: 2026 },
+    ],
+    assignee: 'Marcus Chen', assigneeInitials: 'MC',
+    startDate: '02/10/2026',
+    advIllness: 0, frailty: 0, riskLevel: '3_Moderate', tasks: null,
+    outreachDots: ['success', 'pending', 'pending'], outreachDate: '02/14/2026',
+    memberStatus: 'Active', phone: '(646) 555-0191', dob: '03/02/1955',
+    ipa: 'CFC', hpCode: 'HP-001', zip: '10016', city: 'Manhattan', state: 'NY',
+  },
+  {
+    // Mixed: COL is Closed - Data (re-addable), KED is still Open (blocked).
+    id: 'ap-cd-02', in: 'OB', name: 'Oscar Bennett',
+    gender: 'M', age: '66y', memberId: '10902', language: 'es',
+    gaps: [
+      { code: 'COL', status: 'Closed - Data', startDate: '01/15/2026', closedDate: '03/30/2026', assignee: 'Isabeth Partida Fra', measureYear: 2026 },
+      { code: 'KED', status: 'Open', startDate: '05/02/2026' },
+    ],
+    assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP',
+    startDate: '05/02/2026',
+    advIllness: 1, frailty: 0, riskLevel: '2_Mod-High', tasks: 1,
+    outreachDots: ['failed', 'success', 'pending'], outreachDate: '05/06/2026',
+    memberStatus: 'Active', phone: '(718) 555-0137', dob: '08/19/1960',
+    ipa: 'LA Care', hpCode: 'HP-002', zip: '11215', city: 'Brooklyn', state: 'NY',
+  },
+  {
+    // OMW is Closed - Data but not whitelisted for IPA-North, so it can't be
+    // re-added there; BCS (also Closed - Data, MY2025) can.
+    id: 'ap-cd-03', in: 'VR', name: 'Vivian Ross',
+    gender: 'F', age: '68y', memberId: '10903', language: 'en',
+    gaps: [
+      { code: 'OMW', status: 'Closed - Data', startDate: '03/05/2026', closedDate: '06/11/2026', assignee: null, measureYear: 2026 },
+      { code: 'BCS', status: 'Closed - Data', startDate: '04/01/2025', closedDate: '11/18/2025', assignee: 'Marcus Chen', measureYear: 2025 },
+    ],
+    assignee: null, assigneeInitials: null,
+    startDate: '03/05/2026',
+    advIllness: 0, frailty: 1, riskLevel: '4_Mod-Low', tasks: null,
+    outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
+    memberStatus: 'Active', phone: '(201) 555-0164', dob: '12/04/1957',
+    ipa: 'IPA-North', hpCode: 'HP-001', zip: '07102', city: 'Newark', state: 'NJ',
   },
   {
     id: 'ap-010', in: 'KC', name: 'Kendra Crona',
@@ -488,7 +537,7 @@ export const HEDIS_MEMBERS = [
     ipa: 'CFC', hpCode: 'HP-002', zip: '07030', city: 'Hoboken', state: 'NJ',
   },
 
-  // ── DSF-A-only seed (10 members) — reviewers running the PHQ-2
+  // ── DSF-A-only seed (10 members): reviewers running the PHQ-2
   //    without a paired follow-up gap yet. Covers the "opened from
   //    Astrana, not yet screened" pattern the worklist should show.
   {
@@ -592,7 +641,7 @@ export const HEDIS_MEMBERS = [
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10010', city: 'Newark', state: 'NJ',
   },
 
-  // ── DSF-B-only seed (5 members) — DSF-A (PHQ-2 Positive) completed
+  // ── DSF-B-only seed (5 members): DSF-A (PHQ-2 Positive) completed
   //    outside Fold, so only the follow-up (PHQ-9) gap is ingested from
   //    Astrana. Due date anchor here is the DSF-B ingestion date + 30
   //    days (not the PHQ-2 savedAt, since we never observed one).
@@ -698,4 +747,76 @@ export const HEDIS_MEMBERS = [
     memberStatus: 'Active', phone: '(347) 555-0115', dob: '08/25/2026',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
   },
+  // CIS-CMB10 demo members with a blank Vaccine Calendar, no doses or
+  // outreach yet (supabase/hedis_members_cis_cmb10_more_seed.sql).
+  {
+    id: '19309', in: 'OB', name: 'Olivia Bennett',
+    gender: 'F', age: '2m', memberId: '19309', language: 'en',
+    gaps: [{ code: 'CIS-CMB10', status: 'Open', startDate: '10/01/2026' }],
+    assignee: null, assigneeInitials: null, startDate: '10/01/2026',
+    advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
+    outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
+    memberStatus: 'Active', phone: '(555) 301-9309', dob: '08/27/2026',
+    ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
+  },
+  {
+    id: '19310', in: 'JW', name: 'James Wilson',
+    gender: 'M', age: '5m', memberId: '19310', language: 'en',
+    gaps: [{ code: 'CIS-CMB10', status: 'Open', startDate: '10/01/2026' }],
+    assignee: null, assigneeInitials: null, startDate: '10/01/2026',
+    advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
+    outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
+    memberStatus: 'Active', phone: '(555) 301-9310', dob: '05/27/2026',
+    ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
+  },
+  {
+    id: '19311', in: 'MG', name: 'Mia Garcia',
+    gender: 'F', age: '1d', memberId: '19311', language: 'en',
+    gaps: [{ code: 'CIS-CMB10', status: 'Open', startDate: '10/26/2026' }],
+    assignee: null, assigneeInitials: null, startDate: '10/26/2026',
+    advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
+    outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
+    memberStatus: 'Active', phone: '(555) 301-9311', dob: '10/26/2026',
+    ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
+  },
+  {
+    id: '19312', in: 'LO', name: 'Lucas Okafor',
+    gender: 'M', age: '2m', memberId: '19312', language: 'en',
+    gaps: [{ code: 'CIS-CMB10', status: 'Open', startDate: '10/01/2026' }],
+    assignee: null, assigneeInitials: null, startDate: '10/01/2026',
+    advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
+    outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
+    memberStatus: 'Active', phone: '(555) 301-9312', dob: '08/27/2026',
+    ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
+  },
+  {
+    id: '19313', in: 'EC', name: 'Emma Chen',
+    gender: 'F', age: '5m', memberId: '19313', language: 'en',
+    gaps: [{ code: 'CIS-CMB10', status: 'Open', startDate: '10/01/2026' }],
+    assignee: null, assigneeInitials: null, startDate: '10/01/2026',
+    advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
+    outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
+    memberStatus: 'Active', phone: '(555) 301-9313', dob: '05/27/2026',
+    ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
+  },
 ];
+
+// The Pharmacy worklist's patients (19401-19410) are on HEDIS too, so each
+// Open Care Gap on a pharmacy row opens its Care Gap Details. Built from the
+// pharmacy record so name, demographics and contract stay in step.
+const HEDIS_STATUS = { 'In Progress': 'Engaged', 'Closed-Data': 'Closed - Data' };
+const PHARMACY_PATIENT_HEDIS_ROWS = PHARMACY_WORKLIST_MEMBERS
+  .filter(m => (m.otherCareGaps || []).length)
+  .map(m => ({
+    id: `ph-${m.id}`, in: m.initials, name: m.name,
+    gender: m.gender, age: m.age.split(' ')[0], memberId: m.memberId, language: m.language,
+    gaps: m.otherCareGaps.map(g => ({ code: g.code, status: HEDIS_STATUS[g.status] || g.status, startDate: '09/15/2026' })),
+    assignee: m.assigneeName, assigneeInitials: m.assigneeInitials,
+    startDate: '09/15/2026',
+    advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
+    outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
+    memberStatus: 'Active', phone: m.phones?.[0]?.number || null, dob: m.dob,
+    ipa: m.ipa, hpCode: 'HP-001', zip: null, city: null, state: 'CA',
+  }));
+
+export const HEDIS_MEMBERS = [...BASE_HEDIS_MEMBERS, ...PHARMACY_PATIENT_HEDIS_ROWS];

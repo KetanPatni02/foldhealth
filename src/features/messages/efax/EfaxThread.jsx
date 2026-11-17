@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Avatar } from '../../../components/Avatar/Avatar';
-import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { ChatBubble } from '../../../components/ChatBubble/ChatBubble';
 import { ItemRow } from '../../../components/ItemRow/ItemRow';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
@@ -15,13 +15,13 @@ import commsStyles from '../comms/Comms.module.css';
 import { dayLabel } from '../comms/commsUtils';
 import { patientSnapshot, suggestionsFor } from './efaxData';
 import { PatientContextDrawer } from './PatientContextDrawer';
-import { DocPreviewDrawer } from '../../hcc/DocPreviewDrawer';
 import styles from './Efax.module.css';
 
 const FAX_PDF = '/charts/progress-note.pdf';
 const timeOnly = iso => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 // Suggestions shown in the message; the rest are behind "View N More".
 const SHOWN = 2;
+const mdY = (v) => new Date(v).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
 /**
  * One inbound fax (Figma 2932:39952): the sender's note, the file, and the
@@ -29,12 +29,14 @@ const SHOWN = 2;
  * Context" (+ opens Patient Context for eFax) and the AI's picks hang under
  * the message as "Suggested Members", each added with one click. Once added,
  * the patient shows as a row (View Profile | Change Patient), marked when
- * the OCR suggested them.
+ * the OCR suggested them. `outMembers` ({ name, record }): the number's
+ * assignees who are out of office, shown in a banner under the header.
  */
-export function EfaxThread({ fax, reading, patients, me }) {
+export function EfaxThread({ fax, reading, patients, me, outMembers = [] }) {
   const updateEfax = useAppStore(s => s.updateEfax);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const [picking, setPicking] = useState(false);
+  const [oooHidden, setOooHidden] = useState(false);
 
   useEffect(() => {
     if (!fax.read) updateEfax(fax.id, { read: true });
@@ -64,6 +66,7 @@ export function EfaxThread({ fax, reading, patients, me }) {
       linked: { patientId: p.id, name: p.name, by: me?.name || 'You', at: new Date().toISOString(), viaOcr, linkReferral },
     });
     setPicking(false);
+    setPreviewing(false);
     toast.success('Patient context added successfully');
   };
 
@@ -80,10 +83,33 @@ export function EfaxThread({ fax, reading, patients, me }) {
           <div className={listStyles.chatHeaderName}>{fax.senderName}</div>
           <div className={listStyles.chatHeaderMeta}>{fax.senderFax}</div>
         </div>
-        <div className={listStyles.chatHeaderActions}>
-          <ActionButton icon="solar:eye-linear" size="S" tooltip="View File" onClick={viewFile} />
-        </div>
       </div>
+
+      {outMembers.length > 0 && !oooHidden && (
+        <div className={`${listStyles.oooNotice} ${styles.oooNoticeTop}`} role="status">
+          <span>
+            {outMembers.length <= 2 ? outMembers.map(u => u.name).join(' and ') : (
+              // Three or more: the count, with who and when on hover.
+              <Tooltip
+                label={(
+                  <span className={styles.awayList}>
+                    {outMembers.map(u => <span key={u.name}>{u.name} • {mdY(u.record.startAt)} – {mdY(u.record.endAt)}</span>)}
+                  </span>
+                )}
+                placement="bottom"
+                align="left"
+                maxWidth={320}
+              >
+                <span className={styles.awayCount}>{outMembers.length} users</span>
+              </Tooltip>
+            )}
+            {outMembers.length > 2
+              ? ' assigned to this eFax inbox are out of office'
+              : `${outMembers.length > 1 ? ' are' : ' is'} out of office and may not respond`}
+          </span>
+          <CloseButton size={12} label="Dismiss" onClick={() => setOooHidden(true)} />
+        </div>
+      )}
 
       <div className={commsStyles.thread}>
         <div className={commsStyles.daySep}><span>{dayLabel(fax.receivedAt)}</span></div>
@@ -156,21 +182,15 @@ export function EfaxThread({ fax, reading, patients, me }) {
         </ChatBubble>
       </div>
 
-      {previewing && (
-        <DocPreviewDrawer
-          charts={[{ id: fax.id, n: fax.documentName, pdf, ext: 'pdf' }]}
-          showStatus={false}
-          onClose={() => setPreviewing(false)}
-        />
-      )}
-
-      {picking && (
+      {(picking || previewing) && (
         <PatientContextDrawer
+          fax={fax}
+          pdf={previewing ? pdf : undefined}
           suggestions={suggestions}
           patients={patients}
           current={linked && { ...linked, when: linkedWhen }}
           onSave={link}
-          onClose={() => setPicking(false)}
+          onClose={() => { setPicking(false); setPreviewing(false); }}
         />
       )}
     </div>

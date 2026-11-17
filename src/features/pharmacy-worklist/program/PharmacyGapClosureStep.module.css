@@ -1,0 +1,62 @@
+.wrap { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--space-2);
+  background: var(--status-info-light);
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+}
+
+.measureTitle { display: inline-flex; align-items: center; gap: var(--space-2); }
+/* Card body: one inset with the DashboardCard header. */
+.body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-1) var(--space-4) var(--space-4); }
+.detail { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; font-size: var(--font-md); color: var(--neutral-400); }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+.fact { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
+.factLabel { font-size: var(--font-sm); color: var(--neutral-300); }
+.factValue { font-size: var(--font-md); color: var(--neutral-400); }
+
+.signals, .cycles { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.cycles { flex-direction: column; align-items: flex-start; }
+.signalsLabel { font-size: var(--font-sm); color: var(--neutral-300); }
+.cycle { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-md); color: var(--neutral-400); }
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--space-2);
+  background: var(--status-warning-light);
+  /* Amber text fails contrast on its tint; the tint and icon carry the cue. */
+  color: var(--neutral-400);
+  font-size: var(--font-md);
+}
+.note > :first-child { color: var(--status-warning-dark); flex-shrink: 0; margin-top: 0.125rem; }
+
+.muted { font-size: var(--font-md); color: var(--neutral-300); }
+.toneError { color: var(--status-error); }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-6);
+  color: var(--neutral-300);
+  font-size: var(--font-base);
+  text-align: center;
+}
+.empty p { margin: 0; }
+.factHint { font-size: var(--font-sm); color: var(--neutral-300); }
+.recentFills { grid-column: span 2; }
+.recentFillRow { display: flex; flex-direction: column; gap: var(--space-1); }

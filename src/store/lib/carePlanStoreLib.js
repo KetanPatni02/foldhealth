@@ -7,6 +7,7 @@ import {
   templateLinkOwners,
 } from '../../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 import { defaultRenewalFor } from '../../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
+import { itemsFor } from '../../features/settings/care-plan-library/lib/templateCategories';
 
 // public.notifications row → the shape the bell popover already renders.
 // `persisted: true` is what separates a DB-backed notification from a local
@@ -130,11 +131,24 @@ function carePlanGoalToRow(g) {
   };
 }
 
+// SDOH fields (care_plan_sdoh migration); null on ordinary barriers.
+const sdohFromRow = (row) => ({
+  sdohDomain: row.sdoh_domain || null,
+  sdohNeed: row.sdoh_need || null,
+  zCode: row.z_code || '',
+});
+// Only an SDOH barrier writes the columns, so ordinary saves keep working
+// before the migration has run.
+const sdohToRow = (b) => (b?.sdohDomain
+  ? { sdoh_domain: b.sdohDomain, sdoh_need: b.sdohNeed || null, z_code: b.zCode || null }
+  : {});
+
 function mapCarePlanBarrierRow(row) {
   return {
     id: row.id,
     title: row.title,
     description: row.description || '',
+    ...sdohFromRow(row),
     createdBy: row.created_by || '',
     updatedBy: row.updated_by || '',
     createdAt: row.created_at,
@@ -164,6 +178,51 @@ function mapCarePlanTemplateRow(row) {
     // What adding it again does; before the renewal column, condition
     // templates extend and the rest reinstate.
     renewal: row.renewal || defaultRenewalFor(row.conditions),
+    // Episodic templates (care_plan_episodic_templates migration): one event,
+    // `episodeDays` long (null: until closed), optionally pausing the
+    // patient's other plans while it runs.
+    episodic: !!row.episodic,
+    episodeDays: row.episode_days ?? null,
+    episodePausesOngoing: row.episode_pauses_ongoing !== false,
+    // The program it runs as and the programs it pauses
+    // (care_plan_episode_programs migration).
+    episodeProgramCode: row.episode_program_code || null,
+    episodeSupersedes: row.episode_supersedes || [],
+    // Bulk import (care_plan_template_import migration): the upload it came
+    // from, the published template a draft revision replaces, and who approved it.
+    importBatchId: row.import_batch_id || null,
+    replacesTemplateId: row.replaces_template_id || null,
+    approvedBy: row.approved_by || '',
+    approvedAt: row.approved_at || null,
+    // Template versioning: the version whose content this row holds.
+    currentVersionNumber: row.current_version_number ?? null,
+    sourceProtocol: row.source_protocol || null,
+    // Common is goals / interventions / barriers; categories add more per
+    // patient (care_plan_template_categories migration, lib/templateCategories.js).
+    categories: Array.isArray(row.categories) ? row.categories : [],
+    // Retirement (care_plan_template_retirement migration): the template to
+    // use instead, and who retired it, when and why.
+    replacedByTemplateId: row.replaced_by_template_id || null,
+    retiredAt: row.retired_at || null,
+    retiredBy: row.retired_by || '',
+    retiredReason: row.retired_reason || '',
+    // Scheduled retirement: the Los Angeles day it retires on, while still in use.
+    retireOn: row.retire_on || null,
+  };
+}
+
+// One version in a template's chain (care_plan_template_versioning migration).
+function mapTemplateVersionRow(row) {
+  return {
+    id: row.id,
+    templateId: row.template_id,
+    versionNumber: row.version_number,
+    effectiveDate: String(row.effective_date || '').slice(0, 10),
+    content: row.content || {},
+    note: row.note || '',
+    migration: row.migration || null,
+    publishedBy: row.published_by || '',
+    publishedAt: row.published_at || null,
   };
 }
 
@@ -183,6 +242,30 @@ function mapTemplateInstanceRow(row) {
     replacedBy: row.replaced_by || null,
     doneCount: row.done_count ?? null,
     totalCount: row.total_count ?? null,
+    // The template version this run is on, and the one it will move to.
+    templateVersionId: row.template_version_id || null,
+    templateVersionNumber: row.template_version_number ?? null,
+    pendingVersionId: row.pending_version_id || null,
+    pendingMode: row.pending_mode || null,
+    pendingEffectiveDate: row.pending_effective_date ? String(row.pending_effective_date).slice(0, 10) : null,
+    // The IPA overlay it was applied with, and who must sign because of it.
+    overlayId: row.overlay_id || null,
+    signoffRoute: row.signoff_route || null,
+    // The template category this run applied (Common + that category).
+    categoryId: row.category_id || null,
+    categoryName: row.category_name || '',
+    // An episode: the plans it paused (resumed when it ends) and how it ended.
+    episodic: !!row.episodic,
+    pausedPlanIds: row.paused_plan_ids || [],
+    closeReason: row.close_reason || null,
+    // A category switch the care team declined for this run.
+    dismissedCategoryId: row.dismissed_category_id || null,
+    // The clinical protocol version it follows once migrated (else its
+    // template's sourceProtocol), and one it waits on until the next review.
+    protocolId: row.protocol_id || null,
+    protocolVersion: row.protocol_version || null,
+    pendingProtocolId: row.pending_protocol_id || null,
+    pendingProtocolMigrationId: row.pending_protocol_migration_id || null,
   };
 }
 
@@ -195,7 +278,7 @@ function partitionRetired(rows) {
   return [live, retired];
 }
 
-// Standalone (goal-independent) reusable intervention — the Interventions
+// Standalone (goal-independent) reusable intervention: the Interventions
 // Library tab. Distinct from the goal-linked care_plan_interventions rows.
 function mapCarePlanInterventionTemplateRow(row) {
   return {
@@ -226,6 +309,41 @@ function mapInterventionRow(row) {
    the library goal shape (so a template instantiates cleanly) plus the fields
    the patient view shows and edits: currentValue, trend, status. Kept beside
    the library mappers so a shared column rename can't drift. */
+// Individualized Plan AI fields (care_plan_ai_suggestions migration): the
+// flag, why, the patient inputs it cites, and who cleared it.
+const aiFromRow = (row) => ({
+  aiSuggested: !!row.ai_suggested,
+  aiRationale: row.ai_rationale || '',
+  aiCitations: Array.isArray(row.ai_citations) ? row.ai_citations : [],
+  aiReviewedBy: row.ai_reviewed_by || null,
+  aiReviewedAt: row.ai_reviewed_at || null,
+});
+// Only AI items (and their review) write the columns, so every other save
+// keeps working before the migration has run.
+const aiToRow = (x) => {
+  if (!x?.aiSuggested) return {};
+  return {
+    ai_suggested: true,
+    ai_rationale: x.aiRationale || null,
+    ai_citations: x.aiCitations || [],
+    ai_reviewed_by: x.aiReviewedBy || null,
+    ai_reviewed_at: x.aiReviewedAt || null,
+  };
+};
+
+// Why an item holds its status (e.g. 'Program UTR' when a program status
+// automation set it). Only written back when the row was read with the
+// column, so saves keep working before gbi_status_reason_migration.sql runs.
+const reasonFromRow = (row) => ({
+  ...('status_reason' in row ? { statusReason: row.status_reason || '' } : {}),
+  // Patient-facing wording from an IPA overlay (care_plan_ipa_overlays migration).
+  ...('patient_title' in row ? { patientTitle: row.patient_title || '' } : {}),
+});
+const reasonToRow = (x) => ({
+  ...(x.statusReason !== undefined ? { status_reason: x.statusReason || null } : {}),
+  ...(x.patientTitle !== undefined ? { patient_title: x.patientTitle || null } : {}),
+});
+
 function mapPatientCarePlanGoalRow(row) {
   return {
     id: row.id,
@@ -249,9 +367,11 @@ function mapPatientCarePlanGoalRow(row) {
     trend: row.trend || '-',
     status: row.status || 'Not Started',
     progress: row.progress ?? 0,
+    ...reasonFromRow(row),
     updatedBy: row.updated_by || '',
     links: 0,
     sortOrder: row.sort_order ?? 0,
+    ...aiFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -280,8 +400,10 @@ function patientCarePlanGoalToRow(g, planId) {
     trend: g.trend || '-',
     status: g.status || 'Not Started',
     progress: Number.isFinite(g.progress) ? g.progress : 0,
+    ...reasonToRow(g),
     updated_by: g.updatedBy || null,
     sort_order: g.sortOrder ?? 0,
+    ...aiToRow(g),
   };
 }
 
@@ -330,9 +452,11 @@ function mapPatientCarePlanInterventionRow(row) {
     assignee: { name: row.assignee_name || 'Unassigned', initials: row.assignee_initials || '' },
     status: row.status || 'Not Started',
     adherence: row.adherence || '-',
+    ...reasonFromRow(row),
     links: 0,
     sortOrder: row.sort_order ?? 0,
     updatedBy: row.updated_by || '',
+    ...aiFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -353,8 +477,10 @@ function patientCarePlanInterventionToRow(i, planId) {
     assignee_initials: i.assignee?.initials || '',
     status: i.status || 'Not Started',
     adherence: i.adherence || '-',
+    ...reasonToRow(i),
     updated_by: i.updatedBy || null,
     sort_order: i.sortOrder ?? 0,
+    ...aiToRow(i),
   };
 }
 
@@ -374,8 +500,11 @@ function mapPatientCarePlanBarrierRow(row, goalIdsFromJoin = null) {
     title: row.title || '',
     description: row.description || '',
     status: row.status || 'Not Started',
+    ...reasonFromRow(row),
     priority: row.priority || 'medium',
     sortOrder: row.sort_order ?? 0,
+    ...aiFromRow(row),
+    ...sdohFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -388,13 +517,16 @@ function patientCarePlanBarrierToRow(b, planId) {
     title: (b.title || '').trim(),
     description: b.description || '',
     status: b.status || 'Not Started',
+    ...reasonToRow(b),
     priority: b.priority || 'medium',
     sort_order: b.sortOrder ?? 0,
+    ...aiToRow(b),
+    ...sdohToRow(b),
   };
 }
 
 // Sync a barrier's goal set in the join table. Returns the goal ids that ended
-// up recorded — before the join-table migration that is the legacy column only.
+// up recorded: before the join-table migration that is the legacy column only.
 async function linkBarrierGoals(barrierId, goalIds) {
   const del = await supabase.from('patient_care_plan_barrier_goals').delete().eq('barrier_id', barrierId);
   const missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
@@ -419,16 +551,33 @@ function mapPatientCarePlanRow(row) {
     conditions: (row.conditions || []).map(label => ({ label })),
     conditionTotal: row.condition_total ?? (row.conditions || []).length,
     appliedTemplateIds: row.applied_template_ids || [],
-    // { [templateId]: 'low' | 'medium' | 'high' } — categorizes the applied
+    // A recommendation's templates awaiting approval (care_plan_recommended_templates
+    // migration): [{ id, name, why, automation }].
+    recommendedTemplates: Array.isArray(row.recommended_templates) ? row.recommended_templates : [],
+    // { [templateId]: 'low' | 'medium' | 'high' }: categorizes the applied
     // templates on the sticky-top strip. Empty until Alok Kumar runs the
     // care_plan_applied_template_priorities migration.
     appliedTemplatePriorities: row.applied_template_priorities && typeof row.applied_template_priorities === 'object'
       ? row.applied_template_priorities
       : {},
+    // Template groups the plan used (care_plan_template_groups migration):
+    // [{ groupId, versionNumber, appliedAt, appliedBy, dismissedVersion }].
+    appliedTemplateGroups: Array.isArray(row.applied_template_groups) ? row.applied_template_groups : [],
     createdDate: row.created_at,
     updatedAt: row.updated_at || null,
     signedBy: row.signed_by || null,
     signedAt: row.signed_at || null,
+    // Pause (care_plan_pause migration). Rows from before it are active.
+    status: row.status === 'paused' ? 'paused' : 'active',
+    pause: row.status === 'paused' ? {
+      reason: row.pause_reason || 'other',
+      note: row.pause_note || '',
+      pausedOn: row.paused_on || null,
+      resumeOn: row.resume_on || null,
+      autoResume: !!row.auto_resume,
+      pausedBy: row.paused_by || '',
+    } : null,
+    nextTouchpoint: row.next_touchpoint || null,
   };
 }
 
@@ -443,7 +592,7 @@ function carePlanKey(patientId, programId) {
 // readout share one source of truth.
 
 // Derive an audit entry from a goal/intervention save by diffing against its
-// previous state — a create, a status change, a progress change, a rename,
+// previous state: a create, a status change, a progress change, a rename,
 // or a generic edit. Progress is its own action so the Goal Details activity
 // feed can render the "changed the Progress" row with from → to badges.
 // A template's contents as they sit on the plan. There is no template_id on
@@ -458,11 +607,13 @@ function templateItems(template, slice, libraryGoals) {
     }
     return norm(e?.title || '');
   }).filter(Boolean));
-  const goalTitles = titlesOf(template.goals, true);
+  // Common and every category: only what is on the plan matches anyway.
+  const all = (k) => itemsFor(template, k, undefined);
+  const goalTitles = titlesOf(all('goals'), true);
   const goals = (slice?.goals || []).filter(g => goalTitles.has(norm(g.title)));
   const goalIds = new Set(goals.map(g => g.id));
-  const intvTitles = titlesOf(template.interventions);
-  const barrierTitles = titlesOf(template.barriers);
+  const intvTitles = titlesOf(all('interventions'));
+  const barrierTitles = titlesOf(all('barriers'));
   // Interventions match on title only, as the applied-templates strip does; a
   // later intervention hung off a template goal is not the template's.
   const interventions = (slice?.interventions || [])
@@ -566,7 +717,7 @@ function configChanges(base, prevConfig, nextConfig) {
     .map(k => ({
       ...base,
       action: 'updated',
-      detail: `${CONFIG_LABEL[k]}: ${configValue(a[k]) || '—'} → ${configValue(b[k]) || '—'}`,
+      detail: `${CONFIG_LABEL[k]}: ${configValue(a[k]) || '-'} → ${configValue(b[k]) || '-'}`,
     }));
 }
 
@@ -595,7 +746,7 @@ function auditForSave(entityType, next, prev) {
     const to = field.read(next) ?? '';
     if (String(from) === String(to)) continue;
     const fmt = field.format || (v => String(v ?? ''));
-    changes.push({ ...base, action: field.action, detail: `${fmt(from) || '—'} → ${fmt(to) || '—'}` });
+    changes.push({ ...base, action: field.action, detail: `${fmt(from) || '-'} → ${fmt(to) || '-'}` });
   }
   changes.push(...configChanges(base, prev.config, next.config));
   // A save that changed nothing we can name leaves no history line: an
@@ -614,6 +765,7 @@ function mapCarePlanAuditRow(row) {
     actor: row.actor || '',
     programCode: row.program_code || '',
     createdAt: row.created_at,
+    meta: row.meta || null,
   };
 }
 
@@ -657,6 +809,11 @@ async function applyTemplateToPlan(get, patientId, program, template, libraryGoa
     const payload = interventionPayloadFromTemplateEntry(
       entry, goalIdsFor(owners.intervention, titleKey)[0] || null,
     );
+    // A task entry points back at itself so spawn_care_plan_tasks reads the
+    // task template as it is when the task is created, not as it was now.
+    if (TASK_KINDS.has(payload.kind) && template.id && entry.id) {
+      payload.config = { ...payload.config, taskTemplate: { templateId: String(template.id), entryId: String(entry.id) } };
+    }
     const saved = await get().savePatientCarePlanIntervention(patientId, program, payload);
     if (saved) existingIntvTitles.add(titleKey);
   }
@@ -670,7 +827,11 @@ async function applyTemplateToPlan(get, patientId, program, template, libraryGoa
     );
     if (saved) existingBarrierTitles.add(titleKey);
   }
+
+  await get().spawnCarePlanTasks(patientId, program);
 }
+
+const TASK_KINDS = new Set(['patient-task', 'internal-task']);
 
 export {
   mapCarePlanGoalRow,
@@ -681,8 +842,10 @@ export {
   mapPatientSocialHistoryRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
+  sdohToRow,
   mapCarePlanTemplateRow,
   mapTemplateInstanceRow,
+  mapTemplateVersionRow,
   partitionRetired,
   mapCarePlanInterventionTemplateRow,
   mapInterventionRow,

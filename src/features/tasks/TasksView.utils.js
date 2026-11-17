@@ -9,7 +9,7 @@ export const TABS = [
 // Compose the single-source attribution line for row + kanban cards.
 //
 // A task's origin is exactly ONE of: a user, an automation, an agent, or
-// a care journey — never a combination. `task.meta` sometimes carries
+// a care journey: never a combination. `task.meta` sometimes carries
 // that origin (e.g. "Care Journey · Hypertension Control · '24", "Pool :
 // Coder", or a legacy "By : Dr. JeDee Potter" from an older schema); when
 // it does, meta IS the attribution and wins outright. Otherwise we fall
@@ -36,6 +36,8 @@ export const AUDIT_LOG_VERB_MAP = {
   priority_changed: 'changed the Priority',
   due_date_changed: 'changed the Due Date',
   assignee_changed: 'changed the Assignee',
+  ooo_reassigned: 'reassigned the task (Out of Office)',
+  ooo_returned: 'returned the task (Out of Office)',
   label_added: 'added a Label',
   label_removed: 'removed a Label',
   description_changed: 'updated the Description',
@@ -47,10 +49,12 @@ export const AUDIT_LOG_VERB_MAP = {
 };
 
 export const TASK_FILTER_DEFS = [
-  // Options are populated at runtime from taskProfiles in useTasksView —
+  // Options are populated at runtime from taskProfiles in useTasksView,
   // see filterDefs's usesProfiles branch. Empty here so the cold-load
   // dropdown never shows stale seed names.
   { key: 'assigned_to', label: 'Assigned to', primary: true, options: [] },
+  // Out of Office cover: each person out now. Options built in useTasksView.
+  { key: 'covering', label: 'Covering for', primary: true, multi: true, options: [] },
   { key: 'view_by', label: 'View By', primary: true, options: [
     { value: 'status', label: 'Status' },
     { value: 'priority', label: 'Priority' },
@@ -84,9 +88,9 @@ export const STATUS_LABELS = { pending: 'Pending', missed: 'Missed', completed: 
 export const PRIORITY_ORDER = ['high', 'medium', 'low', 'none'];
 export const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low', none: 'None' };
 export const STATUS_BADGE_VARIANTS = {
-  pending: 'status-queued',
-  missed: 'status-failed',
-  completed: 'status-completed',
+  pending: 'warning',
+  missed: 'danger',
+  completed: 'success',
 };
 export const STATUS_COLORS = {
   pending: 'var(--status-warning)',

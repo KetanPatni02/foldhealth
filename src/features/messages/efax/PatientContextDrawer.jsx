@@ -1,14 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../../components/Drawer/Drawer';
+import { SplitDrawerLayout } from '../../../components/Drawer/SplitDrawerLayout';
+import { FilePreview } from '../../../components/FilePreview/FilePreview';
 import { Button } from '../../../components/Button/Button';
 import { Select } from '../../../components/Select/Select';
 import { Icon } from '../../../components/Icon/Icon';
-import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Checkbox } from '../../../components/Checkbox/Checkbox';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { AiTooltipLabel } from '../../../components/Tooltip/AiTooltipLabel';
 import { ConfidenceBadge, SuggestedPatients } from '../../../components/SuggestedPatients/SuggestedPatients';
 import { sexAgeOf } from '../../../components/SuggestedPatients/patientMatch';
 import { PatientMeta } from '../../../components/SuggestedPatients/PatientMeta';
+import { faxWithName } from './faxDocument';
 import styles from './Efax.module.css';
 
 // "Aaron Carter (F•33y 2m)"
@@ -19,7 +22,10 @@ const nameWithMeta = (p) => {
 
 /**
  * Patient Context for eFax (Figma 2916:41416 → 2930:59418): pick who a fax
- * is about from Select Patient. The dropdown leads with the Suggested
+ * is about from Select Patient. Opened from View File (with `pdf`) it's laid
+ * out as the review drawers are (Figma Oct-Nov 2025, 523:20659): the fax on
+ * the left, so it can be read while choosing, and the form on the right. The
+ * dropdown leads with the Suggested
  * Members (confidence badge, hover for why), then All Patients. With no
  * patient picked, the Suggested Members also sit under the field as a
  * collapsible box (+ picks); when changing an added patient the dropdown
@@ -27,13 +33,17 @@ const nameWithMeta = (p) => {
  * Referral, and Save.
  * `onSave(patientId, viaOcr, { linkReferral })`.
  *
+ * @param {object} props.fax        – the fax: documentName, senderName, senderFax, pages, receivedAt
+ * @param {string} [props.pdf]      – its file; given, the drawer becomes the split preview
  * @param {Array} props.suggestions – from suggestionsFor(), best first
  * @param {Array} props.patients    – all patients
  * @param {{ patientId, name, linkReferral?, viaOcr?, by?, when? }} [props.current] – the
  *   patient the fax is already added to (Change Patient): starts selected, and
  *   Save waits for a change
  */
-export function PatientContextDrawer({ suggestions = [], patients = [], current, onSave, onClose }) {
+const NONE = [];
+
+export function PatientContextDrawer({ fax, pdf, suggestions = NONE, patients = NONE, current, onSave, onClose }) {
   const startId = current?.patientId ? String(current.patientId) : '';
   const [pickedId, setPickedId] = useState(startId);
   const [linkReferral, setLinkReferral] = useState(!!current?.linkReferral);
@@ -91,28 +101,52 @@ export function PatientContextDrawer({ suggestions = [], patients = [], current,
     ];
   }, [patients, suggestions, suggestedIds, current, startId]);
 
-  return (
-    <Drawer
-      title="Patient Context for eFax"
-      onClose={onClose}
-      noCloseDivider
-      headerRight={(
-        <>
-          <Button variant="primary" size="L" disabled={!pickedId || unchanged} onClick={() => onSave(pickedId, viaOcr, { linkReferral })}>Save</Button>
-          <span className={styles.headerDivider} />
-        </>
+  // The fax with the name it was read as highlighted; the plain file until that's ready.
+  const readName = fax?.extracted?.name;
+  const [marked, setMarked] = useState(null);
+  useEffect(() => {
+    if (!pdf || !readName) return undefined;
+    let url = null;
+    let cancelled = false;
+    faxWithName(pdf, readName, fax?.documentName)
+      .then((u) => { url = u; if (cancelled) URL.revokeObjectURL(u); else setMarked(u); })
+      .catch(() => {});
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
+  }, [pdf, readName, fax?.documentName]);
+
+  const received = fax?.receivedAt && new Date(fax.receivedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const docMeta = [
+    fax?.senderName && `From ${fax.senderName}${fax.senderFax ? ` (${fax.senderFax})` : ''}`,
+    fax?.pages && `${fax.pages} ${fax.pages === 1 ? 'page' : 'pages'}`,
+    received && `Received ${received}`,
+  ].filter(Boolean);
+
+  // Which fax this is, over the fax itself.
+  const docInfo = fax && (
+    <div className={styles.contextDoc}>
+      <span className={styles.contextDocName}>{fax.documentName}</span>
+      {docMeta.length > 0 && (
+        <span className={styles.contextDocMeta}>
+          {docMeta.map((m, i) => (
+            <span key={m}>{i > 0 && <span className={styles.contextDocDot} aria-hidden="true">•</span>}{m}</span>
+          ))}
+        </span>
       )}
-    >
-      <div className={styles.contextBody}>
+    </div>
+  );
+
+  const fields = (
+    <div className={`${styles.contextBody} ${pdf ? styles.contextForm : ''}`}>
         <Select
           label="Select Patient"
+          portal={!!pdf}
           searchable
           defaultOpen={!!startId}
           placeholder="Search Patient"
           searchPlaceholder="Search patients"
           options={options}
           value={pickedId}
-          onChange={setPickedId}
+          onValueChange={setPickedId}
         />
         {/* Nothing picked: the suggestions sit under the field. Picked:
             Link Referral (the suggestions stay in the dropdown). */}
@@ -124,7 +158,50 @@ export function PatientContextDrawer({ suggestions = [], patients = [], current,
         ) : suggestions.length > 0 && (
           <SuggestedPatients boxed items={suggestions} onAdd={it => setPickedId(String(it.patient.id))} />
         )}
-      </div>
+    </div>
+  );
+
+  const save = (
+    <>
+      <Button disabled={!pickedId || unchanged} onClick={() => onSave(pickedId, viaOcr, { linkReferral })}>Save</Button>
+      <span className={styles.headerDivider} />
+    </>
+  );
+
+  if (!pdf) {
+    return (
+      <Drawer title="Patient Context for eFax" onClose={onClose} noCloseDivider headerRight={save}>
+        {fields}
+      </Drawer>
+    );
+  }
+
+  return (
+    <Drawer
+      title="Preview Document"
+      onClose={onClose}
+      noCloseDivider
+      width="min(1280px, calc(100vw - 16px))"
+      bodyClassName={SplitDrawerLayout.bodyClassName}
+      headerRight={save}
+    >
+      <SplitDrawerLayout
+        left={(
+          <>
+            {docInfo}
+            <FilePreview className={styles.contextPdf} src={marked || pdf} name={fax?.documentName} ext="pdf" />
+          </>
+        )}
+        right={(
+          <div className={styles.contextPane}>
+            {/* The pane's own header, level with the fax's details on the left. */}
+            <div className={styles.contextHead}>
+              <h3 className={styles.contextHeading}>Add Patient Context from Document</h3>
+            </div>
+            {fields}
+          </div>
+        )}
+      />
     </Drawer>
   );
 }

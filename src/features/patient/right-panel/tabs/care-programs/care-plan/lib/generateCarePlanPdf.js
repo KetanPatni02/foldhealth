@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import { parseLocalDate } from '../../../../../../../lib/localDate';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../settings/care-plan-library/lib/goalFormat';
-import { CARE_PLAN_INTERVENTION_MENU } from './carePlanInterventionMenu';
+import { CARE_PLAN_INTERVENTION_KINDS } from './carePlanInterventionMenu';
 import { matchesShareConditionFilter } from './carePlanShareFilters';
 import { generateCarePlanSummaryPdf } from './generateCarePlanSummaryPdf';
 
@@ -9,12 +9,12 @@ import { generateCarePlanSummaryPdf } from './generateCarePlanSummaryPdf';
  * Care plan PDF, "Tables" format: a patient card, then Goals, Interventions
  * and Barriers as one clean table each (or a block per condition), the Care
  * Note and the note to the recipient. A4, Inter when the fonts are passed.
- * Empty values print "—"; nothing is filled in.
+ * Empty values print "-"; nothing is filled in.
  */
 const PAGE = { w: 595, h: 842 };
 const M = 32;
 const CONTENT_W = PAGE.w - M * 2;
-const DASH = '—';
+const DASH = '-';
 
 const C = {
   ink: [31, 41, 55],
@@ -28,23 +28,32 @@ const C = {
   white: [255, 255, 255],
 };
 
+// The app's GBI status colors (lib/gbiStatus tones) as RGB, since the PDF
+// can't read CSS tokens: In Progress amber, On Hold blue, Discontinued
+// orange and Not Applicable faded, neither of them failure red.
 const STATUS_STYLE = {
   'Not Started': { bg: [241, 243, 246], text: [95, 106, 126] },
-  'In Progress': { bg: [233, 242, 255], text: [32, 96, 199] },
-  'On Hold': { bg: [255, 244, 229], text: [176, 104, 0] },
+  'In Progress': { bg: [255, 244, 229], text: [176, 104, 0] },
+  'On Hold': { bg: [233, 242, 255], text: [32, 96, 199] },
   Met: { bg: [230, 246, 236], text: [22, 128, 61] },
   Completed: { bg: [230, 246, 236], text: [22, 128, 61] },
   Resolved: { bg: [230, 246, 236], text: [22, 128, 61] },
   'Not Met': { bg: [254, 236, 236], text: [196, 43, 28] },
   Overdue: { bg: [254, 236, 236], text: [196, 43, 28] },
+  Discontinued: { bg: [255, 240, 230], text: [194, 87, 18] },
+  'Not Applicable': { bg: [246, 247, 249], text: [150, 158, 172] },
 };
 const statusStyle = s => STATUS_STYLE[s] || STATUS_STYLE['Not Started'];
 
-const STATUS_RANK = { 'In Progress': 0, 'On Hold': 1, 'Not Met': 2, Overdue: 2, 'Not Started': 3, Met: 4, Completed: 4, Resolved: 4 };
+// Open work first, then outcomes; items closed without one sort last.
+const STATUS_RANK = {
+  'In Progress': 0, 'On Hold': 1, 'Not Met': 2, Overdue: 2, 'Not Started': 3,
+  Met: 4, Completed: 4, Resolved: 4, Discontinued: 5, 'Not Applicable': 5,
+};
 const byStatus = (a, b) => ((STATUS_RANK[a.status] ?? 3) - (STATUS_RANK[b.status] ?? 3))
   || (a.title || '').localeCompare(b.title || '');
 
-const KIND_LABEL = Object.fromEntries(CARE_PLAN_INTERVENTION_MENU.filter(i => i.key).map(i => [i.key, i.label]));
+const KIND_LABEL = Object.fromEntries(CARE_PLAN_INTERVENTION_KINDS.map(i => [i.key, i.label]));
 
 function fmtDate(value) {
   if (!value) return '';
@@ -78,7 +87,10 @@ export function conditionGroups(selection) {
  * @param {object} [options] Personalize settings: format, groupBy, carePlanNote,
  *   demographics ([{ label, value }]), header / footer (drawn components;
  *   header undefined or null for none, footer undefined for the standard
- *   line and null for none), logo, fonts
+ *   line and null for none), logo, fonts, sections (Personalize > Content:
+ *   labs / medications / history, from carePlanPrintContent). Items may carry
+ *   `changeTag` ("New", "Changed: …", "Removed") when printing recent changes;
+ *   meta.changesNote says what they were compared with.
  * @returns {Blob}
  */
 export function generateCarePlanPdf(meta, selection, options = {}) {
@@ -97,6 +109,7 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     footer: footerImage,
     logo = null,
     fonts = null,
+    sections = [],
   } = options;
   const { patientName = 'Patient', programName = '', sharedBy = '', date = '', note = '', versionLabel = '' } = meta;
 
@@ -184,6 +197,12 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     y += 34;
   };
   versionBand();
+  if (meta.changesNote) {
+    font('regular', 8.5, C.muted);
+    const lines = wrap(meta.changesNote, CONTENT_W);
+    doc.text(lines, M, y);
+    y += lines.length * 11 + 10;
+  }
 
   // ── Patient card: name, conditions as chips, picked demographics ──
   {
@@ -318,20 +337,22 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     y += 22;
   };
 
+  // A recent-changes print leads each row's second line with what changed.
+  const withTag = (item, sub) => [item.changeTag, sub].filter(Boolean).join(' · ');
   const goalRow = g => [
-    { title: g.title, sub: g.subtitle },
+    { title: g.title, sub: withTag(g, g.subtitle) },
     [formatGoalTarget(g), g.duration ? `in ${formatGoalDuration(g)}` : ''].filter(Boolean).join(' '),
     [g.currentValue && g.currentValue !== 'No Data' ? g.currentValue : '', g.trend && g.trend !== '-' ? g.trend : ''].filter(Boolean).join(' · '),
     fmtDate(g.createdAt),
     g.status,
   ];
   const intvRow = i => [
-    { title: i.title, sub: [KIND_LABEL[i.kind], i.config?.dueDate ? `Due ${fmtDate(i.config.dueDate)}` : ''].filter(Boolean).join(' · ') },
+    { title: i.title, sub: withTag(i, [KIND_LABEL[i.kind], i.config?.dueDate ? `Due ${fmtDate(i.config.dueDate)}` : ''].filter(Boolean).join(' · ')) },
     i.assignee?.name && i.assignee.name !== 'Unassigned' ? i.assignee.name : '',
     fmtDate(i.createdAt),
     i.status,
   ];
-  const barrierRow = b => [{ title: b.title, sub: b.description }, fmtDate(b.createdAt), b.status];
+  const barrierRow = b => [{ title: b.title, sub: withTag(b, b.description) }, fmtDate(b.createdAt), b.status];
 
   const GOAL_COLS = [
     { label: 'Goal', w: 0.38 }, { label: 'Target', w: 0.22 }, { label: 'Current', w: 0.13 },
@@ -345,11 +366,12 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     { label: 'Barrier', w: 0.73 }, { label: 'Start', w: 0.13 }, { label: 'Status', w: 0.14, kind: 'status' },
   ];
 
+  const emptyText = noun => (meta.changesNote ? `No changes to ${noun}.` : `No ${noun} included.`);
   const drawTypeSections = (part, { skipEmpty = false, titleSize = 11 } = {}) => {
     [
-      { title: 'Goals', items: part.goals || [], cols: GOAL_COLS, row: goalRow, empty: 'No goals included.' },
-      { title: 'Interventions', items: part.interventions || [], cols: INTV_COLS, row: intvRow, empty: 'No interventions included.' },
-      { title: 'Barriers', items: part.barriers || [], cols: BARRIER_COLS, row: barrierRow, empty: 'No barriers included.' },
+      { title: 'Goals', items: part.goals || [], cols: GOAL_COLS, row: goalRow, empty: emptyText('goals') },
+      { title: 'Interventions', items: part.interventions || [], cols: INTV_COLS, row: intvRow, empty: emptyText('interventions') },
+      { title: 'Barriers', items: part.barriers || [], cols: BARRIER_COLS, row: barrierRow, empty: emptyText('barriers') },
     ].filter(s => !skipEmpty || s.items.length).forEach(s => {
       sectionTitle(s.title, s.items.length, titleSize);
       table(s.cols, [...s.items].sort(byStatus).map(s.row), s.empty);
@@ -373,6 +395,12 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     });
   } else {
     drawTypeSections(selection);
+  }
+
+  // ── Content sections: labs, medications, history ──
+  for (const section of sections) {
+    sectionTitle(section.title, section.rows.length);
+    table(section.cols, section.rows, section.empty);
   }
 
   // ── Notes ──

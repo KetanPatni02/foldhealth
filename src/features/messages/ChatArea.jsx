@@ -6,6 +6,9 @@ import { ChatHeader } from './ChatHeader';
 import { ChatMessagesList } from './ChatMessagesList';
 import { MessageComposer } from '../../components/MessageComposer/MessageComposer';
 import { Icon } from '../../components/Icon/Icon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
+import { useAppStore } from '../../store/useAppStore';
+import { activeOooFor } from '../ooo/oooUtils';
 import { toast } from '../../components/Toast/sonnerToast';
 import { getDisplayName } from './messageUtils';
 import styles from './MessagesView.module.css';
@@ -20,6 +23,12 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
   const [dragOver, setDragOver]           = useState(false);
   const [pending, setPending]             = useState([]);
   const [formPickerOpen, setFormPickerOpen] = useState(false);
+  // The person on the other end out of office: a note over the composer,
+  // dismissable for this conversation.
+  const oooRecords = useAppStore(s => s.oooRecords);
+  const otherOut = otherUser ? activeOooFor(oooRecords, { id: otherUser.id || null, name: getDisplayName(otherUser) }) : null;
+  const [oooHiddenFor, setOooHiddenFor] = useState(null);
+  const showOoo = !!otherOut && oooHiddenFor !== otherUser?.id;
 
   const messagesRef   = useRef(null);
   const channelRef    = useRef(null);
@@ -84,24 +93,28 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
   useEffect(() => {
     channelRef.current?.unsubscribe();
     const key = `dm-${[currentUser.id, otherUser.id].sort().join('-')}`;
+    const onInsert = (payload) => {
+      const msg = payload.new;
+      const relevant =
+        (msg.sender_id === currentUser.id && msg.recipient_id === otherUser.id) ||
+        (msg.sender_id === otherUser.id   && msg.recipient_id === currentUser.id);
+      if (!relevant) return;
+      setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
+      if (msg.recipient_id === currentUser.id) {
+        supabase.from('direct_messages').update({ read_at: new Date().toISOString() }).eq('id', msg.id)
+          .then(() => onUpdateRef.current?.());
+      }
+      scrollToBottom(false);
+    };
     channelRef.current = supabase
       .channel(key)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (payload) => {
+      // Filtered to this user's rows, so Realtime doesn't check every message
+      // in the system against RLS. One binding per side of the conversation.
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `recipient_id=eq.${currentUser.id}` }, onInsert)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `sender_id=eq.${currentUser.id}` }, onInsert)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'direct_messages', filter: `sender_id=eq.${currentUser.id}` }, (payload) => {
         const msg = payload.new;
-        const relevant =
-          (msg.sender_id === currentUser.id && msg.recipient_id === otherUser.id) ||
-          (msg.sender_id === otherUser.id   && msg.recipient_id === currentUser.id);
-        if (!relevant) return;
-        setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
-        if (msg.recipient_id === currentUser.id) {
-          supabase.from('direct_messages').update({ read_at: new Date().toISOString() }).eq('id', msg.id)
-            .then(() => onUpdateRef.current?.());
-        }
-        scrollToBottom(false);
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'direct_messages' }, (payload) => {
-        const msg = payload.new;
-        if (msg.sender_id === currentUser.id && msg.read_at) {
+        if (msg.read_at) {
           setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, read_at: msg.read_at } : m));
         }
       })
@@ -223,6 +236,13 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
         onReply={setReplyTo}
       />
 
+      {/* Over the composer's top border, at the foot of the conversation. */}
+      {showOoo && (
+        <div className={styles.oooNotice} role="status">
+          <span>{getDisplayName(otherUser)} is out of office and may not respond</span>
+          <CloseButton size={12} label="Dismiss" onClick={() => setOooHiddenFor(otherUser.id)} />
+        </div>
+      )}
       <div
         className={dragOver ? styles.dragOver : undefined}
         onDragOver={e => { e.preventDefault(); setDragOver(true); }}

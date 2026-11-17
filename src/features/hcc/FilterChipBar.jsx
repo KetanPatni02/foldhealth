@@ -1,8 +1,10 @@
 import { useEffect, useMemo } from 'react';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
-import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { FilterBar } from '../worklists/FilterBar';
 import { RangeSliderPopover } from '../../components/RangeSliderPopover/RangeSliderPopover';
 import { DateRangePopover } from '../../components/DateRangePopover/DateRangePopover';
+import { dobRangeSummary } from '../../components/DateRangePopover/yearSpan';
+import { useSavedFilterActions } from './useSavedFilterActions';
 import { useAppStore } from '../../store/useAppStore';
 import {
   FILTER_DEF_MAP as HCC_FILTER_DEF_MAP,
@@ -10,12 +12,14 @@ import {
   PRIMARY_FILTER_KEYS as HCC_PRIMARY_FILTER_KEYS,
 } from './filters';
 
+const COVERING_KEY = 'coveringFor';
+
 /**
  * Wrap a state mutation in document.startViewTransition when the browser
  * supports it, so the HCC worklist tbody crossfades between filter sets
  * (paired with the view-transition-name in HccWorklistRow.module.css).
  * Falls back to a direct call when the API is unavailable (Firefox pre-129,
- * Safari pre-18) — filter still applies, just without the crossfade.
+ * Safari pre-18): filter still applies, just without the crossfade.
  *
  * Rapid filter changes abort in-flight transitions; the API surfaces that
  * as InvalidStateError on the ready/finished promises. We swallow those
@@ -54,24 +58,59 @@ const STORE_SELECTORS_BY_LIST = {
     setVisible:    'setHedisVisibleFilterKeys',
     clearVisible:  'clearHedisVisibleFilters',
   },
+  Pharmacy: {
+    filters:       'pharmacyFilters',
+    setFilter:     'setPharmacyFilter',
+    clearFilters:  'clearPharmacyFilters',
+    visibleKeys:   'pharmacyVisibleFilterKeys',
+    setVisible:    'setPharmacyVisibleFilterKeys',
+    clearVisible:  'clearPharmacyVisibleFilters',
+  },
 };
 
 export function FilterChipBar({
   list = 'HCC',
   filterDefMap = HCC_FILTER_DEF_MAP,
-  moreFilterItems = HCC_MORE_FILTER_ITEMS,
-  primaryFilterKeys = HCC_PRIMARY_FILTER_KEYS,
+  moreFilterItems: moreFilterItemsProp = HCC_MORE_FILTER_ITEMS,
+  primaryFilterKeys: primaryFilterKeysProp = HCC_PRIMARY_FILTER_KEYS,
   dynamicOpts: dynamicOptsProp,
   onSaveFilter,
+  collapsed = false,
+  // Optional "Covering for" chip ({ names, selected, onChange }). Its value
+  // is owned by the caller, not the store, and the chip only shows while
+  // `names` is non-empty.
+  covering,
 }) {
   const sel = STORE_SELECTORS_BY_LIST[list] || STORE_SELECTORS_BY_LIST.HCC;
 
-  const filters             = useAppStore(s => s[sel.filters]);
+  const storeFilters        = useAppStore(s => s[sel.filters]);
   const setFilter           = useAppStore(s => s[sel.setFilter]);
   const clearFilters        = useAppStore(s => s[sel.clearFilters]);
   const storedVisible       = useAppStore(s => s[sel.visibleKeys]);
   const setVisibleFilterKeys= useAppStore(s => s[sel.setVisible]);
   const clearVisibleFilters = useAppStore(s => s[sel.clearVisible]);
+  // A selected saved filter stays selected while edited: Go Back / Update it.
+  const savedActions = useSavedFilterActions(list, storeFilters, clearFilters, onSaveFilter);
+
+  const withCovering = (covering?.names?.length ?? 0) > 0;
+  const coveringSelected = covering?.selected;
+  const filters = useMemo(
+    () => (withCovering ? { ...storeFilters, [COVERING_KEY]: coveringSelected || [] } : storeFilters),
+    [withCovering, storeFilters, coveringSelected],
+  );
+  // Covering for sits right after Assignee so it stays on the first line.
+  const moreFilterItems = useMemo(() => {
+    if (!withCovering) return moreFilterItemsProp;
+    const at = moreFilterItemsProp.findIndex(x => x.label === 'Assignee') + 1;
+    const next = [...moreFilterItemsProp];
+    next.splice(at, 0, { k: COVERING_KEY, label: 'Covering for', primary: true });
+    return next;
+  }, [withCovering, moreFilterItemsProp]);
+  const primaryFilterKeys = useMemo(() => {
+    if (!withCovering) return primaryFilterKeysProp;
+    const base = new Set(primaryFilterKeysProp);
+    return moreFilterItems.filter(x => x.k === COVERING_KEY || base.has(x.k)).map(x => x.k);
+  }, [withCovering, primaryFilterKeysProp, moreFilterItems]);
 
   const showToast = useAppStore(s => s.showToast);
   const hccMembers = useAppStore(s => s.hccMembers);
@@ -134,7 +173,7 @@ export function FilterChipBar({
     return def?.opts || [];
   };
 
-  // FilterDefs for the shared bar — moreFilterItems shape ({k,label}) plus a
+  // FilterDefs for the shared bar: moreFilterItems shape ({k,label}) plus a
   // `primary` flag driven by PRIMARY_FILTER_KEYS, and matching `key` prop.
   const primaryKeySet = useMemo(() => new Set(primaryFilterKeys), [primaryFilterKeys]);
 
@@ -158,7 +197,7 @@ export function FilterChipBar({
   // Toggle a chip's visibility from the More Filters popover. Base priority:
   //   1. The user's persisted custom set (they've customized before).
   //   2. Whatever FilterBar is *currently* showing after auto-fit narrowed
-  //      the row (passed in as `currentVisible`) — so toggling one chip on
+  //      the row (passed in as `currentVisible`): so toggling one chip on
   //      only reveals that chip, not every hidden primary at once.
   //   3. Primary set (very first open, before auto-fit measured anything).
   const toggleVisible = (k, currentVisible) => {
@@ -184,10 +223,21 @@ export function FilterChipBar({
   const renderChip = (k /* , mirror */) => {
     const item = moreFilterItems.find(x => x.k === k);
     if (!item) return null;
+    if (k === COVERING_KEY) {
+      return (
+        <FilterChip
+          label={item.label}
+          options={covering.names}
+          selected={filters[k] || []}
+          onChange={list === 'HCC' ? (next) => withViewTransition(() => covering.onChange(next)) : covering.onChange}
+          searchable
+        />
+      );
+    }
     const def = filterDefMap[k];
     const vals = filters[k] || [];
     const active = vals.length > 0;
-    const summary = active ? summarize(k, vals) : undefined;
+    const summary = active ? summarize(k, vals, def) : undefined;
     const setVals = list === 'HCC'
       ? (next) => withViewTransition(() => setFilter(k, next))
       : (next) => setFilter(k, next);
@@ -199,8 +249,8 @@ export function FilterChipBar({
           active={false}
           renderPopover={({ onClose }) => {
             showToast(
-              def ? `Filter "${item.label}" popover — not yet wired`
-                  : `Filter "${item.label}" — coming soon`
+              def ? `Filter "${item.label}" popover: not yet wired`
+                  : `Filter "${item.label}", coming soon`
             );
             onClose();
             return null;
@@ -248,6 +298,7 @@ export function FilterChipBar({
               selected={vals}
               onChange={setVals}
               onClose={onClose}
+              years={def.years}
             />
           )}
         />
@@ -283,33 +334,45 @@ export function FilterChipBar({
 
   return (
     <FilterBar
+      collapsed={collapsed}
       autoFit
+      // HCC and HEDIS follow the filter spec: primaries always show; More
+      // Filters lists the secondary filters by domain.
+      pinPrimary
       leading={null}
       filterDefs={filterDefs}
       primaryKeys={primaryFilterKeys}
       filters={filters}
-      onFilterChange={list === 'HCC'
-        ? (k, next) => withViewTransition(() => setFilter(k, next))
-        : (k, next) => setFilter(k, next)}
-      onClearAll={list === 'HCC'
-        ? () => withViewTransition(() => clearFilters())
-        : clearFilters}
+      onFilterChange={(k, next) => {
+        const apply = k === COVERING_KEY ? () => covering.onChange(next) : () => setFilter(k, next);
+        if (list === 'HCC') withViewTransition(apply); else apply();
+      }}
+      onClearAll={() => {
+        const clear = () => { covering?.onChange([]); savedActions.onClearAll(); };
+        if (list === 'HCC') withViewTransition(clear); else clear();
+      }}
+      clearAllLabel={savedActions.clearAllLabel}
+      saveLabel={savedActions.saveLabel}
+      saveMenuItems={savedActions.saveMenuItems}
+      onSaveMenuSelect={savedActions.onSaveMenuSelect}
       onSaveFilter={onSaveFilter}
       multiSelect
       visibleKeys={controlledVisibleKeys}
       onToggleVisible={toggleVisible}
       onClearVisible={clearVisibleFilters}
       moreFilterItems={moreFilterItems}
-      hasActive={activeKeys.length > 0}
+      hasActive={activeKeys.length > 0 || savedActions.edited}
       showInternalSaveDialog={false}
       renderChip={renderChip}
     />
   );
 }
 
-function summarize(k, vals) {
-  if (k === 'dec' && vals.length >= 2) return `${vals[0]}–${vals[1]}`;
-  if (['cd', 'dos', 'dob', 'lvd', 'lastOutreachDate'].includes(k) && vals.length >= 2) {
+function summarize(k, vals, def) {
+  if ((k === 'dec' || def?.type === 'range') && vals.length >= 2) return `${vals[0]}–${vals[1]}`;
+  // DOB: a year pick reads "1950 – 1960" (or "1950"); a custom range keeps the year.
+  if (k === 'dob' && vals.length >= 2) return dobRangeSummary(vals);
+  if ((['cd', 'dos', 'dob', 'lvd', 'lastOutreachDate'].includes(k) || def?.type === 'date') && vals.length >= 2) {
     return `${formatShortDate(vals[0])} – ${formatShortDate(vals[1])}`;
   }
   if (vals.length > 2) return `${vals[0]} +${vals.length - 1}`;
@@ -317,6 +380,6 @@ function summarize(k, vals) {
 }
 
 function formatShortDate(iso) {
-  const [y, m, d] = (iso || '').split('-');
+  const [, m, d] = (iso || '').split('-');
   return m && d ? `${m}/${d}` : iso;
 }

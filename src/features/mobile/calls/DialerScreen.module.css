@@ -1,0 +1,113 @@
+/* Dialer (Figma 759:20205) */
+.dialer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-5) max(var(--space-8), env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+.top {
+  display: flex;
+  align-items: center;
+  margin-left: calc(var(--space-3) * -1);
+}
+/* Line, number, keypad and call button, centred in the space left (gap 52) */
+.center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: min(calc(var(--space-12) + var(--space-1)), 4dvh);
+}
+.line {
+  margin: 0;
+  font-size: var(--font-base);
+  line-height: var(--leading-tight);
+  color: var(--neutral-300);
+}
+.display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+}
+.number {
+  min-height: 1.2em;
+  margin: 0;
+  font-size: calc(var(--font-2xl) * 2);
+  line-height: var(--leading-tight);
+  color: var(--neutral-400);
+  text-align: center;
+  word-break: break-all;
+}
+.match {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: var(--font-lg);
+  line-height: var(--leading-tight);
+  color: var(--neutral-300);
+}
+/* 78px keys, 24px apart (Figma Base buttons 759:20222); smaller on short screens
+   so the call button stays on screen */
+.dialer { --key: min(78px, 10.5dvh); }
+.pad {
+  display: grid;
+  grid-template-columns: repeat(3, var(--key));
+  gap: min(var(--space-6), 2.8dvh) var(--space-6);
+}
+.key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: var(--key);
+  height: var(--key);
+  padding: var(--space-1);
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--neutral-75);
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+.key:active { background: var(--neutral-150); }
+.digit {
+  font-size: calc(var(--font-xl) * 2);
+  line-height: var(--leading-tight);
+}
+.letters {
+  min-height: 1.2em;
+  font-size: var(--font-2xs);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.plus {
+  font-size: var(--font-lg);
+  line-height: var(--leading-tight);
+}
+.actions {
+  display: grid;
+  grid-template-columns: repeat(3, var(--key));
+  column-gap: var(--space-6);
+  align-items: center;
+  justify-items: center;
+}
+.call {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--key);
+  height: var(--key);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--status-success-dark);
+  color: var(--on-color);
+  cursor: pointer;
+}
+.call:disabled { opacity: 0.4; cursor: default; }

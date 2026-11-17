@@ -3,7 +3,7 @@
 .drawerBody { padding: 0 !important; }
 
 /* Vertical divider between the "Schedule" action button and the close
-   button — pairs with <Drawer noCloseDivider> so the close button doesn't
+   button: pairs with <Drawer noCloseDivider> so the close button doesn't
    draw its own border. Standard 1px × 16px neutral-150. */
 .headerDivider {
   width: 1px;
@@ -13,7 +13,7 @@
 }
 
 .content {
-  /* Uniform 16px inset on all sides — the 16/24 split read as too
+  /* Uniform 16px inset on all sides, the 16/24 split read as too
      much horizontal breathing room compared to vertical, especially
      when the drawer sits inside a 640px pane. */
   padding: var(--space-4);
@@ -288,7 +288,7 @@
 
 /* ── Provider Dropdown ── */
 .providerDropdown {
-  position: absolute; top: calc(100% + 4px); left: 0; min-width: 340px;
+  position: absolute; top: calc(100% + 4px); left: 0; min-width: 380px;
   background: var(--neutral-0); border: 0.5px solid var(--neutral-150);
   border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); z-index: 50;
   overflow: hidden;
@@ -301,6 +301,19 @@
 }
 .providerItem:last-child { border-bottom: none; }
 .providerItem:hover { background: var(--neutral-50); }
+/* Out of Office providers: listed last under Not Available, not pickable
+   (the badge keeps its tooltip). */
+.providerGroup { padding: var(--space-2) var(--space-3) var(--space-1); font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300); border-bottom: 0.5px solid var(--neutral-100); }
+.providerItemDisabled { cursor: not-allowed; }
+.providerItemDisabled:hover { background: none; }
+/* Unavailable: lighter text instead of opacity, so the Out of Office badge
+   and the covering line keep their colour. */
+.providerNameRow { display: flex; align-items: center; gap: var(--space-1); }
+.providerMutedName { font-size: var(--font-base); font-weight: 500; color: var(--placeholder-text); }
+.providerMutedSub { font-size: var(--font-sm); color: var(--placeholder-text); }
+/* Stays readable on the muted row: who to book instead. */
+.providerCovering { margin-top: var(--space-1); font-size: var(--font-sm); color: var(--neutral-300); }
+.providerItemDisabled .providerCoveredBy { margin-top: var(--space-1); font-size: var(--font-sm); color: var(--neutral-300); }
 .addSecondaryBtn {
   display: flex; align-items: center; gap: 4px;
   font-size: var(--font-sm); font-weight: 500; color: var(--primary-300);
@@ -374,3 +387,12 @@
   transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 .switchInput:checked + .switchTrack .switchThumb { transform: translateX(14px); }
+
+/* Appointment Activity: the person's initials sit level with the headline
+   ("Devanshi Sharma reassigned…"), one meta line (date • time) below where
+   the shared rail puts its icon. Shifted visually only, so the rail's
+   connectors keep their lengths. */
+.activityRailAvatar { position: relative; top: var(--space-4); display: inline-flex; z-index: 1; }
+
+/* An out-of-office provider for the picked date, under Primary User. */
+.detailError { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-3); font-size: var(--font-sm); color: var(--status-error); background: var(--status-error-light); border-bottom: 0.5px solid var(--neutral-100); }

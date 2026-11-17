@@ -1,3 +1,4 @@
+import { formatClinicalDate } from '../../../lib/clinicalDates';
 // Small shared helpers for the Comms channels.
 
 export const CHANNEL_META = {
@@ -23,6 +24,11 @@ export function patientFor(conversation, patients = []) {
 
 /** "Patient • F • 53Y • Dr. Robert Frost (PCP)" style meta, from what we know. */
 export function patientMeta(conversation, patient) {
+  return patientMetaParts(conversation, patient).join(' • ');
+}
+
+/** The pieces of `patientMeta`; the gender letter, when known, is second. */
+export function patientMetaParts(conversation, patient) {
   const parts = ['Patient'];
   if (patient?.gender) parts.push(String(patient.gender)[0].toUpperCase());
   if (patient?.age) parts.push(`${patient.age}Y`);
@@ -31,7 +37,29 @@ export function patientMeta(conversation, patient) {
     const contact = conversation?.patient_phone || conversation?.patient_email;
     if (contact) parts.push(contact);
   }
-  return parts.join(' • ');
+  return parts;
+}
+
+/**
+ * An SMS contact's header line: "Patient • F • 05/18/1965". A number with no
+ * patient record behind it reads as a Lead. The gender letter, when known,
+ * is second.
+ */
+export function smsContactMetaParts(patient) {
+  if (!patient) return ['Lead'];
+  const parts = ['Patient'];
+  if (patient.gender) parts.push(String(patient.gender)[0].toUpperCase());
+  const dob = formatClinicalDate(patient.dob);
+  if (dob) parts.push(dob);
+  return parts;
+}
+
+/** The phone in brackets after a name, unless the name already is that number. */
+export function phoneAfterName(name, phone) {
+  const digits = (v) => String(v || '').replace(/\D/g, '');
+  if (!digits(phone) || digits(name) === digits(phone)) return '';
+  // No brackets inside the brackets: "(+1 584-555-0142)".
+  return `(${formatPhone(phone).replace(/\((\d{3})\) /, '$1-')})`;
 }
 
 /** Visuals for a call by how it ended. */

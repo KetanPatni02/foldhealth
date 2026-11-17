@@ -22,6 +22,21 @@
   color: var(--neutral-400);
 }
 
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  flex: 1;
+  min-width: 0;
+}
+.headerTitleLg { font-size: var(--font-lg); }
+.headerSubtitle {
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+  line-height: 1.2;
+}
+.headerSubtitle strong { font-weight: 500; color: var(--neutral-300); }
+
 .body {
   display: flex;
   flex-direction: column;
@@ -81,6 +96,7 @@
 }
 .name {
   font-size: var(--font-base);
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -113,3 +129,15 @@
   flex: 1;
   min-width: 0;
 }
+
+/* Out of office (outOfOffice): section labels, and people who are out (can't be
+   picked; lighter text so the badge and the covering line keep their colour). */
+.group { padding: var(--space-2) var(--space-2) var(--space-1); font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300); border-bottom: 0.5px solid var(--neutral-100); }
+.rowDisabled { cursor: not-allowed; }
+.rowDisabled:hover { background: transparent; }
+.muted { color: var(--placeholder-text); }
+.note { font-size: var(--font-sm); color: var(--neutral-300); }
+/* A name with its Out of Office badge right after it. */
+.nameRow { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+/* The badge is taller than the name; let it overhang so the role keeps the usual gap. */
+.nameRow > :last-child { margin-block: calc(var(--space-1) / -2); }

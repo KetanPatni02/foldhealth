@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
+import { OooIcon } from '../../../components/Icon/OooIcon';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
@@ -80,14 +81,14 @@ export function PatientEmailThread({ conversation, patient, me, onCompose }) {
         <div className={listStyles.chatHeaderActions}>
           <ActionButton
             icon={conversation.pinned ? 'solar:pin-bold' : 'solar:pin-linear'}
-            size="S"
+            size="sm"
             tooltip={conversation.pinned ? 'Unpin' : 'Pin'}
             onClick={() => updateConversation(conversation.id, { pinned: !conversation.pinned })}
           />
           <div className={listStyles.divider} />
           <ActionButton
             icon="solar:archive-linear"
-            size="S"
+            size="sm"
             tooltip={conversation.archived ? 'Unarchive' : 'Archive'}
             onClick={() => updateConversation(conversation.id, { archived: !conversation.archived })}
           />
@@ -138,10 +139,10 @@ export function PatientEmailThread({ conversation, patient, me, onCompose }) {
         />
       ) : (
         <div className={styles.actions}>
-          <Button variant="primary" size="L" leadingIcon="solar:reply-linear" onClick={() => reply(false)}>Reply</Button>
-          <Button variant="secondary" size="L" leadingIcon="solar:reply-2-linear" onClick={() => reply(true)}>Reply All</Button>
-          <Button variant="secondary" size="L" leadingIcon="solar:forward-linear" onClick={() => forward()}>Forward</Button>
-          <Button variant="secondary" size="L" leadingIcon="solar:lock-keyhole-minimalistic-linear" onClick={() => setNoteOpen(true)}>Internal note</Button>
+          <Button leadingIcon="solar:reply-linear" onClick={() => reply(false)}>Reply</Button>
+          <Button variant="outline" leadingIcon="solar:reply-2-linear" onClick={() => reply(true)}>Reply All</Button>
+          <Button variant="outline" leadingIcon="solar:forward-linear" onClick={() => forward()}>Forward</Button>
+          <Button variant="outline" leadingIcon="solar:lock-keyhole-minimalistic-linear" onClick={() => setNoteOpen(true)}>Internal note</Button>
         </div>
       )}
     </div>
@@ -151,6 +152,14 @@ export function PatientEmailThread({ conversation, patient, me, onCompose }) {
 function EmailCard({ message: m, open, onToggle, onReply, onReplyAll, onForward }) {
   const [menu, setMenu] = useState(null);
   const failed = m.status === 'failed';
+  // Sent for a staff member who's out of office: dashed magenta, tagged.
+  const autoReply = !!m.meta?.ooo_auto_reply;
+  const autoReplyTag = (
+    <span className={styles.autoReplyTag}>
+      <OooIcon size={14} color="var(--accent-magenta)" />
+      Out of office Auto-Reply
+    </span>
+  );
   const name = m.sender_name || (m.direction === 'in' ? m.from_addr : 'Care team');
   const items = [
     ...(failed ? [{ key: 'retry', icon: 'solar:restart-linear', label: 'Retry sending' }] : []),
@@ -159,7 +168,7 @@ function EmailCard({ message: m, open, onToggle, onReply, onReplyAll, onForward 
     { key: 'forward', icon: 'solar:forward-linear', label: 'Forward' },
   ];
   return (
-    <article className={[styles.card, failed ? styles.cardFailed : ''].join(' ')}>
+    <article className={[styles.card, failed ? styles.cardFailed : '', autoReply ? styles.cardAutoReply : ''].join(' ')}>
       {failed && (
         <div className={styles.failBanner}>
           <Icon name="solar:danger-triangle-linear" size={14} />
@@ -180,7 +189,7 @@ function EmailCard({ message: m, open, onToggle, onReply, onReplyAll, onForward 
             </span>
           </span>
         </button>
-        <ActionButton icon="solar:menu-dots-bold" size="S" tooltip="More" onClick={e => setMenu(e.currentTarget.getBoundingClientRect())} />
+        <ActionButton icon="solar:menu-dots-bold" size="sm" tooltip="More" onClick={e => setMenu(e.currentTarget.getBoundingClientRect())} />
         {menu && (
           <MenuPopover
             anchorRect={menu}
@@ -203,6 +212,8 @@ function EmailCard({ message: m, open, onToggle, onReply, onReplyAll, onForward 
             {m.cc && <div>CC: {m.cc}</div>}
             {m.bcc && <div>BCC: {m.bcc}</div>}
           </div>
+          {/* As in chat: the label on its own line, just above the message. */}
+          {autoReply && autoReplyTag}
           {failed && (
             <div className={styles.failBox}>
               <Icon name="solar:danger-triangle-linear" size={16} color="var(--status-error)" />
@@ -216,7 +227,10 @@ function EmailCard({ message: m, open, onToggle, onReply, onReplyAll, onForward 
           <div className={styles.text}>{m.body}</div>
         </div>
       ) : (
-        <div className={styles.snippet}>{(m.body || '').replace(/\s+/g, ' ').slice(0, 160)}</div>
+        <>
+          {autoReply && <div className={styles.autoReplyRow}>{autoReplyTag}</div>}
+          <div className={styles.snippet}>{(m.body || '').replace(/\s+/g, ' ').slice(0, 160)}</div>
+        </>
       )}
     </article>
   );

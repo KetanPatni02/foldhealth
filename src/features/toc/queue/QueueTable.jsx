@@ -1,12 +1,14 @@
 import { useEffect, useMemo } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
-import { WorklistShell } from '../../../components/WorklistShell/WorklistShell';
+import { WorklistShell } from '../../worklists/WorklistShell';
 import { useTableSort } from '../../../components/HeaderCell/useTableSort';
 import { QueueRow, getQueueMiddleColumns } from './QueueRow';
 import { QueueEmptyState } from './QueueEmptyState';
 import { TableSkeleton } from '../../../components/TableSkeleton/TableSkeleton';
 import { enrichTocRow } from '../tocColumns';
+import { useCovering } from '../../ooo/useCovering';
+import { COVERING_FILTER_KEY } from '../useTocFilterDefs';
 
 /**
  * Agent-queue table shared by the TCM Agent Queue tab and the standalone
@@ -32,7 +34,7 @@ export function QueueTable({
 
   const isToc = worklistKey === 'toc';
 
-  // This table reads `patients` and `callDetails` but never fetched either —
+  // This table reads `patients` and `callDetails` but never fetched either,
   // it relied on SubNav prefetching them for every Population route, which is
   // why `call_details` (101.9 KB) loaded on HCC, CCM, SNP and the rest. SubNav
   // now fetches counts only, so the view that renders the data owns fetching
@@ -60,6 +62,8 @@ export function QueueTable({
   const activeFilters = useAppStore(s => s.activeFilters);
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);
+  const covering = useCovering();
+  const coveringPicked = activeFilters[COVERING_FILTER_KEY] || [];
 
   const filteredQueue = useMemo(() => {
     let result = patients.filter(p => p.agentAssigned)
@@ -75,15 +79,19 @@ export function QueueTable({
     }
 
     for (const [key, value] of Object.entries(activeFilters)) {
+      if (key === COVERING_FILTER_KEY) {
+        if (value?.length) result = result.filter(p => covering.coveringOn([p.assignee], value).length > 0);
+        continue;
+      }
       if (value) {
         result = result.filter(p => String(p[key]) === String(value));
       }
     }
 
     return isToc ? result.map(enrichTocRow) : result;
-  }, [patients, searchQuery, activeFilters, isToc]);
+  }, [patients, searchQuery, activeFilters, isToc, covering]);
 
-  // TOC only — click cycles asc → desc → clear (back to priority order).
+  // TOC only: click cycles asc → desc → clear (back to priority order).
   // TCM Agent Queue keeps its fixed priority sort.
   const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filteredQueue);
   const handleSort = (field) => {

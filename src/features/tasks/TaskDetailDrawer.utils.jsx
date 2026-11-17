@@ -64,6 +64,8 @@ export function buildActivityLogItems(auditLog, activityTab) {
         });
         break;
       case 'assignee_changed':
+      case 'ooo_reassigned':
+      case 'ooo_returned':
         entries.push({
           ...base,
           t: 'assignee_change',
@@ -75,13 +77,13 @@ export function buildActivityLogItems(auditLog, activityTab) {
       case 'priority_changed':
         entries.push({
           ...base,
-          title: `${actor} ${verb}: ${log.from_value || '—'} → ${log.to_value || '—'}`,
+          title: `${actor} ${verb}: ${log.from_value || '-'} → ${log.to_value || '-'}`,
         });
         break;
       case 'due_date_changed':
         entries.push({
           ...base,
-          title: `${actor} ${verb}: ${log.from_value || '—'} → ${log.to_value || '—'}`,
+          title: `${actor} ${verb}: ${log.from_value || '-'} → ${log.to_value || '-'}`,
         });
         break;
       case 'renamed':

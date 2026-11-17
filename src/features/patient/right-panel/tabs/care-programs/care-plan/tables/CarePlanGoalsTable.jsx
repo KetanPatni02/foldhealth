@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
-import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
+import { WorklistShell } from '../../../../../../worklists/WorklistShell';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { Tooltip } from '../../../../../../../components/Tooltip/Tooltip';
@@ -29,6 +29,7 @@ import {
   formatGoalFrequency,
   goalTargetUnitMissing,
 } from '../../../../../../settings/care-plan-library/lib';
+import { AiSuggestionBadge } from '../ai/AiSuggestionBadge';
 import styles from './carePlanTables.module.css';
 
 // "Goal < 7 %" exactly as the goal editor formats it. Assessments are skipped:
@@ -68,9 +69,9 @@ export function CarePlanGoalsTable({
   onTargetDateChange,
   // Notes icon → open the goal drawer at its Note section.
   onOpenNotes,
-  // (goal, title) => void — saves an in-place title edit.
+  // (goal, title) => void: saves an in-place title edit.
   onTitleChange,
-  // (goal) => boolean — whether the goal has a current (undeleted) note.
+  // (goal) => boolean: whether the goal has a current (undeleted) note.
   hasNote,
   linked,
   template = false,
@@ -100,7 +101,7 @@ export function CarePlanGoalsTable({
       || (showActions && c.key === 'actions'))
     : COMPACT_GOAL_COLUMNS;
 
-  // Met goals collapse into "Completed Goals"; templates have no status.
+  // Closed goals (see isCompletedStatus) collapse into "Closed Goals"; templates have no status.
   const { activeRows, completedRows } = useMemo(() => {
     if (template) return { activeRows: sorted, completedRows: [] };
     const active = [];
@@ -151,6 +152,7 @@ export function CarePlanGoalsTable({
           icon={goalCategoryIcon(g.category)}
           iconTitle={g.category ? normalizeCategory(g.category) : 'Goal'}
           title={g.title}
+          badge={<AiSuggestionBadge kind="goal" item={g} />}
           meta={g.subtitle || null}
           layout="stacked"
           linked={linked(g)}
@@ -160,7 +162,7 @@ export function CarePlanGoalsTable({
         <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="S"
+            size="sm"
             tooltip="More"
             tooltipBelow
             tooltipLeft
@@ -236,6 +238,7 @@ export function CarePlanGoalsTable({
             icon={goalCategoryIcon(g.category)}
             iconTitle={g.category ? normalizeCategory(g.category) : 'Goal'}
             title={g.title}
+            badge={<AiSuggestionBadge kind="goal" item={g} />}
             meta={meta}
             layout="stacked"
             showLink={false}
@@ -265,7 +268,7 @@ export function CarePlanGoalsTable({
         )}
         <td className={styles.statusTd} onClick={e => e.stopPropagation()}>
           <GbiStatusButton
-            value={g.status}
+            value={g.status} reason={g.statusReason}
             disabled={!canEdit}
             onOpen={rect => onStatusMenu({ kind: 'goal', item: g, rect })}
           />
@@ -274,7 +277,7 @@ export function CarePlanGoalsTable({
           <GbiRowActions
             linked={linked(g)}
             note={hasNote?.(g) || null}
-            onNotes={() => onOpenNotes?.(g)}
+            onNotes={e => onOpenNotes?.(g, e?.currentTarget?.getBoundingClientRect?.())}
             onMenu={(e) => openRowMenu(g, e)}
             menuDisabled={!canEdit}
           />
@@ -307,7 +310,7 @@ export function CarePlanGoalsTable({
         renderRow={renderRow}
         renderTbodyFooter={template ? undefined : (ctx) => (
           <CompletedRowsGroup
-            label="Completed Goals"
+            label="Closed Goals"
             rows={completedRows}
             open={completedOpen}
             onToggle={() => setCompletedOpen(v => !v)}

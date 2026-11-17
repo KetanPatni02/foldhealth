@@ -3,10 +3,11 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { Badge } from '../../../components/Badge/Badge';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { Toggle } from '../../../components/Toggle/Toggle';
+import { SegmentedControl } from '../../../components/SegmentedControl/SegmentedControl';
 import { SearchBar } from '../../../components/SearchBar/SearchBar';
 import { useAppStore } from '../../../store/useAppStore';
 import { formatTime } from '../messageUtils';
+import { openStoredLink } from '../../../lib/openSafeUrl';
 import { useReferralEmails } from './useReferralEmails';
 import { useCommsConversations, useCommsMessagesFor } from '../comms/useComms';
 import { PatientEmailThread } from '../comms/PatientEmailThread';
@@ -15,12 +16,13 @@ import { useCommsPeople } from '../comms/useCommsPeople';
 import { CommsListEmpty, CommsPanelEmpty } from '../comms/CommsEmptyState';
 import { CommsListHeader } from '../comms/CommsListHeader';
 import { markConversationRead, updateConversation } from '../comms/commsRepo';
-import { FilterChip } from '../../../components/FilterChip/FilterChip';
+import { CommsFilterChips } from '../comms/CommsFilterChips';
+import { useCommsFilters } from '../comms/useCommsFilters';
+import { collaboratorsOf, inboxOf } from '../comms/commsInboxes';
 import { BulkBar } from '../../../components/BulkBar/BulkBar';
-import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Checkbox } from '../../../components/Checkbox/Checkbox';
 import commsStyles from '../comms/Comms.module.css';
 
-const ACTIVITY_FILTER = { Today: 1, 'Last 7 days': 7, 'Last 30 days': 30 };
 import listStyles from '../MessagesView.module.css';
 import styles from './EmailWorkspace.module.css';
 
@@ -86,10 +88,28 @@ export function EmailWorkspace({ onCompose, selectConversationId, onSelectedConv
   const [selectedId, setSelectedId] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [activity, setActivity] = useState([]);
-  // The cutoff is fixed when the filter is picked, not recomputed each render.
-  const [activityCutoff, setActivityCutoff] = useState(0);
+  // Filters drawer: By Date, By Inbox and Covering for go by the patient
+  // thread's inbox (its collaborators are its assignees). Referral emails are
+  // addressed to me, not an inbox, so they drop out under those two.
+  const f = useCommsFilters();
+  const inboxes = useAppStore(s => s.commsInboxes);
+  const inboxSample = useAppStore(s => s.commsInboxesTableMissing);
+  const fetchCommsInboxes = useAppStore(s => s.fetchCommsInboxes);
+  const platformUsers = useAppStore(s => s.platformUsers);
+  useEffect(() => { fetchCommsInboxes(); }, [fetchCommsInboxes]);
+  const emailInboxes = inboxes.filter(i => i.channel === 'email');
+  const passesInbox = (r) => {
+    const { inbox, covering } = f.filters;
+    if (!inbox && !covering.length) return true;
+    if (r.type === 'referral') return false;
+    const id = inboxOf(r.conv, inboxSample);
+    if (inbox && id !== inbox) return false;
+    if (covering.length) {
+      const box = inboxes.find(i => i.id === id);
+      if (!box || !f.coveredBy(collaboratorsOf(box, platformUsers || []).map(u => u.name))) return false;
+    }
+    return true;
+  };
   // Bulk select works on patient threads; referral emails live with their care gap.
   const [bulk, setBulk] = useState(false);
   const [picked, setPicked] = useState([]);
@@ -141,7 +161,7 @@ export function EmailWorkspace({ onCompose, selectConversationId, onSelectedConv
   const list = (FOLDERS[folder] || [])
     .map(r => (r.type === 'referral' ? { ...r, who: folder === 'inbox' ? r.referral.sentBy : (r.referral.providerName || 'No recipient yet'), unread: folder === 'inbox' && !r.referral.recipientReadAt } : r))
     .filter(r => !q || `${r.subject} ${r.body} ${r.who} ${r.referral?.memberName || ''}`.toLowerCase().includes(q))
-    .filter(r => !activityCutoff || new Date(r.at || 0).getTime() >= activityCutoff)
+    .filter(r => f.inWindow(r.at) && passesInbox(r))
     .toSorted((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
   const selectedRow = selectedId ? Object.values(FOLDERS).flat().find(r => r.key === selectedId) : null;
   const selectedReferral = selectedRow?.type === 'referral' ? byId.get(selectedRow.referral.id) : null;
@@ -159,21 +179,19 @@ export function EmailWorkspace({ onCompose, selectConversationId, onSelectedConv
           onSearch={() => { setSearchOpen(v => !v); setQuery(''); }}
           bulkActive={bulk}
           onBulk={() => { setBulk(v => !v); setPicked([]); }}
-          filterActive={filterOpen || activity.length > 0}
-          onFilter={() => setFilterOpen(v => !v)}
+          filterActive={f.open || f.active}
+          onFilter={() => f.setOpen(v => !v)}
         />
         <div className={listStyles.convTabs}>
-          <Toggle
+          <SegmentedControl
             items={[{ key: 'inbox', label: 'Inbox' }, { key: 'draft', label: 'Draft' }, { key: 'sent', label: 'Sent' }]}
-            active={folder}
-            onChange={setFolder}
-            size="S"
+            value={folder}
+            onValueChange={setFolder}
+            size="sm"
           />
         </div>
-        {filterOpen && (
-          <div className={commsStyles.filterRow}>
-            <FilterChip label="Last Activity" singleSelect options={Object.keys(ACTIVITY_FILTER)} selected={activity} onChange={(v) => { setActivity(v); setActivityCutoff(v.length ? Date.now() - ACTIVITY_FILTER[v[0]] * 86400000 : 0); }} />
-          </div>
+        {f.open && (
+          <CommsFilterChips filters={f.filters} onChange={f.setFilter} inboxes={emailInboxes} coveringNames={f.coveringNames} />
         )}
         {searchOpen && (
           <div className={styles.search}>
@@ -229,8 +247,8 @@ export function EmailWorkspace({ onCompose, selectConversationId, onSelectedConv
             onClear={() => setPicked([])}
             noun={picked.length === 1 ? 'Email Thread' : 'Email Threads'}
             actions={[
-              { label: 'Mark as Read', icon: 'solar:check-read-linear', variant: 'secondary', onClick: (ids) => { ids.forEach(id => markConversationRead(emailConvs.find(c => c.id === id))); setPicked([]); } },
-              { label: 'Archive', icon: 'solar:archive-linear', variant: 'primary', onClick: (ids) => { ids.forEach(id => updateConversation(id, { archived: true })); setPicked([]); } },
+              { label: 'Mark as Read', icon: 'solar:check-read-linear', variant: 'outline', onClick: (ids) => { ids.forEach(id => markConversationRead(emailConvs.find(c => c.id === id))); setPicked([]); } },
+              { label: 'Archive', icon: 'solar:archive-linear', variant: 'solid', onClick: (ids) => { ids.forEach(id => updateConversation(id, { archived: true })); setPicked([]); } },
             ]}
           />
         )}
@@ -255,7 +273,7 @@ function EmailThread({ email }) {
     <div className={listStyles.chatPanel}>
       <div className={styles.subjectBar}>
         <span>Subject : {email.emailSubject || '(no subject)'}</span>
-        {email.status === 'Draft' && <Badge tone="warning" size="S" label="Draft" />}
+        {email.status === 'Draft' && <Badge tone="warning" size="sm" label="Draft" />}
       </div>
       {email.status === 'Draft' && (
         <div className={styles.draftNotice}>
@@ -294,7 +312,7 @@ function EmailThread({ email }) {
                 {attachments.map(a => (
                   <li key={a.documentId || a.storagePath || a.name}>
                     {a.url ? (
-                      <a className={styles.attachment} href={a.url} target="_blank" rel="noopener noreferrer">
+                      <a className={styles.attachment} href={a.url} target="_blank" rel="noopener noreferrer" onClick={e => openStoredLink(e, a.url)}>
                         <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
                         {a.name}
                       </a>

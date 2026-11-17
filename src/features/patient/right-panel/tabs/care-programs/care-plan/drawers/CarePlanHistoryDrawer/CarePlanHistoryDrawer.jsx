@@ -7,7 +7,7 @@ import { AuditDetailCard } from '../../../../../../../../components/AuditDetailC
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
-import { Toggle } from '../../../../../../../../components/Toggle/Toggle';
+import { SegmentedControl } from '../../../../../../../../components/SegmentedControl/SegmentedControl';
 import { RadioListPopover } from '../../../../../../../../components/RadioListPopover/RadioListPopover';
 import { DateRangePopover } from '../../../../../../../../components/DateRangePopover/DateRangePopover';
 import { parseLocalDate } from '../../../../../../../../lib/localDate';
@@ -31,10 +31,11 @@ import { NOTE_ACTIONS, netVersionRows } from '../../lib/carePlanVersions';
 import { buildCarePlanHistory, filterHistoryEntries, HISTORY_TYPES } from '../../lib/carePlanHistory';
 import { adherenceTone, goalProgressTone } from '../../lib/goalMetrics';
 import { sanitizeRichText } from '../../../../../../../../lib/sanitizeHtml';
+import { GBI_STATUS_META } from '../../lib/gbiStatus';
 import styles from './CarePlanHistoryDrawer.module.css';
 
 
-const TYPE_LABEL = { goal: 'Goal', intervention: 'Intervention', barrier: 'Barrier', share: 'Share', plan: 'Plan' };
+const TYPE_LABEL = { goal: 'Goal', intervention: 'Intervention', barrier: 'Barrier', share: 'Share', plan: 'Plan', protocol: 'Clinical Protocol' };
 const ACTION_LABEL = {
   created: 'Added to Care Plan', updated: 'Edited', status_changed: 'Status Updated',
   progress_changed: 'Progress Updated', value_changed: 'Value Updated',
@@ -47,6 +48,7 @@ const ACTION_LABEL = {
   frequency_changed: 'Frequency Updated', conditions_changed: 'Conditions Updated',
   type_changed: 'Type Updated', assignee_changed: 'Assignee Updated',
   goal_link_changed: 'Linked Goal Updated', description_changed: 'Description Updated',
+  paused: 'Care Plan Paused', resumed: 'Care Plan Resumed',
 };
 // Only status and progress carry health; a priority of "High" is not a good
 // outcome, so every other change renders its pills in grey.
@@ -80,7 +82,7 @@ const ENTITY_NOUN = {
   barrier: ['Barrier', 'Barriers'],
 };
 const ENTITY_ICON = {
-  // The goal glyph the plan itself uses — mapPatientCarePlanGoalRow's default
+  // The goal glyph the plan itself uses, mapPatientCarePlanGoalRow's default
   // and the icon on every goal row.
   goal: 'solar:flag-linear',
   intervention: 'solar:checklist-minimalistic-linear',
@@ -191,7 +193,7 @@ export function sectionsFor(group, openAt, links) {
   const plain = rows.filter(r => r.entityType !== 'template');
   const added = plain.filter(r => r.action === 'created' && !isOwned(r));
   const removed = plain.filter(r => r.action === 'deleted' && !isOwned(r));
-  // Sharing only happens as part of signing, so it is not its own activity —
+  // Sharing only happens as part of signing, so it is not its own activity,
   // the attribution line above already names where the plan went.
   const rest = plain.filter(r => r.action !== 'created' && r.action !== 'deleted'
     && r.action !== 'shared');
@@ -251,13 +253,9 @@ const LIVE_CHANGE_TYPES = new Set(['status', 'priority', 'progress', 'title', 'a
 // A status change wears the icon of the status it moved to (the rail tile
 // already takes that status's colour), as HCC status entries do. In Progress
 // uses the design system's Pending status glyph.
-const STATUS_ICON = {
-  'Not Started': 'solar:minus-circle-linear',
-  'In Progress': 'custom:pending',
-  'On Hold': 'solar:pause-circle-linear',
-  Met: 'solar:check-circle-linear',
-  'Not Met': 'solar:close-circle-linear',
-};
+const STATUS_ICON = Object.fromEntries(
+  Object.entries(GBI_STATUS_META).map(([status, meta]) => [status, meta.icon]),
+);
 // Other progress changes show what changed.
 const CHANGE_ICON = {
   priority: 'solar:ranking-linear',
@@ -454,7 +452,7 @@ export function CarePlanHistoryView({ patientId, program, lastVisit = null, sinc
     ? (
       <span className={styles.versionTag}>
         v{n}
-        <Badge size="S" tone="grey" label="Current" className={styles.currentBadge} />
+        <Badge size="sm" label="Current" className={styles.currentBadge} />
       </span>
     )
     : `v${n}`);
@@ -512,7 +510,7 @@ export function CarePlanHistoryView({ patientId, program, lastVisit = null, sinc
               ? (e.neverSigned ? 'Care Plan Drafted' : 'Care Plan Has Unsigned Changes')
               : 'Changes in Care Plan'}
           </span>
-          {unsigned && viewBy !== 'version' && <Badge size="S" tone="warning" label={`Draft · v${e.nextVersion}`} />}
+          {unsigned && viewBy !== 'version' && <Badge size="sm" tone="warning" label={`Draft · v${e.nextVersion}`} />}
           {group.rows.length > 0 && <ViewMoreButton expanded={isOpen} onToggle={() => toggle(e.id)} />}
         </div>
         {card}
@@ -615,9 +613,9 @@ export function CarePlanHistoryView({ patientId, program, lastVisit = null, sinc
               <span className={htStyles.headline}>{base.title}</span>
             </div>
             <div className={htStyles.transition}>
-              <Badge size="S" tone={toneOf(e.from)} label={e.from || 'None'} />
+              <Badge size="sm" tone={toneOf(e.from)} label={e.from || 'None'} />
               <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-              <Badge size="S" tone={toTone} label={e.to || 'None'} />
+              <Badge size="sm" tone={toTone} label={e.to || 'None'} />
             </div>
           </>
         ),
@@ -744,7 +742,7 @@ export function CarePlanHistoryView({ patientId, program, lastVisit = null, sinc
             // The draft group carries its Draft badge here, not on the entry.
             <span className={styles.groupLabel}>
               Version {month.draftOf}
-              <Badge size="S" tone="grey" label="Draft" />
+              <Badge size="sm" label="Draft" />
             </span>
           ) : undefined,
         },
@@ -758,11 +756,11 @@ export function CarePlanHistoryView({ patientId, program, lastVisit = null, sinc
 
   const filterRow = (
     <div className={`${styles.filterRow}${compact ? ` ${styles.filterRowCompact}` : ''}`}>
-      <Toggle
-        size="S"
+      <SegmentedControl
+        size="sm"
         items={[{ key: 'month', label: 'Month' }, { key: 'version', label: 'Versions' }]}
-        active={viewBy}
-        onChange={setViewBy}
+        value={viewBy}
+        onValueChange={setViewBy}
       />
       <span className={styles.filterDivider} aria-hidden="true" />
       <FilterChip

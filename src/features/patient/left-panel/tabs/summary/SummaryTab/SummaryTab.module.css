@@ -1,8 +1,9 @@
 .wrapper {
-  padding: 12px;
+  /* With PanelSection's own --space-2 inset, content starts --space-4 in,
+     level with the sticky note's content above. Sections are divided by hairlines. */
+  padding: var(--space-1) var(--space-2) var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 12px;
   /* Grow to content; the profile panel (.scrollContent) is the single vertical
      scroller. A height:100% + overflow-y:auto here would nest a second one
      (double scrollbar). */
