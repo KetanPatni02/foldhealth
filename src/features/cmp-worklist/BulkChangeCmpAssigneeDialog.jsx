@@ -16,6 +16,7 @@ import styles from '../hcc/BulkChangeAssigneesDialog.module.css';
 import own from '../hedis-worklist/BulkChangeHedisAssigneeDialog.module.css';
 import cmp from './BulkChangeCmpAssigneeDialog.module.css';
 
+const UNASSIGN = '__unassign';
 const initialsOf = (name) => String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
 
 /**
@@ -23,9 +24,11 @@ const initialsOf = (name) => String(name || '').trim().split(/\s+/).filter(Boole
  * The HEDIS bulk dialog's layout with Select Role on top and the selected
  * members' CMP sub-programs in place of gaps: each sub-program has its own
  * picker, and the picked user becomes that role on the sub-program for every
- * selected member enrolled in it.
+ * selected member enrolled in it. Picking Unassigned clears the role.
  *
- * Mounted only while open, so each opening starts fresh.
+ * Mounted only while open, so each opening starts fresh. If some
+ * sub-programs fail to save, it stays open with just those picks so they
+ * can be retried.
  *
  * Props:
  *  - memberCount  (number)              members selected
@@ -40,8 +43,10 @@ export function BulkChangeCmpAssigneeDialog({ memberCount, enrollments, users, o
   const showToast = useAppStore(s => s.showToast);
 
   const [role, setRole] = useState('assignee');
-  // Per sub-program: the user picked for it.
+  // Per sub-program: the user picked for it, or UNASSIGN to clear the role.
   const [picks, setPicks] = useState({});
+  // Unassigned first: the staff list runs long, and at the end it's out of sight.
+  const pickerUsers = useMemo(() => [{ id: UNASSIGN, name: 'Unassigned', initials: '-' }, ...(users || [])], [users]);
   // The open <dialog>, so each picker's menu renders inside its top layer.
   const [dialogEl, setDialogEl] = useState(null);
   const attachDialog = useCallback((el) => { dialogRef.current = el; setDialogEl(el); }, [dialogRef]);
@@ -63,15 +68,21 @@ export function BulkChangeCmpAssigneeDialog({ memberCount, enrollments, users, o
   const handleApply = async () => {
     const results = await Promise.all(pickedSubs.map((sp) => {
       const ids = rows.find(r => r.subProgram === sp)?.list.map(e => e.id) || [];
-      return setCmpCareTeam(ids, role, picks[sp]);
+      return setCmpCareTeam(ids, role, picks[sp].id === UNASSIGN ? null : picks[sp]);
     }));
     const saved = pickedSubs.filter((_, i) => results[i]);
-    onClose?.();
+    const failed = pickedSubs.filter((_, i) => !results[i]);
     if (saved.length) {
       showToast(`${roleLabel} updated on ${saved.length} sub-program${saved.length === 1 ? '' : 's'} (${saved.join(', ')})`);
-      onApplied?.();
     }
-    if (saved.length < pickedSubs.length) showToast(`Could not save the new ${roleLabel}. Try again.`);
+    if (failed.length) {
+      // Keep the selection and only the failed picks, so Apply retries them.
+      setPicks(p => Object.fromEntries(failed.map(sp => [sp, p[sp]])));
+      showToast(`Could not save the ${roleLabel} for ${failed.join(', ')}. Try again.`);
+      return;
+    }
+    onClose?.();
+    onApplied?.();
   };
 
   return createPortal(
@@ -92,7 +103,7 @@ export function BulkChangeCmpAssigneeDialog({ memberCount, enrollments, users, o
       </div>
 
       <Banner size="sm">
-        The current {roleLabel.toLowerCase()} in each sub-program you assign will be replaced with the user you pick.
+        The current {roleLabel.toLowerCase()} in each sub-program you assign will be replaced with the user you pick, or cleared if you pick Unassigned.
       </Banner>
 
       <Select
@@ -112,6 +123,7 @@ export function BulkChangeCmpAssigneeDialog({ memberCount, enrollments, users, o
           </div>
           {rows.map(({ subProgram, list }) => {
             const pick = picks[subProgram];
+            const cleared = pick?.id === UNASSIGN;
             return (
               <div key={subProgram} className={`${own.row} ${cmp.cols}`} role="row">
                 <span className={own.gapCol} role="cell">
@@ -156,11 +168,11 @@ export function BulkChangeCmpAssigneeDialog({ memberCount, enrollments, users, o
                   <AssigneeChange
                     fillContainer
                     showRole={false}
-                    unassigned={!pick}
-                    unassignedLabel="Assign"
+                    unassigned={!pick || cleared}
+                    unassignedLabel={cleared ? 'Unassigned' : 'Assign'}
                     name={pick?.name}
                     initials={pick?.initials}
-                    users={users}
+                    users={pickerUsers}
                     pickerTitle={`${roleLabel} for ${subProgram}`}
                     portalContainer={dialogEl}
                     onSelect={(u) => setPicks(p => ({ ...p, [subProgram]: u }))}
