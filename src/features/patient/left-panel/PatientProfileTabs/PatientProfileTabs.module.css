@@ -44,11 +44,12 @@
 /* Flush layout: scroll content touches the panel edges for the sticky
  * note strip, but the Gaps tab body sits inside a 12px horizontal gutter
  * so it lines up with the other tabs (PAMI/Hx, Vitals/Labs, Comms…). */
-/* No left gutter: the titles, filters and table text (each indented by the
- * cells' 12px) then start on the same line as the tab labels above. */
-.flushContent .gapsWrapper { padding: var(--space-3) var(--space-3) 0 0; }
+.flushContent .gapsWrapper { padding: var(--space-3) var(--space-3) 0; }
 .flushContent .sections { padding: 0; }
-.flushContent .sectionHeader { padding: 0 0 0 var(--space-3); }
+/* Section titles (Care Gaps, Diagnosis Gaps, Alerts) sit flush in the
+ * gutter so they start on the same line as the tab labels above; the
+ * filters, group labels and tables keep their 12px indent. */
+.flushContent .sectionHeader { padding: 0; }
 /* Was `margin-top: 0`, that zeroed out the shared 16px gap so the
  * Diagnosis Gaps / Alerts headers merged flush with the previous
  * section's last row. Keep the 16px so the QuickView reads with the
