@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { WorklistShell } from '../worklists/WorklistShell';
-import { SelectAssigneeModal } from '../../components/SelectAssigneeModal/SelectAssigneeModal';
-import { Banner } from '../../components/Banner/Banner';
+import { BulkChangeCmpAssigneeDialog } from './BulkChangeCmpAssigneeDialog';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
-import styles from './CmpWorklistTable.module.css';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { FilterBar } from '../worklists/FilterBar';
@@ -19,7 +17,6 @@ import { CmpWorklistRow } from './CmpWorklistRow';
 import { CMP_MIDDLE_COLUMNS } from './cmpColumns';
 import { CMP_FILTER_DEFS, CMP_FILTER_DEF_MAP, cmpFilterOptions, enrollmentMatches } from './cmpFilters';
 import { CMP_OWNER_ROLES } from './cmpCareTeam';
-import { Select } from '../../components/Select/Select';
 import { useCovering } from '../ooo/useCovering';
 
 // Every filter's More Filters entry, grouped (Members, Program, Care Team,
@@ -84,10 +81,6 @@ export function CmpWorklistTable() {
     if (!ok) showToast('Could not save the change. Try again.');
   };
   const [assignOpen, setAssignOpen] = useState(false);
-  // Which sub-programs the bulk assignee goes to; the others keep theirs.
-  const [assignSubPrograms, setAssignSubPrograms] = useState([]);
-  // Which owner the bulk change sets: Assignee or one care team role.
-  const [assignRole, setAssignRole] = useState('assignee');
 
   const [searchQuery, setSearchQuery] = useState('');
   // Local, not a store key: only meaningful while I'm covering someone.
@@ -239,37 +232,12 @@ export function CmpWorklistTable() {
   );
 
   // Selection is by member, and a member has one enrollment (with its own
-  // assignee) per CMP sub-program. Change Assignee asks which sub-programs
-  // take the new assignee: those the selected members have, with how many
-  // members each, starting from the Sub Program filter's picks when it's on.
+  // owners) per CMP sub-program: Change Assignee lists those sub-programs.
   const selectedEnrollments = useMemo(() => {
     const picked = new Set(selectedIds);
     return members.filter(e => picked.has(memberKey(e)));
   }, [members, selectedIds]);
-  const subProgramCounts = useMemo(() => {
-    const counts = new Map();
-    for (const e of selectedEnrollments) counts.set(e.subProgram, (counts.get(e.subProgram) || 0) + 1);
-    return [...counts.entries()].toSorted(([a], [b]) => a.localeCompare(b));
-  }, [selectedEnrollments]);
-  const openAssign = () => {
-    const all = subProgramCounts.map(([sp]) => sp);
-    const fromFilter = (filters.subProgram || []).filter(sp => all.includes(sp));
-    setAssignSubPrograms(fromFilter.length ? fromFilter : all);
-    setAssignRole('assignee');
-    setAssignOpen(true);
-  };
-  const assignRoleLabel = CMP_OWNER_ROLES.find(r => r.key === assignRole)?.label || 'Assignee';
-  const assignSelected = async (user) => {
-    setAssignOpen(false);
-    const rows = selectedEnrollments.filter(e => assignSubPrograms.includes(e.subProgram));
-    const memberCount = new Set(rows.map(memberKey)).size;
-    const roleLabel = assignRoleLabel;
-    const ok = await setCmpCareTeam(rows.map(e => e.id), assignRole, user);
-    showToast(ok
-      ? `${user.name} set as ${roleLabel} for ${memberCount} member${memberCount === 1 ? '' : 's'} (${assignSubPrograms.join(', ')})`
-      : `Could not save the new ${roleLabel}. Try again.`);
-    if (ok) clearSelected();
-  };
+  const openAssign = () => setAssignOpen(true);
 
   return (
     <>
@@ -311,43 +279,15 @@ export function CmpWorklistTable() {
         minTableWidth={1700}
         onChangeAssignee={openAssign}
       />
-      <SelectAssigneeModal
-        open={assignOpen}
-        title="Bulk Change Assignees"
-        subtitle={`${selectedIds.length} member${selectedIds.length === 1 ? '' : 's'} selected`}
-        searchPlaceholder={`Search ${assignRoleLabel} User`}
-        confirmLabel="Apply Changes"
+      {assignOpen && (
+      <BulkChangeCmpAssigneeDialog
+        memberCount={selectedIds.length}
+        enrollments={selectedEnrollments}
+        users={assignableUsers}
         onClose={() => setAssignOpen(false)}
-        onConfirm={assignSelected}
-        confirmDisabled={!assignSubPrograms.length}
-        header={(
-          <div className={styles.assignSetup}>
-            <Banner size="sm">
-              The current {assignRoleLabel.toLowerCase()} in the selected sub-programs will be replaced with the user you pick.
-            </Banner>
-            <Select
-              label="Select Role"
-              portal
-              options={CMP_OWNER_ROLES.map(r => ({ value: r.key, label: r.label }))}
-              value={assignRole}
-              onValueChange={setAssignRole}
-            />
-            {subProgramCounts.length > 1 && (
-              <Select
-                label="Sub Programs"
-                portal
-                multiple
-                checkboxes
-                placeholder="Select sub programs"
-                options={subProgramCounts.map(([sp, n]) => ({ value: sp, label: `${sp} (${n})` }))}
-                value={assignSubPrograms}
-                onValueChange={setAssignSubPrograms}
-              />
-            )}
-            <span className={styles.assignDivider} />
-          </div>
-        )}
+        onApplied={clearSelected}
       />
+      )}
     </>
   );
 }

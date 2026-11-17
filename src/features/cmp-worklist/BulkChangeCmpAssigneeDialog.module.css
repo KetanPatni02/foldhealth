@@ -1,0 +1,3 @@
+/* Sub-program names are longer than gap codes: a wider first column. */
+.cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.subName { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
