@@ -20,9 +20,10 @@ const GAP = 4;
  * @param {string}   [props.tone='grey']
  * @param {'xs'|'sm'|'md'|'lg'} [props.size='sm']
  * @param {string}   [props.icon]         – Leading Solar icon on each item badge (not the +N)
+ * @param {boolean}  [props.stackTooltip=false] – List the +N items one per line instead of comma-joined
  * @param {string}   [props.className]
  */
-export function BadgeRow({ items = [], maxLines = 2, tone = 'neutral', size = 'sm', icon, className }) {
+export function BadgeRow({ items = [], maxLines = 2, tone = 'neutral', size = 'sm', icon, stackTooltip = false, className }) {
   const rowRef = useRef(null);
   const measureRef = useRef(null);
   const [visibleCount, setVisibleCount] = useState(items.length);
@@ -91,7 +92,10 @@ export function BadgeRow({ items = [], maxLines = 2, tone = 'neutral', size = 's
         <Badge key={i} tone={tone} size={size} label={label} icon={icon} />
       ))}
       {hidden.length > 0 && (
-        <Tooltip label={hidden.join(', ')} maxWidth={280}>
+        <Tooltip
+          label={stackTooltip ? hidden.map(h => <div key={h}>{h}</div>) : hidden.join(', ')}
+          maxWidth={280}
+        >
           <Badge tone={tone} size={size} label={`+${hidden.length}`} />
         </Tooltip>
       )}

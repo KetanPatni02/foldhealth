@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { Input } from '../../../components/Input/Input';
@@ -105,19 +105,41 @@ function NewDocumentCard({ patientId, onSaved, onCancel }) {
  * 4801:13694). Search Fold members first; "Not a Fold Member? Add Here"
  * (Jun-July 2025 1162:54280) opens the form for someone outside Fold. Add
  * saves the person straight away; they're listed under Family & Caregivers.
+ *
+ * `prefill` (from Send To's "+ Add email address"): opens on that person with
+ * the Email field focused: `{ name, phone, type, familyId? }`. With a
+ * `familyId` (already added), saving updates their email instead of adding
+ * them again.
  */
-export function AddFamilyDrawer({ patient, onClose }) {
+export function AddFamilyDrawer({ patient, prefill = null, onClose }) {
   const patientId = String(patient.id);
   const patients = useAppStore(s => s.allPatients) || [];
   const members = useAppStore(s => s.familyMembers[patientId]) || [];
   const fetchFamilyMembers = useAppStore(s => s.fetchFamilyMembers);
   const addFamilyMember = useAppStore(s => s.addFamilyMember);
   const removeFamilyMember = useAppStore(s => s.removeFamilyMember);
+  const updateFamilyMember = useAppStore(s => s.updateFamilyMember);
   const documents = useAppStore(s => s.programDocuments);
   const fetchProgramDocuments = useAppStore(s => s.fetchProgramDocuments);
   useEffect(() => { fetchFamilyMembers(patientId); fetchProgramDocuments(); }, [patientId, fetchFamilyMembers, fetchProgramDocuments]);
 
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(() => (prefill ? {
+    ...EMPTY_FORM,
+    mode: 'new',
+    name: prefill.name || '',
+    phone: prefill.phone || '',
+    relationship: prefill.relationship || '',
+    isCaregiver: prefill.type === 'Care Giver',
+    isEmergencyContact: prefill.type === 'Emergency Contact',
+  } : EMPTY_FORM));
+  const updating = prefill?.familyId || null;
+  // Opened to add an email: the cursor starts there.
+  const emailRef = useRef(null);
+  useEffect(() => {
+    if (!prefill) return undefined;
+    const t = setTimeout(() => emailRef.current?.focus(), 250);
+    return () => clearTimeout(t);
+  }, [prefill]);
   const [addingDoc, setAddingDoc] = useState(false);
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(null);
@@ -147,6 +169,15 @@ export function AddFamilyDrawer({ patient, onClose }) {
           : form.decisionMaker && !form.documentIds.length ? 'Pick a supporting document' : null;
 
   const add = async () => {
+    if (updating) {
+      setSaving(true);
+      const ok = await updateFamilyMember(patientId, updating, { email: form.email.trim() });
+      setSaving(false);
+      if (!ok) { toast.error('The email could not be saved. Try again.'); return; }
+      toast.success('Email Added Successfully');
+      onClose();
+      return;
+    }
     if (!canAdd) return;
     setSaving(true);
     const saved = await addFamilyMember(patientId, {
@@ -203,7 +234,7 @@ export function AddFamilyDrawer({ patient, onClose }) {
                   ? <Input label="Name" required value={form.name} onChange={e => set({ name: e.target.value })} placeholder="Enter name" maxLength={80} />
                   : <Input label="Name" required value={name} disabled />}
                 <Select label="Relationship" required options={RELATIONSHIPS.map(r => ({ value: r, label: r }))} value={form.relationship} onValueChange={v => set({ relationship: v })} placeholder="Select relationship" />
-                {isNew && <Input label="Email" type="email" value={form.email} onChange={e => set({ email: e.target.value })} placeholder="Enter email" />}
+                {isNew && <Input ref={emailRef} label="Email" type="email" value={form.email} onChange={e => set({ email: e.target.value })} placeholder="Enter email" />}
                 {isNew && <Input label="Phone Number" type="tel" value={form.phone} onChange={e => set({ phone: e.target.value })} placeholder="Enter phone number" />}
               </div>
               {isNew && (
@@ -282,7 +313,9 @@ export function AddFamilyDrawer({ patient, onClose }) {
               </Card>
 
               <div className={styles.actions}>
-                <Button onClick={add} disabled={!canAdd} disabledReason={addBlocked}>Add</Button>
+                {updating
+                  ? <Button onClick={add} disabled={!form.email.trim() || saving} disabledReason={!form.email.trim() ? 'Add an email' : null}>Save</Button>
+                  : <Button onClick={add} disabled={!canAdd} disabledReason={addBlocked}>Add</Button>}
                 <Button variant="outline" onClick={() => { setForm(EMPTY_FORM); setAddingDoc(false); }}>Discard</Button>
               </div>
             </>

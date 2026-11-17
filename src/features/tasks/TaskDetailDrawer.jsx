@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
@@ -34,6 +34,18 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
   // header branches its affordances by note.status.
   const [previewNote, setPreviewNote] = useState(null);
   const updateTask = useAppStore(s => s.updateTask);
+  // Opened "at its Activity" (store.focusActivity): scroll there.
+  const activityRef = useRef(null);
+  const activityFocus = useAppStore(s => s.activityFocus);
+  const clearActivityFocus = useAppStore(s => s.clearActivityFocus);
+  const activityFocused = activityFocus?.kind === 'task' && activityFocus.id === String(task?.id);
+  // The entries it points at stay highlighted for 3s, then fade back.
+  useEffect(() => {
+    if (!activityFocused) return undefined;
+    const scroll = setTimeout(() => activityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    const done = setTimeout(clearActivityFocus, 3000);
+    return () => { clearTimeout(scroll); clearTimeout(done); };
+  }, [activityFocused, clearActivityFocus]);
   const deleteTask = useAppStore(s => s.deleteTask);
   const createTask = useAppStore(s => s.createTask);
   const claimTask = useAppStore(s => s.claimTask);
@@ -125,10 +137,17 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
     () => resolveAiTocTaskAuditLog(task, auditLog, { id: task?.patient_id }),
     [task, auditLog],
   );
-  const activityLogItems = useMemo(
-    () => buildActivityLogItems(effectiveAuditLog, activityTab),
-    [effectiveAuditLog, activityTab],
-  );
+  const activityLogItems = useMemo(() => {
+    const items = buildActivityLogItems(effectiveAuditLog, activityTab);
+    if (!activityFocused) return items;
+    // The entries pointed at: in the focus's dates, or its newest few.
+    const newest = [...effectiveAuditLog].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const pointed = new Set((activityFocus.latest
+      ? newest.slice(0, activityFocus.latest)
+      : newest.filter(l => (!activityFocus.from || new Date(l.created_at) >= new Date(activityFocus.from))
+        && (!activityFocus.to || new Date(l.created_at) <= new Date(activityFocus.to)))).map(l => l.id));
+    return items.map(e => (pointed.has(e.id) ? { ...e, highlight: true } : e));
+  }, [effectiveAuditLog, activityTab, activityFocused, activityFocus]);
 
   if (!task) return null;
 
@@ -300,6 +319,7 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
           onSelectTask={onSelectTask}
           allTasks={allTasks}
         />
+        <div ref={activityRef} />
         <TaskDetailDrawerActivity
           activityToggle={activityToggle}
           setActivityToggle={setActivityToggle}

@@ -27,6 +27,9 @@ import {
   DEFAULT_PROTECTION, DEFAULT_ID_VERIFICATION, contactFor, recipientError, personMeta, verifyBlockers, protectHtml, hasLink, withDecisionMakers, pickOneDecisionMaker, verifyForSendTo, SEND_TO_INFO, SEND_TO_PLACEHOLDER, sendToChipLabel,
 } from './sendTo';
 import { PersonOption, PersonTip } from './PersonOption';
+import { AddFamilyDrawer } from '../../patient/family/AddFamilyDrawer';
+import { AddIconMinimalist } from '../../../components/Icon/AddIconMinimalist';
+import personStyles from './PersonOption.module.css';
 import { VerifyIdCard, VerifyIdReveal } from './VerifyIdCard';
 import { useAppStore } from '../../../store/useAppStore';
 import { RecipientInput } from '../../../components/RecipientInput/RecipientInput';
@@ -135,8 +138,30 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
   // without an email address is listed but can't be picked.
   const people = patient ? [
     { value: 'patient', label: patient.name, email: patient.email, phone: patient.phone, dob: patient.dob, type: 'Patient', meta: personMeta(patient), initials: patient.initials },
-    ...(contacts ? withDecisionMakers(contacts) : []).map(c => ({ value: c.id, label: c.name, email: c.email, phone: c.phone, dob: c.dob, type: c.type, missing: c.missing, meta: personMeta(c) })),
+    ...(contacts ? withDecisionMakers(contacts) : []).map(c => ({ value: c.id, label: c.name, email: c.email, phone: c.phone, dob: c.dob, type: c.type, missing: c.missing, meta: personMeta(c), familyId: c.familyId, memberId: c.memberId })),
   ] : [];
+  // Without an email: greyed out, listed last, with "+ Add email address".
+  // A Fold member (or the patient) opens their Update Member drawer at
+  // Contact Info; anyone else opens Add Family pre-filled on them.
+  const reachable = people.filter(o => o.email);
+  const unreachable = people.filter(o => !o.email);
+  const openPatientEdit = useAppStore(st => st.openPatientEdit);
+  const patientEditSection = useAppStore(st => st.patientEditSection);
+  const syncFamilyContacts = useAppStore(st => st.syncFamilyContacts);
+  const [addEmailFor, setAddEmailFor] = useState(null);
+  const addEmail = (o) => {
+    const memberId = o.value === 'patient' ? patient.id : o.memberId;
+    const member = memberId != null && (patients.find(x => String(x.id) === String(memberId)) || (o.value === 'patient' ? patient : null));
+    if (member) { openPatientEdit?.('contact', member); return; }
+    setAddEmailFor(o);
+  };
+  // Back from Update Member: pick up the email they added.
+  const editOpen = !!patientEditSection;
+  const [wasEditing, setWasEditing] = useState(false);
+  if (editOpen !== wasEditing) {
+    setWasEditing(editOpen);
+    if (!editOpen && patient?.id) syncFamilyContacts?.(patient.id);
+  }
   // Send To can only be opened once a patient with other people on record
   // (care giver, decision maker…) is picked; otherwise the email goes to the patient.
   const hasRoles = !!patient && (contacts || []).length > 0;
@@ -382,12 +407,30 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
                 showInfo
                 infoText={SEND_TO_INFO}
                 // The patient and their contacts (Figma 2910:39991); no email, no pick.
-                options={people.map(o => ({
+                options={[...reachable, ...unreachable].map(o => ({
                   value: o.value,
                   triggerLabel: sendToChipLabel(o.label, o.type),
                   searchText: `${o.label} ${o.type} ${o.email || ''}`,
                   disabled: !o.email,
-                  label: <PersonOption name={o.label} initials={o.initials} meta={o.email || 'No email address on record'} tag={o.type} />,
+                  label: (
+                    <PersonOption
+                      name={o.label}
+                      initials={o.initials}
+                      meta={o.email || 'No email address on record'}
+                      tag={o.type}
+                      muted={!o.email}
+                      action={!o.email && !o.missing ? (
+                        <Link
+                          size="xs"
+                          className={personStyles.action}
+                          onClick={(e) => { e.stopPropagation(); addEmail(o); }}
+                        >
+                          <AddIconMinimalist size={12} color="currentColor" />
+                          Add email address
+                        </Link>
+                      ) : null}
+                    />
+                  ),
                   badgeTooltip: <PersonTip name={o.label} initials={o.initials} email={o.email} tag={o.type} />,
                 }))}
                 value={picked}
@@ -561,6 +604,13 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
           onCancel={saveDraft}
           onConfirm={discard}
           onClose={() => setConfirmDiscard(false)}
+        />
+      )}
+      {addEmailFor && patient && (
+        <AddFamilyDrawer
+          patient={patient}
+          prefill={{ name: addEmailFor.label, phone: addEmailFor.phone, type: addEmailFor.type, familyId: addEmailFor.familyId || null }}
+          onClose={() => setAddEmailFor(null)}
         />
       )}
     </>

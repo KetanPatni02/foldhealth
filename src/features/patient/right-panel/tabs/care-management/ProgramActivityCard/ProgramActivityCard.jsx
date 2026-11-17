@@ -29,7 +29,9 @@ const toggleIn = (set, id) => {
  * program with several activities that day folds into one card (Figma
  * 50:98033) that opens into its entries.
  */
-export function ProgramActivityDay({ day, onOpenVersion, versionGlance, onOpenItem }) {
+// `isPointed(item)`: entries to highlight (e.g. opened from a summary that
+// refers to them); a stack holding one is highlighted as a whole.
+export function ProgramActivityDay({ day, onOpenVersion, versionGlance, onOpenItem, isPointed }) {
   const [openStacks, setOpenStacks] = useState(() => new Set());
   const [openNotes, setOpenNotes] = useState(() => new Set());
   const [openVersions, setOpenVersions] = useState(() => new Set());
@@ -150,11 +152,12 @@ export function ProgramActivityDay({ day, onOpenVersion, versionGlance, onOpenIt
     };
   };
 
+  const mark = (list, on) => (on ? list.map(e => ({ ...e, highlight: true })) : list);
   const entries = day.entries.flatMap((entry) => {
-    if (entry.type !== 'group') return toEntries(entry.items[0], entry.programCode);
+    if (entry.type !== 'group') return mark(toEntries(entry.items[0], entry.programCode), isPointed?.(entry.items[0]));
     if (openStacks.has(entry.key)) {
       return [
-        ...entry.items.flatMap(item => toEntries(item, entry.programCode)),
+        ...entry.items.flatMap(item => mark(toEntries(item, entry.programCode), isPointed?.(item))),
         {
           id: `${entry.key}-collapse`,
           t: 'stack_toggle',
@@ -175,6 +178,7 @@ export function ProgramActivityDay({ day, onOpenVersion, versionGlance, onOpenIt
     return [{
       id: entry.key,
       t: 'stack',
+      highlight: !!isPointed && entry.items.some(isPointed),
       avatar: <Avatar variant="others" initials={String(entry.count)} size="S" />,
       render: () => (
         <>

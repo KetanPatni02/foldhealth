@@ -79,6 +79,8 @@ export function familyToContacts(members = [], patients = []) {
     const m = resolveMember(raw, patients);
     return rolesOfMember(m).map(type => ({
       id: `${m.id}:${type}`, patientId: m.patientId, type,
+      // The family record, and the Fold member behind it if any (to edit them).
+      familyId: m.id, memberId: m.relatedPatientId || null,
       name: m.name, email: m.email, phone: m.phone, dob: m.dob, gender: m.gender,
     }));
   });

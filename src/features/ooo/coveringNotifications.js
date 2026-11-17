@@ -46,18 +46,13 @@ export function reassignedToMe({ job, mine }) {
 }
 
 /** Back from out of office: what happened to my work. */
-export function welcomeBack({ record, job, completed = 0, autoReplies = 0 }) {
-  const moved = (job?.results || []).filter(r => r.outcome === 'reassigned').length;
-  const parts = [
-    `${plural(moved, 'item', 'items')} reassigned`,
-    `${completed} completed by your covering providers`,
-    `${plural(autoReplies, 'auto-reply', 'auto-replies')} sent`,
-  ];
+export function welcomeBack({ record, job }) {
   return {
     id: `cov:back:${record.id}`,
     type: 'ooo.returned',
     title: "Welcome back. Here's what happened while you were out.",
-    body: `${parts.join(', ')}.`,
+    // No counts line: the summary has them, by module.
+    body: '',
     action: 'openAwaySummary',
     reassignmentJobId: job?.id || null,
     oooRecordId: record.id,

@@ -1,0 +1,90 @@
+.builder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.actions {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+.box,
+.nested {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-50);
+}
+
+.nested {
+  padding: var(--space-3);
+  background: var(--neutral-0);
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.groupLabel {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.groupRemove { margin-left: auto; }
+
+.rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: 6px;
+}
+
+.dragging { opacity: 0.5; }
+
+.grip {
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: grab;
+}
+
+.grip:active { cursor: grabbing; }
+
+.field { flex: 1 1 40%; min-width: 0; }
+.op { flex: 0 0 96px; width: 96px; }
+.value { flex: 1 1 45%; min-width: 0; }
+
+.addCircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 50%;
+  background: var(--neutral-0);
+  color: var(--primary-300);
+  cursor: pointer;
+}
+
+.addCircle:hover { background: var(--primary-25); }
+.addCircle:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }

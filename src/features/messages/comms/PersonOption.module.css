@@ -25,6 +25,9 @@
   font-size: var(--font-sm);
   color: var(--neutral-300);
 }
+/* Someone who can't be picked (e.g. no email): their name greys out. */
+.nameMuted { color: var(--placeholder-text); }
+.action { display: inline-flex; align-items: center; gap: calc(var(--space-1) / 2); align-self: flex-start; }
 .tags {
   display: flex;
   flex-wrap: wrap;

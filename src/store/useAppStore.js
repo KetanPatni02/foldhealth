@@ -17003,6 +17003,20 @@ export const useAppStore = create((set, get) => ({
     get().syncFamilyContacts(key);
     return member;
   },
+  // Change one person's details (e.g. the email Send To asked for).
+  updateFamilyMember: async (patientId, id, patch) => {
+    const key = String(patientId);
+    if (!get().familyMembersLocal) {
+      const { error } = await supabase.from('patient_family_members').update({
+        ...('email' in patch ? { email: patch.email || null } : {}),
+        ...('phone' in patch ? { phone: patch.phone || null } : {}),
+      }).eq('id', id);
+      if (error) return false;
+    }
+    set(s => ({ familyMembers: { ...s.familyMembers, [key]: (s.familyMembers[key] || []).map(m => (m.id === id ? { ...m, ...patch } : m)) } }));
+    get().syncFamilyContacts(key);
+    return true;
+  },
   removeFamilyMember: async (patientId, id) => {
     const key = String(patientId);
     if (!get().familyMembersLocal) {
@@ -17777,6 +17791,14 @@ export const useAppStore = create((set, get) => ({
     } catch { /* */ }
   },
   clearPendingOpenAppointmentId: () => set({ pendingOpenAppointmentId: null }),
+  // An appointment or task drawer to open at its Activity (from the While
+  // You Were Away summary): it scrolls there once its history has loaded.
+  // { kind: 'appointment' | 'task', id }.
+  activityFocus: null,
+  clearActivityFocus: () => set({ activityFocus: null }),
+  // `from`/`to`: the stretch whose entries to highlight for 3s (or
+  // `latest`: that many newest entries).
+  focusActivity: (kind, id, span = {}) => set({ activityFocus: { kind, id: String(id), from: span.from || null, to: span.to || null, latest: span.latest || null } }),
 
   // Local helper: returns true when the appointment's primary_user or any
   // secondary_users entry matches the signed-in user's display name. No

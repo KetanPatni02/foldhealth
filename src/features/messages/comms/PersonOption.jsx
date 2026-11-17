@@ -7,16 +7,18 @@ const initialsOf = (name = '') => name.split(/\s+/).filter(Boolean).map(w => w[0
 /**
  * A person row for pickers (Figma 2910:39991): avatar, name, a meta line
  * (gender • date of birth (age)) and, optionally, a grey tag on the right
- * (e.g. their relation to the patient).
+ * (e.g. their relation to the patient). `muted` greys the name (someone who
+ * can't be picked); `action` (e.g. a "+ Add email address" link) takes the
+ * meta line's place.
  */
-export function PersonOption({ name, initials, meta, tag }) {
+export function PersonOption({ name, initials, meta, tag, muted = false, action = null }) {
   return (
     <span className={styles.row}>
       {/* Same row as User Availability's user pickers: default avatar, name over a grey line. */}
       <Avatar variant="patient" initials={initials || initialsOf(name)} />
       <span className={styles.text}>
-        <span className={styles.name}>{name}</span>
-        {meta && <span className={styles.meta}>{meta}</span>}
+        <span className={muted ? `${styles.name} ${styles.nameMuted}` : styles.name}>{name}</span>
+        {action || (meta && <span className={styles.meta}>{meta}</span>)}
       </span>
       {/* One tag per role ("Care Giver · Decision Maker" is two). */}
       {tag && (
