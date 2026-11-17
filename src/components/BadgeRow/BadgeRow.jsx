@@ -86,8 +86,9 @@ export function BadgeRow({ items = [], maxLines = 2, tone = 'neutral', size = 's
 
   return (
     <div ref={rowRef} className={[styles.row, className].filter(Boolean).join(' ')}>
-      {items.slice(0, visibleCount).map(label => (
-        <Badge key={label} tone={tone} size={size} label={label} icon={icon} />
+      {/* Index keys: labels can repeat, and duplicate keys leave stale badges behind. */}
+      {items.slice(0, visibleCount).map((label, i) => (
+        <Badge key={i} tone={tone} size={size} label={label} icon={icon} />
       ))}
       {hidden.length > 0 && (
         <Tooltip label={hidden.join(', ')} maxWidth={280}>
@@ -95,7 +96,7 @@ export function BadgeRow({ items = [], maxLines = 2, tone = 'neutral', size = 's
         </Tooltip>
       )}
       <span ref={measureRef} className={styles.measure} aria-hidden="true">
-        {items.map(label => <Badge key={label} tone={tone} size={size} label={label} icon={icon} />)}
+        {items.map((label, i) => <Badge key={i} tone={tone} size={size} label={label} icon={icon} />)}
         <Badge tone={tone} size={size} label={`+${items.length}`} />
       </span>
     </div>

@@ -7,6 +7,7 @@ import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { Banner } from '../../../../components/Banner/Banner';
 import { Icon } from '../../../../components/Icon/Icon';
 import { TableSkeleton } from '../../../../components/TableSkeleton/TableSkeleton';
+import { Skeleton } from '../../../../components/Skeleton/Skeleton';
 import { EmptyState } from '../../../../components/EmptyState/EmptyState';
 import { ConfirmDialog } from '../../../../components/ConfirmDialog/ConfirmDialog';
 import { useAppStore } from '../../../../store/useAppStore';
@@ -73,7 +74,10 @@ export function TemplateGroupsPanel({ tabs, activeTab, onTabChange }) {
         </td>
         <td className={styles.td}>
           <span className={styles.members}>
-            <BadgeRow items={members.map(t => t?.name || 'Deleted template')} maxLines={2} />
+            {/* Until the library loads every member looks deleted. */}
+            {libraryDidFetch
+              ? <BadgeRow items={members.map(t => t?.name || 'Deleted template')} maxLines={2} />
+              : <Skeleton width={180} height={20} />}
             {retired > 0 && <Badge tone="warning" size="sm" label={`${retired} retired`} />}
           </span>
         </td>
