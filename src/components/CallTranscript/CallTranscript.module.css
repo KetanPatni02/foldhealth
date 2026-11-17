@@ -1,0 +1,120 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: var(--space-2) calc(var(--space-1) * 2.5);
+  background: var(--neutral-50);
+}
+.card:has([aria-expanded='true']) .header { border-bottom: 0.5px solid var(--neutral-150); }
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.title {
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+
+.actions {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/* 0.5px x 16px rule between header action groups. */
+.divider {
+  width: 0.5px;
+  height: 16px;
+  margin: 0 var(--space-1);
+  background: var(--neutral-150);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.turns {
+  display: flex;
+  flex-direction: column;
+  max-height: 292px;
+  overflow-y: auto;
+}
+
+.turn {
+  display: flex;
+  gap: calc(var(--space-1) * 1.5);
+}
+
+/* Avatar with a thin line running down to the next turn. */
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 20px;
+}
+.railLine {
+  flex: 1;
+  width: 0.5px;
+  background: var(--neutral-150);
+}
+
+.turnBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--space-1) 0 calc(var(--space-1) * 6.25);
+}
+
+.turnHead {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) * 1.5);
+}
+
+.speaker {
+  flex: 1;
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+
+.time {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+
+.text {
+  margin: 0;
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-300);
+  overflow-wrap: anywhere;
+}

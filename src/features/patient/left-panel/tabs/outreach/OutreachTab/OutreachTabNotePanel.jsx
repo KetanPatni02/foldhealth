@@ -7,12 +7,21 @@ import { CollapsibleContent } from '../../../../../../components/Collapsible/Col
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { CheckboxListPopover } from '../../../../../../components/CheckboxListPopover/CheckboxListPopover';
 import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
+import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { OUTCOME_CHOICES_BY_STATUS } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
 
 export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOpen, showSyncText,
   onToggleExpand, onToggleOutcomeOpen, onAddOutcome, onRemoveOutcome, onSetOutcomes, onNoteChange, onToggleSyncText,
-  outcomeType, choiceItems = null, cannedEntry = false }) {
+  outcomeType, choiceItems = null, cannedEntry = false,
+  // HCC calls: a transcript block above the note. `transcript` is undefined
+  // until it's added (by hand or from the call's transcript).
+  transcript, onAddTranscript, onTranscriptChange, onRemoveTranscript,
+  // HCC Outreach: the same panel without the box around it.
+  plain = false,
+  // HCC Outreach: one outcome, shown on the Select Outcome badge itself.
+  singleOutcome = false }) {
+  const hasTranscript = typeof transcript === 'string';
   const outcomeBtnRef = useRef(null);
   const noteRef = useRef(null);
   // Canned messages (deferred): typing "/" at the start of a word opens the
@@ -32,7 +41,10 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
   // open as a checkbox list so several outcomes go in at once.
   const menuItems = choiceItems
     ? choiceItems
-    : (OUTCOME_CHOICES_BY_STATUS[outcomeType] || []).filter(o => !outcomes.includes(o)).map(val => ({ key: val, label: val }));
+    : singleOutcome
+      ? (OUTCOME_CHOICES_BY_STATUS[outcomeType] || []).map(val => ({ key: val, label: val, selected: outcomes[0] === val }))
+      : (OUTCOME_CHOICES_BY_STATUS[outcomeType] || []).filter(o => !outcomes.includes(o)).map(val => ({ key: val, label: val }));
+  const picked = singleOutcome ? outcomes[0] : null;
   const choice = useMemo(() => {
     const keys = [], label = {}, section = {};
     let current = null;
@@ -53,7 +65,7 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
     : styles.outcomeBadgeWarning;
 
   return (
-    <div className={styles.notePanel}>
+    <div className={plain ? styles.notePanelPlain : styles.notePanel}>
       <div className={styles.notePanelHeader}>
         <button className={styles.notePanelTitle} onClick={onToggleExpand} type="button">
           <span className={styles.notePanelName}>{title}</span>
@@ -68,14 +80,23 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
             <Tooltip label={outcomeDisabled ? 'Select Successful, Unsuccessful or Note first' : null}>
               <button
                 ref={outcomeBtnRef}
-                className={styles.selectOutcomeBtn}
+                className={`${styles.selectOutcomeBtn} ${picked ? badgeClass : ''}`}
                 onClick={e => { setAnchorRect(e.currentTarget.getBoundingClientRect()); onToggleOutcomeOpen(); }}
                 disabled={outcomeDisabled}
                 type="button"
               >
-                <Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" />
-                <span>Select Outcome</span>
-                {outcomes.length === 0 && <span className={styles.mandatoryDot} aria-hidden="true" />}
+                {picked ? (
+                  <>
+                    <span>{picked}</span>
+                    <DownChevronIcon size={12} color="currentColor" />
+                  </>
+                ) : (
+                  <>
+                    <Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" />
+                    <span>Select Outcome</span>
+                    {outcomes.length === 0 && <span className={styles.mandatoryDot} aria-hidden="true" />}
+                  </>
+                )}
               </button>
             </Tooltip>
             {outcomeOpen && !outcomeDisabled && choiceItems && choice.keys.length > 0 && (
@@ -97,13 +118,20 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
               <MenuPopover
                 anchorRef={outcomeBtnRef}
                 items={menuItems}
-                onSelect={onAddOutcome}
+                onSelect={singleOutcome ? (val) => { onSetOutcomes([val]); onToggleOutcomeOpen(); } : onAddOutcome}
                 onClose={onToggleOutcomeOpen}
                 width={260}
                 ariaLabel="Select outcome"
               />
             )}
           </div>
+          {onAddTranscript && (
+            <>
+              <span className={styles.panelDivider} />
+              <ActionButton size="sm" icon="solar:document-add-linear" tooltip={hasTranscript ? 'Transcript added' : 'Add Transcript'}
+                tooltipBelow tooltipLeft disabled={hasTranscript} onClick={onAddTranscript} />
+            </>
+          )}
           {showSyncText && (
             <>
               <span className={styles.panelDivider} />
@@ -120,7 +148,7 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
 
       <CollapsibleContent open={expanded}>
         <div className={styles.notePanelBody}>
-          {outcomes.length > 0 && (
+          {!singleOutcome && outcomes.length > 0 && (
             <div className={styles.outcomeRow}>
               <span className={styles.outcomeRowLabel}>Outcome:</span>
               {outcomes.map(o => (
@@ -132,13 +160,30 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
               ))}
             </div>
           )}
-          <Textarea aria-label="Outreach note"
-            ref={noteRef}
-            className={styles.noteTextarea}
-            placeholder={cannedEntry ? 'Write note, or type / for canned messages' : 'Write note'}
-            value={note}
-            onChange={handleNoteInput}
-          />
+          {/* With a transcript, the note box holds it above the note text. */}
+          <div className={hasTranscript ? styles.noteField : styles.noteFieldBare}>
+            {hasTranscript && (
+              <div className={styles.noteTranscript}>
+                <span className={styles.noteTranscriptBar} aria-hidden="true" />
+                <Textarea
+                  aria-label="Call transcript"
+                  className={styles.noteTranscriptText}
+                  autoFocus={!transcript}
+                  placeholder="Paste the call transcript"
+                  value={transcript}
+                  onChange={e => onTranscriptChange(e.target.value)}
+                />
+                <ActionButton size="sm" icon="solar:trash-bin-trash-linear" tooltip="Remove transcript" tooltipBelow tooltipLeft onClick={onRemoveTranscript} />
+              </div>
+            )}
+            <Textarea aria-label="Outreach note"
+              ref={noteRef}
+              className={hasTranscript ? styles.noteTextareaInner : styles.noteTextarea}
+              placeholder={cannedEntry ? 'Write note, or type / for canned messages' : 'Write note'}
+              value={note}
+              onChange={handleNoteInput}
+            />
+          </div>
           {cannedOpen && (
             <MenuPopover
               anchorRef={noteRef}

@@ -68,6 +68,8 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
   const [chartDetail, setChartDetail] = useState(null);
   const [actionsRect, setActionsRect] = useState(null);
   const hccRole = useAppStore(s => s.hccUserRole);
+  const hccOutreachEnabled = useAppStore(s => s.hccOutreachEnabled);
+  const requestHccOutreachLog = useAppStore(s => s.requestHccOutreachLog);
   const addedCharts = useAppStore(s => s.hccAddedCharts[member.id]);
   const chartStatus = useAppStore(s => s.hccChartStatus[member.id]);
   const removedCharts = useAppStore(s => s.hccRemovedCharts[member.id]);
@@ -344,7 +346,16 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
       <ActionsMenuPopover
         anchorRect={actionsRect}
         onClose={() => setActionsRect(null)}
+        leadingItems={hccOutreachEnabled
+          ? [{ icon: 'solar:call-chat-linear', label: 'Log Outreach', trail: false }]
+          : []}
         onAction={(label) => {
+          if (label === 'Log Outreach') {
+            // Member-level: opens the chart on Outreach with a blank form.
+            requestHccOutreachLog();
+            openDiagPanel(member.id, { leftPanel: 'outreach' });
+            return;
+          }
           if (label === 'Make a Call') {
             setActionsRect(null);
             openCallPopover(member.id, actionsBtnRef);

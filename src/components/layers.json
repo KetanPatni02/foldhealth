@@ -90,6 +90,7 @@
   ],
   "patterns": [
     "ActivityLog",
+    "CallTranscript",
     "AssigneeChange",
     "AttachmentCard",
     "AuditDetailCard",

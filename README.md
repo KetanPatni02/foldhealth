@@ -37,6 +37,17 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **HCC Outreach: Outreach To, duration and call transcript.** The HCC
+  chart's Outreach form opens with Outreach To (PCP / PCP Office or Member),
+  which replaces Call With and sets the Called To list. Call Direction and
+  Duration share a row, and Duration is two boxes, `[00 min] : [00 sec]`,
+  each with up/down arrows. The Call Transcript card only shows after
+  Use This on the Last Call banner: speaker turns with avatars and times,
+  plus search, Add to Note and copy. A transcript can also be pasted by hand
+  from the transcript icon next to Select Outcome, into a block above the
+  note (trash removes it); Add to Note fills the same block. Saved calls keep
+  the transcript as speaker turns. Log Outreach is also in a worklist row's
+  three-dot menu. No migration.
 - **CMP Bulk Change Assignees matches HEDIS.** The CMP worklist's Change
   Assignee opens the same dialog as the HEDIS bulk change: Select Role on
   top (Assignee or a care team role), then one row per CMP sub-program the
