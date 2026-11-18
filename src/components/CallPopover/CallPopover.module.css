@@ -164,3 +164,22 @@
 .callBtn:hover { background: var(--primary-400); }
 
 .callBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Under Call Now: an optional follow-on action (e.g. Open Assessment). */
+.secondaryBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: calc(var(--space-2) * -1) var(--space-4) var(--space-4);
+  padding: var(--space-2);
+  width: calc(100% - 32px);
+  border-radius: 8px;
+  border: 0.5px solid var(--primary-200);
+  background: var(--neutral-0);
+  color: var(--primary-300);
+  font-size: var(--font-base);
+  font-weight: 500;
+  cursor: pointer;
+}
+.secondaryBtn:hover { background: var(--primary-50); }

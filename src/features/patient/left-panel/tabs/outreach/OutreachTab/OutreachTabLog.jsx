@@ -10,7 +10,7 @@ const SMS_ICON = 'solar:chat-round-line-linear';
  * timeline reads like every other activity log: month headers, the icon
  * rail, meta line, headline with program badges, outcome and View Note.
  */
-export function outreachActivityEntries(groups, { onEdit, onDelete, sequenceOf = null } = {}) {
+export function outreachActivityEntries(groups, { onEdit, onDelete, extraActions, sequenceOf = null } = {}) {
   return (groups || []).flatMap(group => [
     { t: 'group', label: group.label },
     ...group.logs.map(log => {
@@ -50,7 +50,7 @@ export function outreachActivityEntries(groups, { onEdit, onDelete, sequenceOf =
         expandLabel: 'View Note',
         note: log.note,
         callDetails: log.type === 'Call' ? log.callDetails : undefined,
-        trailing: <LogRowMenu log={log} onEdit={onEdit} onDelete={onDelete} />,
+        trailing: <LogRowMenu log={log} onEdit={onEdit} onDelete={onDelete} extraActions={extraActions} />,
       };
     }),
   ]);

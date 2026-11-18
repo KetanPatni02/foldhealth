@@ -57,7 +57,13 @@
   overflow: hidden;
 }
 /* Gap, Drugs, Status, PDC, Fail Date, Next Fill Due. */
-.listGrid { display: grid; grid-template-columns: minmax(0, 1fr) 64px 120px 80px 110px 110px; align-items: stretch; }
+/* Space shared by what each column holds: the short gap code and drug count
+   take less, Status and Next Fill Due (a date with an icon or due line) more. */
+.listGrid {
+  display: grid;
+  grid-template-columns: minmax(80px, 0.8fr) minmax(56px, 0.6fr) minmax(120px, 1.2fr) minmax(64px, 0.8fr) minmax(96px, 1fr) minmax(120px, 1.2fr);
+  align-items: stretch;
+}
 .listHead {
   height: 32px;
   align-items: center;

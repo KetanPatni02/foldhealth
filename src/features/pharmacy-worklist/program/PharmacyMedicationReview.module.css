@@ -280,7 +280,9 @@
 .cTable { display: flex; flex-direction: column; background: var(--primary-25); }
 .cRow {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) 88px 100px 88px 44px 24px;
+  /* Recent Fill fits "Claim not matched"; the last column holds the note
+     icon and the Pause / Stop menu. */
+  grid-template-columns: 20px minmax(0, 1fr) 80px 120px 80px 40px 52px;
   column-gap: var(--space-2);
   align-items: center;
   /* 12px in on the left as in the CIS dose table; 8px on the right for the
@@ -360,6 +362,7 @@
 .cMetaLine { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Under the Recent Fill chip: the fill's claim match. */
 .cMatch {
+  white-space: nowrap;
   font-size: var(--font-md);
   line-height: var(--leading-tight);
   cursor: default;
@@ -373,3 +376,7 @@
 .refillCell { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
 .refillDate { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
 .refillMeta { font-size: var(--font-sm); color: var(--neutral-300); }
+
+/* Pause / Stop shows on row hover (or keyboard focus) to keep rows light. */
+.cMore { display: inline-flex; opacity: 0; transition: opacity 120ms ease; }
+.cRow:hover .cMore, .cMore:focus-within { opacity: 1; }

@@ -144,7 +144,8 @@ function PatientCall({ p }) {
  * numbers (Last Used / Most Used from earlier dials), then the line to call
  * via, with Switch Number to pick another of the organization's lines.
  * `target`: { label, kind?, number, numbers?: [{ number, label, uses,
- * lastUsed, mostUsed }], lastLineId?, onDial?(number, { id, name }) }.
+ * lastUsed, mostUsed }], lastLineId?, onDial?(number, { id, name }),
+ * secondaryAction?: { label, icon?, onClick } } (a link under Call Now).
  */
 function NumberCall({ target }) {
   const closeCallPopover = useAppStore(s => s.closeCallPopover);
@@ -238,6 +239,16 @@ function NumberCall({ target }) {
         <Icon name="solar:phone-calling-bold" size={18} />
         Call Now
       </button>
+      {target.secondaryAction && (
+        <button
+          type="button"
+          className={styles.secondaryBtn}
+          onClick={() => { closeCallPopover(); target.secondaryAction.onClick(); }}
+        >
+          {target.secondaryAction.icon && <Icon name={target.secondaryAction.icon} size={16} />}
+          {target.secondaryAction.label}
+        </button>
+      )}
     </>
   );
 }

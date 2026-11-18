@@ -44,6 +44,7 @@ export function OutreachTabActivity({
   filteredLogGroups,
   onEdit,
   onDelete,
+  extraActions,
   showSequence = false,
 }) {
   // Filter chips: the toolbar filter icon toggles the chip row. They narrow
@@ -148,7 +149,7 @@ export function OutreachTabActivity({
       )}
 
       <ActivityLog
-        entries={outreachActivityEntries(visibleGroups, { onEdit, onDelete, sequenceOf: showSequence ? sequenceMap(logGroups) : null })}
+        entries={outreachActivityEntries(visibleGroups, { onEdit, onDelete, extraActions, sequenceOf: showSequence ? sequenceMap(logGroups) : null })}
         emptyLabel="No outreach logged yet."
         flushTop
       />

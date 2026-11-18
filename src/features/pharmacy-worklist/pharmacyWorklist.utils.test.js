@@ -514,11 +514,10 @@ describe('PDC to act on', () => {
     expect(effectivePdc(claimMeasure({ claims: [paid(60)], pdc: null }))).toBe(50);
   });
 
-  it('uses the team override first, and the calculation again once cleared', () => {
+  it('ignores a hand-set PDC: nobody edits PDC (Session 7)', () => {
     const x = claimMeasure(reported);
-    expect(effectivePdc({ ...x, pdcManual: 78 })).toBe(78);
-    expect(pdcSource({ ...x, pdcManual: 78 })).toBe('Manual');
-    expect(effectivePdc({ ...x, pdcManual: null })).toBe(68);
+    expect(effectivePdc({ ...x, pdcManual: 78 })).toBe(68);
+    expect(pdcSource({ ...x, pdcManual: 78 })).not.toBe('Manual');
   });
 });
 

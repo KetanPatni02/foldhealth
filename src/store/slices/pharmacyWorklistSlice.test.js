@@ -257,28 +257,25 @@ describe('intervention outcomes', () => {
   });
 });
 
-describe('PDC set by hand', () => {
-  it('logs the change with the PDC it changed from', () => {
+describe('stop or pause a medication', () => {
+  const withDrug = () => {
     const s = storeWith([]);
-    s.member().measures = [{ code: 'MAD', pdc: 80, medications: [] }];
-    s.get().setPharmacyPdcOverride('1', 'MAD', 85, 80);
-    expect(s.member().measures[0]).toMatchObject({ pdcManual: 85, pdcManualBy: 'Priya' });
-    expect(s.member().activityLog[0]).toMatchObject({ title: 'MAD PDC changed from 80% to 85%', note: 'Set by hand by Priya', actor: 'Priya' });
+    s.member().measures = [{ code: 'MAD', medications: [{ id: 'a', name: 'Metformin', status: 'Active' }] }];
+    return s;
+  };
+
+  it('records the hold on the drug and logs it, without touching the gap', () => {
+    const s = withDrug();
+    s.get().setPharmacyMedicationHold('1', 'a', { kind: 'pause', start: '11/01/2026', end: '11/30/2026', reason: 'Side effects or allergy', confirmedBy: 'Dr. Lin' });
+    expect(s.member().measures[0].medications[0].hold).toMatchObject({ kind: 'pause', start: '11/01/2026', end: '11/30/2026', by: 'Priya' });
+    expect(s.member().activityLog[0]).toMatchObject({ title: 'Metformin paused', note: '11/01/2026 to 11/30/2026 · Reason: Side effects or allergy · Confirmed by Dr. Lin' });
   });
 
-  it('logs going back to the calculated PDC', () => {
-    const s = storeWith([]);
-    s.member().measures = [{ code: 'MAD', pdc: 80, pdcManual: 85, medications: [] }];
-    s.get().setPharmacyPdcOverride('1', 'MAD', null, 85);
-    expect(s.member().measures[0].pdcManual).toBeNull();
-    expect(s.member().activityLog[0].title).toBe('MAD PDC changed from 85% to calculated');
-  });
-
-  it('logs nothing when the number did not change', () => {
-    const s = storeWith([]);
-    s.member().measures = [{ code: 'MAD', pdc: 80, medications: [] }];
-    s.get().setPharmacyPdcOverride('1', 'MAD', 80, 80);
-    expect(s.member().activityLog).toEqual([]);
-    expect(s.member().measures[0].pdcManual).toBeUndefined();
+  it('resumes a held drug', () => {
+    const s = withDrug();
+    s.get().setPharmacyMedicationHold('1', 'a', { kind: 'stop', start: '11/02/2026', reason: 'Member choice', confirmedBy: 'Member' });
+    s.get().setPharmacyMedicationHold('1', 'a', null);
+    expect(s.member().measures[0].medications[0].hold).toBeNull();
+    expect(s.member().activityLog[0]).toMatchObject({ title: 'Metformin resumed', note: 'Was stopped from 11/02/2026' });
   });
 });

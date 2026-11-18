@@ -19,3 +19,7 @@
 .actionRow { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 
 .contacts { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* Ways to raise PDC, under Suggested Actions. */
+.raiseIcon { display: inline-flex; color: var(--neutral-300); cursor: help; }
+.raiseList { display: flex; flex-direction: column; gap: var(--space-1); }

@@ -17,6 +17,7 @@ import { STAKEHOLDERS } from '../interventionSchema';
 import { mapOutcomesToIntervention } from '../outcomeMapping';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import { assessmentCallDetails } from './assessmentOutreach';
+import { stepsByGap } from './pharmacyRecords';
 import { Link } from '../../../components/Link/Link';
 import styles from './PharmacyVerificationStep.module.css';
 
@@ -319,10 +320,30 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
         )}
       </div>
 
-      {reached && schema.measureOutcomes.length > 0 && (
+      {/* A saved Assessment reads as the consolidated note: each gap with
+          the steps performed for it. */}
+      {readOnly && (
         <div className={styles.tableCard}>
           <div className={styles.tableHeader}>
-            <span className={styles.cardTitle}>{stakeholder} Questions</span>
+            <span className={styles.cardTitle}>Steps Performed</span>
+          </div>
+          <div className={styles.byGap}>
+            {stepsByGap(record).map(g => (
+              <section key={g.code} className={styles.gapBlock}>
+                <h4 className={styles.gapTitle}>{g.code} <span className={styles.gapName}>{g.name}</span></h4>
+                {g.steps.length
+                  ? <ul className={styles.stepList}>{g.steps.map(st => <li key={st}>{st}</li>)}</ul>
+                  : <span className={styles.muted}>No steps recorded</span>}
+              </section>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!readOnly && reached && schema.measureOutcomes.length > 0 && (
+        <div className={styles.tableCard}>
+          <div className={styles.tableHeader}>
+            <span className={styles.cardTitle}>Steps Performed</span>
             {gaps.length > 1 && !readOnly && (
               <Switch checked={sameForAll} onChange={toggleSame} label="Same answer for all gaps" />
             )}
@@ -331,7 +352,7 @@ export function PharmacyVerificationStep({ program, member: memberProp, onLocked
             <table className={styles.qTable}>
               <thead>
                 <tr>
-                  <th className={styles.qCol}>Question</th>
+                  <th className={styles.qCol}>Step</th>
                   {gaps.map(g => <th key={g.code} title={MEASURE_NAMES[g.code]}>{g.code}</th>)}
                 </tr>
               </thead>

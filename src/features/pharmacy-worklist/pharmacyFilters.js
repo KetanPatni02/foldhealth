@@ -2,7 +2,7 @@ import { parseLocalDate } from '../../lib/localDate';
 import { fillsToStayCompliant } from './fillEvents';
 import {
   GAP_STATUSES, MEASURE_ORDER, PLAN_STATUSES, MEDICATION_STATUSES, RECON_STATUSES, SAVABILITY, SUB_STATUSES, PROGRESS_LEVELS,
-  daysFromToday, daysLeftBucket, isActiveGap, medicationStatus, pharmaciesUsed, planTimers, prescribersOf,
+  daysFromToday, daysLeftBucket, drugStrength, fillLengths, isShortFillCandidate, unableToReach, isActiveGap, medicationStatus, pharmaciesUsed, planTimers, prescribersOf,
 } from './pharmacyWorklist.utils';
 import { escalation, inOutreachQueue } from './pharmacyRules';
 
@@ -27,7 +27,10 @@ export const MORE_FILTER_ITEMS = [
   { k: 'daysLeft', label: 'Days Left', primary: true },
   { k: 'overdue', label: 'Overdue', primary: true },
   { k: 'claimRecon', label: 'Claim Reconciliation', primary: true },
-  { k: 'assignee', label: 'Assigned to', primary: true },
+  { k: 'assignee', label: 'Assignee', primary: true },
+  { k: 'coordinator', label: 'Coordinator', group: 'Care Team' },
+  { k: 'pharmacist', label: 'Pharmacist', group: 'Care Team' },
+  { k: 'socialWorker', label: 'Social Worker', group: 'Care Team' },
 
   { k: 'member', label: 'Member Name or ID', group: 'Members' },
   { k: 'sex', label: 'Sex', group: 'Members' },
@@ -44,6 +47,9 @@ export const MORE_FILTER_ITEMS = [
   { k: 'payerProjectedStatus', label: 'Payer Projected Status', group: 'Pharmacy Gaps' },
   { k: 'consistentlyNonCompliant', label: 'Consistently Non-Compliant', group: 'Pharmacy Gaps' },
 
+  { k: 'fillType', label: 'Fill Type', group: 'Drugs' },
+  { k: 'shortFill', label: 'Longer Fill Candidate', group: 'Drugs' },
+  { k: 'dosage', label: 'Dosage', group: 'Drugs' },
   { k: 'drugName', label: 'Drug Name', group: 'Drugs' },
   { k: 'drugCount', label: 'Drug Count', group: 'Drugs' },
   { k: 'drugClass', label: 'Therapeutic Class', group: 'Drugs' },
@@ -85,6 +91,7 @@ export const MORE_FILTER_ITEMS = [
   { k: 'contactType', label: 'Contact Type', group: 'Outreach' },
   { k: 'attempts', label: 'Attempts on Current Gap', group: 'Outreach' },
   { k: 'noOutreach', label: 'No Outreach Yet', group: 'Outreach' },
+  { k: 'notWorked', label: 'Not Worked Yet', group: 'Outreach' },
   { k: 'inQueue', label: 'In Outreach Queue', group: 'Outreach' },
   { k: 'escalate', label: 'Escalate to Prescriber', group: 'Outreach' },
   { k: 'unableToReach', label: 'Unable to Reach', group: 'Outreach' },
@@ -111,7 +118,7 @@ const dynamic = (k, extra) => ({ type: 'multi', dynamic: k, opts: [], ...extra }
 const toggle = { type: 'radio', opts: YES };
 const range = (lo, hi) => ({ type: 'range', opts: [String(lo), String(hi)] });
 const date = { type: 'date' };
-const SOURCE_OPTS = ['Plan-provided', 'Fold-calculated', 'Manual'];
+const SOURCE_OPTS = ['Plan-provided', 'Fold-calculated'];
 
 const DEFS = {
   priority: multi(['P1', 'P2', 'P3']),
@@ -123,6 +130,9 @@ const DEFS = {
   overdue: multi(['Refill overdue', 'Claim not matched', 'Claim overdue', 'Follow-up overdue', 'Not overdue']),
   claimRecon: multi(RECON_STATUSES),
   assignee: dynamic('assignee', { searchable: true }),
+  coordinator: dynamic('coordinator', { searchable: true }),
+  pharmacist: dynamic('pharmacist', { searchable: true }),
+  socialWorker: dynamic('socialWorker', { searchable: true }),
   member: dynamic('member', { searchable: true }),
   sex: multi(['F', 'M']),
   age: range(0, 110),
@@ -136,6 +146,10 @@ const DEFS = {
   excluded: dynamic('excluded'),
   payerProjectedStatus: multi(['Already adherent', 'Unlikely by year end', 'Check projected date']),
   consistentlyNonCompliant: toggle,
+  fillType: dynamic('fillType'),
+  shortFill: toggle,
+  dosage: dynamic('dosage', { searchable: true }),
+  notWorked: toggle,
   drugName: dynamic('drugName', { searchable: true }),
   drugCount: range(0, 10),
   drugClass: dynamic('drugClass'),
@@ -203,7 +217,7 @@ export const drugClass = (d) => d.drugClass || DRUG_CLASS[(d.generic || '').toLo
 
 const yes = (cond) => (cond ? YES : []);
 const nums = (list) => list.filter(n => n != null && !Number.isNaN(n));
-const sourceLabel = (s) => (!s ? null : s === 'Plan' ? 'Plan-provided' : s === 'Manual' ? 'Manual' : 'Fold-calculated');
+const sourceLabel = (s) => (!s ? null : s === 'Plan' ? 'Plan-provided' : 'Fold-calculated');
 const activeMeds = (g) => g.medications.filter(d => d.status !== 'Discontinued');
 const openGaps = (m) => m.gaps.filter(g => isActiveGap(g.status));
 const isPast = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
@@ -247,6 +261,9 @@ const GAP_VALUES = {
   excluded: (g) => (g.status.gap === 'Excluded' ? [g.exclusionType || 'Excluded'] : []),
   payerProjectedStatus: (g) => [g.projectedStatus].filter(Boolean),
   consistentlyNonCompliant: (g) => yes(g.complianceFlag === 'Consistently Non-Compliant'),
+  fillType: (g) => fillLengths(g).map(n => `${n}-day`),
+  shortFill: (g) => yes(isActiveGap(g.status) && isShortFillCandidate(g)),
+  dosage: (g) => activeMeds(g).map(d => [d.name, drugStrength(d)].filter(Boolean).join(' ')),
   drugName: (g) => activeMeds(g).map(d => d.name),
   drugCount: (g) => [g.medications.length],
   drugClass: (g) => g.medications.map(drugClass).filter(Boolean),
@@ -285,6 +302,9 @@ const VALUES = {
   progress: (m) => [m.progress.label],
   overdue: overdueTags,
   assignee: (m) => [m.assigneeName || 'Unassigned'],
+  coordinator: (m) => [m.coordinator || 'Unassigned'],
+  pharmacist: (m) => [m.pharmacist || 'Unassigned'],
+  socialWorker: (m) => [m.socialWorker || 'Unassigned'],
   member: (m) => [`${m.name} (#${m.memberId || m.id})`],
   sex: (m) => [m.gender],
   age: (m) => nums([parseInt(m.age, 10)]),
@@ -305,11 +325,8 @@ const VALUES = {
   lastOutreachDate: (m) => (m.outreach ? [m.outreach.date] : []),
   contactType: (m) => (m.outreach?.contact ? [m.outreach.contact] : []),
   noOutreach: (m) => yes(!(m.callHistory || []).length),
-  unableToReach: (m) => {
-    // A note is not a contact attempt.
-    const calls = (m.callHistory || []).filter(c => c.result !== 'note');
-    return yes(calls.length >= 2 && calls.slice(0, 2).every(c => c.result !== 'success'));
-  },
+  notWorked: (m) => yes(!!m.notWorked),
+  unableToReach: (m) => yes(unableToReach(m.callHistory)),
   hasNote: (m) => yes(!!m.leadNote),
   noteText: (m) => (m.leadNote ? [m.leadNote] : []),
   followUpDue: (m) => [m.followUpDue],
