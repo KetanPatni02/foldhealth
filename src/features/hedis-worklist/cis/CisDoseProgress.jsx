@@ -1,13 +1,12 @@
 import { Icon } from '../../../components/Icon/Icon';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { CIS_DOSE_STATUS } from './cisRules';
-import { CisStatusBadge } from './CisStatus';
-import { EVALUATION_BADGE, fmtDate, isLocked } from './cisStatusConfig';
+import { fmtDate, isLocked } from './cisStatusConfig';
 import styles from './CisImmunizationsTab.module.css';
 
 /**
  * CIS-CMB10 dose progress card: "Doses Complete x/y", series start and
- * end (2nd birthday), the evaluation badge, and one block per required
+ * end (2nd birthday), and one block per required
  * dose. Shared by the Vaccine Calendar tab and dialog.
  *
  * @param {object}   props
@@ -27,10 +26,8 @@ export function CisDoseProgress({ result, startedOn, onSelect }) {
         <span className={styles.factDivider} aria-hidden="true" />
         <span className={styles.doseFact}>
           Ends: <b>{fmtDate(result.secondBirthday)}</b>
-          {result.daysLeft >= 0 ? ` · ${result.daysLeft} days left` : ' · passed'}
+          {result.daysLeft >= 0 ? ` • ${result.daysLeft} days left` : ' • passed'}
         </span>
-        <span className={styles.factDivider} aria-hidden="true" />
-        <CisStatusBadge map={EVALUATION_BADGE} status={result.evaluation} />
       </div>
       <DoseBlocks result={result} onSelect={onSelect} />
     </div>
@@ -43,23 +40,30 @@ export function CisDoseProgress({ result, startedOn, onSelect }) {
 const BLOCK_CLASS = {
   [CIS_DOSE_STATUS.completed]: 'blockDone',
   [CIS_DOSE_STATUS.completedLate]: 'blockDone',
-  [CIS_DOSE_STATUS.notCounted]: 'blockLate',
-  [CIS_DOSE_STATUS.cannotMeet]: 'blockLate',
+  [CIS_DOSE_STATUS.immune]: 'blockDone',
   [CIS_DOSE_STATUS.overdue]: 'blockLate',
   [CIS_DOSE_STATUS.dueNow]: 'blockDue',
   [CIS_DOSE_STATUS.pending]: 'blockDue',
+  [CIS_DOSE_STATUS.contraindicated]: 'blockContra',
+  [CIS_DOSE_STATUS.agedOut]: 'blockClosed',
 };
+// Status names from the CIS-CMB10 spec; "Administered" covers Completed,
+// Completed late and Immune.
 const BLOCK_LEGEND = [
-  { label: 'Given', cls: 'blockDone' },
+  { label: 'Administered', cls: 'blockDone' },
   { label: 'Due now', cls: 'blockDue' },
-  { label: 'Overdue / does not count', cls: 'blockLate' },
+  { label: 'Overdue', cls: 'blockLate' },
+  { label: 'Contraindicated', cls: 'blockContra' },
+  { label: 'Aged out', cls: 'blockClosed' },
   { label: 'Upcoming', cls: '' },
 ];
 
 // Hover card for one block: dose, status, and when it was given or opens.
 function BlockDetail({ a, r }) {
   let when;
-  if (r.record) when = `Given ${fmtDate(r.record.date)}`;
+  if (r.record) when = `Administered ${fmtDate(r.record.date)}`;
+  else if (r.status === CIS_DOSE_STATUS.immune || r.status === CIS_DOSE_STATUS.contraindicated) when = r.status;
+  else if (r.status === CIS_DOSE_STATUS.agedOut) when = 'No Rotavirus dose after 8 months of age';
   // Behind schedule but still inside the minimum gap after the previous
   // dose: say both, so red does not read as "give it today".
   else if (r.status === CIS_DOSE_STATUS.overdue && isLocked(r)) when = `Was due ${fmtDate(r.due)} • can be given from ${fmtDate(r.earliest)}`;
@@ -123,7 +127,7 @@ function DoseBlocks({ result, onSelect }) {
         ))}
         <span className={styles.legendItem}>
           <Icon name="solar:lock-keyhole-minimalistic-linear" size={10} color="var(--placeholder-text)" />
-          Not open yet
+          On track
         </span>
       </div>
     </div>

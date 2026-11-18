@@ -6,9 +6,12 @@ import { Checkbox } from '../../../components/Checkbox/Checkbox';
 import { TIME_SLOTS } from '../../../components/ScheduleDrawer/scheduleDrawerConstants';
 import { todayIso } from '../useCareGapReminderForm';
 import { CisStatusBadge } from './CisStatus';
+import { CIS_DOSE_STATUS } from './cisRules';
 import { DOSE_BADGE, fmtDate } from './cisStatusConfig';
 import { appointmentForDose, apptDate, doseKey } from './cisAppointments';
 import styles from './CisAppointmentForm.module.css';
+
+const SCHEDULABLE = new Set([CIS_DOSE_STATUS.dueNow, CIS_DOSE_STATUS.overdue, CIS_DOSE_STATUS.upcoming]);
 
 /**
  * Care Gap drawer: "Schedule Vaccine Reminder" pane body (CIS-CMB10):
@@ -21,11 +24,11 @@ export function CisAppointmentForm({ form, result, appointments = [] }) {
   const uid = useId();
   const { values, set, toggleDose, editing } = form;
   const others = appointments.filter(a => a.id !== editing?.id);
-  // Doses still to give, earliest first; on edit its doses stay listed even
-  // if one has since been recorded.
+  // Only doses due now, overdue or upcoming can be scheduled, earliest first; on edit
+  // its doses stay listed even if their status has since moved on.
   const doses = result.antigens
     .flatMap(a => a.rows
-      .filter(r => r.kind !== 'given' || editing?.doses.includes(doseKey(a.key, r.number)))
+      .filter(r => SCHEDULABLE.has(r.status) || editing?.doses.includes(doseKey(a.key, r.number)))
       .map(r => ({ a, r, key: doseKey(a.key, r.number) })))
     .sort((x, y) => (x.r.nextDue ?? x.r.start) - (y.r.nextDue ?? y.r.start));
 
@@ -64,7 +67,7 @@ export function CisAppointmentForm({ form, result, appointments = [] }) {
           Doses to Give
           <span className={styles.required} aria-hidden="true" />
         </legend>
-        {doses.length === 0 ? <p className={styles.empty}>Every dose has been given.</p> : (
+        {doses.length === 0 ? <p className={styles.empty}>No doses are due now, overdue or upcoming.</p> : (
           <div className={styles.doseList}>
             {doses.map(({ a, r, key }) => {
               const chosen = chosenDoses.has(key);
@@ -83,7 +86,7 @@ export function CisAppointmentForm({ form, result, appointments = [] }) {
                     <span className={styles.doseMeta}>
                       {booked
                         ? `Already scheduled for ${fmtDate(apptDate(booked.appt))}`
-                        : r.kind === 'given' ? `Given ${fmtDate(r.record.date)}` : `${r.recommendedShort} · from ${fmtDate(r.nextDue ?? r.start)}`}
+                        : r.kind === 'given' ? `Administered ${fmtDate(r.record.date)}` : `Age: ${r.recommendedShort} • Start: ${fmtDate(r.nextDue ?? r.start)} • Due: ${fmtDate(r.due)}`}
                     </span>
                   </span>
                   <CisStatusBadge map={DOSE_BADGE} status={r.status} hideIcon />

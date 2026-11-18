@@ -13,7 +13,9 @@ import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { Banner } from '../../../components/Banner/Banner';
 import { CisTabSkeleton } from './CisTabSkeleton';
-import { CIS_ANTIGENS, CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, CIS_EVALUATION, evaluateCis } from './cisRules';
+import { CIS_ANTIGENS, CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, CIS_EVALUATION, doseDateError, evaluateCis } from './cisRules';
+import { toast } from '../../../components/Toast/sonnerToast';
+import { CisMarkDialog } from './CisMarkDialog';
 import { isoToMdy } from './useCisTracker';
 import { CisStatusBadge } from './CisStatus';
 import { ANTIGEN_BADGE, DOSE_BADGE, EVALUATION_BADGE, fmtDate, isGiven, seriesStartDate } from './cisStatusConfig';
@@ -25,22 +27,23 @@ import { appointmentForDose, apptDate } from './cisAppointments';
 import { CisMoreMenu } from './CisMoreMenu';
 import { CisSyncEhrButton } from './CisSyncEhrButton';
 import { SeriesDosesPicker } from './SeriesDosesPicker';
+import { VaccineMenu } from './VaccineMenu';
 import styles from './CisImmunizationsTab.module.css';
 
 // Vaccines grouped by what the care team should do about them (Figma:
 // New Care Gap Workflow, node 1444:103523); Action Needed opens by default.
 const GROUPS = [
-  { key: 'action', label: 'Action Needed', statuses: [CIS_ANTIGEN_STATUS.overdue, CIS_ANTIGEN_STATUS.cannotMeet, CIS_ANTIGEN_STATUS.dueNow] },
+  { key: 'action', label: 'Action Needed', statuses: [CIS_ANTIGEN_STATUS.overdue, CIS_ANTIGEN_STATUS.dueNow] },
   { key: 'soon', label: 'Upcoming', statuses: [CIS_ANTIGEN_STATUS.upcoming] },
   { key: 'later', label: 'Later', statuses: [CIS_ANTIGEN_STATUS.onTrack] },
-  { key: 'done', label: 'Completed', statuses: [CIS_ANTIGEN_STATUS.met] },
+  { key: 'done', label: 'Completed', statuses: [CIS_ANTIGEN_STATUS.seriesComplete, CIS_ANTIGEN_STATUS.immune] },
+  // Final states that can't count: nothing left to chase.
+  { key: 'closed', label: 'Not Counted', statuses: [CIS_ANTIGEN_STATUS.agedOut, CIS_ANTIGEN_STATUS.contraindicated] },
 ];
-// Every dose of the series has been given, whether or not each one counts:
-// nothing is left to do, so the vaccine sits under Completed as Met / Not Met.
-const allGiven = (a) => a.rows.every(r => r.kind === 'given');
-const groupOf = (a) => (a.status === CIS_ANTIGEN_STATUS.met || allGiven(a)
-  ? 'done'
-  : GROUPS.find(g => g.statuses.includes(a.status))?.key);
+// A Contraindicated vaccine with earlier doses still to give stays with
+// those doses (e.g. Action Needed), badge still Contraindicated.
+const groupStatus = (a) => (a.status === CIS_ANTIGEN_STATUS.contraindicated && a.urgency ? a.urgency : a.status);
+const groupOf = (a) => GROUPS.find(g => g.statuses.includes(groupStatus(a)))?.key;
 
 // Download the child's full dose schedule as CSV, one row per dose.
 const ageGroupLabel = (m) => (m === 0 ? 'At birth' : `${m} Month${m === 1 ? '' : 's'}`);
@@ -60,13 +63,17 @@ const ageGroupLabel = (m) => (m === 0 ? 'At birth' : `${m} Month${m === 1 ? '' :
  * @param {number}   props.measurementYear
  * @param {object}   [props.lastSaved]     – { actor, when }
  * @param {function} props.onSave          – (payload) => Promise<boolean>
+ * @param {object}   [props.marks]         – cis_vaccine_marks by vaccine key
+ * @param {function} [props.onMarkChange]  – (markKey, mark | null) => Promise<boolean>; markKey 'hepb' (Immune) or 'hepb:2' (Contraindicated dose 2)
  */
-export function CisImmunizationsTab({ member, immunizations, savedNotes, loading, measurementYear, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence, seriesDoses, onSeriesDosesChange }) {
+export function CisImmunizationsTab({ member, immunizations, savedNotes, loading, measurementYear, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence, seriesDoses, onSeriesDosesChange, marks, onMarkChange }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
+  // { kind: 'immune' | 'contraindicated', antigen, doseNumber }
+  const [marking, setMarking] = useState(null);
   const result = useMemo(
-    () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear, seriesDoses }),
-    [member?.dob, immunizations, measurementYear, seriesDoses],
+    () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear, seriesDoses, marks }),
+    [member?.dob, immunizations, measurementYear, seriesDoses, marks],
   );
   // Vaccines that need action are open unless the user closed them; a
   // toggle is remembered per vaccine. (Not seeded at mount: immunizations
@@ -109,7 +116,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
   // Open the dose's vaccine (and group), clear a search hiding it, then
   // let the effect above scroll to and highlight the row.
   const goToDose = (a, r) => {
-    const group = GROUPS.find(g => g.statuses.includes(a.status));
+    const group = GROUPS.find(g => g.statuses.includes(groupStatus(a)));
     if (group) setClosedGroups(g => ({ ...g, [group.key]: false }));
     setToggled(t => ({ ...t, [a.key]: true }));
     setClosedAges(g => ({ ...g, [r.ageMonths]: false }));
@@ -156,7 +163,6 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
         member={member}
         result={result}
         notes={savedNotes}
-        onSaveEvidence={onSaveEvidence}
       />
     </span>
   );
@@ -167,6 +173,8 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
   const keepOpen = (antigen) => setToggled(t => ({ ...t, [antigen.key]: true }));
   const changeDate = (antigen, row, iso) => {
     keepOpen(antigen);
+    const dateError = iso ? doseDateError(antigen, row, new Date(`${iso}T00:00`)) : null;
+    if (dateError) { toast.error(dateError); return; }
     const record = CIS_ANTIGENS.find(a => a.key === antigen.key).record;
     if (!row.record) {
       if (!iso) return;
@@ -188,6 +196,11 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
     notes: [{ antigenKey: antigen.key, doseNumber: row.number, note: text.trim() }],
     summary: `Note ${text.trim() ? 'updated' : 'removed'} on ${antigen.label} dose ${row.number}`,
   });
+
+  const markKey = (antigen, doseNumber) => (doseNumber ? `${antigen.key}:${doseNumber}` : antigen.key);
+  const startMark = onMarkChange ? (kind, antigen, doseNumber) => setMarking({ kind, antigen, doseNumber }) : null;
+  // No dose number: undo the vaccine's Immune mark.
+  const undoMark = onMarkChange ? (antigen, doseNumber) => { keepOpen(antigen); onMarkChange(markKey(antigen, doseNumber), null); } : null;
 
   const hasDob = !!result.dob;
   // A child outside the measure (aged out, or no DOB) has nothing to track.
@@ -256,7 +269,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
                         <span role="columnheader">Earliest Allowed</span>
                         <span role="columnheader">Date Administered</span>
                         <span role="columnheader">Status</span>
-                        <span role="columnheader" className={styles.noteHead}>Note</span>
+                        <span role="columnheader" className={styles.noteHead}>Actions</span>
                       </div>
                       {g.items.map(({ a, r }) => (
                         <DoseRow
@@ -267,6 +280,8 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
                           note={savedNotes?.[`${a.key}:${r.number}`]?.note || ''}
                           onDateChange={changeDate}
                           onNoteSave={saveNote}
+                          onContraindicate={startMark}
+                          onUndoMark={undoMark}
                           dob={result.dob}
                           highlight={focusDose?.key === a.key && focusDose.number === r.number}
                           appointments={appointments}
@@ -308,6 +323,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
                   <span>Progress</span>
                   <span>{group.key === 'done' ? 'Completed On' : 'Next Action Due'}</span>
                   <span>Status</span>
+                  <span />
                 </div>
                 {items.map(a => (
                   <VaccineRow
@@ -323,6 +339,8 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
                     appointments={appointments}
                     onOpenAppointment={(appt) => onOpenSchedule?.(appt)}
                     onSeriesDosesChange={onSeriesDosesChange}
+                    onMark={startMark}
+                    onUndoMark={undoMark}
                   />
                 ))}
                 </div>
@@ -362,6 +380,16 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
         />
       )}
 
+      {marking && (
+        <CisMarkDialog
+          kind={marking.kind}
+          antigen={marking.antigen}
+          doseNumber={marking.doseNumber}
+          onCancel={() => setMarking(null)}
+          onSubmit={(mark) => { keepOpen(marking.antigen); onMarkChange(markKey(marking.antigen, marking.kind === 'immune' ? null : marking.doseNumber), mark); setMarking(null); }}
+        />
+      )}
+
       {calendarOpen && (
         <VaccineCalendarDialog
           member={member}
@@ -370,6 +398,8 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
           measurementYear={measurementYear}
           seriesDoses={seriesDoses}
           onSeriesDosesChange={onSeriesDosesChange}
+          marks={marks}
+          onMarkChange={onMarkChange}
           lastSaved={lastSaved}
           onSave={onSave}
           appointments={appointments}
@@ -390,8 +420,7 @@ const PIP_CLASS = {
   [CIS_DOSE_STATUS.dueNow]: 'pipDue',
   [CIS_DOSE_STATUS.pending]: 'pipDue',
   [CIS_DOSE_STATUS.overdue]: 'pipLate',
-  [CIS_DOSE_STATUS.notCounted]: 'pipLate',
-  [CIS_DOSE_STATUS.cannotMeet]: 'pipLate',
+  [CIS_DOSE_STATUS.immune]: 'pipDone',
 };
 
 // Age group header progress, readable while collapsed: given count and
@@ -438,9 +467,9 @@ function AgeDoseList({ title, items }) {
 // One pip per required dose (Figma): green = counted; the next dose is a
 // red / yellow ring when overdue / due now, else solid grey; hollow = later.
 function DosePips({ antigen }) {
-  const counted = Math.min(antigen.valid.length, antigen.required);
-  const next = antigen.rows.find(r => r.kind === 'planned');
-  const urgent = next && [CIS_DOSE_STATUS.dueNow, CIS_DOSE_STATUS.overdue, CIS_DOSE_STATUS.cannotMeet].includes(next.status);
+  const counted = antigen.completedDoses;
+  const next = antigen.rows.find(r => r.kind === 'planned' && !antigen.counts);
+  const urgent = next && [CIS_DOSE_STATUS.dueNow, CIS_DOSE_STATUS.overdue].includes(next.status);
   return (
     <span className={styles.pips} aria-label={`${counted} of ${antigen.required} doses`}>
       {Array.from({ length: antigen.required }, (_, i) => (
@@ -478,34 +507,24 @@ function DoseList({ antigen }) {
 // Collapsed: name, dose dots, next step, status. Expanded: one row per
 // dose with its recommended age, earliest allowed date, an editable given
 // date, status and note (Figma: New Care Gap Workflow, Component 109).
-function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, dob, focusNumber, appointments, onOpenAppointment, onSeriesDosesChange }) {
-  const counted = Math.min(antigen.valid.length, antigen.required);
+function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, dob, focusNumber, appointments, onOpenAppointment, onSeriesDosesChange, onMark, onUndoMark }) {
+  const counted = antigen.completedDoses;
   const next = antigen.rows.find(r => r.kind === 'planned');
+  const { immuneMark, contraindications } = antigen;
   let when;
-  // Met rows sit under a "Completed On" column: just the date the series
-  // was completed (the dose that met the requirement).
-  const done = groupOf(antigen) === 'done';
-  if (antigen.status === CIS_ANTIGEN_STATUS.met) when = fmtDate(antigen.valid[antigen.required - 1]?.date);
-  // Every dose given but the series still falls short: the last dose date.
-  else if (done) when = fmtDate(antigen.rows[antigen.rows.length - 1]?.record?.date);
-  // The Can't Meet badge carries the "too late" message; this column
-  // names the next dose, like every other row.
-  else if (antigen.status === CIS_ANTIGEN_STATUS.cannotMeet && !next) {
-    // Nothing left to give: the missing dose was given but does not count,
-    // so the dose is still owed; the badge carries "does not count".
-    const late = antigen.rows.find(r => r.status === CIS_DOSE_STATUS.notCounted);
-    when = `Dose ${late?.number} was due ${fmtDate(late?.due)}`;
-  } else if (antigen.status === CIS_ANTIGEN_STATUS.cannotMeet) {
-    when = next?.status === CIS_DOSE_STATUS.overdue
-      ? `Dose ${next.number} overdue`
-      : next && new Date() >= next.nextDue ? `Dose ${next.number} due now` : `Dose ${next?.number} from ${fmtDate(next?.nextDue)}`;
+  switch (groupStatus(antigen)) {
+    // Under the "Completed On" column: the date the series was met.
+    case CIS_ANTIGEN_STATUS.seriesComplete: when = fmtDate(antigen.valid[antigen.required - 1]?.date); break;
+    case CIS_ANTIGEN_STATUS.immune: when = `Immune since ${immuneMark?.date}`; break;
+    case CIS_ANTIGEN_STATUS.contraindicated: when = `Dose ${contraindications.map(m => m.doseNumber).join(', ')} contraindicated`; break;
+    case CIS_ANTIGEN_STATUS.agedOut: when = 'No dose after 8 months of age'; break;
+    case CIS_ANTIGEN_STATUS.overdue: when = `Dose ${next?.number} was due ${fmtDate(next?.due)}`; break;
+    case CIS_ANTIGEN_STATUS.dueNow: when = `Dose ${next?.number} due now`; break;
+    default: when = `Dose ${next?.number} from ${fmtDate(next?.nextDue)}`;
   }
-  else if (antigen.status === CIS_ANTIGEN_STATUS.overdue) when = `Dose ${next?.number} was due ${fmtDate(next?.due)}`;
-  else if (antigen.status === CIS_ANTIGEN_STATUS.dueNow) when = `Dose ${next?.number} due now`;
-  else when = `Dose ${next?.number} from ${fmtDate(next?.nextDue)}`;
   // A booked appointment for the next dose replaces the due text, so the
   // row reads right while collapsed.
-  const booked = next && appointmentForDose(appointments, antigen.key, next);
+  const booked = next && !antigen.counts && appointmentForDose(appointments, antigen.key, next);
   if (booked) {
     const on = fmtDate(apptDate(booked.appt));
     when = booked.passed ? `Dose ${next.number}: confirm given (${on})` : `Dose ${next.number} scheduled ${on}`;
@@ -513,10 +532,13 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
   const panelId = `cis-doses-${antigen.key}`;
   return (
     <div className={styles.vaccine}>
-      <button
-        type="button"
+      {/* A div, not a button: the row holds its own buttons (series pick, ⋯ menu). */}
+      <div
+        role="button"
+        tabIndex={0}
         className={styles.vaccineRow}
         onClick={onToggle}
+        onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onToggle(); } }}
         aria-expanded={open}
         aria-controls={panelId}
       >
@@ -525,7 +547,7 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
           <span className={styles.vaccineLabel}>{antigen.label}</span>
           {/* Rotavirus series length (2 Rotarix / 3 RotaTeq), editable
               while the row is expanded and the series isn't met yet. */}
-          {open && antigen.seriesChoice && antigen.status !== CIS_ANTIGEN_STATUS.met && onSeriesDosesChange && (
+          {open && antigen.seriesChoice && antigen.status !== CIS_ANTIGEN_STATUS.seriesComplete && onSeriesDosesChange && (
             <SeriesDosesPicker choice={antigen.seriesChoice} onChange={(n) => onSeriesDosesChange(antigen.key, n)} />
           )}
         </span>
@@ -541,11 +563,12 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
         {/* Own cell, so the column padding insets the badge instead of
             padding the badge itself (keeps it under the Status title). */}
         <span className={styles.statusCell}>
-          {done && antigen.status !== CIS_ANTIGEN_STATUS.met
-            ? <CisStatusBadge map={ANTIGEN_BADGE} status={CIS_ANTIGEN_STATUS.cannotMeet} label="Not Met" />
-            : <CisStatusBadge map={ANTIGEN_BADGE} status={antigen.status} />}
+          <CisStatusBadge map={ANTIGEN_BADGE} status={antigen.status} />
         </span>
-      </button>
+        <span className={styles.menuCell}>
+          <VaccineMenu antigen={antigen} onMark={onMark} onUndoMark={onUndoMark} className={styles.menuTrigger} openClassName={styles.menuTriggerOpen} />
+        </span>
+      </div>
       {open && (
         <div id={panelId} className={styles.doseTable} role="table" aria-label={`${antigen.label} doses`}>
           <div className={`${styles.doseRow} ${styles.doseHead}`} role="row">
@@ -553,7 +576,7 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
             <span role="columnheader">Earliest Allowed</span>
             <span role="columnheader">Date Administered</span>
             <span role="columnheader">Status</span>
-            <span role="columnheader" className={styles.noteHead}>Note</span>
+            <span role="columnheader" className={styles.noteHead}>Actions</span>
           </div>
           {antigen.rows.map(row => (
             <DoseRow
@@ -563,27 +586,37 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
               note={notes?.[`${antigen.key}:${row.number}`]?.note || ''}
               onDateChange={onDateChange}
               onNoteSave={onNoteSave}
+              onContraindicate={onMark}
+              onUndoMark={onUndoMark}
               dob={dob}
               highlight={focusNumber === row.number}
               appointments={appointments}
               onOpenAppointment={onOpenAppointment}
             />
           ))}
+          <VaccineFooter antigen={antigen} onUndoMark={onUndoMark} />
         </div>
       )}
     </div>
   );
 }
 
-function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight, showVaccine = false, appointments, onOpenAppointment }) {
+// Open doses that can still be marked Contraindicated.
+const CAN_CONTRAINDICATE = [CIS_DOSE_STATUS.dueNow, CIS_DOSE_STATUS.overdue, CIS_DOSE_STATUS.upcoming, CIS_DOSE_STATUS.onTrack];
+
+function DoseRow({ antigen, row, note, onDateChange, onNoteSave, onContraindicate, onUndoMark, dob, highlight, showVaccine = false, appointments, onOpenAppointment }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [draft, setDraft] = useState(note);
   const range = row.recommendedEnd ? `${fmtDate(row.start)} - ${fmtDate(row.recommendedEnd)}` : fmtDate(row.start);
-  const notCounted = row.status === CIS_DOSE_STATUS.notCounted;
+  // Immune / Contraindicated / Aged out doses have nothing to date.
+  const closed = row.kind === 'planned' && !CAN_CONTRAINDICATE.includes(row.status);
+  // Per dose; an Immune vaccine has nothing left to contraindicate.
+  const canContraindicate = !!onContraindicate && !antigen.immuneMark && row.kind === 'planned' && CAN_CONTRAINDICATE.includes(row.status);
+  const canUndo = !!onUndoMark && row.status === CIS_DOSE_STATUS.contraindicated;
   return (
     <div
       id={`cis-dose-${antigen.key}-${row.number}`}
-      className={[notCounted ? styles.doseItemError : '', highlight ? styles.doseHighlight : ''].filter(Boolean).join(' ') || undefined}
+      className={highlight ? styles.doseHighlight : undefined}
     >
       <div className={styles.doseRow} role="row">
         <span role="cell" className={styles.doseCol}>
@@ -596,18 +629,21 @@ function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight,
         </span>
         <span role="cell" className={styles.doseValue}>{fmtDate(row.earliest)}</span>
         <span role="cell" className={styles.dateCell}>
-          <DoseDateField row={row} label={antigen.label} dob={dob} onChange={(iso) => onDateChange(antigen, row, iso)} />
+          {closed
+            ? <span className={styles.doseValue}>-</span>
+            : <DoseDateField row={row} label={antigen.label} dob={dob} onChange={(iso) => onDateChange(antigen, row, iso)} />}
           <DoseAppointmentChip match={appointmentForDose(appointments, antigen.key, row)} onOpen={onOpenAppointment} />
         </span>
         <span role="cell">
           {row.status === CIS_DOSE_STATUS.completedLate ? (
             <Tooltip label={row.reason} variant="light" maxWidth={240}>
-              <CisStatusBadge map={DOSE_BADGE} status={row.status} size="md" hideIcon />
+              <CisStatusBadge map={DOSE_BADGE} status={row.status} hideIcon />
             </Tooltip>
-          ) : <CisStatusBadge map={DOSE_BADGE} status={row.status} size="md" hideIcon />}
+          ) : <CisStatusBadge map={DOSE_BADGE} status={row.status} hideIcon />}
 
         </span>
         <span role="cell" className={styles.noteCol}>
+          {/* Note first (primary), then dose actions. */}
           <ActionButton
             icon="solar:chat-round-line-linear"
             size="sm"
@@ -616,6 +652,24 @@ function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight,
             dot={!!note}
             onClick={() => { setDraft(note); setNoteOpen(o => !o); }}
           />
+          {canContraindicate && (
+            <ActionButton
+              icon="solar:forbidden-circle-linear"
+              size="sm"
+              tooltip={`Mark dose ${row.number} contraindicated`}
+              tooltipLeft
+              onClick={() => onContraindicate('contraindicated', antigen, row.number)}
+            />
+          )}
+          {canUndo && (
+            <ActionButton
+              icon="solar:undo-left-linear"
+              size="sm"
+              tooltip={`Undo dose ${row.number} contraindication`}
+              tooltipLeft
+              onClick={() => onUndoMark(antigen, row.number)}
+            />
+          )}
         </span>
       </div>
       {noteOpen && (
@@ -637,13 +691,47 @@ function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight,
           </Button>
         </div>
       )}
-      {notCounted && row.reason && (
+      {row.warning && (
         <div className={styles.doseError}>
-          <Banner tone="danger" size="sm" icon="solar:danger-triangle-linear" className={styles.doseErrorBar}>
-            Does Not Count: {row.reason}.
+          <Banner tone="warning" size="sm" icon="solar:danger-triangle-linear" className={`${styles.doseErrorBar} ${styles.doseWarnBar}`}>
+            {row.warning}.
           </Banner>
         </div>
       )}
+    </div>
+  );
+}
+
+// Under a vaccine's doses: records left off the calendar, why an Immune
+// mark doesn't count, and the Immune / Contraindicated marks with Undo.
+function VaccineFooter({ antigen, onUndoMark }) {
+  const { immuneMark, contraindications } = antigen;
+  if (!antigen.ignored.length && !immuneMark && !contraindications.length) return null;
+  return (
+    <div className={styles.vaccineFooter}>
+      {antigen.ignored.map(({ record, reason }) => (
+        <Banner key={`${record.id}-${record.date}`} tone="info" size="sm" icon="solar:info-circle-linear">
+          {record.title} on {fmtDate(record.date)} not counted: {reason}.
+        </Banner>
+      ))}
+      {immuneMark && (
+        <div className={styles.markRow}>
+          <span className={styles.markText}>
+            <b>Immune</b> ({immuneMark.date}): {immuneMark.details}
+            {immuneMark.diseases?.length ? ` (${immuneMark.diseases.join(', ')})` : ''}
+            {antigen.immuneNote && <span className={styles.markNote}> • {antigen.immuneNote}</span>}
+          </span>
+          {onUndoMark && <Button variant="ghost" size="sm" onClick={() => onUndoMark(antigen)}>Undo</Button>}
+        </div>
+      )}
+      {contraindications.map(m => (
+        <div key={m.key} className={styles.markRow}>
+          <span className={styles.markText}>
+            <b>Dose {m.doseNumber} contraindicated</b> ({m.date}): {m.details}
+          </span>
+          {onUndoMark && <Button variant="ghost" size="sm" onClick={() => onUndoMark(antigen, m.doseNumber)}>Undo</Button>}
+        </div>
+      ))}
     </div>
   );
 }

@@ -47,6 +47,7 @@ export function DoseDateField({ row, label, dob, onChange }) {
           variant="outline"
           size="md"
           label={row.record ? fmtDate(row.record.date) : 'Select Date'}
+          icon={row.record ? undefined : 'solar:calendar-linear'}
           className={row.record ? undefined : styles.placeholder}
         />
       </button>

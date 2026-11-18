@@ -37,6 +37,21 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **CIS-CMB10 vaccine statuses, Immune and Contraindicated.** The Vaccine
+  Calendar follows the CIS-CMB10 status spec: Completed, Completed late, Due
+  now, Overdue, Upcoming (Earliest Allowed passed, window within 30 days), On
+  track, Contraindicated, Aged out (Rotavirus after 8 months) and Immune;
+  vaccines show Series complete, Immune, Contraindicated or their most urgent
+  dose. Any dated dose counts as administered; an undated one stays Overdue.
+  Care teams mark a vaccine Immune (Hep A, Hep B, MMR, VZV) or a single dose
+  Contraindicated, with a date and free text, and can undo either, from the
+  Immunizations tab, the calendar Timeline popup and Table. Dates before
+  Earliest Allowed, duplicates and future dates are blocked. The calendar
+  table gains Location and Actions columns, the Rotavirus 2 or 3 dose pick
+  works on the Timeline, and saving a dose from the calendar is fixed. Needs
+  `supabase/cis_vaccine_marks_migration.sql` and
+  `supabase/cis_dose_notes_location_migration.sql`.
+
 - **HCC PCP Outreach, call widget and outreach history.** On the HCC
   worklist: a floating call widget (bottom right) places a call to a Member,
   PCP or User (simulated, demo numbers); the draggable call card has Mute,

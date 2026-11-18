@@ -34,9 +34,8 @@ const C = {
 const STATUS_COLOR = {
   [CIS_DOSE_STATUS.completed]: [0, 122, 66],
   [CIS_DOSE_STATUS.completedLate]: [0, 122, 66],
-  [CIS_DOSE_STATUS.notCounted]: [215, 40, 37],
+  [CIS_DOSE_STATUS.immune]: [0, 122, 66],
   [CIS_DOSE_STATUS.overdue]: [215, 40, 37],
-  [CIS_DOSE_STATUS.cannotMeet]: [215, 40, 37],
   [CIS_DOSE_STATUS.dueNow]: [178, 120, 0],
 };
 // The brand band (/brand/report-header-band-*.svg, 595 × 16): a light
@@ -250,7 +249,7 @@ export function generateCisSchedulePdf({ member, result, notes, startedOn, mode 
           windowOf(r),
           fmtDate(r.earliest),
           r.record ? fmtDate(r.record.date) : '-',
-          [CIS_DOSE_STATUS.notCounted, CIS_DOSE_STATUS.completedLate].includes(r.status) && r.reason ? `${r.status}: ${r.reason}` : r.status,
+          r.status === CIS_DOSE_STATUS.completedLate && r.reason ? `${r.status}: ${r.reason}` : r.status,
           ...(withNotes ? [noteOf(a, r)] : []),
         ],
       })));

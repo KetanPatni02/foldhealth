@@ -25,34 +25,38 @@ const FORECAST = {
   due: coding(FHIR_SYSTEM.forecastStatus, 'due', 'Due'),
   overdue: coding(FHIR_SYSTEM.forecastStatus, 'overdue', 'Overdue'),
   complete: coding(FHIR_SYSTEM.forecastStatus, 'complete', 'Complete'),
+  contraindicated: coding(FHIR_SYSTEM.forecastStatus, 'contraindicated', 'Contraindicated'),
+  agedout: coding(FHIR_SYSTEM.forecastStatus, 'agedout', 'Aged Out'),
+  immune: coding(FHIR_SYSTEM.forecastStatus, 'immune', 'Immune'),
 };
 
 // Upcoming and On track are not due yet. FHIR has no "not yet due" code:
 // forecasters send `due` with future dateCriterion dates, which the dose row
 // carries (earliest, nextDue, due).
-// Can't be met has no FHIR forecast code (the series can no longer finish in
-// the HEDIS window), so it is sent with the Fold coding only.
 const DOSE_FORECAST = {
   [CIS_DOSE_STATUS.dueNow]: FORECAST.due,
   [CIS_DOSE_STATUS.overdue]: FORECAST.overdue,
   [CIS_DOSE_STATUS.upcoming]: FORECAST.due,
   [CIS_DOSE_STATUS.onTrack]: FORECAST.due,
-  [CIS_DOSE_STATUS.cannotMeet]: null,
+  [CIS_DOSE_STATUS.contraindicated]: FORECAST.contraindicated,
+  [CIS_DOSE_STATUS.agedOut]: FORECAST.agedout,
+  [CIS_DOSE_STATUS.immune]: FORECAST.immune,
 };
 
 const DOSE_EVALUATION = {
   [CIS_DOSE_STATUS.completed]: coding(FHIR_SYSTEM.doseEvaluation, 'valid', 'Valid'),
   [CIS_DOSE_STATUS.completedLate]: coding(FHIR_SYSTEM.doseEvaluation, 'valid', 'Valid'),
-  [CIS_DOSE_STATUS.notCounted]: coding(FHIR_SYSTEM.doseEvaluation, 'notvalid', 'Not valid'),
 };
 
 const ANTIGEN_FORECAST = {
-  [CIS_ANTIGEN_STATUS.met]: FORECAST.complete,
+  [CIS_ANTIGEN_STATUS.seriesComplete]: FORECAST.complete,
+  [CIS_ANTIGEN_STATUS.immune]: FORECAST.immune,
+  [CIS_ANTIGEN_STATUS.contraindicated]: FORECAST.contraindicated,
+  [CIS_ANTIGEN_STATUS.agedOut]: FORECAST.agedout,
   [CIS_ANTIGEN_STATUS.dueNow]: FORECAST.due,
   [CIS_ANTIGEN_STATUS.overdue]: FORECAST.overdue,
   [CIS_ANTIGEN_STATUS.upcoming]: FORECAST.due,
   [CIS_ANTIGEN_STATUS.onTrack]: FORECAST.due,
-  [CIS_ANTIGEN_STATUS.cannotMeet]: null,
 };
 
 // Da Vinci DEQM gaps-in-care. On track can still close before the 2nd

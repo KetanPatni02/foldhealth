@@ -11,8 +11,13 @@
   outline: 2px solid var(--primary-200);
   outline-offset: 2px;
 }
+/* Empty: reads as an input waiting for a value (placeholder grey text and
+   icon), not as a chosen value. */
 .trigger .placeholder {
-  color: var(--neutral-300);
+  color: var(--placeholder-text);
+}
+.trigger:hover .placeholder {
+  border-color: var(--neutral-200);
 }
 .locked {
   display: inline-flex;
