@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/Checkbox/Checkbox';
@@ -11,6 +11,10 @@ import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
 import { Switch } from '../../components/Switch/Switch';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
+import { PharmacyAlertsDrawer } from './PharmacyAlertsDrawer';
+import { deadlineAlerts, daysLeftText, programConfig } from './programAutomation';
 import { DateRangePopover } from '../../components/DateRangePopover/DateRangePopover';
 import { outreachExportRows, outreachLinkTarget, toCsv } from './pharmacyExport';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
@@ -59,6 +63,9 @@ const thStyle = {
   userSelect: 'none',
 };
 
+// Deadline alerts already sent to this tab's notifications.
+const NOTIFIED_ALERTS = new Set();
+
 export function PharmacyWorklistTable() {
   const members = useAppStore(s => s.pharmacyWorklistMembers);
   const loading = useAppStore(s => s.pharmacyWorklistLoading);
@@ -95,6 +102,11 @@ export function PharmacyWorklistTable() {
   const careGapMember = careGap ? (hedisMembers || []).find(h => h.id === careGap.hedisMemberId) : null;
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
+  // Program settings and the org's holidays (refill reminder, alerts,
+  // holiday window).
+  const fetchOrgFeatures = useAppStore(s => s.fetchOrgFeatures);
+  const fetchHolidayConfigs = useAppStore(s => s.fetchHolidayConfigs);
+  useEffect(() => { fetchOrgFeatures?.(); fetchHolidayConfigs?.(); }, [fetchOrgFeatures, fetchHolidayConfigs]);
   // A link from the outreach export ("?member=…&outreach=…") opens that
   // member's Outreach tab.
   const openPharmacyGapDrawer = useAppStore(s => s.openPharmacyGapDrawer);
@@ -196,6 +208,28 @@ export function PharmacyWorklistTable() {
     return next;
   });
 
+  // Deadline alerts (Ajay): derived from the worklist with the program
+  // settings; the bell shows how many are still pending.
+  const programCfg = programConfig(useAppStore(s => s.pharmacyProgramConfig));
+  const alerts = useMemo(() => deadlineAlerts(enriched, programCfg), [enriched, programCfg]);
+  const pendingAlerts = alerts.filter(a => a.outcome === 'Pending').length;
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const moreRef = useRef(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  // Alerts addressed to the signed-in user land in their notifications, once
+  // per alert per tab.
+  const myName = useAppStore(s => s.currentUserProfile?.name);
+  const addNotification = useAppStore(s => s.addNotification);
+  useEffect(() => {
+    if (!myName) return;
+    for (const a of alerts) {
+      const id = `pharm-alert-${a.memberId}-${a.key}`;
+      if (a.to !== myName || a.outcome !== 'Pending' || NOTIFIED_ALERTS.has(id)) continue;
+      NOTIFIED_ALERTS.add(id);
+      addNotification?.({ id, type: 'pharmacy.deadline', title: `${a.code} deadline: ${a.member}`, body: `${daysLeftText(a.daysLeft)}${a.failDate ? `, fails ${a.failDate}` : ''}.` });
+    }
+  }, [alerts, myName, addNotification]);
+
   const columnPrefs = useWorklistColumns('pharmacy', PHARMACY_MIDDLE_COLUMNS, { hiddenByDefault: PHARMACY_HIDDEN_BY_DEFAULT });
   const visibleMiddle = columnPrefs.visibleColumns;
   const colCount = 2 + visibleMiddle.length + 1;
@@ -207,14 +241,33 @@ export function PharmacyWorklistTable() {
         leadingElement={<SubnavToggle />}
         title="Pharmacy"
         toggleItems={[]}
-        actions={['search', 'filter', 'download', 'history']}
+        actions={['search', 'filter']}
         searchPlaceholder="Search members, drugs or coordinators"
         searchValue={searchQuery}
         onSearchChange={(v) => { setSearchQuery(v); setPage(1); }}
         filterActive={filterBarOpen}
         onFilter={() => setFilterBarOpen(v => !v)}
-        onHistory={() => showToast('History – coming soon')}
-        onDownload={(e) => setExportAnchor(e.currentTarget.getBoundingClientRect())}
+        trailingExtras={(
+          <>
+            {/* Export and History live in one ⋯ menu to keep the header light. */}
+            <ActionButton ref={moreRef} icon="solar:menu-dots-linear" tooltip="More actions" tooltipBelow onClick={() => setMoreOpen(v => !v)} />
+            {moreOpen && (
+              <MenuPopover
+                anchorRef={moreRef}
+                width="auto"
+                items={[
+                  { key: 'export', label: 'Export outreach', icon: 'solar:download-minimalistic-linear' },
+                  { key: 'history', label: 'History', icon: 'solar:history-linear' },
+                ]}
+                onSelect={(key) => {
+                  if (key === 'export') setExportAnchor(moreRef.current?.getBoundingClientRect() || null);
+                  else showToast('History – coming soon');
+                }}
+                onClose={() => setMoreOpen(false)}
+              />
+            )}
+          </>
+        )}
         rightExtras={
           <>
             <Switch
@@ -223,6 +276,12 @@ export function PharmacyWorklistTable() {
               label={`Show not savable${notSavableOnly ? ` (${notSavableOnly})` : ''}`}
             />
             <span className={styles.titleDivider} />
+            <ActionButton
+              icon="solar:bell-linear"
+              tooltip="Deadline alerts"
+              count={pendingAlerts || undefined}
+              onClick={() => setAlertsOpen(true)}
+            />
             <SavedFiltersChip list="Pharmacy" />
             <span className={styles.titleDivider} />
           </>
@@ -374,6 +433,13 @@ export function PharmacyWorklistTable() {
       </div>
 
       <PharmacyGapDetailDrawer />
+      {alertsOpen && (
+        <PharmacyAlertsDrawer
+          alerts={alerts}
+          onClose={() => setAlertsOpen(false)}
+          onOpenMember={(id, code) => { setAlertsOpen(false); openPharmacyGapDrawer(id, code, { focus: true }); }}
+        />
+      )}
       {careGapMember && (
         <CareGapDetailDrawer
           member={careGapMember}

@@ -14,6 +14,7 @@ import { Tabs } from '../../../components/Tabs/Tabs';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { MedicationClaims } from './MedicationClaims';
 import { MedicationHoldDialog } from './MedicationHoldDialog';
+import { earlyRefillWindow, longerFillLabel, longerFillTarget, programConfig } from '../programAutomation';
 import { ReasonDialog } from '../../../components/ReasonDialog/ReasonDialog';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
@@ -379,9 +380,32 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, onOpen
   const focus = useAppStore(s => s.pharmacyFocusGap);
   const setRecentFill = useAppStore(s => s.setPharmacyRecentFill);
   const setMedicationHold = useAppStore(s => s.setPharmacyMedicationHold);
+  const setMedicationRequest = useAppStore(s => s.setPharmacyMedicationRequest);
+  const holidays = useAppStore(s => s.holidayConfigs);
+  const programCfg = programConfig(useAppStore(s => s.pharmacyProgramConfig));
   // Stop / Pause (Suresh): the drug's ⋯ menu, then the dialog.
   const [medMenu, setMedMenu] = useState(null); // { med, el }
   const [holdFor, setHoldFor] = useState(null); // { kind, med }
+  // The drug's ⋯ menu: Pause / Stop (or Resume), then the fill requests
+  // (Ajay): a longer fill (30 or 60 to 90, 90 to 180) with its outcome, and
+  // an early refill, for a holiday or otherwise.
+  const medMenuItems = (d) => {
+    if (d.hold) return [{ key: 'resume', label: 'Resume medication', icon: 'solar:play-linear' }];
+    const target = longerFillTarget(d.daysSupply);
+    return [
+      { key: 'pause', label: 'Pause medication', icon: 'solar:pause-linear' },
+      { key: 'stop', label: 'Stop medication', icon: 'solar:stop-circle-linear' },
+      ...(d.longerFill?.status === 'Requested'
+        ? [
+          { key: 'longerApproved', label: `${d.longerFill.days}-day fill approved`, icon: 'solar:check-circle-linear' },
+          { key: 'longerDeclined', label: `${d.longerFill.days}-day fill declined`, icon: 'solar:close-circle-linear' },
+        ]
+        : target && !d.longerFill ? [{ key: 'longer', label: `Request ${target}-day fill`, icon: 'solar:calendar-add-linear' }] : []),
+      d.earlyRefill
+        ? { key: 'earlyClear', label: 'Clear early refill request', icon: 'solar:close-circle-linear' }
+        : { key: 'early', label: 'Request early refill', icon: 'solar:calendar-mark-linear' },
+    ];
+  };
   // Expansion the user chose, per gap; gaps they haven't touched follow
   // their default, so a later status change doesn't flip a chosen state.
   const [chosen, setChosen] = useState(() => new Map());
@@ -496,6 +520,8 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, onOpen
                 d.qty != null && `Qty ${d.qty}`,
                 d.daysSupply != null && `${d.daysSupply} days supply`,
               ].filter(Boolean);
+              // Longer fill and early refill requests (Ajay), on a line of their own.
+              const requests = [longerFillLabel(d.longerFill), d.earlyRefill && 'Early refill requested'].filter(Boolean);
               const fillCount = medFills(d).length;
               const refills = `Refilled ${fillCount} time${fillCount === 1 ? '' : 's'}`;
               const source = [
@@ -520,6 +546,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, onOpen
                     </span>
                     <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
                       {supply.length > 0 && <span className={styles.cMetaLine}>{supply.map((t, i) => <Fragment key={t}>{i > 0 && <Sep />}{t}</Fragment>)}</span>}
+                      {requests.length > 0 && <span className={styles.cMetaLine}>{requests.map((t, i) => <Fragment key={t}>{i > 0 && <Sep />}{t}</Fragment>)}</span>}
                       {/* Info • Barrier • how many times it was filled. */}
                       <span className={styles.cLinks}>
                           {source.length > 0 && (
@@ -576,7 +603,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, onOpen
                       <span className={styles.cMore}><ActionButton
                         icon="solar:menu-dots-linear"
                         size="sm"
-                        tooltip={d.hold ? 'Resume' : 'Pause or stop'}
+                        tooltip={d.hold ? 'Resume' : 'More actions'}
                         tooltipLeft
                         onClick={(e) => setMedMenu({ med: d, el: e.currentTarget })}
                       /></span>
@@ -626,15 +653,17 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, onOpen
         <MenuPopover
           anchorRef={{ current: medMenu.el }}
           width="auto"
-          items={medMenu.med.hold
-            ? [{ key: 'resume', label: 'Resume medication', icon: 'solar:play-linear' }]
-            : [
-              { key: 'pause', label: 'Pause medication', icon: 'solar:pause-linear' },
-              { key: 'stop', label: 'Stop medication', icon: 'solar:stop-circle-linear' },
-            ]}
+          items={medMenuItems(medMenu.med)}
           onSelect={(key) => {
-            if (key === 'resume') setMedicationHold(member.id, medMenu.med.id, null);
-            else setHoldFor({ kind: key, med: medMenu.med });
+            const d = medMenu.med;
+            if (key === 'resume') setMedicationHold(member.id, d.id, null);
+            else if (key === 'pause' || key === 'stop') setHoldFor({ kind: key, med: d });
+            else if (key === 'longer') setMedicationRequest(member.id, d.id, 'longerFill', { days: longerFillTarget(d.daysSupply), status: 'Requested' });
+            else if (key === 'longerApproved' || key === 'longerDeclined') setMedicationRequest(member.id, d.id, 'longerFill', { days: d.longerFill.days, status: key === 'longerApproved' ? 'Approved' : 'Declined' });
+            else if (key === 'early') {
+              const why = earlyRefillWindow(d.nextFill, holidays || [], programCfg);
+              setMedicationRequest(member.id, d.id, 'earlyRefill', { status: 'Requested', reason: why?.label || null });
+            } else if (key === 'earlyClear') setMedicationRequest(member.id, d.id, 'earlyRefill', null);
           }}
           onClose={() => setMedMenu(null)}
         />

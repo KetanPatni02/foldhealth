@@ -701,9 +701,29 @@ const CARE_TEAM = {
   '19410': { coordinator: 'Marcus Reyes', pharmacist: null, socialWorker: null },
 };
 
+// Phase 5 samples (Ajay): IVR pickup checks (only Not picked up makes a
+// task) and a 90-day fill request.
+const IVR_SAMPLES = {
+  '19402': { MAH: { date: '11/12/2026', result: 'Not picked up' } },
+  '19401': { MAD: { date: '11/10/2026', result: 'Picked up' } },
+};
+function withProgramAutomationSamples(m) {
+  const ivr = IVR_SAMPLES[m.id];
+  const measures = m.measures.map((x, i) => ({
+    ...x,
+    ...(ivr?.[x.code] ? { ivrCheck: ivr[x.code] } : {}),
+    // The first drug on a 30 or 60-day fill.
+    medications: m.id === '19406' && i === 0
+      ? x.medications.map(d => (d === x.medications.find(y => y.daysSupply < 90) ? { ...d, longerFill: { days: 90, status: 'Requested', by: 'Priya Natarajan', at: '2026-11-09T15:00:00.000Z' } } : d))
+      : x.medications,
+  }));
+  return { ...m, measures };
+}
+
 export const PHARMACY_WORKLIST_MEMBERS = BASE_MEMBERS
   .map((m, i) => completeMeasures(m, i))
   .map(m => ({ sourcePriority: null, eligibilityStatus: 'Active', termDate: null, coordinator: null, pharmacist: null, socialWorker: null, ...m, ...SOURCE_FIELDS[m.id], ...ELIGIBILITY[m.id], ...CARE_TEAM[m.id] }))
   .map(withClaimFields)
   .map(withPriorYearPdc)
-  .map(withPickupsAndScenarios);
+  .map(withPickupsAndScenarios)
+  .map(withProgramAutomationSamples);

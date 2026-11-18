@@ -4,6 +4,7 @@ import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { HoverCard } from '../../components/HoverCard/HoverCard';
 import { drugStrength, fillTypeLabel, gapBadge, isShortFillCandidate, MEASURE_NAMES, PROGRESS_TONE, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, isActiveGap, medLabel, pdcTone } from './pharmacyWorklist.utils';
 import { useAppStore } from '../../store/useAppStore';
+import { earlyRefillWindow, programConfig } from './programAutomation';
 import { STATUS_BADGE_VARIANT } from '../hedis-worklist/HedisWorklistRow';
 import styles from './PharmacyWorklistRow.module.css';
 
@@ -26,7 +27,7 @@ export function Dash() {
 export function DateWithDays({ date, alert = false }) {
   if (!date) return <Dash />;
   const days = daysFromToday(date);
-  const rel = days == null ? '' : days < 0 ? `Overdue \u00b7 ${-days}d` : days === 0 ? 'Today' : `${days}d left`;
+  const rel = days == null ? '' : days < 0 ? `Overdue: ${-days}d` : days === 0 ? 'Today' : `${days}d left`;
   return (
     <span className={styles.stack}>
       <span className={styles.dateText}>{date}</span>
@@ -103,16 +104,25 @@ export function FailDateValue({ gap }) {
 // overdue (red). The line is the status, so the date itself stays neutral.
 const DUE_SOON_DAYS = 7;
 export function NextFillDueValue({ gap }) {
+  // A fill due just before a holiday (Ajay): a calendar icon says to refill early.
+  const holidays = useAppStore(s => s.holidayConfigs);
+  const cfg = programConfig(useAppStore(s => s.pharmacyProgramConfig));
   if (!gap.nextFillDue) return <Dash />;
+  const early = isActiveGap(gap.status) ? earlyRefillWindow(gap.nextFillDue, holidays || [], cfg) : null;
   const d = daysFromToday(gap.nextFillDue);
   const due = isActiveGap(gap.status) && d != null && d <= DUE_SOON_DAYS
-    ? (d < 0 ? { label: `Overdue by ${-d}d`, overdue: true } : { label: d === 0 ? 'Due today' : `Due in ${d}d` })
+    ? (d < 0 ? { label: `Overdue: ${-d}d`, overdue: true } : { label: d === 0 ? 'Due today' : `Due in ${d}d` })
     : null;
   return (
     <span className={styles.stack}>
       <span className={styles.dateRow}>
         <span className={styles.dateText}>{gap.nextFillDue}</span>
         <SourceLine source={gap.nextFillDueSource} asOf={gap.pdcAsOf} iconOnly />
+        {early && (
+          <Tooltip label={early.label} placement="bottom">
+            <span className={styles.sourceIcon} aria-label={early.label}><Icon name="solar:calendar-mark-linear" size={12} color="var(--status-warning)" /></span>
+          </Tooltip>
+        )}
       </span>
       {due && <span className={`${styles.dueLine} ${due.overdue ? styles.dueOverdue : ''}`}>{due.label}</span>}
     </span>

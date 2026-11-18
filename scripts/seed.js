@@ -881,6 +881,7 @@ function pharmacyWorklistToRow(m) {
     intervention_log:  m.interventionLog ?? [],
     activity_log:      m.activityLog ?? [],
     measures:          m.measures ?? [],
+    alert_outcomes:    m.alertOutcomes ?? {},
     source_priority:   m.sourcePriority ?? null,
     other_care_gaps:   m.otherCareGaps ?? [],
   };

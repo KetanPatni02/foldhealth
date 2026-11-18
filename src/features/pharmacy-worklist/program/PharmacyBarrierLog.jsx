@@ -78,7 +78,7 @@ const InterventionChips = ({ items, context, onFinish, since, taskOf }) => (
             <span><Badge size="sm" label={v} /></span>
             <Meta
               parts={[since?.[v] && `Since ${since[v]}`, task && (task.owner || 'Unassigned'), task && `Due ${task.due}`]}
-              alert={late && `Overdue ${late.days}d`}
+              alert={late && `Overdue: ${late.days}d`}
             />
           </span>
           <span className={styles.itemActions}>

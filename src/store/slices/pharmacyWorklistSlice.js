@@ -38,6 +38,7 @@ function rowToMember(r) {
     patientId: r.patient_id,
     sourcePriority: r.source_priority ?? null,
     comments: r.comments || [],
+    alertOutcomes: r.alert_outcomes || {},
     otherCareGaps: r.other_care_gaps || [],
     eligibilityStatus: r.eligibility_status || 'Active',
     termDate: r.term_date ?? null,
@@ -68,7 +69,7 @@ const PHARMACY_CARE_TEAM_LABEL = { coordinator: 'Coordinator', pharmacist: 'Phar
 const COLUMN_TO_FIELD = {
   status: 'status', status_manual: 'statusManual', assignee_id: 'assigneeId', assignee_name: 'assigneeName', assignee_initials: 'assigneeInitials',
   measures: 'measures', call_history: 'callHistory', intervention_log: 'interventionLog', barrier: 'barrier',
-  follow_up_due: 'followUpDue', comments: 'comments',
+  follow_up_due: 'followUpDue', comments: 'comments', alert_outcomes: 'alertOutcomes',
   coordinator: 'coordinator', pharmacist: 'pharmacist', social_worker: 'socialWorker',
 };
 
@@ -311,6 +312,37 @@ export function createPharmacyWorklistSlice(set, get) {
           hold.confirmedBy && `Confirmed by ${hold.confirmedBy}`,
         ].filter(Boolean).join(' · '),
       } : { t: 'note', title: `${med.name} resumed`, note: med.hold ? `Was ${med.hold.kind === 'stop' ? 'stopped' : 'paused'} from ${med.hold.start}` : null });
+    },
+
+    // A request on one drug (Phase 5): `kind` 'longerFill' ({ days, status })
+    // or 'earlyRefill' ({ reason, status }); null clears it. Logged in Activity.
+    setPharmacyMedicationRequest: (id, medId, kind, value) => {
+      const member = get().pharmacyWorklistMembers.find(m => m.id === id);
+      const med = member?.measures.flatMap(x => x.medications).find(d => d.id === medId);
+      if (!med || !['longerFill', 'earlyRefill'].includes(kind)) return;
+      const by = get().currentUserProfile?.name || 'You';
+      const next = value ? { ...value, by, at: new Date().toISOString() } : null;
+      const what = kind === 'longerFill' ? `${value?.days || med.longerFill?.days}-day fill` : 'Early refill';
+      update(id, m => ({
+        ...m,
+        measures: m.measures.map(x => ({ ...x, medications: x.medications.map(d => (d.id === medId ? { ...d, [kind]: next } : d)) })),
+      }), ['measures'], {
+        t: 'note',
+        title: `${med.name}: ${what} ${value ? value.status.toLowerCase() : 'request cleared'}`,
+        note: value?.reason || null,
+      });
+    },
+
+    // A deadline alert's outcome (Accepted, Approved, Disapproved, Ignored),
+    // by alert key ("MAD|alert"). Pending clears it.
+    setPharmacyAlertOutcome: (id, key, outcome) => {
+      const by = get().currentUserProfile?.name || 'You';
+      update(id, m => {
+        const next = { ...(m.alertOutcomes || {}) };
+        if (outcome && outcome !== 'Pending') next[key] = { outcome, by, at: new Date().toISOString() };
+        else delete next[key];
+        return { ...m, alertOutcomes: next };
+      }, ['alert_outcomes'], { t: 'note', title: `Alert ${key.replace('|', ' ')}: ${outcome}` });
     },
 
     // Bulk Recent Fill from Medication Review: one date for several drugs,

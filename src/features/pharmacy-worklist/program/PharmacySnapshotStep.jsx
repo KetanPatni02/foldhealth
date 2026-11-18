@@ -14,6 +14,7 @@ import {
 import { Dash, DrugsCount, DueDate, NamesCount, FailDateValue, MeasureCode, NextFillDueValue, PdcValue, PriorYearPdc, SavabilityBadge, SubStatus } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import { needsPharmacistReview } from '../barrierLoop';
+import { ivrCreatesTask, programConfig, refillReminder } from '../programAutomation';
 import styles from './PharmacySnapshotStep.module.css';
 
 // Days supply and quantity in one cell: "90 days • Qty 90".
@@ -43,6 +44,9 @@ function ContactLines({ contacts, render }) {
 // Medication Review.
 function GapDetails({ gap: g }) {
   const open = isActiveGap(g.status);
+  // Automated refill reminder and IVR pickup check (Ajay).
+  const cfg = programConfig(useAppStore(s => s.pharmacyProgramConfig));
+  const reminder = refillReminder(g, cfg);
   const prescribers = contactsOf(g.medications, 'prescriber');
   const pharmacies = contactsOf(g.medications, 'pharmacy');
   const phone = (c) => (c.phone ? <PhoneLink number={c.phone} label={c.name} /> : '-');
@@ -71,6 +75,13 @@ function GapDetails({ gap: g }) {
     ['Allowable Gap Days', g.allowableGapDays == null ? '-' : <span className={g.allowableGapDays <= 0 ? styles.toneError : ''}>{g.allowableGapDays} days</span>],
     ['Attempts This Cycle', g.attempts],
     ['Last Pickup Confirmed', g.pickupConfirmed || '-'],
+    ['Refill Reminder', reminder ? reminder.label : '-'],
+    ['IVR Pickup Check', g.ivrCheck?.result ? (
+      <span className={styles.detailLines}>
+        <span className={ivrCreatesTask(g.ivrCheck.result) ? styles.toneError : ''}>{`${g.ivrCheck.result} (${g.ivrCheck.date})`}</span>
+        {ivrCreatesTask(g.ivrCheck.result) && <span className={styles.muted}>Follow-up task created</span>}
+      </span>
+    ) : '-'],
     ['Prescriber', <ContactLines key="rx" contacts={prescribers} render={c => c.name} />],
     ['Prescriber Phone', <ContactLines key="rxp" contacts={prescribers} render={phone} />],
     ['Pharmacy', <ContactLines key="ph" contacts={pharmacies} render={c => c.name} />],
