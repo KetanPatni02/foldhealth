@@ -6,7 +6,6 @@ import { Icon } from '../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { PhoneLink } from '../../../components/PhoneLink/PhoneLink';
 import { Checkbox } from '../../../components/Checkbox/Checkbox';
-import { RadioOptionGroup } from '../../../components/RadioOptionGroup/RadioOptionGroup';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Select } from '../../../components/Select/Select';
 import { Drawer } from '../../../components/Drawer/Drawer';
@@ -39,6 +38,10 @@ const conditionsOf = (d) => d.conditions ?? (d.condition ? [d.condition] : []);
 // A text field that saves on blur rather than per keystroke (each save
 // rewrites the member's measures jsonb).
 // "Stopped 10/20" or "Paused to 11/30" on a held drug.
+// Med Status: a hold (Paused, Stopped) reads here as the drug's state,
+// color coded like the gap statuses.
+const MED_STATUSES = ['Active', 'Paused', 'Stopped', 'Discontinued'];
+const MED_STATUS_TONE = { Active: 'success', Paused: 'warning', Stopped: 'danger', Discontinued: 'neutral' };
 const holdLabel = (h) => (h.kind === 'stop' ? `Stopped ${h.start.slice(0, 5)}` : `Paused${h.end ? ` to ${h.end.slice(0, 5)}` : ` from ${h.start.slice(0, 5)}`}`);
 
 function DraftTextarea({ value, onCommit, ...rest }) {
@@ -137,6 +140,19 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
   const member = useAppStore(s => s.pharmacyWorklistMembers.find(m => m.id === memberRowId));
   const memberMeds = useMemo(() => (member?.measures || []).flatMap(x => x.medications.map(d => ({ ...d, measure: x.code }))), [member]);
   const update = useAppStore(s => s.updatePharmacyMedication);
+  const setHold = useAppStore(s => s.setPharmacyMedicationHold);
+  // Med Status is the one place a drug's state reads: Active, Paused or
+  // Stopped (a hold, with dates and a reason) or Discontinued. Paused or
+  // Stopped opens the hold dialog; Active clears a hold.
+  const [holdKind, setHoldKind] = useState(null);
+  const statusRef = useRef(null);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const medStatusValue = med.hold ? (med.hold.kind === 'stop' ? 'Stopped' : 'Paused') : med.status;
+  const setMedStatus = (v) => {
+    if (v === 'Paused' || v === 'Stopped') { setHoldKind(v === 'Stopped' ? 'stop' : 'pause'); return; }
+    if (med.hold) setHold(memberRowId, med.id, null);
+    if (v !== med.status) save({ status: v });
+  };
   const save = (patch) => update(memberRowId, med.id, patch);
   // A hand-entered fill can be deleted, with a reason (Suresh); claim fills can't.
   const setRecentFill = useAppStore(s => s.setPharmacyRecentFill);
@@ -244,7 +260,8 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
           notes, then its barrier log. */}
       <section className={`${styles.detailSection} ${showMeasure ? '' : styles.detailSectionFirst}`}>
         <div className={styles.subTitle}>Medication</div>
-        <div className={styles.detailRow}>
+        {/* The drug at a glance, on one line, with its status to change. */}
+        <div className={`${styles.detailRow} ${styles.detailRow4}`}>
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Dose Form</span>
             <span className={styles.fieldValue}>{med.doseForm || '-'}</span>
@@ -253,22 +270,29 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
             <span className={styles.fieldLabel}>Route</span>
             <span className={styles.fieldValue}>{med.route || '-'}</span>
           </div>
-        </div>
-        <div className={styles.detailRow}>
           <div className={styles.field}>
             <span className={styles.fieldLabel}>Times Refilled</span>
             <span className={styles.fieldValue}>{fills.length}</span>
           </div>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Med Status</span>
+            <span className={styles.fieldValue}>
+              <button ref={statusRef} type="button" className={styles.statusBtn} aria-haspopup="menu" aria-label={`Med Status: ${medStatusValue}`} onClick={() => setStatusOpen(v => !v)}>
+                <Badge size="sm" tone={MED_STATUS_TONE[medStatusValue] || 'neutral'} label={medStatusValue} trailingIconElement={<DownChevronIcon size={12} color="currentColor" />} />
+              </button>
+            </span>
+            {statusOpen && (
+              <MenuPopover
+                anchorRef={statusRef}
+                width="auto"
+                items={MED_STATUSES.filter(v => v !== medStatusValue).map(v => ({ key: v, label: v }))}
+                onSelect={setMedStatus}
+                onClose={() => setStatusOpen(false)}
+              />
+            )}
+          </div>
         </div>
         <div className={styles.detailRow}>
-          <RadioOptionGroup
-            className={styles.medStatus}
-            label="Med Status"
-            name={`med-status-${med.id}`}
-            options={['Active', 'Discontinued'].map(v => ({ value: v, label: v }))}
-            value={med.status}
-            onChange={status => save({ status })}
-          />
           <Select
             label="Reason for Non-Adherence"
             options={NON_ADHERENCE_REASONS}
@@ -277,6 +301,39 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
             placeholder="Select reason"
           />
         </div>
+        {holdKind && (
+          <MedicationHoldDialog
+            kind={holdKind}
+            med={med}
+            onCancel={() => setHoldKind(null)}
+            onSave={(hold) => { setHold(memberRowId, med.id, hold); setHoldKind(null); }}
+          />
+        )}
+        {/* A stopped or paused drug: when, why and who confirmed it. */}
+        {med.hold && (
+          <div className={styles.holdBox}>
+            <div className={styles.detailRow}>
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>{med.hold.kind === 'stop' ? 'Stopped On' : 'Paused'}</span>
+                <span className={styles.fieldValue}>{med.hold.kind === 'stop' ? med.hold.start : `${med.hold.start} to ${med.hold.end || 'open'}`}</span>
+              </div>
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>Reason</span>
+                <span className={styles.fieldValue}>{med.hold.reason || '-'}</span>
+              </div>
+            </div>
+            <div className={styles.detailRow}>
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>Confirmed By</span>
+                <span className={styles.fieldValue}>{med.hold.confirmedBy || '-'}</span>
+              </div>
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>Recorded By</span>
+                <span className={styles.fieldValue}>{[med.hold.by, med.hold.at && new Date(med.hold.at).toLocaleDateString('en-US')].filter(Boolean).join(', ') || '-'}</span>
+              </div>
+            </div>
+          </div>
+        )}
         <div className={styles.field}>
           <span className={styles.fieldLabel}>Condition</span>
           <div className={styles.checks}>

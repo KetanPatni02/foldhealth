@@ -123,6 +123,8 @@
 .detailSectionFirst { border-top: none; padding-top: 0; margin-top: calc(-1 * var(--space-1)); }
 /* Two fields side by side, top-aligned. */
 .detailRow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+/* Dose Form, Route, Times Refilled and Med Status on one line. */
+.detailRow4 { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; }
 
 .detailGrid {
   display: grid;
@@ -138,9 +140,6 @@
 .fieldValue { font-size: var(--font-base); color: var(--neutral-500); }
 /* Med Status beside the reason Select: the same 4px label gap and label
    grey, and the radios side by side, centred on the Select's 32px box. */
-.detailRow > .medStatus { gap: var(--space-1); }
-.medStatus > span:first-child { color: var(--neutral-200); line-height: 1.2; }
-.medStatus [role='radiogroup'] { flex-direction: row; align-items: center; gap: var(--space-4); min-height: 2rem; }
 .checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2) var(--space-4); }
 .checkRow { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-md); color: var(--neutral-400); cursor: pointer; }
 
@@ -380,3 +379,10 @@
 /* Pause / Stop shows on row hover (or keyboard focus) to keep rows light. */
 .cMore { display: inline-flex; opacity: 0; transition: opacity 120ms ease; }
 .cRow:hover .cMore, .cMore:focus-within { opacity: 1; }
+
+/* A stopped or paused drug in its details: what, when, why, who. */
+.holdBox { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); border: 0.5px solid var(--neutral-150); border-radius: var(--space-2); background: var(--neutral-25); }
+
+/* Med Status: a badge that opens the status menu. */
+.statusBtn { border: none; background: none; padding: 0; cursor: pointer; display: inline-flex; }
+.statusBtn:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; border-radius: var(--space-1); }
