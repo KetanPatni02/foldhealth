@@ -13,10 +13,14 @@ import { Drawer } from '../../../components/Drawer/Drawer';
 import { Tabs } from '../../../components/Tabs/Tabs';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { MedicationClaims } from './MedicationClaims';
+import { MedicationHoldDialog } from './MedicationHoldDialog';
+import { earlyRefillWindow, longerFillLabel, longerFillTarget, programConfig } from '../programAutomation';
+import { ReasonDialog } from '../../../components/ReasonDialog/ReasonDialog';
+import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { DatePickerPopover } from '../../../components/DatePicker/DatePickerPopover';
-import { gapBadge, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, medicationStatus, pdcTone, medFills, todayMdy, gapActiveBarriers } from '../pharmacyWorklist.utils';
+import { fillSourceTag, gapBadge, MEASURE_NAMES, MEASURE_ORDER, annotateClaims, isActiveGap, effectivePdc, fillDueTone, latestConfirmedFill, matchFill, measureStatus, medicationStatus, pdcTone, medFills, pharmaciesUsed, todayMdy, gapActiveBarriers } from '../pharmacyWorklist.utils';
 import { MeasureCode, Sep, SubStatus } from '../PharmacyCells';
 import { BARRIERS, BARRIER_ICON } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -34,6 +38,9 @@ const conditionsOf = (d) => d.conditions ?? (d.condition ? [d.condition] : []);
 
 // A text field that saves on blur rather than per keystroke (each save
 // rewrites the member's measures jsonb).
+// "Stopped 10/20" or "Paused to 11/30" on a held drug.
+const holdLabel = (h) => (h.kind === 'stop' ? `Stopped ${h.start.slice(0, 5)}` : `Paused${h.end ? ` to ${h.end.slice(0, 5)}` : ` from ${h.start.slice(0, 5)}`}`);
+
 function DraftTextarea({ value, onCommit, ...rest }) {
   const [draft, setDraft] = useState(value || '');
   return (
@@ -131,6 +138,11 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
   const memberMeds = useMemo(() => (member?.measures || []).flatMap(x => x.medications.map(d => ({ ...d, measure: x.code }))), [member]);
   const update = useAppStore(s => s.updatePharmacyMedication);
   const save = (patch) => update(memberRowId, med.id, patch);
+  // A hand-entered fill can be deleted, with a reason (Suresh); claim fills can't.
+  const setRecentFill = useAppStore(s => s.setPharmacyRecentFill);
+  const [deleting, setDeleting] = useState(null);
+  // Pharmacy phones by name, for click-to-call beside each fill (Suresh).
+  const pharmacyPhone = useMemo(() => new Map(pharmaciesUsed(member).filter(p => p.phone).map(p => [p.name, p.phone])), [member]);
   // Claims tab (as in HCC), or the medication's details. 'notes' opens the
   // details at the Notes section, ready to type (the review row's note icon).
   const [tab, setTab] = useState(initialTab === 'notes' ? 'details' : initialTab || 'details');
@@ -188,17 +200,41 @@ export function MedicationDetail({ med, memberRowId, plan, initialTab, flushTabs
               <span className={styles.refillMeta} title={r.prescriberAddress ? `Prescriber address: ${r.prescriberAddress}` : undefined}>
                 {[r.pharmacy, r.prescriber].filter(Boolean).map((t, j) => <Fragment key={t}>{j > 0 && <Sep />}{t}</Fragment>)}
               </span>
+              {r.pharmacy && pharmacyPhone.get(r.pharmacy) && (
+                <span className={styles.refillMeta} onClick={e => e.stopPropagation()}>
+                  <PhoneLink number={pharmacyPhone.get(r.pharmacy)} label={r.pharmacy} />
+                </span>
+              )}
             </div>
             {/* Call-confirmed pickups land here before the claim does. */}
-            {r.source ? (
-              <span className={styles.sourceCell}>
-                <Badge size="sm" icon={r.manual ? 'solar:pen-linear' : 'solar:phone-linear'} label={r.manual ? 'Entered by hand' : r.source} />
-                <FillMatchTag match={matchFill(r, claims, plan)} onRework={() => setTab('claims')} />
-              </span>
-            ) : <span><Badge size="sm" label="Claim" /></span>}
+            {/* Every fill names its source; a fill confirmed in Fold also
+                shows whether a claim backs it up (side by side). */}
+            <span className={styles.sourceCell}>
+              <Tooltip label={r.source && !r.manual ? r.source : fillSourceTag(r).label} placement="bottom">
+                <span><Badge size="sm" icon={fillSourceTag(r).icon} label={fillSourceTag(r).label} /></span>
+              </Tooltip>
+              {r.source && <FillMatchTag match={matchFill(r, claims, plan)} onRework={() => setTab('claims')} />}
+              {r.manual && (
+                <ActionButton icon="solar:trash-bin-2-linear" size="sm" tooltip="Delete this hand-entered fill" tooltipLeft onClick={() => setDeleting(r)} />
+              )}
+            </span>
           </div>
         ))}
       </div>
+      )}
+      {deleting && (
+        <ReasonDialog
+          title="Delete hand-entered fill"
+          description={`${med.name}, filled ${deleting.date}. PDC, next fill and fail date go back to the claims on record. Logged in Activity.`}
+          standardReasons={['Entered on the wrong drug', 'Wrong date', 'Pickup did not happen', 'Duplicate entry']}
+          confirmLabel="Delete fill"
+          confirmTone="danger"
+          onCancel={() => setDeleting(null)}
+          onSubmit={({ code, freeText }) => {
+            setRecentFill(memberRowId, med.measure, med.id, null, [code, freeText].filter(Boolean).join(': '));
+            setDeleting(null);
+          }}
+        />
       )}
       </section>
       ) : <>
@@ -336,11 +372,40 @@ function classGroups(x) {
 // drug row keeps the fill columns; the rest is a click away in its details.
 // `activeMedId`: the medication whose details the host has open; its row
 // reads as selected.
-export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compact = false, activeMedId = null }) {
+// `onOpenContacts`: the drug's History link opens the drawer's Contacts tab
+// (every pharmacy and prescriber, current and past).
+export function PharmacyMedicationReview({ member: memberProp, onOpenMed, onOpenContacts, compact = false, activeMedId = null }) {
   const fromProfile = usePharmacyProgramMember();
   const member = memberProp || fromProfile;
   const focus = useAppStore(s => s.pharmacyFocusGap);
   const setRecentFill = useAppStore(s => s.setPharmacyRecentFill);
+  const setMedicationHold = useAppStore(s => s.setPharmacyMedicationHold);
+  const setMedicationRequest = useAppStore(s => s.setPharmacyMedicationRequest);
+  const holidays = useAppStore(s => s.holidayConfigs);
+  const programCfg = programConfig(useAppStore(s => s.pharmacyProgramConfig));
+  // Stop / Pause (Suresh): the drug's ⋯ menu, then the dialog.
+  const [medMenu, setMedMenu] = useState(null); // { med, el }
+  const [holdFor, setHoldFor] = useState(null); // { kind, med }
+  // The drug's ⋯ menu: Pause / Stop (or Resume), then the fill requests
+  // (Ajay): a longer fill (30 or 60 to 90, 90 to 180) with its outcome, and
+  // an early refill, for a holiday or otherwise.
+  const medMenuItems = (d) => {
+    if (d.hold) return [{ key: 'resume', label: 'Resume medication', icon: 'solar:play-linear' }];
+    const target = longerFillTarget(d.daysSupply);
+    return [
+      { key: 'pause', label: 'Pause medication', icon: 'solar:pause-linear' },
+      { key: 'stop', label: 'Stop medication', icon: 'solar:stop-circle-linear' },
+      ...(d.longerFill?.status === 'Requested'
+        ? [
+          { key: 'longerApproved', label: `${d.longerFill.days}-day fill approved`, icon: 'solar:check-circle-linear' },
+          { key: 'longerDeclined', label: `${d.longerFill.days}-day fill declined`, icon: 'solar:close-circle-linear' },
+        ]
+        : target && !d.longerFill ? [{ key: 'longer', label: `Request ${target}-day fill`, icon: 'solar:calendar-add-linear' }] : []),
+      d.earlyRefill
+        ? { key: 'earlyClear', label: 'Clear early refill request', icon: 'solar:close-circle-linear' }
+        : { key: 'early', label: 'Request early refill', icon: 'solar:calendar-mark-linear' },
+    ];
+  };
   // Expansion the user chose, per gap; gaps they haven't touched follow
   // their default, so a later status change doesn't flip a chosen state.
   const [chosen, setChosen] = useState(() => new Map());
@@ -455,6 +520,8 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                 d.qty != null && `Qty ${d.qty}`,
                 d.daysSupply != null && `${d.daysSupply} days supply`,
               ].filter(Boolean);
+              // Longer fill and early refill requests (Ajay), on a line of their own.
+              const requests = [longerFillLabel(d.longerFill), d.earlyRefill && 'Early refill requested'].filter(Boolean);
               const fillCount = medFills(d).length;
               const refills = `Refilled ${fillCount} time${fillCount === 1 ? '' : 's'}`;
               const source = [
@@ -469,9 +536,17 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                   {/* Rx and Recent Fill stack their details under them, so each
                       is one block centered in the row like the other cells. */}
                   <span className={styles.cStack}>
-                    <span className={styles.cRx}>{d.name} {d.strength} {d.unit}</span>
+                    <span className={styles.cRx} title={d.cls || undefined}>
+                      {d.name} {d.strength} {d.unit}
+                      {d.hold && (
+                        <Tooltip label={[d.hold.reason, d.hold.confirmedBy && `Confirmed by ${d.hold.confirmedBy}`].filter(Boolean).join(' · ')} placement="bottom">
+                          <span><Badge size="sm" tone={d.hold.kind === 'stop' ? 'danger' : 'warning'} label={holdLabel(d.hold)} /></span>
+                        </Tooltip>
+                      )}
+                    </span>
                     <span className={styles.cMeta} onClick={e => e.stopPropagation()}>
                       {supply.length > 0 && <span className={styles.cMetaLine}>{supply.map((t, i) => <Fragment key={t}>{i > 0 && <Sep />}{t}</Fragment>)}</span>}
+                      {requests.length > 0 && <span className={styles.cMetaLine}>{requests.map((t, i) => <Fragment key={t}>{i > 0 && <Sep />}{t}</Fragment>)}</span>}
                       {/* Info • Barrier • how many times it was filled. */}
                       <span className={styles.cLinks}>
                           {source.length > 0 && (
@@ -481,7 +556,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                               maxWidth={260}
                               label={<span className={styles.cSource}>{source.map(([k, v]) => <span key={k}>{k}: {v}</span>)}</span>}
                             >
-                              <button type="button" className={styles.cInfoLink} aria-label={source.map(([k, v]) => `${k}: ${v}`).join(', ')}>Info</button>
+                              <button type="button" className={styles.cInfoLink} aria-label={`History: ${source.map(([k, v]) => `${k}: ${v}`).join(', ')}`} onClick={() => onOpenContacts?.()}>History</button>
                             </Tooltip>
                           )}
                           {source.length > 0 && d.nonAdherenceReason && <Sep />}
@@ -510,7 +585,8 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                       </span>
                     )}
                   </span>
-                  <span className={`${styles.cValue} ${riskClass(d.measure, fillDueTone(d.nextFill))}`}>{d.nextFill || '-'}</span>
+                  {/* A stopped or paused drug's next fill isn't projected. */}
+                  <span className={`${styles.cValue} ${d.hold ? '' : riskClass(d.measure, fillDueTone(d.nextFill))}`}>{d.hold ? '-' : d.nextFill || '-'}</span>
                   <span className={`${styles.cValue} ${riskClass(d.measure, pdcTone(d.pdc))}`}>{d.pdc == null ? '-' : `${d.pdc}%`}</span>
                   <span className={styles.cActions} onClick={e => e.stopPropagation()}>
                     {/* Always there: opens the drug at its Notes; the count and the
@@ -523,6 +599,15 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
                       tooltipLeft
                       onClick={() => openDrug(d.id, 'notes')}
                     />
+                    {!dc && (
+                      <span className={styles.cMore}><ActionButton
+                        icon="solar:menu-dots-linear"
+                        size="sm"
+                        tooltip={d.hold ? 'Resume' : 'More actions'}
+                        tooltipLeft
+                        onClick={(e) => setMedMenu({ med: d, el: e.currentTarget })}
+                      /></span>
+                    )}
                   </span>
                 </div>
               );
@@ -564,6 +649,33 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed, compac
         </p>
       )}
 
+      {medMenu && (
+        <MenuPopover
+          anchorRef={{ current: medMenu.el }}
+          width="auto"
+          items={medMenuItems(medMenu.med)}
+          onSelect={(key) => {
+            const d = medMenu.med;
+            if (key === 'resume') setMedicationHold(member.id, d.id, null);
+            else if (key === 'pause' || key === 'stop') setHoldFor({ kind: key, med: d });
+            else if (key === 'longer') setMedicationRequest(member.id, d.id, 'longerFill', { days: longerFillTarget(d.daysSupply), status: 'Requested' });
+            else if (key === 'longerApproved' || key === 'longerDeclined') setMedicationRequest(member.id, d.id, 'longerFill', { days: d.longerFill.days, status: key === 'longerApproved' ? 'Approved' : 'Declined' });
+            else if (key === 'early') {
+              const why = earlyRefillWindow(d.nextFill, holidays || [], programCfg);
+              setMedicationRequest(member.id, d.id, 'earlyRefill', { status: 'Requested', reason: why?.label || null });
+            } else if (key === 'earlyClear') setMedicationRequest(member.id, d.id, 'earlyRefill', null);
+          }}
+          onClose={() => setMedMenu(null)}
+        />
+      )}
+      {holdFor && (
+        <MedicationHoldDialog
+          kind={holdFor.kind}
+          med={holdFor.med}
+          onCancel={() => setHoldFor(null)}
+          onSave={(hold) => { setMedicationHold(member.id, holdFor.med.id, hold); setHoldFor(null); }}
+        />
+      )}
       {/* Selected medications get the shared floating bulk bar; Set Recent
           Fill opens the calendar and applies the date to all of them. */}
       <BulkBar

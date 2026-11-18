@@ -7416,6 +7416,24 @@ export const useAppStore = create((set, get) => ({
   // Patient Outreach: Outreach To default, 'pcp' or 'member'
   // (org_settings_outreach_default_recipient_migration.sql).
   outreachDefaultRecipient: 'pcp',
+  // Pharmacy program settings: refill reminder, deadline alerts, holiday and
+  // flu season windows (org_settings_pharmacy_program_config_migration.sql).
+  // Null until saved; the program reads defaults (programConfig).
+  pharmacyProgramConfig: null,
+  // Saves the pharmacy program settings on the org settings row.
+  savePharmacyProgramConfig: async (cfg) => {
+    const prev = useAppStore.getState().pharmacyProgramConfig;
+    set({ pharmacyProgramConfig: cfg });
+    const { data: { session } } = await supabase.auth.getSession();
+    const { data, error } = session
+      ? await supabase.from('org_settings').update({ pharmacy_program_config: cfg, updated_at: new Date().toISOString() }).eq('user_id', session.user.id).select('id')
+      : { data: null, error: { message: 'Not authenticated' } };
+    if (error || !data?.length) {
+      set({ pharmacyProgramConfig: prev });
+      return { ok: false, error: error?.message || 'Save the organization details first' };
+    }
+    return { ok: true };
+  },
   orgFeaturesDidFetch: false,
   fetchOrgFeatures: async () => {
     if (useAppStore.getState().orgFeaturesDidFetch) return;
@@ -7428,7 +7446,7 @@ export const useAppStore = create((set, get) => ({
       }
       // Schema-tolerant: a column whose migration hasn't run is dropped from
       // the select and its setting stays on the default.
-      let columns = ['show_patient_app_indicator', 'care_plan_mode', 'ask_status_change_reason', 'always_show_sms_line', 'hcc_outreach_enabled', 'outreach_default_recipient'];
+      let columns = ['show_patient_app_indicator', 'care_plan_mode', 'ask_status_change_reason', 'always_show_sms_line', 'hcc_outreach_enabled', 'outreach_default_recipient', 'pharmacy_program_config'];
       const read = () => supabase
         .from('org_settings')
         .select(columns.join(', '))
@@ -7453,6 +7471,7 @@ export const useAppStore = create((set, get) => ({
         alwaysShowSmsLine: data?.always_show_sms_line !== false,
         hccOutreachEnabled: data?.hcc_outreach_enabled !== false,
         outreachDefaultRecipient: data?.outreach_default_recipient === 'member' ? 'member' : 'pcp',
+        pharmacyProgramConfig: data?.pharmacy_program_config || null,
       });
     } catch (err) {
       console.warn('fetchOrgFeatures failed:', err?.message || err);

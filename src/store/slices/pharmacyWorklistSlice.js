@@ -21,6 +21,9 @@ function rowToMember(r) {
     assigneeId: r.assignee_id,
     assigneeName: r.assignee_name,
     assigneeInitials: r.assignee_initials,
+    coordinator: r.coordinator ?? null,
+    pharmacist: r.pharmacist ?? null,
+    socialWorker: r.social_worker ?? null,
     leadNote: r.lead_note,
     followUpDue: r.follow_up_due,
     barrier: r.barrier,
@@ -35,6 +38,7 @@ function rowToMember(r) {
     patientId: r.patient_id,
     sourcePriority: r.source_priority ?? null,
     comments: r.comments || [],
+    alertOutcomes: r.alert_outcomes || {},
     otherCareGaps: r.other_care_gaps || [],
     eligibilityStatus: r.eligibility_status || 'Active',
     termDate: r.term_date ?? null,
@@ -59,10 +63,14 @@ const pickupToRow = (p) => ({
   source: p.source, logged_by: p.loggedBy, logged_at: p.loggedAt, note: p.note,
 });
 
+const PHARMACY_CARE_TEAM_COLUMN = { coordinator: 'coordinator', pharmacist: 'pharmacist', socialWorker: 'social_worker' };
+const PHARMACY_CARE_TEAM_LABEL = { coordinator: 'Coordinator', pharmacist: 'Pharmacist', socialWorker: 'Social worker' };
+
 const COLUMN_TO_FIELD = {
   status: 'status', status_manual: 'statusManual', assignee_id: 'assigneeId', assignee_name: 'assigneeName', assignee_initials: 'assigneeInitials',
   measures: 'measures', call_history: 'callHistory', intervention_log: 'interventionLog', barrier: 'barrier',
-  follow_up_due: 'followUpDue', comments: 'comments',
+  follow_up_due: 'followUpDue', comments: 'comments', alert_outcomes: 'alertOutcomes',
+  coordinator: 'coordinator', pharmacist: 'pharmacist', social_worker: 'socialWorker',
 };
 
 // A fill left on the shelf brings the follow-up forward to the next pickup
@@ -257,19 +265,84 @@ export function createPharmacyWorklistSlice(set, get) {
       update(id, m => m, [], { t: 'call', title: `Dialed ${who}`, note: number, ...(line ? { lineId: line.id, lineName: line.name } : {}), ...(kind ? { callKind: kind } : {}) });
     },
 
+    // An Activity entry with nothing else changed (a physician letter sent, say).
+    logPharmacyActivity: (id, { t = 'note', title, note }) => {
+      update(id, m => m, [], { t, title, note });
+    },
+
     // Recent Fill for one drug, edited in Medication Review or Gap Closure.
     // An empty date removes that confirmed fill. Next fill, Next Fill Due and
     // the projected PDC follow (recomputeMeasure).
-    setPharmacyRecentFill: (id, code, medId, date) => {
+    // `reason`: why a hand-entered fill is deleted (required by the UI then).
+    setPharmacyRecentFill: (id, code, medId, date, reason = null) => {
       const med = get().pharmacyWorklistMembers.find(m => m.id === id)
         ?.measures.find(y => y.code === code)?.medications.find(d => d.id === medId);
       if (!med || (med.recentFill || null) === (date || null)) return;
+      const deleted = !date && !!reason;
       update(id, m => ({
         ...m,
         measures: m.measures.map(y => (y.code !== code ? y : withManualRecentFill(y, medId, date || null))),
       }), ['measures'], {
-        t: 'note', title: `${code} recent fill edited · ${med.name}`, note: `${med.recentFill || '-'} → ${date || '-'}`,
+        t: 'note',
+        title: deleted ? `${code} hand-entered fill deleted · ${med.name}` : `${code} recent fill edited · ${med.name}`,
+        note: deleted ? `${med.recentFill} removed. Reason: ${reason}` : `${med.recentFill || '-'} → ${date || '-'}`,
       });
+    },
+
+    // Stop or pause a drug (Suresh): `hold` { kind: 'stop' | 'pause', start,
+    // end (pause only), reason, confirmedBy }; null resumes it. Recorded for
+    // outreach and audit only: the gap's status and PDC clock are unchanged
+    // (CMS has no pause), but the drug's next fill is no longer projected and
+    // it drops out of refill reminders.
+    setPharmacyMedicationHold: (id, medId, hold) => {
+      const member = get().pharmacyWorklistMembers.find(m => m.id === id);
+      const med = member?.measures.flatMap(x => x.medications).find(d => d.id === medId);
+      if (!med) return;
+      const by = get().currentUserProfile?.name || 'You';
+      const next = hold ? { ...hold, by, at: new Date().toISOString() } : null;
+      update(id, m => ({
+        ...m,
+        measures: m.measures.map(x => ({ ...x, medications: x.medications.map(d => (d.id === medId ? { ...d, hold: next } : d)) })),
+      }), ['measures'], hold ? {
+        t: 'note',
+        title: `${med.name} ${hold.kind === 'stop' ? 'stopped' : 'paused'}`,
+        note: [
+          hold.kind === 'stop' ? `From ${hold.start}` : `${hold.start} to ${hold.end || 'open'}`,
+          hold.reason && `Reason: ${hold.reason}`,
+          hold.confirmedBy && `Confirmed by ${hold.confirmedBy}`,
+        ].filter(Boolean).join(' · '),
+      } : { t: 'note', title: `${med.name} resumed`, note: med.hold ? `Was ${med.hold.kind === 'stop' ? 'stopped' : 'paused'} from ${med.hold.start}` : null });
+    },
+
+    // A request on one drug (Phase 5): `kind` 'longerFill' ({ days, status })
+    // or 'earlyRefill' ({ reason, status }); null clears it. Logged in Activity.
+    setPharmacyMedicationRequest: (id, medId, kind, value) => {
+      const member = get().pharmacyWorklistMembers.find(m => m.id === id);
+      const med = member?.measures.flatMap(x => x.medications).find(d => d.id === medId);
+      if (!med || !['longerFill', 'earlyRefill'].includes(kind)) return;
+      const by = get().currentUserProfile?.name || 'You';
+      const next = value ? { ...value, by, at: new Date().toISOString() } : null;
+      const what = kind === 'longerFill' ? `${value?.days || med.longerFill?.days}-day fill` : 'Early refill';
+      update(id, m => ({
+        ...m,
+        measures: m.measures.map(x => ({ ...x, medications: x.medications.map(d => (d.id === medId ? { ...d, [kind]: next } : d)) })),
+      }), ['measures'], {
+        t: 'note',
+        title: `${med.name}: ${what} ${value ? value.status.toLowerCase() : 'request cleared'}`,
+        note: value?.reason || null,
+      });
+    },
+
+    // A deadline alert's outcome (Accepted, Approved, Disapproved, Ignored),
+    // by alert key ("MAD|alert"). Pending clears it.
+    setPharmacyAlertOutcome: (id, key, outcome) => {
+      const by = get().currentUserProfile?.name || 'You';
+      update(id, m => {
+        const next = { ...(m.alertOutcomes || {}) };
+        if (outcome && outcome !== 'Pending') next[key] = { outcome, by, at: new Date().toISOString() };
+        else delete next[key];
+        return { ...m, alertOutcomes: next };
+      }, ['alert_outcomes'], { t: 'note', title: `Alert ${key.replace('|', ' ')}: ${outcome}` });
     },
 
     // Bulk Recent Fill from Medication Review: one date for several drugs,
@@ -310,23 +383,6 @@ export function createPharmacyWorklistSlice(set, get) {
 
     // A PDC typed by the team wins until cleared; Fold keeps calculating it
     // underneath (`value` null goes back to the calculated PDC).
-    // `from`: the PDC shown before the change, so the activity entry says
-    // what it changed from. Saving the same number changes nothing.
-    setPharmacyPdcOverride: (id, code, value, from = null) => {
-      if (value != null && value === from) return;
-      const by = get().currentUserProfile?.name || 'You';
-      const was = from == null ? '' : ` from ${from}%`;
-      update(id, m => ({
-        ...m,
-        measures: m.measures.map(x => (x.code !== code ? x
-          : value == null ? { ...x, pdcManual: null, pdcManualOn: null, pdcManualBy: null }
-          : { ...x, pdcManual: value, pdcManualOn: todayMdy(), pdcManualBy: by })),
-      }), ['measures'], {
-        t: 'note', title: value == null ? `${code} PDC changed${was} to calculated` : `${code} PDC changed${was} to ${value}%`,
-        note: value == null ? 'Manual PDC cleared, back to the calculated one' : `Set by hand by ${by}`,
-      });
-    },
-
     // A fill whose claim did not match (none inside the plan's window), was
     // reversed, or was billed outside Part D needs rework.
     // Create that follow-up task once per fill; the marker on the measure
@@ -376,6 +432,17 @@ export function createPharmacyWorklistSlice(set, get) {
         assigneeInitials: user?.initials || null,
       }), ['assignee_id', 'assignee_name', 'assignee_initials'], {
         t: 'assignee_change', title: 'Assignee changed', note: `${prev} → ${user?.name || 'Unassigned'}`,
+      });
+    },
+
+    // Who owns a step on the member (Coordinator, Pharmacist, Social worker),
+    // by name; null unassigns. Logged like an assignee change.
+    setPharmacyCareTeam: (id, role, user) => {
+      const column = PHARMACY_CARE_TEAM_COLUMN[role];
+      if (!column) return;
+      const prev = get().pharmacyWorklistMembers.find(m => m.id === id)?.[role] || 'Unassigned';
+      update(id, m => ({ ...m, [role]: user?.name || null }), [column], {
+        t: 'assignee_change', title: `${PHARMACY_CARE_TEAM_LABEL[role]} changed`, note: `${prev} → ${user?.name || 'Unassigned'}`,
       });
     },
 

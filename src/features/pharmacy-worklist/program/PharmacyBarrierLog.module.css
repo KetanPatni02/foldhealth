@@ -3,8 +3,7 @@
 .titleStack { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
 .titleSub { display: flex; align-items: center; font-size: var(--font-sm); font-weight: 400; color: var(--neutral-300); }
 
-/* What stands now: a fixed label column, so every card's chips start at the
-   same point, then the chips. */
+/* What stands now: a fixed label column, then the items as rows. */
 .current {
   display: grid;
   grid-template-columns: 7.5rem minmax(0, 1fr);
@@ -15,6 +14,8 @@
 /* Cells fill the row's height (so both halves of a hairline line up) and
    center their content. */
 .current > * { display: flex; align-items: center; padding: var(--space-2) 0; }
+/* The label sits level with its first row. */
+.current > .label { align-items: flex-start; padding-top: calc(var(--space-2) + 0.125rem); }
 /* No column gap, so a row's hairline runs unbroken; the chips cell pads in. */
 .current > :nth-child(even) { padding-left: var(--space-4); }
 .current > :nth-child(n + 3) { border-top: 0.5px solid var(--neutral-150); }
@@ -24,13 +25,16 @@
 .drugBlock + .drugBlock { margin-top: var(--space-2); border-top: 0.5px solid var(--neutral-150); padding-top: var(--space-3); }
 .drugBlock .current { padding: 0; }
 .label { font-size: var(--font-md); color: var(--neutral-300); }
-.chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-.resolvable { display: inline-flex; align-items: center; gap: 0.125rem; }
-.since { margin-left: var(--space-1); font-size: var(--font-sm); color: var(--neutral-300); white-space: nowrap; }
-/* Active chips sit at the card's right edge, each with its actions in fixed
-   slots (✓, then ✕ or an empty slot), so the buttons form one column. */
-.current .chips { justify-content: flex-end; }
-.actionSlot { width: var(--space-6); flex-shrink: 0; }
+.chips { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.current > .chips { display: flex; flex-direction: column; align-items: stretch; }
+/* One barrier or intervention: name and details on the left, an alert, then
+   two fixed action slots on the right. */
+.item { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.itemMain { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
+.itemMeta { display: flex; flex-wrap: wrap; align-items: center; font-size: var(--font-sm); color: var(--neutral-300); }
+.itemAlert { color: var(--status-error); }
+.itemActions { display: inline-flex; align-items: center; flex-shrink: 0; }
+.actionSlot { width: var(--space-6); display: inline-flex; justify-content: center; flex-shrink: 0; }
 .none { font-size: var(--font-md); color: var(--neutral-200); }
 
 .block {

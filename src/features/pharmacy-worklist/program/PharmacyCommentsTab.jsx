@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { CommentsTimeline } from '../../hcc/DiagPanel/LeftWorkspace';
 import { currentAuthor, mentionProfileIds } from '../../hcc/DiagPanel/commentAuthor';
+import { handoverFromMentions } from '../barrierLoop';
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -12,6 +13,8 @@ export function PharmacyCommentsTab({ member }) {
   const editPharmacyComment = useAppStore(s => s.editPharmacyComment);
   const deletePharmacyComment = useAppStore(s => s.deletePharmacyComment);
   const platformUsers = useAppStore(s => s.platformUsers);
+  const setAssignee = useAppStore(s => s.setPharmacyAssignee);
+  const showToast = useAppStore(s => s.showToast);
 
   // Anyone on the platform can be @-mentioned; the member's assignee first.
   const mentionUsers = useMemo(() => (platformUsers || [])
@@ -36,6 +39,12 @@ export function PharmacyCommentsTab({ member }) {
       body,
       mentionIds: mentionProfileIds(mentions),
     });
+    // Mentioning the pharmacist hands the member to them.
+    const to = handoverFromMentions(member, mentions);
+    if (to) {
+      setAssignee(member.id, { id: to.id, name: to.name, initials: to.initials });
+      showToast?.(`Assigned to ${to.name} for pharmacist review`);
+    }
   };
 
   return (

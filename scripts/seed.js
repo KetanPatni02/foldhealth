@@ -865,6 +865,9 @@ function pharmacyWorklistToRow(m) {
     assignee_id:       m.assigneeId ?? null,
     assignee_name:     m.assigneeName ?? null,
     assignee_initials: m.assigneeInitials ?? null,
+    coordinator:       m.coordinator ?? null,
+    pharmacist:        m.pharmacist ?? null,
+    social_worker:     m.socialWorker ?? null,
     lead_note:         m.leadNote ?? null,
     follow_up_due:     m.followUpDue ?? null,
     barrier:           m.barrier ?? null,
@@ -878,6 +881,7 @@ function pharmacyWorklistToRow(m) {
     intervention_log:  m.interventionLog ?? [],
     activity_log:      m.activityLog ?? [],
     measures:          m.measures ?? [],
+    alert_outcomes:    m.alertOutcomes ?? {},
     source_priority:   m.sourcePriority ?? null,
     other_care_gaps:   m.otherCareGaps ?? [],
   };

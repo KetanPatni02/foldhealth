@@ -2,8 +2,9 @@ import { Badge } from '../../components/Badge/Badge';
 import { Icon } from '../../components/Icon/Icon';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { HoverCard } from '../../components/HoverCard/HoverCard';
-import { gapBadge, MEASURE_NAMES, PROGRESS_TONE, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, isActiveGap, medLabel, pdcTone } from './pharmacyWorklist.utils';
+import { drugStrength, fillTypeLabel, gapBadge, isShortFillCandidate, MEASURE_NAMES, PROGRESS_TONE, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, isActiveGap, medLabel, pdcTone } from './pharmacyWorklist.utils';
 import { useAppStore } from '../../store/useAppStore';
+import { earlyRefillWindow, programConfig } from './programAutomation';
 import { STATUS_BADGE_VARIANT } from '../hedis-worklist/HedisWorklistRow';
 import styles from './PharmacyWorklistRow.module.css';
 
@@ -26,7 +27,7 @@ export function Dash() {
 export function DateWithDays({ date, alert = false }) {
   if (!date) return <Dash />;
   const days = daysFromToday(date);
-  const rel = days == null ? '' : days < 0 ? `${-days}d overdue` : days === 0 ? 'Today' : `${days}d left`;
+  const rel = days == null ? '' : days < 0 ? `Overdue: ${-days}d` : days === 0 ? 'Today' : `${days}d left`;
   return (
     <span className={styles.stack}>
       <span className={styles.dateText}>{date}</span>
@@ -87,7 +88,14 @@ export function DueDate({ date, alert = true }) {
 export function FailDateValue({ gap }) {
   const d = daysFromToday(gap.failDate);
   const alert = isActiveGap(gap.status) && d != null && d <= 14;
-  return <DateOnly date={gap.failDate} projected={gap.failDateSource === 'Projected'} source={gap.failDateSource} medications={gap.medications} alertHint={alert ? failDateHint(d) : null} />;
+  const date = <DateOnly date={gap.failDate} projected={gap.failDateSource === 'Projected'} source={gap.failDateSource} medications={gap.medications} alertHint={alert ? failDateHint(d) : null} />;
+  if (!gap.failDate || gap.failDateSource !== 'Plan') return date;
+  return (
+    <span className={styles.stack}>
+      {date}
+      <SourceLine source="Plan" asOf={gap.pdcAsOf} />
+    </span>
+  );
 }
 
 // A gap's next fill due: red when overdue on an open gap.
@@ -96,14 +104,26 @@ export function FailDateValue({ gap }) {
 // overdue (red). The line is the status, so the date itself stays neutral.
 const DUE_SOON_DAYS = 7;
 export function NextFillDueValue({ gap }) {
+  // A fill due just before a holiday (Ajay): a calendar icon says to refill early.
+  const holidays = useAppStore(s => s.holidayConfigs);
+  const cfg = programConfig(useAppStore(s => s.pharmacyProgramConfig));
   if (!gap.nextFillDue) return <Dash />;
+  const early = isActiveGap(gap.status) ? earlyRefillWindow(gap.nextFillDue, holidays || [], cfg) : null;
   const d = daysFromToday(gap.nextFillDue);
   const due = isActiveGap(gap.status) && d != null && d <= DUE_SOON_DAYS
-    ? (d < 0 ? { label: `Overdue by ${-d}d`, overdue: true } : { label: d === 0 ? 'Due today' : `Due in ${d}d` })
+    ? (d < 0 ? { label: `Overdue: ${-d}d`, overdue: true } : { label: d === 0 ? 'Due today' : `Due in ${d}d` })
     : null;
   return (
     <span className={styles.stack}>
-      <span className={styles.dateText}>{gap.nextFillDue}</span>
+      <span className={styles.dateRow}>
+        <span className={styles.dateText}>{gap.nextFillDue}</span>
+        <SourceLine source={gap.nextFillDueSource} asOf={gap.pdcAsOf} iconOnly />
+        {early && (
+          <Tooltip label={early.label} placement="bottom">
+            <span className={styles.sourceIcon} aria-label={early.label}><Icon name="solar:calendar-mark-linear" size={12} color="var(--status-warning)" /></span>
+          </Tooltip>
+        )}
+      </span>
       {due && <span className={`${styles.dueLine} ${due.overdue ? styles.dueOverdue : ''}`}>{due.label}</span>}
     </span>
   );
@@ -208,13 +228,46 @@ export function Sep() {
 // claim yet) is underlined with its evidence on hover and never red; a
 // confirmed PDC below 80% on an open gap is red and underlined, so the
 // threshold is said on hover and not only in color.
-export function PdcValue({ pdc, open, source, medications }) {
+export function PdcValue({ pdc, open, source, medications, asOf, iconOnly = false }) {
   if (pdc == null) return <span className={styles.subText}>Not sent</span>;
   if (source === 'Projected') {
     return <FlagValue className={styles.pdc} tone="projected" hint={projectedHint(medications)}>{pdc}%</FlagValue>;
   }
   const below = open && pdcTone(pdc) === 'error';
-  return <FlagValue className={styles.pdc} tone={below ? 'alert' : null} hint="Below the 80% PDC target">{pdc}%</FlagValue>;
+  const value = <FlagValue className={styles.pdc} tone={below ? 'alert' : null} hint="Below the 80% PDC target">{pdc}%</FlagValue>;
+  if (!source) return value;
+  if (iconOnly) return <span className={styles.dateRow}>{value}<SourceLine source={source} asOf={asOf} iconOnly /></span>;
+  return (
+    <span className={styles.stack}>
+      {value}
+      <SourceLine source={source} asOf={asOf} />
+    </span>
+  );
+}
+
+// A plan value names its report date (Session 7), since it can lag by days.
+// Values Fold calculates to today show no source line.
+const SOURCE_LOOK = {
+  Plan: { icon: 'solar:document-text-linear' },
+};
+// Short under the value ("As of 10/22"), in full on hover.
+const sourceLineText = (source, asOf) => {
+  if (!SOURCE_LOOK[source]) return null;
+  return asOf
+    ? { short: `As of ${asOf.slice(0, 5)}`, full: `From the plan file, as of its report date ${asOf}` }
+    : { short: 'Plan', full: 'From the plan file (no report date sent)' };
+};
+export function SourceLine({ source, asOf, iconOnly = false }) {
+  const text = sourceLineText(source, asOf);
+  if (!text) return null;
+  const icon = <Icon name={SOURCE_LOOK[source].icon} size={12} color="currentColor" />;
+  return (
+    <Tooltip label={text.full} placement="bottom">
+      {iconOnly
+        ? <span className={styles.sourceIcon} aria-label={text.full}>{icon}</span>
+        : <span className={styles.sourceLine} aria-label={text.full}>{icon}{text.short}</span>}
+    </Tooltip>
+  );
 }
 
 // Where the gap's latest fill stands against the claim feed. The badge opens
@@ -315,6 +368,36 @@ export function SavabilityBadge({ value }) {
   return (
     <Tooltip label={SAVABILITY_HINT[value]} placement="bottom">
       <span><Badge size="sm" tone={SAVABILITY_TONE[value]} label={value} /></span>
+    </Tooltip>
+  );
+}
+
+// Fill Type (Ajay): the gap's days supply ("90-day", or "30 / 90-day" when its
+// drugs differ). A 30 or 60-day fill is a candidate for a longer one.
+export function FillTypeValue({ gap }) {
+  const label = fillTypeLabel(gap);
+  if (!label) return <Dash />;
+  if (!isShortFillCandidate(gap) || !isActiveGap(gap.status)) return <span className={styles.cellText}>{label}</span>;
+  return (
+    <Tooltip label="On a 30 or 60-day fill: a candidate to move to a 90 or 100-day supply" placement="bottom" maxWidth={240}>
+      <span className={styles.stack}>
+        <span className={styles.cellText}>{label}</span>
+        <span className={styles.flagLine}>Longer fill candidate</span>
+      </span>
+    </Tooltip>
+  );
+}
+
+// Dosage: the first active drug's strength, the rest on hover with directions.
+export function DosageValue({ gap }) {
+  const drugs = (gap.medications || []).filter(d => d.status !== 'Discontinued' && d.status !== 'Stopped');
+  if (!drugs.length || !drugStrength(drugs[0])) return <Dash />;
+  const all = drugs.map(d => `${medLabel(d)}${d.sig ? `: ${d.sig}` : ''}`).join('; ');
+  return (
+    <Tooltip label={all} placement="bottom" maxWidth={300}>
+      <span className={styles.cellText}>
+        {drugStrength(drugs[0])}{drugs.length > 1 ? <span className={styles.subText}> +{drugs.length - 1}</span> : null}
+      </span>
     </Tooltip>
   );
 }

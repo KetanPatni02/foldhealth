@@ -17,11 +17,10 @@ export const MEASURE_NAMES = {
 export const sortMeasures = (measures) => (measures || [])
   .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code));
 
-// PDC to act on: the team's override, else projected from a confirmed
+// PDC to act on (nobody edits it, per Session 7): projected from a confirmed
 // pickup, else today's PDC (the plan's as of its report date, moved by the
 // days covered or missed since: pdcToDate), else the plan's, else ours.
-const isPdc = (v) => v != null && v !== '' && Number.isFinite(Number(v));
-export const effectivePdc = (x) => (isPdc(x?.pdcManual) ? Number(x.pdcManual) : x?.pdcProjected ?? (x ? pdcToDate(x) : null) ?? x?.pdc ?? x?.calcPdc ?? null);
+export const effectivePdc = (x) => x?.pdcProjected ?? (x ? pdcToDate(x) : null) ?? x?.pdc ?? x?.calcPdc ?? null;
 // Fail date to act on: projected from a fill confirmed in Fold, otherwise the
 // plan's. Either way it is the absolute fail date.
 // The plan's own status for the gap (Astrana file / API): Open or Closed.
@@ -36,20 +35,30 @@ export const effectiveFailDate = (x) => x?.failDateProjected ?? x?.failDate ?? n
 
 // Where each headline number comes from: the plan file, our calculation from
 // claims, or projected from a fill confirmed in Fold (pending its claim).
-export const pdcSource = (x) => (isPdc(x.pdcManual) ? 'Manual' : x.pdcProjected != null ? 'Projected' : pdcToDate(x) != null ? 'To date' : x.pdc != null ? 'Plan' : x.calcPdc != null ? 'Calculated' : null);
+export const pdcSource = (x) => (x.pdcProjected != null ? 'Projected' : pdcToDate(x) != null ? 'To date' : x.pdc != null ? 'Plan' : x.calcPdc != null ? 'Calculated' : null);
 export const failDateSource = (x) => (x.failDateProjected != null ? 'Projected' : x.failDate ? 'Plan' : null);
 // Next Fill Due is the plan's until Fold recalculates it from fills
 // (recomputeMeasure marks `nextFillDueCalculated`).
 export const nextFillDueSource = (x) => (!x.nextFillDue ? null : x.pdcProjected != null ? 'Projected' : x.nextFillDueCalculated ? 'Calculated' : 'Plan');
 export const PDC_SOURCE_TEXT = {
-  Manual: 'Set by hand', Projected: 'Projected from a confirmed pickup', 'To date': 'Calculated to date', Plan: 'From the plan file', Calculated: 'Calculated',
+  Projected: 'Projected from a confirmed pickup', 'To date': 'Calculated to date', Plan: 'From the plan file', Calculated: 'Calculated',
 };
 
-// Where a gap's PDC comes from, in words ("Set by hand by Priya, 11/04/2026").
-export function pdcSourceText(g) {
-  if (g.pdcSource !== 'Manual') return PDC_SOURCE_TEXT[g.pdcSource] || '';
-  return `${PDC_SOURCE_TEXT.Manual}${g.pdcManualBy ? ` by ${g.pdcManualBy}` : ''}${g.pdcManualOn ? `, ${g.pdcManualOn}` : ''}`;
-}
+// Where a gap's PDC comes from, in words.
+export const pdcSourceText = (g) => PDC_SOURCE_TEXT[g.pdcSource] || '';
+
+// Fill length (Ajay, Nov 12): the days supply of a gap's active drugs, and
+// whether any is on a short fill (30 or 60 days) worth moving to 90 or more.
+export const SHORT_FILL_DAYS = 60;
+const activeDrugs = (g) => (g.medications || []).filter(d => d.status !== 'Discontinued' && d.status !== 'Stopped');
+export const fillLengths = (g) => [...new Set(activeDrugs(g).map(d => Number(d.daysSupply)).filter(n => n > 0))].toSorted((a, b) => a - b);
+export const fillTypeLabel = (g) => {
+  const lengths = fillLengths(g);
+  return lengths.length ? `${lengths.join(' / ')}-day` : null;
+};
+export const isShortFillCandidate = (g) => fillLengths(g).some(n => n <= SHORT_FILL_DAYS);
+// "500 MG" for a drug.
+export const drugStrength = (d) => [d.strength, d.unit].filter(Boolean).join(' ') || null;
 
 export const FAIL_DATE_HINT = 'Absolute fail date: after this day the member can no longer reach 80% PDC this year';
 
@@ -713,6 +722,33 @@ export function activeBarriers(m) {
   return [...new Set((m.measures || []).flatMap(x => gapActiveBarriers(m, x)))];
 }
 
+// Unable to reach: the last two contact attempts (notes aside) both failed.
+export function unableToReach(callHistory) {
+  const calls = (callHistory || []).filter(c => c.result !== 'note');
+  return calls.length >= 2 && calls.slice(0, 2).every(c => c.result !== 'success');
+}
+
+// Default worklist order (Suresh, Session 7; to confirm with Monique), best
+// gap first: 1 Reopened by a claim reversal, 2 savable under 80% PDC, 3 savable
+// with the allowable days at or under the alert threshold, 4 PDC 80 to 90% with
+// the next fill due within a week, 5 pending claim with a claim mismatch, 6 any
+// other open gap, 7 unable to reach, 8 closed or safe, 9 not savable (it can no
+// longer reach 80% this year, Ajay: these sink to the bottom).
+export const DAYS_TO_SAVE_ALERT = 14;
+export function gapWorkRank(g, { utr = false } = {}) {
+  if (g.savability === 'Not savable') return 9;
+  if (isReversalReopen(g.status)) return 1;
+  if (!isActiveGap(g.status)) return 8;
+  const savable = g.savability === 'Savable';
+  const due = daysFromToday(g.nextFillDue);
+  let rank = 6;
+  if (savable && g.pdc != null && g.pdc < 80) rank = 2;
+  else if (savable && g.allowableGapDays != null && g.allowableGapDays <= DAYS_TO_SAVE_ALERT) rank = 3;
+  else if (g.pdc != null && g.pdc >= 80 && g.pdc <= 90 && due != null && due <= 7) rank = 4;
+  else if (g.status.gap === 'Pending Claim' && g.recon?.rework) rank = 5;
+  return utr ? 7 : rank;
+}
+
 export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
   const statuses = Object.fromEntries((m.measures || []).map(x => [x.code, measureStatus(x, m)]));
   // First Fill and Not Eligible gaps stay off the worklist, and out of the
@@ -751,6 +787,7 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
       attempts: attemptsThisCycle(x, m),
       recon: reconcileMeasure(x, m.healthPlan),
       planStatus: planGapStatus(x),
+      activeBarriers: gapActiveBarriers(m, x),
     };
   });
   return {
@@ -774,6 +811,20 @@ export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
     // so sorting puts the closest-to-failing work first.
     // A claim reversal reopened a gap: the member sits on top.
     reopenedByReversal: gaps.some(g => isReversalReopen(g.status)),
+    // Assigned, with open gaps, and no outreach yet this cycle on any of
+    // them (Ajay): shown on the row so nobody needs a filter to find them.
+    notWorked: !!m.assigneeName && gaps.some(g => isActiveGap(g.status))
+      && gaps.filter(g => isActiveGap(g.status)).every(g => !g.attempts),
+    // Default order (gapWorkRank): the member's most urgent gap.
+    workRank: (() => {
+      const utr = unableToReach(m.callHistory);
+      return gaps.length ? Math.min(...gaps.map(g => gapWorkRank(g, { utr }))) : 10;
+    })(),
+    // Fill Type column sort: the member's shortest fill.
+    fillLengthSort: (() => {
+      const all = gaps.flatMap(fillLengths);
+      return all.length ? Math.min(...all) : null;
+    })(),
     daysToSaveSort: (() => {
       const left = gaps.filter(g => g.savability === 'Savable' && g.allowableGapDays != null).map(g => g.allowableGapDays);
       return left.length ? Math.min(...left) : null;
@@ -873,6 +924,35 @@ const claimKey = (c) => `${c.claimId}|${c.claimSeq ?? 1}|${c.date}`;
 // A drug's fills: claims that count, and fills confirmed in Fold. Reversals,
 // voided and other-coverage lines are claims, not fills (Claim History keeps
 // them). The count is how many times the drug was filled (Refill History).
+// Where a fill came from (Suresh): a claim (Part D or other coverage), a
+// pickup the pharmacy confirmed to us, a Surescripts fill record, or a date a
+// user typed in. Shown as a tag on every fill in Refill History.
+export function fillSourceTag(r) {
+  if (r.manual) return { label: 'Entered by hand', icon: 'solar:pen-linear' };
+  if (r.source && /surescripts/i.test(r.source)) return { label: 'Surescripts', icon: 'solar:database-linear' };
+  if (r.source) return { label: 'Pharmacy-confirmed', icon: 'solar:phone-linear' };
+  if (!isPartD(r)) return { label: 'Non–Part D claim', icon: 'solar:document-text-linear' };
+  return { label: 'Part D claim', icon: 'solar:document-text-linear' };
+}
+
+// Ways to raise PDC for the coordinator to bring up during outreach (Suresh),
+// from what the open gaps show: a short fill, a refill due or overdue, drugs
+// whose next fills fall apart (sync them), and the always-useful automatic
+// refill and mail order.
+export function pdcRaisingOptions(gaps) {
+  const open = (gaps || []).filter(g => isActiveGap(g.status));
+  if (!open.length) return [];
+  const opts = [];
+  if (open.some(isShortFillCandidate)) opts.push({ key: 'longer', label: '90-day supply', why: 'On a 30 or 60-day fill: fewer trips, fewer gaps' });
+  const due = open.filter(g => { const d = daysFromToday(g.nextFillDue); return d != null && d <= 7; });
+  if (due.length) opts.push({ key: 'early', label: 'Early refill', why: `${due.map(g => g.code).join(', ')} due within a week or overdue` });
+  const fills = open.flatMap(g => (g.medications || []).filter(d => d.status !== 'Discontinued' && !d.hold && d.nextFill).map(d => parseMdy(d.nextFill)));
+  if (fills.length > 1 && Math.max(...fills) - Math.min(...fills) > 7 * DAY_MS) opts.push({ key: 'sync', label: 'Medication sync', why: 'Next fills fall more than a week apart: line them up on one date' });
+  opts.push({ key: 'auto', label: 'Automatic refill', why: 'The pharmacy refills on schedule without a call' });
+  opts.push({ key: 'mail', label: 'Mail order', why: 'Delivered home: helps with transportation and 90-day supplies' });
+  return opts;
+}
+
 export function medFills(med) {
   const counted = new Set(annotateClaims(med?.refills).filter(c => c.counts).map(claimKey));
   return (med?.refills || []).filter(r => r.source || counted.has(claimKey(r)));

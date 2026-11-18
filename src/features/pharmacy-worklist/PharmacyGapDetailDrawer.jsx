@@ -14,7 +14,7 @@ import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { Tabs } from '../../components/Tabs/Tabs';
 import { SegmentedControl } from '../../components/SegmentedControl/SegmentedControl';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
-import { MEASURE_ORDER, PROGRESS_TONE, contactCallTarget, enrichPharmacyMember, medLabel, pharmaciesUsed, prescribersOf } from './pharmacyWorklist.utils';
+import { MEASURE_ORDER, PROGRESS_TONE, callMatchesLog, contactCallTarget, enrichPharmacyMember, medLabel, pdcRaisingOptions, pharmaciesUsed, prescribersOf } from './pharmacyWorklist.utils';
 import { BARRIER_ICON } from './adherencePicklists';
 import { PharmacyContacts, PharmacyGapsCard } from './program/PharmacySnapshotStep';
 import { MedicationDetail, PharmacyMedicationReview } from './program/PharmacyMedicationReview';
@@ -27,6 +27,9 @@ import { PharmacyVerificationStep } from './program/PharmacyVerificationStep';
 import { assessmentSummary, callTypeForStakeholder } from './program/assessmentOutreach';
 import { PharmacyActivityLog } from './program/PharmacyActivityLog';
 import { PharmacyCommentsTab } from './program/PharmacyCommentsTab';
+import { PharmacyAssessmentsTab } from './program/PharmacyAssessmentsTab';
+import { assessmentRecords, isAssessment } from './program/pharmacyRecords';
+import { downloadPharmacyRecordsPdf } from './program/pharmacyRecordsPdf';
 // Same layout system as the HEDIS Care Gap Details drawer, so both read as one.
 import { MeasureCode } from './PharmacyCells';
 import styles from '../hedis-worklist/CareGapDetailDrawer.module.css';
@@ -43,6 +46,7 @@ const TABS = [
   { key: 'contacts', label: 'Contacts' },
   { key: 'comments', label: 'Comments' },
   { key: 'outreach', label: 'Outreaches' },
+  { key: 'assessments', label: 'Assessments' },
   { key: 'barriers', label: 'Barriers & Interventions' },
 ];
 
@@ -91,6 +95,8 @@ function PharmacyGapDrawerBody({ target, row }) {
 
   // The member as the tabs see it: only the picked gaps.
   const scoped = useMemo(() => ({ ...row, measures: row.measures.filter(x => selected.has(x.code)) }), [row, selected]);
+  // Ways to raise PDC for the picked gaps (enriched: status, next fill, drugs).
+  const raiseOptions = useMemo(() => pdcRaisingOptions(m.gaps.filter(g => selected.has(g.code))), [m, selected]);
   // The picked gaps still to confirm with the pharmacy: Verify with Pharmacy
   // shows while any are left, and its form asks about only those.
   // Update Barriers' form lives here so its Save sits in the pane header.
@@ -117,7 +123,12 @@ function PharmacyGapDrawerBody({ target, row }) {
   // The call popover and the picker open from whichever button was used.
   const pharmacistBtnRef = useRef(null);
   const prescriberBtnRef = useRef(null);
-  const callContact = (c, kind, anchor = moreBtnRef) => openNumberCallPopover({ ...contactCallTarget(row, c, kind), onDial: (number, line) => logPharmacyDial?.(row.id, c.name, number, line, kind) }, anchor);
+  // Under Call Now, Open Assessment (Suresh) starts the Assessment beside the call.
+  const callContact = (c, kind, anchor = moreBtnRef) => openNumberCallPopover({
+    ...contactCallTarget(row, c, kind),
+    onDial: (number, line) => logPharmacyDial?.(row.id, c.name, number, line, kind),
+    secondaryAction: { label: 'Open Assessment', icon: 'solar:clipboard-check-linear', onClick: () => setWorkspace('verify') },
+  }, anchor);
   const callOneOf = (title, kind, contacts, anchor = moreBtnRef) => (contacts.length === 1 ? callContact(contacts[0], kind, anchor) : setCallPick({ title, kind, contacts, anchor }));
   const moreBtnRef = useRef(null);
 
@@ -215,10 +226,27 @@ function PharmacyGapDrawerBody({ target, row }) {
     />
   );
 
+  // Assessments on the picked gaps, newest first (the tab and its PDF).
+  const assessments = assessmentRecords(row, selected);
+  // One record's PDF, from its own row (Suresh: an auditor asks for a
+  // specific outreach or assessment).
+  const downloadPdf = (kind, record) => downloadPharmacyRecordsPdf({
+    member: { name: m.name, memberId: m.memberId, dob: m.dob, healthPlan: m.healthPlan },
+    kind,
+    records: [record],
+  });
+  const outreachLogActions = [{
+    key: 'pdf', label: 'Download PDF', icon: 'solar:download-minimalistic-linear',
+    onSelect: (log) => {
+      const c = (row.callHistory || []).find(x => callMatchesLog(x, log.id));
+      if (c) downloadPdf(isAssessment(c) ? 'assessment' : 'outreach', c);
+    },
+  }];
   const tabCounts = {
     outreach: (m.callHistory || []).filter(c => touchesPicked(c.measures)).length,
     medication: m.gaps.filter(g => selected.has(g.code)).reduce((n, g) => n + g.medications.length, 0),
     comments: (row.comments || []).length,
+    assessments: assessments.length,
   };
 
   return (
@@ -263,6 +291,12 @@ function PharmacyGapDrawerBody({ target, row }) {
               {workspace === 'barriers' && (
                 <>
                   <Button disabled={!barrierForm.canSave} onClick={barrierForm.save}>Save</Button>
+                  <span className={styles.headerDivider} />
+                </>
+              )}
+              {workspace?.verification && (
+                <>
+                  <ActionButton icon="solar:download-minimalistic-linear" tooltip="Download PDF" onClick={() => downloadPdf('assessment', workspace.verification)} />
                   <span className={styles.headerDivider} />
                 </>
               )}
@@ -395,6 +429,16 @@ function PharmacyGapDrawerBody({ target, row }) {
             <>
               <div className={styles.suggestRow}>
                 <Icon name="custom:ai" size={14} color="var(--primary-300)" /> Suggested Actions
+                {/* Ways to raise PDC (Suresh), on hover so the row stays light. */}
+                {raiseOptions.length > 0 && (
+                  <Tooltip
+                    placement="bottom"
+                    maxWidth={280}
+                    label={<span className={local.raiseList}><strong>Ways to raise PDC</strong>{raiseOptions.map(o => <span key={o.key}>{o.label}: {o.why}</span>)}</span>}
+                  >
+                    <span className={local.raiseIcon} aria-label={`Ways to raise PDC: ${raiseOptions.map(o => o.label).join(', ')}`}><Icon name="solar:info-circle-linear" size={14} color="currentColor" /></span>
+                  </Tooltip>
+                )}
               </div>
               <div className={local.actionRow}>
                 {/* Calls lead: Call Pharmacist primary, Call Prescriber tertiary,
@@ -434,9 +478,16 @@ function PharmacyGapDrawerBody({ target, row }) {
         <div className={`${styles.tabContentWrap} ${tab === 'outreach' || tab === 'comments' ? styles.tabContentWrapFlush : ''}`}>
           {picked.length > 0 && (
             <>
-              {tab === 'medication' && <PharmacyMedicationReview compact member={scoped} activeMedId={workspace?.medId ?? null} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab, at: Date.now() })} />}
+              {tab === 'medication' && <PharmacyMedicationReview compact member={scoped} activeMedId={workspace?.medId ?? null} onOpenMed={(medId, medTab) => setWorkspace({ medId, tab: medTab, at: Date.now() })} onOpenContacts={() => setTab('contacts')} />}
               {tab === 'outreach' && (
-                <OutreachTabView tab={scopedOutreach} hideLogForRow hideForm={workspace === 'outreach'} taskMember={m.name} onLogNew={openOutreach} />
+                <OutreachTabView tab={scopedOutreach} hideLogForRow hideForm={workspace === 'outreach'} taskMember={m.name} onLogNew={openOutreach} logActions={outreachLogActions} />
+              )}
+              {tab === 'assessments' && (
+                <PharmacyAssessmentsTab
+                  records={assessments}
+                  onOpen={(r) => setWorkspace({ verification: r })}
+                  onDownload={(r) => downloadPdf('assessment', r)}
+                />
               )}
               {tab === 'barriers' && <PharmacyBarrierLog member={scoped} onEdit={() => setWorkspace('barriers')} />}
             </>

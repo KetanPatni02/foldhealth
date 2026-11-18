@@ -205,3 +205,12 @@
 .chevron { flex-shrink: 0; transition: transform 0.15s ease; }
 .chevronRight { transform: rotate(-90deg); }
 .chevronUp { transform: rotate(180deg); }
+
+/* Where a value comes from (Session 7): Calculated today, or the plan's as of
+   its report date, under PDC and Fail Date; an icon beside Next Fill Due. */
+.sourceLine { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-xs); color: var(--neutral-300); white-space: nowrap; }
+.sourceIcon { display: inline-flex; color: var(--neutral-300); }
+.dateRow { display: inline-flex; align-items: center; gap: var(--space-1); }
+/* A row flag under a value (Longer fill candidate). */
+.flagLine { font-size: var(--font-xs); font-weight: 500; color: var(--status-info); white-space: nowrap; }
+/* A member flag after the language (Not worked yet). */

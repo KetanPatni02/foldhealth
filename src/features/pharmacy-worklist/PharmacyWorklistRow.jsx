@@ -28,6 +28,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   const setPharmacyGapStatus = useAppStore(s => s.setPharmacyGapStatus);
   const openPharmacyGapDrawer = useAppStore(s => s.openPharmacyGapDrawer);
   const setPharmacyAssignee = useAppStore(s => s.setPharmacyAssignee);
+  const setPharmacyCareTeam = useAppStore(s => s.setPharmacyCareTeam);
   const platformUsers = useAppStore(s => s.platformUsers);
   const showToast = useAppStore(s => s.showToast);
   const m = member;
@@ -59,6 +60,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
 
   const cellCtx = {
     setPharmacyAssignee,
+    setPharmacyCareTeam,
     openGap: (code) => openPharmacyGapDrawer(m.id, code, { focus: true }),
     openClaimRework: (code, medId) => openPharmacyGapDrawer(m.id, code, { medId, view: 'claims', focus: true }),
     openOutreach: () => openPharmacyGapDrawer(m.id, null, { view: 'outreach' }),

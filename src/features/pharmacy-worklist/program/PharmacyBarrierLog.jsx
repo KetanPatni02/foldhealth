@@ -12,54 +12,97 @@ import { Tabs } from '../../../components/Tabs/Tabs';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { useAppStore } from '../../../store/useAppStore';
 import { toast } from '../../../components/Toast/sonnerToast';
-import { MEASURE_NAMES, MEASURE_ORDER, medLabel, todayMdy } from '../pharmacyWorklist.utils';
+import { MEASURE_NAMES, MEASURE_ORDER, medLabel, prescribersOf, todayMdy } from '../pharmacyWorklist.utils';
+import { PHARMACIST_REVIEW_BARRIERS, barrierStatus, escalation, interventionTasks, physicianLetter, taskFor } from '../barrierLoop';
+import { PhysicianLetterDialog } from './PhysicianLetterDialog';
 import { Sep } from '../PharmacyCells';
 import { BARRIERS, INTERVENTIONS, INTERVENTION_ADDRESSES } from '../adherencePicklists';
 import { buildBarrierHistory, hasBarrierData } from './barrierHistory';
 import { latestFor, recordWithMedAdditions } from './useBarrierForm';
 import styles from './PharmacyBarrierLog.module.css';
 
-// An active barrier with its Resolve button beside it.
-// `since` (optional) maps an item to the date it was first logged, shown in
-// brackets after it.
-const Since = ({ date }) => (date ? <span className={styles.since}>({date})</span> : null);
+// Each active barrier or intervention is one row: its name, a details line
+// under it (since when, where it stands, its owner and due date), an alert on
+// the right when it needs one, then its actions in a fixed column so every
+// card's buttons line up.
+// `alert`: plain red text at the end of the line (an overdue task).
+const Meta = ({ parts, alert }) => {
+  const shown = parts.filter(Boolean);
+  if (!shown.length && !alert) return null;
+  return (
+    <span className={styles.itemMeta}>
+      {shown.map((t, i) => <span key={t}>{i > 0 && <Sep />}{t}</span>)}
+      {alert && <span className={styles.itemAlert}>{shown.length > 0 && <Sep />}{alert}</span>}
+    </span>
+  );
+};
+const Slot = ({ children }) => <span className={styles.actionSlot}>{children}</span>;
 
-const BarrierChips = ({ items, onResolve, context, since }) => (items.length ? (
+// `since` (optional) maps an item to the date it was first logged.
+// `statusOf(v)`: where the barrier stands (Identified, Intervention in
+// progress). `onLetter(v)`: Send to physician, offered on a side effect.
+const BarrierChips = ({ items, onResolve, context, since, statusOf, onLetter }) => (items.length ? (
   <span className={styles.chips}>
     {items.map(v => (
-      <span key={v} className={styles.resolvable}>
-        <Badge size="sm" tone="danger" label={v} />
-        <Since date={since?.[v]} />
-        <ActionButton size="sm" icon="solar:check-circle-linear" tooltip={`Mark ${v} resolved`} aria-label={`Mark ${v} resolved for ${context}`} onClick={() => onResolve(v)} />
-        {/* Holds the place of an intervention's ✕ so every ✓ lines up. */}
-        <span className={styles.actionSlot} aria-hidden="true" />
+      <span key={v} className={styles.item}>
+        <span className={styles.itemMain}>
+          <span><Badge size="sm" tone="danger" label={v} /></span>
+          <Meta parts={[since?.[v] && `Since ${since[v]}`, statusOf?.(v)]} />
+        </span>
+        <span className={styles.itemActions}>
+          <Slot>
+            {onLetter && PHARMACIST_REVIEW_BARRIERS.includes(v) && (
+              <ActionButton size="sm" icon="solar:letter-linear" tooltip="Send to physician" aria-label={`Send ${v} letter to the physician for ${context}`} onClick={() => onLetter(v)} />
+            )}
+          </Slot>
+          <Slot>
+            <ActionButton size="sm" icon="solar:check-circle-linear" tooltip={`Mark ${v} resolved`} aria-label={`Mark ${v} resolved for ${context}`} onClick={() => onResolve(v)} />
+          </Slot>
+        </span>
       </span>
     ))}
   </span>
 ) : <span className={styles.none}>None</span>);
 
 // An active intervention with Done and Didn't work beside it.
-const InterventionChips = ({ items, context, onFinish, since }) => (
+// `taskOf(v)`: the task the intervention template created for it; past its
+// due date it shows as escalated.
+const InterventionChips = ({ items, context, onFinish, since, taskOf }) => (
   <span className={styles.chips}>
-    {items.map(v => (
-      <span key={v} className={styles.resolvable}>
-        <Badge size="sm" label={v} />
-        <Since date={since?.[v]} />
-        <ActionButton size="sm" icon="solar:check-circle-linear" tooltip={`Mark ${v} done`} aria-label={`Mark ${v} done for ${context}`} onClick={() => onFinish(v, 'Done')} />
-        <ActionButton size="sm" icon="solar:close-circle-linear" tooltip={`${v} didn't work`} aria-label={`Mark ${v} didn't work for ${context}`} onClick={() => onFinish(v, "Didn't work")} />
-      </span>
-    ))}
+    {items.map(v => {
+      const task = taskOf?.(v);
+      const late = escalation(task);
+      return (
+        <span key={v} className={styles.item}>
+          <span className={styles.itemMain}>
+            <span><Badge size="sm" label={v} /></span>
+            <Meta
+              parts={[since?.[v] && `Since ${since[v]}`, task && (task.owner || 'Unassigned'), task && `Due ${task.due}`]}
+              alert={late && `Overdue: ${late.days}d`}
+            />
+          </span>
+          <span className={styles.itemActions}>
+            <Slot>
+              <ActionButton size="sm" icon="solar:check-circle-linear" tooltip={`Mark ${v} done`} aria-label={`Mark ${v} done for ${context}`} onClick={() => onFinish(v, 'Done')} />
+            </Slot>
+            <Slot>
+              <ActionButton size="sm" icon="solar:close-circle-linear" tooltip={`${v} didn't work`} aria-label={`Mark ${v} didn't work for ${context}`} onClick={() => onFinish(v, "Didn't work")} />
+            </Slot>
+          </span>
+        </span>
+      );
+    })}
   </span>
 );
 
 // One drug: its name, then its Barriers and Interventions on labelled lines
 // (a line with nothing on it is left out).
-const DrugBlock = ({ name, barriers, interventions, onResolve, onFinish }) => (
+const DrugBlock = ({ name, barriers, interventions, onResolve, onFinish, statusOf, onLetter, taskOf }) => (
   <div className={styles.drugBlock}>
     <span className={styles.drugName}>{name}</span>
     <div className={styles.current}>
-      {barriers.length > 0 && <><span className={styles.label}>Barriers</span><BarrierChips items={barriers} context={name} onResolve={onResolve} /></>}
-      {interventions.length > 0 && <><span className={styles.label}>Interventions</span><InterventionChips items={interventions} context={name} onFinish={onFinish} /></>}
+      {barriers.length > 0 && <><span className={styles.label}>Barriers</span><BarrierChips items={barriers} context={name} onResolve={onResolve} statusOf={statusOf} onLetter={onLetter} /></>}
+      {interventions.length > 0 && <><span className={styles.label}>Interventions</span><InterventionChips items={interventions} context={name} onFinish={onFinish} taskOf={taskOf} /></>}
       {!barriers.length && !interventions.length && <span className={styles.none}>None</span>}
     </div>
   </div>
@@ -130,6 +173,26 @@ function sinceDates(log, code, items, listOf) {
 export function PharmacyBarrierLog({ member, onEdit }) {
   const [view, setView] = useState('active');
   const { resolve, onFinish, prompt } = useBarrierActions(member.id);
+  const logActivity = useAppStore(s => s.logPharmacyActivity);
+  const currentUser = useAppStore(s => s.currentUserProfile);
+  const tasks = useMemo(() => interventionTasks(member), [member]);
+  // Send to physician: the gap's drug and its prescriber, with the letter.
+  const [letter, setLetter] = useState(null);
+  const openLetter = (x, barrier, drugName) => {
+    const drug = drugName || medLabel(x.medications.find(d => d.status !== 'Discontinued') || x.medications[0] || {});
+    const prescriber = prescribersOf(member).find(p => (p.drugs || []).some(n => drug.startsWith(n))) || prescribersOf(member)[0] || member.prescriber;
+    setLetter({
+      code: x.code,
+      to: prescriber?.fax ? `${prescriber.name} (${prescriber.fax})` : prescriber?.name || 'the prescriber',
+      prescriber: prescriber?.name,
+      text: physicianLetter({ member, code: x.code, drug, prescriber, barrier, from: currentUser?.name }),
+    });
+  };
+  const loopFor = (x, interventions, drugName) => ({
+    statusOf: (b) => barrierStatus(b, interventions),
+    onLetter: (b) => openLetter(x, b, drugName),
+    taskOf: (i) => taskFor(tasks, x.code, i),
+  });
 
   const measures = useMemo(() => (member?.measures || [])
     .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code)), [member]);
@@ -194,6 +257,7 @@ export function PharmacyBarrierLog({ member, onEdit }) {
                   interventions={d.interventions}
                   onResolve={v => resolve(x.code, v, d)}
                   onFinish={onFinish(x.code, d, [...d.barriers, x.medications.find(m => m.id === d.id)?.nonAdherenceReason].filter(Boolean))}
+                  {...loopFor(x, d.interventions, d.name)}
                 />
               ))}
             </div>
@@ -201,7 +265,7 @@ export function PharmacyBarrierLog({ member, onEdit }) {
             <div className={styles.current}>
               {current.barriers.length > 0 && <>
                 <span className={styles.label}>Barriers</span>
-                <BarrierChips items={current.barriers} context={x.code} onResolve={v => resolve(x.code, v)} />
+                <BarrierChips items={current.barriers} context={x.code} onResolve={v => resolve(x.code, v)} {...loopFor(x, current.interventions)} />
               </>}
               {current.interventions.length > 0 && <>
                 <span className={styles.label}>Interventions</span>
@@ -209,6 +273,7 @@ export function PharmacyBarrierLog({ member, onEdit }) {
                   items={current.interventions}
                   context={x.code}
                   onFinish={onFinish(x.code, null, [...current.barriers, ...drugBarriers.map(d => d.nonAdherenceReason)])}
+                  taskOf={loopFor(x, current.interventions).taskOf}
                 />
               </>}
             </div>
@@ -222,6 +287,7 @@ export function PharmacyBarrierLog({ member, onEdit }) {
                   barriers={[d.nonAdherenceReason]}
                   interventions={[]}
                   onResolve={v => resolve(x.code, v, { id: d.id, name: medLabel(d) })}
+                  {...loopFor(x, current?.interventions || [], medLabel(d))}
                 />
               ))}
             </div>
@@ -230,6 +296,18 @@ export function PharmacyBarrierLog({ member, onEdit }) {
       )))}
 
       {prompt}
+      {letter && (
+        <PhysicianLetterDialog
+          letter={letter.text}
+          to={letter.to}
+          onCancel={() => setLetter(null)}
+          onSend={(text) => {
+            logActivity(member.id, { title: `Letter faxed to ${letter.prescriber || 'the prescriber'} (${letter.code})`, note: text });
+            toast.success(`Letter faxed to ${letter.prescriber || 'the prescriber'}`);
+            setLetter(null);
+          }}
+        />
+      )}
 
       {view === 'history' && <ActivityLog entries={history} flushTop emptyLabel="No barriers or interventions logged yet." />}
     </div>

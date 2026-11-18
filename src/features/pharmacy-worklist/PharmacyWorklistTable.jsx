@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/Checkbox/Checkbox';
@@ -10,6 +10,13 @@ import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
+import { Switch } from '../../components/Switch/Switch';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
+import { PharmacyAlertsDrawer } from './PharmacyAlertsDrawer';
+import { deadlineAlerts, daysLeftText, programConfig } from './programAutomation';
+import { DateRangePopover } from '../../components/DateRangePopover/DateRangePopover';
+import { outreachExportRows, outreachLinkTarget, toCsv } from './pharmacyExport';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
 import { useWorklistColumns } from '../worklists/useWorklistColumns';
@@ -56,6 +63,9 @@ const thStyle = {
   userSelect: 'none',
 };
 
+// Deadline alerts already sent to this tab's notifications.
+const NOTIFIED_ALERTS = new Set();
+
 export function PharmacyWorklistTable() {
   const members = useAppStore(s => s.pharmacyWorklistMembers);
   const loading = useAppStore(s => s.pharmacyWorklistLoading);
@@ -76,6 +86,7 @@ export function PharmacyWorklistTable() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);
+  const [showNotSavable, setShowNotSavable] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -91,6 +102,20 @@ export function PharmacyWorklistTable() {
   const careGapMember = careGap ? (hedisMembers || []).find(h => h.id === careGap.hedisMemberId) : null;
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
+  // Program settings and the org's holidays (refill reminder, alerts,
+  // holiday window).
+  const fetchOrgFeatures = useAppStore(s => s.fetchOrgFeatures);
+  const fetchHolidayConfigs = useAppStore(s => s.fetchHolidayConfigs);
+  useEffect(() => { fetchOrgFeatures?.(); fetchHolidayConfigs?.(); }, [fetchOrgFeatures, fetchHolidayConfigs]);
+  // A link from the outreach export ("?member=…&outreach=…") opens that
+  // member's Outreach tab.
+  const openPharmacyGapDrawer = useAppStore(s => s.openPharmacyGapDrawer);
+  useEffect(() => {
+    const target = outreachLinkTarget(window.location.hash);
+    if (target) openPharmacyGapDrawer(target.member, null, { view: 'outreach' });
+  }, [openPharmacyGapDrawer]);
+  // Export (Suresh): outreach and assessments in a date range, for auditors.
+  const [exportAnchor, setExportAnchor] = useState(null);
   // Overdue claims get a pharmacy follow-up task automatically.
   useEffect(() => { if (members.length) ensureClaimFollowUpTasks(); }, [members, ensureClaimFollowUpTasks]);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
@@ -128,19 +153,33 @@ export function PharmacyWorklistTable() {
       );
     }
     if (coveringPicked.length) rows = rows.filter(m => covering.coveringOn([m.assigneeName], coveringPicked).length > 0);
-    // Gap filters also narrow each row to the gaps that pass them.
+    // Gap filters also narrow each row to the gaps that pass them. Not
+    // savable gaps (they can no longer reach 80% this year) stay hidden unless
+    // asked for, by the switch or the Savability filter; not removed.
+    const notSavableShown = showNotSavable || (filters.savability || []).includes('Not savable');
     return rows
       .filter(m => memberMatchesFilters(m, filters, filterCtx))
       .map(m => {
-        const gaps = matchingGaps(m, filters, filterCtx);
+        let gaps = matchingGaps(m, filters, filterCtx);
+        if (!notSavableShown) gaps = gaps.filter(g => g.savability !== 'Not savable');
         return gaps.length === m.gaps.length ? m : { ...m, gaps };
-      });
-  }, [enriched, searchQuery, filters, filterCtx, coveringPicked, covering]);
+      })
+      .filter(m => m.gaps.length || !m.measures?.length);
+  }, [enriched, searchQuery, filters, filterCtx, coveringPicked, covering, showNotSavable]);
+  // Members whose only open work is not savable, for the switch's count.
+  const notSavableOnly = useMemo(() => enriched.filter(m => m.gaps.length && m.gaps.every(g => g.savability === 'Not savable')).length, [enriched]);
 
   const { sorted: bySort, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered);
   // Gaps a claim reversal reopened stay on top whatever the sort, since
   // their compliance window keeps running (Monique: "a big neon sign").
-  const sorted = useMemo(() => [...bySort.filter(m => m.reopenedByReversal), ...bySort.filter(m => !m.reopenedByReversal)], [bySort]);
+  // With no column sorted, the default order is the work priority
+  // (gapWorkRank), then fewest days to save, then lowest PDC.
+  const sorted = useMemo(() => {
+    const base = sortKey ? bySort : bySort.toSorted((a, b) => (a.workRank - b.workRank)
+      || ((a.daysToSaveSort ?? Infinity) - (b.daysToSaveSort ?? Infinity))
+      || ((a.pdc ?? Infinity) - (b.pdc ?? Infinity)));
+    return [...base.filter(m => m.reopenedByReversal), ...base.filter(m => !m.reopenedByReversal)];
+  }, [bySort, sortKey]);
   // The drawer's previous / next follow the rows as shown.
   const setWorklistOrder = useAppStore(s => s.setPharmacyWorklistOrder);
   useEffect(() => { setWorklistOrder(sorted.map(m => m.id)); }, [sorted, setWorklistOrder]);
@@ -169,6 +208,28 @@ export function PharmacyWorklistTable() {
     return next;
   });
 
+  // Deadline alerts (Ajay): derived from the worklist with the program
+  // settings; the bell shows how many are still pending.
+  const programCfg = programConfig(useAppStore(s => s.pharmacyProgramConfig));
+  const alerts = useMemo(() => deadlineAlerts(enriched, programCfg), [enriched, programCfg]);
+  const pendingAlerts = alerts.filter(a => a.outcome === 'Pending').length;
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const moreRef = useRef(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  // Alerts addressed to the signed-in user land in their notifications, once
+  // per alert per tab.
+  const myName = useAppStore(s => s.currentUserProfile?.name);
+  const addNotification = useAppStore(s => s.addNotification);
+  useEffect(() => {
+    if (!myName) return;
+    for (const a of alerts) {
+      const id = `pharm-alert-${a.memberId}-${a.key}`;
+      if (a.to !== myName || a.outcome !== 'Pending' || NOTIFIED_ALERTS.has(id)) continue;
+      NOTIFIED_ALERTS.add(id);
+      addNotification?.({ id, type: 'pharmacy.deadline', title: `${a.code} deadline: ${a.member}`, body: `${daysLeftText(a.daysLeft)}${a.failDate ? `, fails ${a.failDate}` : ''}.` });
+    }
+  }, [alerts, myName, addNotification]);
+
   const columnPrefs = useWorklistColumns('pharmacy', PHARMACY_MIDDLE_COLUMNS, { hiddenByDefault: PHARMACY_HIDDEN_BY_DEFAULT });
   const visibleMiddle = columnPrefs.visibleColumns;
   const colCount = 2 + visibleMiddle.length + 1;
@@ -180,15 +241,47 @@ export function PharmacyWorklistTable() {
         leadingElement={<SubnavToggle />}
         title="Pharmacy"
         toggleItems={[]}
-        actions={['search', 'filter', 'history']}
+        actions={['search', 'filter']}
         searchPlaceholder="Search members, drugs or coordinators"
         searchValue={searchQuery}
         onSearchChange={(v) => { setSearchQuery(v); setPage(1); }}
         filterActive={filterBarOpen}
         onFilter={() => setFilterBarOpen(v => !v)}
-        onHistory={() => showToast('History – coming soon')}
+        trailingExtras={(
+          <>
+            {/* Export and History live in one ⋯ menu to keep the header light. */}
+            <ActionButton ref={moreRef} icon="solar:menu-dots-linear" tooltip="More actions" tooltipBelow onClick={() => setMoreOpen(v => !v)} />
+            {moreOpen && (
+              <MenuPopover
+                anchorRef={moreRef}
+                width="auto"
+                items={[
+                  { key: 'export', label: 'Export outreach', icon: 'solar:download-minimalistic-linear' },
+                  { key: 'history', label: 'History', icon: 'solar:history-linear' },
+                ]}
+                onSelect={(key) => {
+                  if (key === 'export') setExportAnchor(moreRef.current?.getBoundingClientRect() || null);
+                  else showToast('History – coming soon');
+                }}
+                onClose={() => setMoreOpen(false)}
+              />
+            )}
+          </>
+        )}
         rightExtras={
           <>
+            <Switch
+              checked={showNotSavable}
+              onChange={(on) => { setShowNotSavable(on); setPage(1); }}
+              label={`Show not savable${notSavableOnly ? ` (${notSavableOnly})` : ''}`}
+            />
+            <span className={styles.titleDivider} />
+            <ActionButton
+              icon="solar:bell-linear"
+              tooltip="Deadline alerts"
+              count={pendingAlerts || undefined}
+              onClick={() => setAlertsOpen(true)}
+            />
             <SavedFiltersChip list="Pharmacy" />
             <span className={styles.titleDivider} />
           </>
@@ -204,6 +297,27 @@ export function PharmacyWorklistTable() {
         dynamicOpts={dynamicOpts}
         onSaveFilter={() => setSaveDialogOpen(true)}
       />
+      {exportAnchor && (
+        <DateRangePopover
+          anchorRect={exportAnchor}
+          label="Export outreach between"
+          selected={[]}
+          onChange={(range) => {
+            if (range.length !== 2) return;
+            setExportAnchor(null);
+            const rows = outreachExportRows(sorted, range, window.location.origin);
+            if (!rows.length) { showToast('No outreach in that date range for the members shown'); return; }
+            const url = URL.createObjectURL(new Blob([toCsv(rows)], { type: 'text/csv' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pharmacy-outreach-${range[0]}-to-${range[1]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`Exported ${rows.length} outreach record${rows.length === 1 ? '' : 's'}`);
+          }}
+          onClose={() => setExportAnchor(null)}
+        />
+      )}
       <FilterNameDialog
         open={saveDialogOpen}
         title="Save Filter"
@@ -319,6 +433,13 @@ export function PharmacyWorklistTable() {
       </div>
 
       <PharmacyGapDetailDrawer />
+      {alertsOpen && (
+        <PharmacyAlertsDrawer
+          alerts={alerts}
+          onClose={() => setAlertsOpen(false)}
+          onOpenMember={(id, code) => { setAlertsOpen(false); openPharmacyGapDrawer(id, code, { focus: true }); }}
+        />
+      )}
       {careGapMember && (
         <CareGapDetailDrawer
           member={careGapMember}

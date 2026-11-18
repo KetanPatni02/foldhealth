@@ -12,8 +12,9 @@ import {
   canSetGapStatus, gapBadge, MANUAL_GAP_STATUSES, MEASURE_NAMES, daysFromToday, isActiveGap, enrichPharmacyMember, contactCallTarget, medicationStatus, pharmaciesUsed, prescribersOf,
 } from '../pharmacyWorklist.utils';
 import { Dash, DrugsCount, DueDate, NamesCount, FailDateValue, MeasureCode, NextFillDueValue, PdcValue, PriorYearPdc, SavabilityBadge, SubStatus } from '../PharmacyCells';
-import { EditablePdc } from '../PdcEditor';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
+import { needsPharmacistReview } from '../barrierLoop';
+import { ivrCreatesTask, programConfig, refillReminder } from '../programAutomation';
 import styles from './PharmacySnapshotStep.module.css';
 
 // Days supply and quantity in one cell: "90 days • Qty 90".
@@ -43,10 +44,27 @@ function ContactLines({ contacts, render }) {
 // Medication Review.
 function GapDetails({ gap: g }) {
   const open = isActiveGap(g.status);
+  // Automated refill reminder and IVR pickup check (Ajay).
+  const cfg = programConfig(useAppStore(s => s.pharmacyProgramConfig));
+  const reminder = refillReminder(g, cfg);
   const prescribers = contactsOf(g.medications, 'prescriber');
   const pharmacies = contactsOf(g.medications, 'pharmacy');
   const phone = (c) => (c.phone ? <PhoneLink number={c.phone} label={c.name} /> : '-');
+  // Savability first (Suresh): can this gap still reach 80%, how many days
+  // without medication it can still take, and the absolute fail date.
+  const savabilityValue = (
+    <span className={styles.detailLines}>
+      <SavabilityBadge value={g.savability} />
+      {open && g.savability === 'Savable' && (
+        <span className={styles.muted}>
+          {g.allowableGapDays == null ? 'Reaches 80% with the fill on file' : `${g.allowableGapDays} day${g.allowableGapDays === 1 ? '' : 's'} left`}
+          {g.failDate ? ` · fails ${g.failDate}` : ''}
+        </span>
+      )}
+    </span>
+  );
   const items = [
+    ['Savability', savabilityValue],
     ['Claim', g.recon ? (
       <Tooltip label={g.recon.detail} placement="bottom">
         <span className={g.recon.rework && open ? styles.toneError : ''}>{g.recon.status}</span>
@@ -54,10 +72,16 @@ function GapDetails({ gap: g }) {
     ) : 'Nothing to reconcile'],
     ['Start Date', g.startDate || '-'],
     ['Prior-Year PDC', <PriorYearPdc key="py" years={g.priorYearPdc} nonCompliant={g.priorYearNonCompliant} year={new Date().getFullYear() - 1} />],
-    ['Savability', <SavabilityBadge key="sv" value={g.savability} />],
     ['Allowable Gap Days', g.allowableGapDays == null ? '-' : <span className={g.allowableGapDays <= 0 ? styles.toneError : ''}>{g.allowableGapDays} days</span>],
     ['Attempts This Cycle', g.attempts],
     ['Last Pickup Confirmed', g.pickupConfirmed || '-'],
+    ['Refill Reminder', reminder ? reminder.label : '-'],
+    ['IVR Pickup Check', g.ivrCheck?.result ? (
+      <span className={styles.detailLines}>
+        <span className={ivrCreatesTask(g.ivrCheck.result) ? styles.toneError : ''}>{`${g.ivrCheck.result} (${g.ivrCheck.date})`}</span>
+        {ivrCreatesTask(g.ivrCheck.result) && <span className={styles.muted}>Follow-up task created</span>}
+      </span>
+    ) : '-'],
     ['Prescriber', <ContactLines key="rx" contacts={prescribers} render={c => c.name} />],
     ['Prescriber Phone', <ContactLines key="rxp" contacts={prescribers} render={phone} />],
     ['Pharmacy', <ContactLines key="ph" contacts={pharmacies} render={c => c.name} />],
@@ -107,7 +131,7 @@ function NextFill({ gap: g }) {
 // The compact gap table (Pharmacy Gap Details), laid out like the Pharmacy
 // Gap table in Figma (5693:49892): title with the gap toggle beside it, a
 // header row, one line per gap, and a grey detail panel under an open gap.
-function GapList({ gaps, memberId, title, titleExtra, onSetStatus }) {
+function GapList({ gaps, title, titleExtra, onSetStatus }) {
   const [expanded, setExpanded] = useState(() => new Set());
   const [statusMenu, setStatusMenu] = useState(null); // { code, rect }
   const toggle = (code) => setExpanded(prev => {
@@ -128,7 +152,7 @@ function GapList({ gaps, memberId, title, titleExtra, onSetStatus }) {
           <span role="columnheader">Gap</span>
           <span role="columnheader">Drugs</span>
           <span role="columnheader">Status</span>
-          <span role="columnheader">PDC</span>
+          <span role="columnheader" title="Measure PDC: all the gap's drugs together. Each drug's PDC is in Medication Review.">PDC</span>
           <span role="columnheader">Fail Date</span>
           <span role="columnheader">Next Fill Due</span>
         </div>
@@ -159,12 +183,16 @@ function GapList({ gaps, memberId, title, titleExtra, onSetStatus }) {
                   ) : (
                     // A span, so the Badge's own centering doesn't apply in
                     // this column (it lines up with the buttons above).
-                    <span>{badge}</span>
+                    g.status.gap === 'Excluded' && g.exclusionType
+                      ? <Tooltip label={`Excluded: ${g.exclusionType}`} placement="bottom"><span>{badge}</span></Tooltip>
+                      : <span>{badge}</span>
                   )}
                   {/* A reopen names its reason under the badge. */}
                   {g.status.gap === 'Reopened' && <SubStatus label={g.status.reopenReason} />}
+                  {/* A side effect puts the open gap in front of the pharmacist. */}
+                  {isActiveGap(g.status) && needsPharmacistReview(g.activeBarriers || []) && <SubStatus label="Pharmacist review" />}
                 </span>
-                <span className={styles.listCell} role="cell"><EditablePdc gap={g} memberId={memberId} /></span>
+                <span className={styles.listCell} role="cell"><PdcValue pdc={g.pdc} open={isActiveGap(g.status)} source={g.pdcSource} medications={g.medications} asOf={g.pdcAsOf} iconOnly /></span>
                 <span className={styles.listCell} role="cell"><FailDate gap={g} /></span>
                 <span className={styles.listCell} role="cell"><NextFill gap={g} /></span>
               </div>
@@ -204,7 +232,7 @@ export function PharmacyGapsCard({ member, onSetStatus, compact = false, titleEx
   });
   const m = enrichPharmacyMember(member);
   const menuGap = statusMenu && m.gaps.find(g => g.code === statusMenu.code);
-  if (compact) return <GapList gaps={m.gaps} memberId={m.id} title="Pharmacy Gap" titleExtra={titleExtra} onSetStatus={onSetStatus} />;
+  if (compact) return <GapList gaps={m.gaps} title="Pharmacy Gap" titleExtra={titleExtra} onSetStatus={onSetStatus} />;
   const gridClass = styles.gapGrid;
 
   return (
@@ -248,7 +276,7 @@ export function PharmacyGapsCard({ member, onSetStatus, compact = false, titleEx
                   ? <SubStatus label={g.status.reopenReason} suffix={g.status.label !== 'Claim reversed' ? g.status.label : null} />
                   : <SubStatus label={g.status.label} />}
               </span>
-              <PdcValue pdc={g.pdc} open={open} source={g.pdcSource} medications={g.medications} />
+              <PdcValue pdc={g.pdc} open={open} source={g.pdcSource} medications={g.medications} asOf={g.pdcAsOf} />
               <FailDateValue gap={g} />
               <NextFillDueValue gap={g} />
               {g.recon ? <span className={claimFlagged && open ? styles.toneError : styles.value}>{g.recon.status}</span> : <Dash />}
@@ -353,6 +381,7 @@ export function PharmacyContacts({ member }) {
                 <tr key={p.name}>
                   <td>
                     <span className={styles.contactName}>{p.name}</span>
+                    {prescribers.length > 1 && <Badge size="sm" tone={p.drugs?.length ? 'primary' : 'neutral'} label={p.drugs?.length ? 'Current' : 'Past'} className={styles.lastUsed} />}
                     <span className={styles.address}>{addressOf(p)}</span>
                   </td>
                   <td><PhoneLink number={p.phone} label={p.name} onDial={dial(p.name, p.phone)} /></td>
@@ -376,7 +405,7 @@ export function PharmacyContacts({ member }) {
                 <tr key={p.name}>
                   <td>
                     <span className={styles.contactName}>{p.name}</span>
-                    {i === 0 && pharmacies.length > 1 && <Badge size="sm" label="Last used" className={styles.lastUsed} />}
+                    {pharmacies.length > 1 && <Badge size="sm" tone={i === 0 ? 'primary' : 'neutral'} label={i === 0 ? 'Last used' : 'Past'} className={styles.lastUsed} />}
                     <span className={styles.address}>{addressOf(p)}</span>
                   </td>
                   <td><PhoneLink number={p.phone} label={p.name} onDial={dial(p.name, p.phone)} /></td>

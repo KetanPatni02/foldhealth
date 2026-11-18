@@ -8,6 +8,7 @@ import { BARRIERS, INTERVENTIONS } from '../adherencePicklists';
 import { MEASURE_NAMES, medLabel } from '../pharmacyWorklist.utils';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import { EMPTY, activeMeds, latestFor, useBarrierForm } from './useBarrierForm';
+import { InterventionPlanDialog } from './InterventionPlanDialog';
 import styles from './PharmacyBarrierStep.module.css';
 
 // Barrier & Intervention step of the Pharmacy program. Each gap's fields start
@@ -20,7 +21,7 @@ export function PharmacyBarrierStep({ member: memberProp, form: hostForm }) {
   const fromProfile = usePharmacyProgramMember();
   const member = memberProp || fromProfile;
   const ownForm = useBarrierForm(hostForm ? null : member);
-  const { measures, stateOf, patchGap, patchMed, togglePerMed, changed, note, setNote, discard, save } = hostForm || ownForm;
+  const { measures, stateOf, patchGap, patchMed, togglePerMed, changed, note, setNote, discard, save, plan, confirmPlan, skipPlan } = hostForm || ownForm;
 
   if (!member) {
     return (
@@ -117,6 +118,7 @@ export function PharmacyBarrierStep({ member: memberProp, form: hostForm }) {
           )}
         </div>
       </section>
+      {plan && <InterventionPlanDialog plan={plan} onConfirm={confirmPlan} onSkip={skipPlan} />}
     </div>
   );
 }

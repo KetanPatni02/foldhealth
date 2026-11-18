@@ -68,6 +68,8 @@ export function OutreachTabView({
   onLogNew,
   classicForm = false,
   hideProgramPicker = false,
+  // Extra row-menu actions on each logged outreach: [{ key, label, icon, onSelect(log) }].
+  logActions,
 }) {
   // A host with its own outcome list (the Pharmacy program's Intervention
   // Schema) keeps the form with the Select Outcome menu: its outcomes drive
@@ -174,6 +176,7 @@ export function OutreachTabView({
           filteredLogGroups={tab.filteredLogGroups}
           onEdit={tab.handleEdit}
           onDelete={tab.handleDelete}
+          extraActions={logActions}
           showSequence={tab.hccWorkflow}
         />
       )}

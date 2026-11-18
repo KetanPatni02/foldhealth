@@ -1,0 +1,2 @@
+/* Dates and who confirmed it, above the reason. */
+.fields { display: flex; flex-direction: column; gap: var(--space-3); }

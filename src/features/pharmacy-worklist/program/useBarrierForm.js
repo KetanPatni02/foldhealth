@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { MEASURE_ORDER, medLabel, todayMdy } from '../pharmacyWorklist.utils';
+import { addedBarriers, interventionPlan } from '../barrierLoop';
 
 // Newest log entry that recorded this measure.
 export function latestFor(log, code) {
@@ -72,6 +73,11 @@ export function useBarrierForm(member) {
   const logInterventions = useAppStore(s => s.logPharmacyInterventions);
   const currentUser = useAppStore(s => s.currentUserProfile);
   const showToast = useAppStore(s => s.showToast);
+  const createTask = useAppStore(s => s.createTask);
+  const addProgramTask = useAppStore(s => s.addProgramTask);
+  // The template's interventions offered for barriers this save added (the
+  // host shows InterventionPlanDialog while it is set).
+  const [plan, setPlan] = useState(null);
 
   const measures = useMemo(() => (member?.measures || [])
     .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code)), [member]);
@@ -101,10 +107,44 @@ export function useBarrierForm(member) {
   const save = () => {
     if (!member || !changed.length) return;
     const recorded = Object.fromEntries(changed.map(x => [x.code, recordFor(x, stateOf(x))]));
+    const before = Object.fromEntries(changed.map(x => [x.code, latestFor(member.interventionLog, x.code)?.rec]));
     logInterventions(member.id, { date: todayMdy(), by: currentUser?.name || 'You', note, measures: recorded }, { clearReasons: true });
     setDraft({});
     setNote('');
     showToast?.(`Updated ${Object.keys(recorded).join(', ')}`);
+    const current = Object.fromEntries(Object.entries(recorded).map(([code, r]) => [code, r.interventions]));
+    const offer = interventionPlan(member, addedBarriers(before, recorded), current);
+    if (offer.length) setPlan({ rows: offer, records: recorded });
   };
-  return { measures, stateOf, patchGap, patchMed, togglePerMed, changed, canSave: changed.length > 0, note, setNote, discard, save };
+
+  // The picked interventions: a task each for its owner, then added to their
+  // gaps in one log entry that keeps the tasks (owner, due date, task id).
+  const confirmPlan = async (rows) => {
+    const records = plan?.records || {};
+    setPlan(null);
+    const by = currentUser?.name || 'You';
+    const tasks = [];
+    for (const r of rows) {
+      const created = await createTask({
+        name: `${r.intervention}: ${r.barrier} on ${r.code} (${member.name})`,
+        status: 'pending', priority: 'medium', due_date: r.due,
+        assigned_to: r.owner.name || by, assigned_to_id: null, member: member.name,
+        labels: [], meta: '', description: '', pool: null, mentions: [], attachments: 0, comments: 0,
+        is_subtask: false, parent_task: null, parent_task_id: null,
+        program_code: 'PHARM', patient_id: member.patientId != null ? String(member.patientId) : null,
+      });
+      if (created) addProgramTask('PHARM', created);
+      tasks.push({ code: r.code, barrier: r.barrier, intervention: r.intervention, due: r.due, owner: r.owner.name, role: r.owner.role, taskId: created?.id ?? null });
+    }
+    const measures = Object.fromEntries([...new Set(rows.map(r => r.code))].map(code => {
+      const x = member.measures.find(m => m.code === code);
+      const add = { interventions: rows.filter(r => r.code === code).map(r => r.intervention) };
+      return [code, recordWithGapAdditions(x, records[code], add)];
+    }));
+    logInterventions(member.id, { date: todayMdy(), by, note: 'Interventions from the barrier template', source: 'Intervention template', measures, tasks });
+    showToast?.(`${tasks.length} intervention task${tasks.length === 1 ? '' : 's'} created`);
+  };
+  const skipPlan = () => setPlan(null);
+
+  return { measures, stateOf, patchGap, patchMed, togglePerMed, changed, canSave: changed.length > 0, note, setNote, discard, save, plan: plan?.rows || null, confirmPlan, skipPlan };
 }

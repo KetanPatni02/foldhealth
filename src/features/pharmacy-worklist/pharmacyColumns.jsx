@@ -3,14 +3,14 @@ import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { PriorityIcon } from '../../components/PriorityIcon/PriorityIcon';
-import { canSetGapStatus, gapBadge, MEASURE_NAMES, PRIORITY_LEVELS, daysFromToday } from './pharmacyWorklist.utils';
+import { canSetGapStatus, gapBadge, isActiveGap, MEASURE_NAMES, PRIORITY_LEVELS, daysFromToday } from './pharmacyWorklist.utils';
 import { fillsToStayCompliant } from './fillEvents';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
-import { ClaimReconCell, Dash, DateWithDays, DaysToSaveValue, DrugsCount, FailDateValue, NextFillDueValue, OpenCareGaps, PriorYearPdc, ProgressCell, SavabilityBadge, SubStatus } from './PharmacyCells';
-import { EditablePdc } from './PdcEditor';
+import { ClaimReconCell, Dash, DateWithDays, DaysToSaveValue, DosageValue, DrugsCount, FailDateValue, FillTypeValue, NextFillDueValue, OpenCareGaps, PdcValue, PriorYearPdc, ProgressCell, SavabilityBadge, SubStatus } from './PharmacyCells';
 import styles from './PharmacyWorklistRow.module.css';
 
 
+const initialsOf = (name) => name.replace(/[.,]/g, '').split(/\s+/).filter(w => /^[A-Za-z]/.test(w)).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 const isOverdue = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
 const PRIOR_YEAR = new Date().getFullYear() - 1;
 const numberOrDash = (n, suffix = '') => (n == null ? <Dash /> : <span className={styles.cellText}>{n}{suffix}</span>);
@@ -91,6 +91,12 @@ export const PHARMACY_MIDDLE_COLUMNS = [
         >
           <Badge size="sm" {...gapBadge(g.status)} trailingIconElement={<DownChevronIcon size={12} color="currentColor" />} />
         </button>
+      ) : g.status.gap === 'Excluded' && g.exclusionType ? (
+        // Why the member is out of the measure (Hospice, ESRD, insulin for MAD).
+        <span className={styles.stack}>
+          <Badge size="sm" {...gapBadge(g.status)} />
+          <span className={styles.subText}>{g.exclusionType}</span>
+        </span>
       ) : (
         <Badge size="sm" {...gapBadge(g.status)} />
       )
@@ -110,21 +116,30 @@ export const PHARMACY_MIDDLE_COLUMNS = [
     key: 'startDate', label: 'Start Date', getTdClassName: gapTd(false),
     renderCell: perGap((g) => (g.startDate ? <span className={styles.dateText}>{g.startDate}</span> : <Dash />)),
   },
+  // PDC is calculated, never set by hand (Session 7); the line under it says
+  // whether it is Fold's to today or the plan's as of its report date.
   {
     key: 'pdc', label: 'PDC', sortKey: 'pdc', sortType: 'number', getTdClassName: gapTd(false),
-    stopRowClickPropagation: true,
-    // Click the pencil to set it by hand (Use calculated goes back).
-    renderCell: perGap((g, m) => <EditablePdc gap={g} memberId={m.id} />),
-  },
-  {
-    key: 'failDate', label: 'Fail Date (Absolute)', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
-    renderCell: perGap((g) => <FailDateValue gap={g} />),
+    renderCell: perGap((g) => <PdcValue pdc={g.pdc} open={isActiveGap(g.status)} source={g.pdcSource} medications={g.medications} asOf={g.pdcAsOf} />),
   },
   // A gap with no days left to save is not worth working: the column says how
   // many are left, or that the gap is already Safe or Not savable.
   {
     key: 'daysToSave', label: 'Days to Save', sortKey: 'daysToSaveSort', sortType: 'number', getTdClassName: gapTd(false),
     renderCell: perGap((g) => <DaysToSaveValue gap={g} />),
+  },
+  // Fill length and dosage beside PDC (Ajay): priority weighs fill length too.
+  {
+    key: 'fillType', label: 'Fill Type', sortKey: 'fillLengthSort', sortType: 'number', getTdClassName: gapTd(false),
+    renderCell: perGap((g) => <FillTypeValue gap={g} />),
+  },
+  {
+    key: 'dosage', label: 'Dosage', getTdClassName: gapTd(false),
+    renderCell: perGap((g) => <DosageValue gap={g} />),
+  },
+  {
+    key: 'failDate', label: 'Fail Date (Absolute)', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
+    renderCell: perGap((g) => <FailDateValue gap={g} />),
   },
   // Proposed (Richard), to confirm with Monique: hidden until then.
   {
@@ -164,7 +179,7 @@ export const PHARMACY_MIDDLE_COLUMNS = [
     renderCell: perGap((g) => <PriorYearPdc years={g.priorYearPdc} nonCompliant={g.priorYearNonCompliant} year={PRIOR_YEAR} />),
   },
   {
-    key: 'assignee', label: 'Assigned To', sortKey: 'assigneeName', sortType: 'alpha', stopRowClickPropagation: true,
+    key: 'assignee', label: 'Assignee', sortKey: 'assigneeName', sortType: 'alpha', stopRowClickPropagation: true,
     renderCell: (m, ctx) => (
       m.assigneeName ? (
         <AssigneeChange
@@ -187,6 +202,26 @@ export const PHARMACY_MIDDLE_COLUMNS = [
       )
     ),
   },
+  // Who owns each step (Suresh): Coordinator, Pharmacist, Social worker. The
+  // Assignee above is the current owner; these say who holds each role.
+  ...[
+    { key: 'coordinator', label: 'Coordinator' },
+    { key: 'pharmacist', label: 'Pharmacist' },
+    { key: 'socialWorker', label: 'Social Worker' },
+  ].map(({ key, label }) => ({
+    key, label, sortKey: key, sortType: 'alpha', stopRowClickPropagation: true,
+    renderCell: (m, ctx) => (
+      <AssigneeChange
+        name={m[key] || undefined}
+        initials={m[key] ? initialsOf(m[key]) : undefined}
+        unassigned={!m[key]}
+        showRole={false}
+        users={ctx.eligibleUsers}
+        onSelect={(u) => ctx.setPharmacyCareTeam(m.id, key, u)}
+        pickerTitle={`${m[key] ? 'Change' : 'Assign'} ${label.toLowerCase()}`}
+      />
+    ),
+  })),
   {
     key: 'followUpDue', label: 'Follow-up Due', sortKey: 'followUpDueSort', sortType: 'date',
     renderCell: (m) => <DateWithDays date={m.followUpDue} alert={isOverdue(m.followUpDue)} />,

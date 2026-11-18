@@ -85,8 +85,10 @@ const isoAt = (mdy, hour = 10) => {
 };
 function seedActivity(base) {
   const calls = (base.callHistory || []).map((c, i) => ({
-    at: isoAt(c.date, 10 + i), actor: c.by, t: 'outreach',
-    title: `Outreach · ${c.contact}${c.measures?.length ? ` (${c.measures.join(', ')})` : ''}`,
+    at: isoAt(c.date, 10 + i), actor: c.by,
+    ...(c.kind === 'pharmacy-verification'
+      ? { t: 'call', verificationId: c.id, title: `Assessment · ${c.party}: ${c.contact}` }
+      : { t: 'outreach', title: `Outreach · ${c.contact}${c.measures?.length ? ` (${c.measures.join(', ')})` : ''}` }),
     outcome: c.outcome,
     outcomeColor: OUTREACH_TONE_COLOR[outreachTone(c.result)],
     note: c.note || undefined,
@@ -190,6 +192,18 @@ const BASE_MEMBERS = [
       { date: '09/25/2026', contact: 'Member', outcome: 'UTC', result: 'failed', by: 'Marcus Reyes', note: 'Left voicemail.' },
     ],
     interventionLog: [
+      // The barrier template's tasks (Suresh): the pharmacist review is past
+      // due, so it shows as overdue.
+      {
+        date: '10/03/2026', by: 'Marcus Reyes', note: 'Interventions from the barrier template', source: 'Intervention template',
+        measures: {
+          MAC: { barriers: ['Side Effects'], interventions: ['Schedule MD Appointment/Labs', 'Pharmacist review'], result: 'Pending Pharmacist Review' },
+        },
+        tasks: [
+          { code: 'MAC', barrier: 'Side Effects', intervention: 'Pharmacist review', due: '10/06/2026', owner: 'Nina Shah, PharmD', role: 'pharmacist', taskId: null },
+          { code: 'MAC', barrier: 'Side Effects', intervention: 'Schedule MD Appointment/Labs', due: '11/30/2026', owner: 'Marcus Reyes', role: 'coordinator', taskId: null },
+        ],
+      },
       {
         date: '10/02/2026', by: 'Marcus Reyes', note: 'Discussed statin side effects; MD to review.',
         measures: {
@@ -325,8 +339,25 @@ const BASE_MEMBERS = [
     prescriber: ORTIZ, pharmacy: CVS_3301,
     phones: [{ number: '(714) 555-0181', label: 'Mobile', doNotUse: false }],
     callHistory: [
+      // A saved Assessment (Suresh): opens read-only from the Assessments tab.
+      {
+        id: 'ver-19408-1', kind: 'pharmacy-verification', locked: true, date: '10/14/2026', time: '2:20 PM',
+        mode: 'Phone', action: 'Telephonic', direction: 'Outbound', contactOutcome: 'Reached',
+        party: 'Pharmacy', contact: 'CVS Pharmacy #3301', outcome: 'Interventions logged', result: 'failed',
+        by: 'Marcus Reyes', note: 'Pharmacist will flag the Januvia copay for a generic switch.', measures: ['MAD', 'MAH'],
+        picks: { MAD: { 'Cost or insurance coverage issues': true, Pending: 'Refill approval' }, MAH: { 'Confirmed medication pickup date': true, 'New 90/100DS conversion': true } },
+        outcomes: { MAD: ['Cost or insurance coverage issues', 'Pending: Refill approval'], MAH: ['Confirmed medication pickup date', 'New 90/100DS conversion'] },
+      },
       { date: '10/07/2026', contact: 'Member', outcome: 'Cost/financial barrier', result: 'success', by: 'Marcus Reyes', note: 'Copay $47: asked prescriber about generic.', measures: ['MAD'] },
-      { date: '10/01/2026', contact: 'Pharmacy', outcome: 'Confirmed medication pickup date', result: 'success', by: 'Marcus Reyes', note: 'Januvia 30-day picked up.', measures: ['MAD'] },
+      // Fully documented for audit (Session 7): pickup date, what was
+      // discussed, barriers and the call transcript.
+      {
+        id: 'out-19408-2', date: '10/01/2026', time: '11:05 AM', type: 'Call', contact: 'Pharmacy', outcome: 'Confirmed medication pickup date', result: 'success', by: 'Marcus Reyes', note: 'Januvia 30-day picked up.', measures: ['MAD'],
+        pickupDate: '09/30/2026',
+        discussion: 'Confirmed pickup at CVS #3301; asked about a 90-day supply.',
+        barriers: ['Cost Issue'],
+        transcript: 'Pharmacist: Januvia 100 mg, 30 tablets, picked up yesterday at 4:10 PM. Copay was $47. Member asked whether a 90-day supply would cost less.',
+      },
     ],
     interventionLog: [
       {
@@ -628,12 +659,14 @@ const PICKUPS = [
   { memberRowId: '19407', measureCode: 'MAD', pickupDate: '10/18/2026', source: 'Pharmacy call', loggedBy: 'Priya Natarajan', note: 'Picked up at the counter; claim not on the plan feed yet.' },
   { memberRowId: '19408', measureCode: 'MAD', pickupDate: '10/01/2026', source: 'Pharmacy call', loggedBy: 'Marcus Reyes' },
   { memberRowId: '19409', measureCode: 'MAC', pickupDate: '09/24/2026', source: 'Pharmacy verification', loggedBy: 'Priya Natarajan' },
+  // A Surescripts fill record (1 to 3 days old, cash fills included) used as a pickup check before the claim.
+  { memberRowId: '19405', measureCode: 'MAH', pickupDate: '10/27/2026', source: 'Surescripts', loggedBy: 'Surescripts feed', note: 'Fill record received; Part D claim not on the plan feed yet.' },
 ];
 
 function withPickupsAndScenarios(m) {
   let measures = m.measures;
   for (const p of PICKUPS.filter(y => y.memberRowId === m.id)) {
-    ({ measures } = applyPickup({ ...m, measures }, [p.measureCode], p.pickupDate, `Pickup confirmed by ${p.source === 'Pharmacy call' ? 'call' : 'pharmacy'}`));
+    ({ measures } = applyPickup({ ...m, measures }, [p.measureCode], p.pickupDate, p.source === 'Surescripts' ? 'Surescripts fill record' : `Pickup confirmed by ${p.source === 'Pharmacy call' ? 'call' : 'pharmacy'}`));
   }
   measures = measures.map(x => (CLAIM_SCENARIOS[`${m.id}|${x.code}`] ? CLAIM_SCENARIOS[`${m.id}|${x.code}`](x, m) : x));
   measures = measures.map(x => (STATUS_SCENARIOS[`${m.id}|${x.code}`] ? STATUS_SCENARIOS[`${m.id}|${x.code}`](x) : x));
@@ -651,9 +684,46 @@ export const PHARMACY_PICKUP_CONFIRMATIONS = PICKUPS.map((p, i) => ({
   loggedAt: new Date(Date.UTC(+p.pickupDate.slice(6), +p.pickupDate.slice(0, 2) - 1, +p.pickupDate.slice(3, 5), 17, 10 + i)).toISOString(),
 }));
 
+// Who owns each step (Suresh): Coordinator, Pharmacist (side effects or an
+// allergy under review) and Social worker (only once an intervention task
+// exists). The Assignee is the current owner and can differ from the
+// Coordinator as work passes between roles.
+const CARE_TEAM = {
+  '19401': { coordinator: 'Priya Natarajan', pharmacist: null, socialWorker: 'Dana Brooks' },
+  '19402': { coordinator: 'Priya Natarajan', pharmacist: null, socialWorker: null },
+  '19403': { coordinator: 'Marcus Reyes', pharmacist: 'Nina Shah, PharmD', socialWorker: null },
+  '19404': { coordinator: 'Priya Natarajan', pharmacist: null, socialWorker: null },
+  '19405': { coordinator: 'Marcus Reyes', pharmacist: null, socialWorker: 'Dana Brooks' },
+  '19406': { coordinator: 'Priya Natarajan', pharmacist: 'Nina Shah, PharmD', socialWorker: null },
+  '19407': { coordinator: 'Marcus Reyes', pharmacist: null, socialWorker: null },
+  '19408': { coordinator: null, pharmacist: null, socialWorker: null },
+  '19409': { coordinator: 'Priya Natarajan', pharmacist: null, socialWorker: 'Dana Brooks' },
+  '19410': { coordinator: 'Marcus Reyes', pharmacist: null, socialWorker: null },
+};
+
+// Phase 5 samples (Ajay): IVR pickup checks (only Not picked up makes a
+// task) and a 90-day fill request.
+const IVR_SAMPLES = {
+  '19402': { MAH: { date: '11/12/2026', result: 'Not picked up' } },
+  '19401': { MAD: { date: '11/10/2026', result: 'Picked up' } },
+};
+function withProgramAutomationSamples(m) {
+  const ivr = IVR_SAMPLES[m.id];
+  const measures = m.measures.map((x, i) => ({
+    ...x,
+    ...(ivr?.[x.code] ? { ivrCheck: ivr[x.code] } : {}),
+    // The first drug on a 30 or 60-day fill.
+    medications: m.id === '19406' && i === 0
+      ? x.medications.map(d => (d === x.medications.find(y => y.daysSupply < 90) ? { ...d, longerFill: { days: 90, status: 'Requested', by: 'Priya Natarajan', at: '2026-11-09T15:00:00.000Z' } } : d))
+      : x.medications,
+  }));
+  return { ...m, measures };
+}
+
 export const PHARMACY_WORKLIST_MEMBERS = BASE_MEMBERS
   .map((m, i) => completeMeasures(m, i))
-  .map(m => ({ sourcePriority: null, eligibilityStatus: 'Active', termDate: null, ...m, ...SOURCE_FIELDS[m.id], ...ELIGIBILITY[m.id] }))
+  .map(m => ({ sourcePriority: null, eligibilityStatus: 'Active', termDate: null, coordinator: null, pharmacist: null, socialWorker: null, ...m, ...SOURCE_FIELDS[m.id], ...ELIGIBILITY[m.id], ...CARE_TEAM[m.id] }))
   .map(withClaimFields)
   .map(withPriorYearPdc)
-  .map(withPickupsAndScenarios);
+  .map(withPickupsAndScenarios)
+  .map(withProgramAutomationSamples);

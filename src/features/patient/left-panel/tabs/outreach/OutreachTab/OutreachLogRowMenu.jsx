@@ -3,16 +3,22 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import styles from './OutreachTab.module.css';
 
-/** An outreach log's Edit / Delete overflow menu. */
-export function LogRowMenu({ log, onEdit, onDelete }) {
+/**
+ * An outreach log's overflow menu: Edit / Delete, then any `extraActions`
+ * the host adds ([{ key, label, icon, onSelect(log) }], e.g. Download PDF).
+ */
+export function LogRowMenu({ log, onEdit, onDelete, extraActions = [] }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
-  // A locked call (e.g. a pharmacy verification) is one fixed record.
-  if ((!onEdit && !onDelete) || log.locked) return null;
+  // A locked call (e.g. a pharmacy verification) is one fixed record: it
+  // keeps only the host's extra actions.
+  const editable = !log.locked;
   const items = [
-    ...(onEdit ? [{ key: 'edit', icon: 'solar:pen-2-linear', label: 'Edit' }] : []),
-    ...(onDelete ? [{ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true }] : []),
+    ...(onEdit && editable ? [{ key: 'edit', icon: 'solar:pen-2-linear', label: 'Edit' }] : []),
+    ...extraActions.map(a => ({ key: a.key, icon: a.icon, label: a.label })),
+    ...(onDelete && editable ? [{ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true }] : []),
   ];
+  if (!items.length) return null;
   return (
     <span className={styles.logRowMenuWrap}>
       <ActionButton
@@ -26,9 +32,14 @@ export function LogRowMenu({ log, onEdit, onDelete }) {
         <MenuPopover
           anchorRef={btnRef}
           items={items}
-          onSelect={(key) => { if (key === 'edit') onEdit(log); else onDelete(log); }}
+          onSelect={(key) => {
+            const extra = extraActions.find(a => a.key === key);
+            if (extra) extra.onSelect(log);
+            else if (key === 'edit') onEdit(log);
+            else onDelete(log);
+          }}
           onClose={() => setOpen(false)}
-          width={140}
+          width={extraActions.length ? 'auto' : 140}
           ariaLabel="Log actions"
         />
       )}
