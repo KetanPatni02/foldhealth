@@ -443,19 +443,23 @@ function CareGapDetailDrawerContent({ member, gapCode, instanceNo = null, year, 
   const cisSeriesDoses = useAppStore(s => s.cisSeriesDoses[member?.id]);
   const fetchCisSeriesDoses = useAppStore(s => s.fetchCisSeriesDoses);
   const setCisSeriesDoses = useAppStore(s => s.setCisSeriesDoses);
+  const cisVaccineMarks = useAppStore(s => s.cisVaccineMarks[member?.id]);
+  const fetchCisVaccineMarks = useAppStore(s => s.fetchCisVaccineMarks);
+  const setCisVaccineMark = useAppStore(s => s.setCisVaccineMark);
   useEffect(() => {
     if (!isCis || !member?.id) return;
     fetchPatientImmunizations(member.id);
     fetchCisDoseNotes(member.id);
     fetchCisAppointments(member.id);
     fetchCisSeriesDoses(member.id);
-  }, [isCis, member?.id, fetchPatientImmunizations, fetchCisDoseNotes, fetchCisAppointments, fetchCisSeriesDoses]);
+    fetchCisVaccineMarks(member.id);
+  }, [isCis, member?.id, fetchPatientImmunizations, fetchCisDoseNotes, fetchCisAppointments, fetchCisSeriesDoses, fetchCisVaccineMarks]);
   // CIS-CMB10 evaluation for the Schedule Vaccine Reminder pane's dose list.
   const docTypes = isCis ? [...DOC_TYPES, CIS_RECORD_DOC_TYPE] : DOC_TYPES;
   const memberDob = member?.dob;
   const cisResult = useMemo(
-    () => (isCis ? evaluateCis({ dob: memberDob, immunizations: immunizations || [], measurementYear: selectedYear, seriesDoses: cisSeriesDoses }) : null),
-    [isCis, memberDob, immunizations, selectedYear, cisSeriesDoses],
+    () => (isCis ? evaluateCis({ dob: memberDob, immunizations: immunizations || [], measurementYear: selectedYear, seriesDoses: cisSeriesDoses, marks: cisVaccineMarks }) : null),
+    [isCis, memberDob, immunizations, selectedYear, cisSeriesDoses, cisVaccineMarks],
   );
   const openCisAppointment = (appt) => {
     if (appt) cisApptForm.startEdit(appt);
@@ -533,6 +537,28 @@ function CareGapDetailDrawerContent({ member, gapCode, instanceNo = null, year, 
       outcome: `${label} set to a ${doses}-dose series.`,
       gapCodes: [CIS_CODE],
     });
+  };
+  // Immune on a vaccine ('hepb') or Contraindicated on a dose ('hepb:2');
+  // `mark` null undoes it.
+  const changeCisVaccineMark = async (markKey, mark) => {
+    if (!member?.id) return false;
+    const before = cisVaccineMarks?.[markKey];
+    const ok = await setCisVaccineMark(member.id, markKey, mark);
+    if (!ok) return false;
+    const [antigenKey, dose] = markKey.split(':');
+    const label = `${cisResult?.antigens.find(a => a.key === antigenKey)?.label ?? antigenKey}${dose ? ` dose ${dose}` : ''}`;
+    const what = (mark || before)?.kind === 'immune' ? 'Immune' : 'Contraindicated';
+    logCareGapActivity(member.id, {
+      when: new Date().toISOString(),
+      actor: currentActorName(),
+      t: 'immunization',
+      title: mark ? `Vaccine Marked ${what}` : `${what} Undone`,
+      outcome: mark
+        ? `${label} marked ${what} (${mark.date}): ${mark.details}${mark.diseases?.length ? ` (${mark.diseases.join(', ')})` : ''}.`
+        : `${label} is no longer marked ${what}; back to its normal status.`,
+      gapCodes: [CIS_CODE],
+    });
+    return true;
   };
   const saveCisAppointmentPane = () => {
     if (!cisApptForm.canSave || !member?.id) return;
@@ -2018,6 +2044,8 @@ function CareGapDetailDrawerContent({ member, gapCode, instanceNo = null, year, 
                 onSaveEvidence={saveCisRecord}
                 seriesDoses={cisSeriesDoses}
                 onSeriesDosesChange={changeCisSeriesDoses}
+                marks={cisVaccineMarks}
+                onMarkChange={changeCisVaccineMark}
               />
             ) : shownTab === 'Orders' ? (
               <CareGapLabsTab

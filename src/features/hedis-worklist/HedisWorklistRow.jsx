@@ -38,10 +38,12 @@ const RISK_BADGE_VARIANT = {
 
 function CisDueLabel({ member }) {
   const immunizations = useAppStore(s => s.patientImmunizations[member.id]);
+  // Loaded with the member's Care Gap drawer; Immune / Contraindicated doses aren't due.
+  const cisMarks = useAppStore(s => s.cisVaccineMarks[member.id]);
   const dob = member.dob;
   const due = useMemo(
-    () => (immunizations ? cisDueIndicator(evaluateCis({ dob, immunizations })) : null),
-    [dob, immunizations],
+    () => (immunizations ? cisDueIndicator(evaluateCis({ dob, immunizations, marks: cisMarks })) : null),
+    [dob, immunizations, cisMarks],
   );
   if (!due) return null;
   return <span className={`${styles.startDateDue}${due.tone === 'error' ? ` ${styles.startDateOverdue}` : ''}`}>{due.label}</span>;

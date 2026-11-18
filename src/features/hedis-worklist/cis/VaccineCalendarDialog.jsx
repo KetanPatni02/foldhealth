@@ -7,7 +7,8 @@ import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { Banner } from '../../../components/Banner/Banner';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { SegmentedControl } from '../../../components/SegmentedControl/SegmentedControl';
-import { CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, evaluateCis } from './cisRules';
+import { CIS_ANTIGENS, CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, doseDateError, evaluateCis } from './cisRules';
+import { toast } from '../../../components/Toast/sonnerToast';
 import { isoToMdy } from './useCisTracker';
 import { CisStatusBadge } from './CisStatus';
 import { CisDoseProgress } from './CisDoseProgress';
@@ -20,6 +21,9 @@ import { appointmentForDose } from './cisAppointments';
 import { CisMoreMenu } from './CisMoreMenu';
 import { CisSyncEhrButton } from './CisSyncEhrButton';
 import { SeriesDosesPicker } from './SeriesDosesPicker';
+import { CisMarkDialog } from './CisMarkDialog';
+import { VaccineMenu } from './VaccineMenu';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import styles from './VaccineCalendarDialog.module.css';
 
 // Rows that need action get an accent bar down the dose column.
@@ -27,25 +31,33 @@ const ACCENT = {
   [CIS_DOSE_STATUS.dueNow]: styles.accentWarning,
   [CIS_DOSE_STATUS.pending]: styles.accentWarning,
   [CIS_DOSE_STATUS.overdue]: styles.accentError,
-  [CIS_DOSE_STATUS.notCounted]: styles.accentError,
-  [CIS_DOSE_STATUS.cannotMeet]: styles.accentError,
 };
 const STATUS_ORDER = Object.values(CIS_DOSE_STATUS);
-// Doses whose reason shows as a full-width bar under the row: red when the
-// dose does not count, grey when it counts but was given late.
+// Doses whose reason shows as a full-width bar under the row: grey when it
+// counts but was given late, amber when an open dose can't be given in time.
 const REASON_BAR = {
-  [CIS_DOSE_STATUS.notCounted]: { tone: 'danger', icon: 'solar:danger-triangle-linear', quiet: false },
   [CIS_DOSE_STATUS.completedLate]: { tone: 'info', icon: 'solar:history-linear', quiet: true },
 };
-const reasonBarFor = (r) => (r.reason ? REASON_BAR[r.status] : null);
+const reasonBarFor = (r) => {
+  if (r.reason && REASON_BAR[r.status]) return { ...REASON_BAR[r.status], text: `${r.status}: ${r.reason}` };
+  if (r.warning) return { tone: 'warning', icon: 'solar:danger-triangle-linear', quiet: false, text: r.warning };
+  return null;
+};
 const URGENCY = [
   CIS_ANTIGEN_STATUS.overdue,
-  CIS_ANTIGEN_STATUS.cannotMeet,
   CIS_ANTIGEN_STATUS.dueNow,
   CIS_ANTIGEN_STATUS.upcoming,
   CIS_ANTIGEN_STATUS.onTrack,
-  CIS_ANTIGEN_STATUS.met,
+  CIS_ANTIGEN_STATUS.agedOut,
+  CIS_ANTIGEN_STATUS.contraindicated,
+  CIS_ANTIGEN_STATUS.immune,
+  CIS_ANTIGEN_STATUS.seriesComplete,
 ];
+// Doses with nothing to date (Immune, Contraindicated, Aged out).
+const CLOSED = [CIS_DOSE_STATUS.immune, CIS_DOSE_STATUS.contraindicated, CIS_DOSE_STATUS.agedOut];
+const isClosed = (r) => r.kind === 'planned' && CLOSED.includes(r.status);
+// Open doses that can be marked Contraindicated.
+const OPEN = [CIS_DOSE_STATUS.dueNow, CIS_DOSE_STATUS.overdue, CIS_DOSE_STATUS.upcoming, CIS_DOSE_STATUS.onTrack];
 
 const fmtSaved = (iso) => {
   const d = iso ? new Date(iso) : null;
@@ -66,21 +78,25 @@ const fmtSaved = (iso) => {
  * @param {object}   props.savedNotes      – { 'dtap:1': { note } }
  * @param {number}   props.measurementYear
  * @param {object}   [props.seriesDoses]   – { rv: 2 | 3 } series length picks
+ * @param {object}   [props.marks]         – cis_vaccine_marks by vaccine key
+ * @param {function} [props.onMarkChange]  – (markKey, mark | null) => Promise<boolean>; 'hepb:2' for a dose
  * @param {function} [props.onSeriesDosesChange] – (antigenKey, doses) => void
  * @param {object}   [props.lastSaved]     – { actor, when }
  * @param {function} props.onSave          – (payload) => Promise<boolean>
  * @param {function} props.onClose
  */
-export function VaccineCalendarDialog({ member, immunizations, savedNotes, measurementYear, seriesDoses, onSeriesDosesChange, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence, onClose }) {
+export function VaccineCalendarDialog({ member, immunizations, savedNotes, measurementYear, seriesDoses, onSeriesDosesChange, marks, onMarkChange, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence, onClose }) {
   const result = useMemo(
-    () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear, seriesDoses }),
-    [member?.dob, immunizations, measurementYear, seriesDoses],
+    () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear, seriesDoses, marks }),
+    [member?.dob, immunizations, measurementYear, seriesDoses, marks],
   );
   const [statusFilter, setStatusFilter] = useState([]);
   const [view, setView] = useState('timeline');
   // Table rows grouped by vaccine, or by the routine age the dose starts at.
   const [viewBy, setViewBy] = useState('vaccine');
   const [confirmRemove, setConfirmRemove] = useState(null);
+  // { kind, antigen, doseNumber } while the Immune / Contraindicated dialog is open.
+  const [marking, setMarking] = useState(null);
 
   const statusOptions = useMemo(() => {
     const present = new Set(result.antigens.flatMap(a => a.rows.map(r => r.status)));
@@ -90,7 +106,7 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
   // complete ones last. Fixed when the dialog opens so rows don't jump
   // under the cursor while a date is being entered.
   const [order] = useState(() => [...result.antigens]
-    .sort((x, y) => URGENCY.indexOf(x.status) - URGENCY.indexOf(y.status))
+    .sort((x, y) => URGENCY.indexOf(x.urgency && x.status === CIS_ANTIGEN_STATUS.contraindicated ? x.urgency : x.status) - URGENCY.indexOf(y.urgency && y.status === CIS_ANTIGEN_STATUS.contraindicated ? y.urgency : y.status))
     .map(a => a.key));
   const keep = (r) => !statusFilter.length || statusFilter.includes(r.status);
   const groups = viewBy === 'age'
@@ -110,9 +126,12 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
 
   // Every change saves straight away, as on the tab.
   const changeDate = (antigen, row, iso) => {
+    const dateError = iso ? doseDateError(antigen, row, new Date(`${iso}T00:00`)) : null;
+    if (dateError) { toast.error(dateError); return; }
     const when = iso ? fmtDate(new Date(`${iso}T00:00`)) : '';
     if (!row.record) {
-      if (iso) onSave({ inserts: [{ ...antigen.record, dateAdministered: isoToMdy(iso) }], summary: `${antigen.label} dose ${row.number} recorded (${when})` });
+      // The evaluated vaccine has no `record`; the vaccine to write comes from CIS_ANTIGENS.
+      if (iso) onSave({ inserts: [{ ...CIS_ANTIGENS.find(x => x.key === antigen.key).record, dateAdministered: isoToMdy(iso) }], summary: `${antigen.label} dose ${row.number} recorded (${when})` });
       return;
     }
     const shared = result.antigens
@@ -124,6 +143,10 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
   const saveNote = (antigen, row, text) => onSave({
     notes: [{ antigenKey: antigen.key, doseNumber: row.number, note: text.trim() }],
     summary: `Note ${text.trim() ? 'updated' : 'removed'} on ${antigen.label} dose ${row.number}`,
+  });
+  const saveLocation = (antigen, row, text) => onSave({
+    notes: [{ antigenKey: antigen.key, doseNumber: row.number, location: text.trim() }],
+    summary: `Location ${text.trim() ? `set to ${text.trim()}` : 'removed'} on ${antigen.label} dose ${row.number}`,
   });
   // A block in the progress bar jumps to its dose in the table and
   // flashes the row for 2s.
@@ -157,7 +180,6 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
             member={member}
             result={result}
             notes={savedNotes}
-            onSaveEvidence={onSaveEvidence}
           />
           <span className={styles.headerDivider} aria-hidden="true" />
         </>
@@ -221,6 +243,10 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
               notes={savedNotes}
               onDateChange={changeDate}
               onNoteSave={saveNote}
+              onLocationSave={saveLocation}
+              onContraindicate={onMarkChange ? (antigen, row) => setMarking({ kind: 'contraindicated', antigen, doseNumber: row.number }) : undefined}
+              onUndoMark={onMarkChange ? (antigen, doseNumber) => onMarkChange(`${antigen.key}:${doseNumber}`, null) : undefined}
+              onSeriesDosesChange={onSeriesDosesChange}
             />
           )}
           <div className={styles.tableWrap} hidden={view === 'timeline' && !!result.dob}>
@@ -242,7 +268,9 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                   </th>
                   <th className={styles.colDate}>Date Administered</th>
                   <th className={styles.colStatus}>Status</th>
+                  <th className={styles.colLocation}>Location</th>
                   <th className={styles.colNotes}>Notes</th>
+                  <th className={styles.colActions}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -250,6 +278,7 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                   <Fragment key={group.key}>
                     {group.items.map(({ antigen, row }, i) => {
                       const savedNote = savedNotes?.[`${antigen.key}:${row.number}`]?.note || '';
+                      const savedLocation = savedNotes?.[`${antigen.key}:${row.number}`]?.location || '';
                       const bar = reasonBarFor(row);
                       return (
                         <Fragment key={`${antigen.key}:${row.number}`}>
@@ -262,20 +291,29 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                           ].filter(Boolean).join(' ') || undefined}
                         >
                           {i === 0 && (
-                            // The reason bars under "Does Not Count" doses are rows too.
+                            // The reason bars under late and at-risk doses are rows too.
                             <td rowSpan={group.items.length + group.items.filter(it => reasonBarFor(it.row)).length} className={styles.vaccineCell}>
                               {byAge ? <AgeCell group={group} /> : (
                                 <>
                                   <span className={styles.vaccineName}>
                                     {antigen.label}
                                     {/* Rotavirus series length, editable until the series is met. */}
-                                    {antigen.seriesChoice && antigen.status !== CIS_ANTIGEN_STATUS.met && onSeriesDosesChange && (
+                                    {antigen.seriesChoice && antigen.status !== CIS_ANTIGEN_STATUS.seriesComplete && onSeriesDosesChange && (
                                       <SeriesDosesPicker choice={antigen.seriesChoice} onChange={(n) => onSeriesDosesChange(antigen.key, n)} />
                                     )}
+                                    {/* ⋯ on the name line, far right: Mark / Undo Immune. */}
+                                    <VaccineMenu
+                                      antigen={antigen}
+                                      onMark={onMarkChange ? () => setMarking({ kind: 'immune', antigen }) : null}
+                                      onUndoMark={onMarkChange ? () => onMarkChange(antigen.key, null) : null}
+                                      className={styles.vaccineMenu}
+                                      openClassName={styles.vaccineMenuOpen}
+                                    />
                                   </span>
                                   <span className={styles.vaccineMeta}>
-                                    {antigen.measureCode} • {Math.min(antigen.valid.length, antigen.required)} of {antigen.requiredLabel}
+                                    {antigen.measureCode} • {antigen.completedDoses} of {antigen.requiredLabel}
                                   </span>
+                                  <ImmuneBadge antigen={antigen} />
                                 </>
                               )}
                             </td>
@@ -304,7 +342,9 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                           )}
                           <td><span className={styles.primary}>{fmtDate(row.earliest)}</span></td>
                           <td>
-                            <DoseDateField row={row} label={antigen.label} dob={result.dob} onChange={(iso) => changeDate(antigen, row, iso)} />
+                            {isClosed(row)
+                              ? <span className={styles.subtle}>-</span>
+                              : <DoseDateField row={row} label={antigen.label} dob={result.dob} onChange={(iso) => changeDate(antigen, row, iso)} />}
                             <DoseAppointmentChip
                               match={appointmentForDose(appointments, antigen.key, row)}
                               onOpen={(appt) => onOpenSchedule?.(appt)}
@@ -316,19 +356,48 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                           </td>
                           <td className={styles.noteCell}>
                             <DoseNoteInput
+                              key={savedLocation}
+                              saved={savedLocation}
+                              placeholder="Add location"
+                              label={`${antigen.label} dose ${row.number} location`}
+                              onSave={(text) => saveLocation(antigen, row, text)}
+                            />
+                          </td>
+                          <td className={styles.noteCell}>
+                            <DoseNoteInput
                               key={savedNote}
                               saved={savedNote}
                               label={`${antigen.label} dose ${row.number} note`}
                               onSave={(text) => saveNote(antigen, row, text)}
                             />
                           </td>
+                          <td className={styles.actionsCell}>
+                            {onMarkChange && !antigen.immuneMark && row.kind === 'planned' && OPEN.includes(row.status) && (
+                              <ActionButton
+                                icon="solar:forbidden-circle-linear"
+                                size="sm"
+                                tooltip={`Mark dose ${row.number} contraindicated`}
+                                tooltipLeft
+                                onClick={() => setMarking({ kind: 'contraindicated', antigen, doseNumber: row.number })}
+                              />
+                            )}
+                            {onMarkChange && row.status === CIS_DOSE_STATUS.contraindicated && (
+                              <ActionButton
+                                icon="solar:undo-left-linear"
+                                size="sm"
+                                tooltip={`Undo dose ${row.number} contraindication`}
+                                tooltipLeft
+                                onClick={() => onMarkChange(`${antigen.key}:${row.number}`, null)}
+                              />
+                            )}
+                          </td>
                         </tr>
                         {/* Same reason bar as the Vaccine Calendar tab. */}
                         {bar && (
                           <tr className={styles.reasonBarRow}>
-                            <td colSpan={6}>
+                            <td colSpan={8}>
                               <Banner tone={bar.tone} size="sm" icon={bar.icon} className={`${styles.reasonBar} ${bar.quiet ? styles.reasonBarQuiet : ''}`}>
-                                {row.status}: {row.reason}.
+                                {bar.text}.
                               </Banner>
                             </td>
                           </tr>
@@ -348,6 +417,19 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
               ? <>Last saved by <strong>{lastSaved.actor}</strong> on <strong>{saved.date}</strong> at <strong>{saved.time}</strong></>
               : 'Not saved yet'}
           </p>
+
+        {marking && (
+          <CisMarkDialog
+            kind={marking.kind}
+            antigen={marking.antigen}
+            doseNumber={marking.doseNumber}
+            onCancel={() => setMarking(null)}
+            onSubmit={(mark) => {
+              onMarkChange(marking.kind === 'immune' ? marking.antigen.key : `${marking.antigen.key}:${marking.doseNumber}`, mark);
+              setMarking(null);
+            }}
+          />
+        )}
 
         {confirmRemove && (
           <ConfirmDialog
@@ -383,5 +465,18 @@ function AgeCell({ group }) {
       <span className={styles.vaccineMeta}>{fmtDate(group.items[0].row.start)}</span>
       <span className={styles.vaccineMeta}>{given} of {group.items.length} given</span>
     </>
+  );
+}
+
+// Under the vaccine name once marked Immune: the badge, and why it doesn't
+// count when it doesn't. Mark / Undo live in the ⋯ menu on the name line.
+function ImmuneBadge({ antigen }) {
+  const mark = antigen.immuneMark;
+  if (!mark) return null;
+  return (
+    <span className={styles.immuneMark}>
+      <CisStatusBadge map={DOSE_BADGE} status={CIS_DOSE_STATUS.immune} label={`Immune ${mark.date}`} />
+      {antigen.immuneNote && <span className={styles.immuneNote}>{antigen.immuneNote}</span>}
+    </span>
   );
 }

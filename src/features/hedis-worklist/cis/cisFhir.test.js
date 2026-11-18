@@ -25,7 +25,6 @@ describe('cisDoseFhir', () => {
     const late = cisDoseFhir({ kind: 'given', status: CIS_DOSE_STATUS.completedLate });
     expect(late.immunizationStatus.code).toBe('completed');
     expect(standard(late.doseStatus).code).toBe('valid');
-    expect(standard(cisDoseFhir({ kind: 'given', status: CIS_DOSE_STATUS.notCounted }).doseStatus).code).toBe('notvalid');
     expect(cisDoseFhir({ kind: 'pending', status: CIS_DOSE_STATUS.pending }).doseStatus).toBeNull();
   });
 
@@ -35,7 +34,9 @@ describe('cisDoseFhir', () => {
     expect(code(CIS_DOSE_STATUS.overdue)).toBe('overdue');
     expect(code(CIS_DOSE_STATUS.upcoming)).toBe('due');
     expect(code(CIS_DOSE_STATUS.onTrack)).toBe('due');
-    expect(code(CIS_DOSE_STATUS.cannotMeet)).toBeNull();
+    expect(code(CIS_DOSE_STATUS.contraindicated)).toBe('contraindicated');
+    expect(code(CIS_DOSE_STATUS.agedOut)).toBe('agedout');
+    expect(code(CIS_DOSE_STATUS.immune)).toBe('immune');
   });
 });
 
@@ -44,6 +45,8 @@ describe('cisAntigenFhir', () => {
     for (const status of Object.values(CIS_ANTIGEN_STATUS)) {
       expect(cisAntigenFhir({ status }).coding.length).toBeGreaterThan(0);
     }
-    expect(standard(cisAntigenFhir({ status: CIS_ANTIGEN_STATUS.met })).code).toBe('complete');
+    expect(standard(cisAntigenFhir({ status: CIS_ANTIGEN_STATUS.seriesComplete })).code).toBe('complete');
+    expect(standard(cisAntigenFhir({ status: CIS_ANTIGEN_STATUS.immune })).code).toBe('immune');
+    expect(standard(cisAntigenFhir({ status: CIS_ANTIGEN_STATUS.contraindicated })).code).toBe('contraindicated');
   });
 });

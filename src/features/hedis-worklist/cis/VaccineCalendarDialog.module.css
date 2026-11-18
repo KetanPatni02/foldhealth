@@ -112,11 +112,40 @@
 }
 .colVaccine { width: 12%; }
 .colDose { width: 8%; }
-.colRecommended { width: 17%; }
-.colEarliest { width: 13%; }
+.colRecommended { width: 15%; }
+.colEarliest { width: 11%; }
 .colDate { width: 140px; }
-.colStatus { width: 12%; }
+.colStatus { width: 10%; }
+/* Location and Notes share what's left; Location a little narrower. */
+.colLocation { width: 13%; }
 .colNotes { width: auto; }
+/* Row actions side by side (contraindicate / undo). */
+.colActions { width: 72px; }
+.actionsCell {
+  white-space: nowrap;
+}
+.actionsCell > * + * { margin-left: var(--space-1); }
+/* ⋯ at the end of the vaccine name line; shows on hover of the cell. */
+.vaccineMenu {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+.vaccineCell:hover .vaccineMenu,
+.vaccineCell:focus-within .vaccineMenu,
+.vaccineMenuOpen { opacity: 1; }
+/* Immune mark under the vaccine name. */
+.immuneMark {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.immuneNote {
+  font-size: var(--font-sm);
+  color: var(--status-error);
+}
 
 .vaccineCell {
   border-right: 0.5px solid var(--neutral-100);

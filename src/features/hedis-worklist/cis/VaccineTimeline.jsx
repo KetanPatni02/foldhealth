@@ -1,10 +1,11 @@
 import { Fragment } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { HoverCard } from '../../../components/HoverCard/HoverCard';
-import { CIS_ANTIGENS, CIS_DOSE_STATUS, scheduleEndMonth } from './cisRules';
+import { CIS_ANTIGENS, CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, scheduleEndMonth } from './cisRules';
 import { DOSE_BADGE, fmtDate } from './cisStatusConfig';
 import { appointmentForDose, apptDate } from './cisAppointments';
 import { DoseQuickCard } from './DoseQuickCard';
+import { SeriesDosesPicker } from './SeriesDosesPicker';
 import styles from './VaccineTimeline.module.css';
 
 // One column per age a routine range starts or ends at, birth to 23 months.
@@ -19,6 +20,7 @@ const TONE = {
   error: styles.toneError,
   grey: styles.toneGrey,
   white: styles.toneWhite,
+  info: styles.toneInfo,
 };
 const LEGEND = [
   CIS_DOSE_STATUS.completed,
@@ -26,6 +28,7 @@ const LEGEND = [
   CIS_DOSE_STATUS.overdue,
   CIS_DOSE_STATUS.upcoming,
   CIS_DOSE_STATUS.onTrack,
+  CIS_DOSE_STATUS.contraindicated,
 ];
 
 // Doses that overlap in age (e.g. the two flu doses) go on separate lanes.
@@ -54,11 +57,15 @@ const windowText = (r) => (r.recommendedEnd ? `${fmtDate(r.start)} – ${fmtDate
  * @param {object}   [props.notes]        – cis_dose_notes, keyed 'dtap:1'
  * @param {function} [props.onDateChange] – (antigen, row, iso) => void
  * @param {function} [props.onNoteSave]   – (antigen, row, text) => void
+ * @param {function} [props.onLocationSave] – (antigen, row, text) => void
+ * @param {function} [props.onContraindicate] – (antigen, row) => void
+ * @param {function} [props.onSeriesDosesChange] – (antigenKey, doses) => void; Rotavirus 2 or 3
+ * @param {function} [props.onUndoMark]       – (antigen, doseNumber) => void
  *
  * Hovering a dose previews its card; a click pins it so the date and note
  * can be edited from the calendar.
  */
-export function VaccineTimeline({ result, antigenOrder, statusFilter = [], appointments = [], notes, onDateChange, onNoteSave }) {
+export function VaccineTimeline({ result, antigenOrder, statusFilter = [], appointments = [], notes, onDateChange, onNoteSave, onLocationSave, onContraindicate, onUndoMark, onSeriesDosesChange }) {
   const dob = result.dob;
   const today = new Date();
   const colDates = MONTHS.map(m => addMonths(dob, m));
@@ -90,7 +97,13 @@ export function VaccineTimeline({ result, antigenOrder, statusFilter = [], appoi
               <Fragment key={a.key}>
                 <div className={styles.vaccine} style={{ gridRow: `${top} / span ${lanes.length}` }} role="rowheader">
                   <span className={styles.vaccineName}>{a.label}</span>
-                  <span className={styles.vaccineMeta}>{Math.min(a.valid.length, a.required)} of {a.requiredLabel} doses</span>
+                  {/* Rotavirus: the series length is picked here, as in the Table view. */}
+                  {a.seriesChoice && a.status !== CIS_ANTIGEN_STATUS.seriesComplete && onSeriesDosesChange ? (
+                    <span className={`${styles.vaccineMeta} ${styles.seriesMeta}`}>
+                      {a.completedDoses} of
+                      <SeriesDosesPicker choice={a.seriesChoice} onChange={(n) => onSeriesDosesChange(a.key, n)} />
+                    </span>
+                  ) : <span className={styles.vaccineMeta}>{a.completedDoses} of {a.requiredLabel} doses</span>}
                 </div>
                 {lanes.map((lane, li) => (
                   <Fragment key={li}>
@@ -144,9 +157,13 @@ export function VaccineTimeline({ result, antigenOrder, statusFilter = [], appoi
                             row={r}
                             dob={dob}
                             note={notes?.[`${a.key}:${r.number}`]?.note || ''}
+                            location={notes?.[`${a.key}:${r.number}`]?.location || ''}
                             booked={booked}
                             onDateChange={onDateChange}
                             onNoteSave={onNoteSave}
+                            onLocationSave={onLocationSave}
+                            onContraindicate={onContraindicate}
+                            onUndoMark={onUndoMark}
                           />
                         </HoverCard>
                         </div>
@@ -162,7 +179,7 @@ export function VaccineTimeline({ result, antigenOrder, statusFilter = [], appoi
         {LEGEND.map(s => (
           <span key={s} className={styles.legendItem}>
             <span className={`${styles.swatch} ${TONE[DOSE_BADGE[s].tone]}`} />
-            {s === CIS_DOSE_STATUS.completed ? 'Given' : s}
+            {s === CIS_DOSE_STATUS.completed ? 'Administered' : s}
           </span>
         ))}
         <span className={styles.legendItem}>

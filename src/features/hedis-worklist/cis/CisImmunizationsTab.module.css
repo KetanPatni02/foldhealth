@@ -99,6 +99,9 @@
 .blockDone { background: var(--status-success); }
 .blockDue { background: var(--status-warning); }
 .blockLate { background: var(--status-error); }
+/* Aged out: closed, nothing to give. Contraindicated: status info blue, as its badge. */
+.blockClosed { background: var(--neutral-200); }
+.blockContra { background: var(--status-info); }
 .legend {
   display: flex;
   gap: var(--space-3);
@@ -248,11 +251,12 @@
 .vaccine {
   border-bottom: 0.5px solid var(--neutral-150);
 }
-/* Columns shared by the header row and every vaccine row (Figma: flex,
-   120, 184, 120); fixed widths keep separate row grids aligned. */
+/* Same columns as the dose table below (Earliest Allowed, Date
+   Administered, Status, Actions), so Progress, Next Action Due, Status
+   and the ⋯ menu line up with them. */
 .vaccineRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px 184px 120px;
+  grid-template-columns: minmax(0, 1fr) 120px 132px 130px 72px;
   align-items: center;
   width: 100%;
   min-height: 44px;
@@ -264,9 +268,7 @@
   cursor: pointer;
 }
 .vaccineRow > :nth-child(1) { padding: var(--space-2) var(--space-3) var(--space-2) calc(1.5 * var(--space-1)); }
-.vaccineRow > :nth-child(2) { padding: var(--space-2); }
-.vaccineRow > :nth-child(3),
-.vaccineRow > :nth-child(4) { padding: var(--space-2) var(--space-3); }
+.vaccineRow > :nth-child(n+2) { padding: var(--space-2); }
 .vaccineRow:hover {
   background: var(--neutral-50);
 }
@@ -290,7 +292,7 @@
   white-space: nowrap;
 }
 .vaccineRow.colHead > :nth-child(1) { padding-left: var(--space-3); }
-.vaccineRow.colHead > :nth-child(2) { padding-inline: calc(2.25 * var(--space-1)); }
+.vaccineRow.colHead > :nth-child(n+2) { padding-inline: var(--space-2); }
 .vaccineName {
   display: flex;
   align-items: center;
@@ -301,6 +303,17 @@
   display: flex;
   align-items: center;
 }
+.vaccineRow > .menuCell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--space-1);
+}
+/* ⋯ shows on row hover or keyboard focus, and stays while its menu is open. */
+.menuTrigger { opacity: 0; transition: opacity 120ms ease-out; }
+.vaccineRow:hover .menuTrigger,
+.vaccineRow:focus-within .menuTrigger,
+.menuTriggerOpen { opacity: 1; }
 .chevronClosed {
   transform: rotate(-90deg);
 }
@@ -377,7 +390,8 @@
 }
 .doseRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px 132px 130px 48px;
+  /* Last column: row actions side by side (contraindicate, note). */
+  grid-template-columns: minmax(0, 1fr) 120px 132px 130px 72px;
   align-items: center;
   min-height: 51px;
   border-bottom: 0.5px solid var(--neutral-100);
@@ -400,7 +414,7 @@
   white-space: nowrap;
 }
 .noteHead {
-  justify-self: center;
+  justify-self: start;
 }
 .doseCol {
   display: flex;
@@ -461,7 +475,11 @@
   min-width: 0;
 }
 .noteCol {
-  justify-self: center;
+  /* Left-aligned so the note (primary) lines up on every row. */
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 .noteEditor {
   display: flex;
@@ -522,3 +540,33 @@
   font-size: var(--font-sm);
   color: var(--neutral-300);
 }
+
+/* Early warning (can't be given in time): same bar, warning tint. */
+.doseError .doseWarnBar {
+  background: linear-gradient(90deg, var(--status-warning-light) 0%, transparent 100%);
+}
+
+/* Under a vaccine's doses: records not counted, and the Immune /
+   Contraindicated mark with Undo. */
+.vaccineFooter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+.markRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.markText {
+  min-width: 0;
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+}
+.markText b {
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.markNote { color: var(--status-error); }

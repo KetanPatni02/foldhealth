@@ -1189,8 +1189,67 @@ export const useAppStore = create((set, get) => ({
     }
     return true;
   },
+  // ── CIS-CMB10 tracker: vaccines marked Immune / Contraindicated (cis_vaccine_marks) ──
+  // { [memberId]: { hepb: { kind: 'immune', date, details, diseases, … }, 'dtap:2': { kind: 'contraindicated', date, details, … } } }
+  cisVaccineMarks: {},
+  fetchCisVaccineMarks: async (memberId) => {
+    if (!memberId) return;
+    const { data, error } = await supabase.from('cis_vaccine_marks')
+      .select('*').eq('hedis_member_id', String(memberId));
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205') console.warn('[fetchCisVaccineMarks] cis_vaccine_marks table missing: run supabase/cis_vaccine_marks_migration.sql');
+      else console.warn('fetchCisVaccineMarks:', error.message);
+      return;
+    }
+    const byKey = Object.fromEntries((data || []).map(r => [r.dose_number ? `${r.antigen_key}:${r.dose_number}` : r.antigen_key, {
+      kind: r.kind, date: r.mark_date, details: r.details, diseases: r.diseases || [],
+      updatedByName: r.updated_by_name || '', updatedAt: r.updated_at,
+    }]));
+    set(s => ({ cisVaccineMarks: { ...s.cisVaccineMarks, [memberId]: byKey } }));
+  },
+  // `markKey` is 'hepb' (Immune) or 'hepb:2' (Contraindicated dose 2).
+  // `mark` null undoes it (deletes the row). Optimistic, rolled back on error.
+  setCisVaccineMark: async (memberId, markKey, mark) => {
+    if (!memberId || !markKey) return false;
+    const [antigenKey, dose] = markKey.split(':');
+    const prev = get().cisVaccineMarks[memberId] || {};
+    const now = new Date().toISOString();
+    const actor = get().currentActorName();
+    const next = { ...prev };
+    if (mark) next[markKey] = { ...mark, updatedByName: actor, updatedAt: now };
+    else delete next[markKey];
+    set(s => ({ cisVaccineMarks: { ...s.cisVaccineMarks, [memberId]: next } }));
+    const id = `${memberId}:${markKey}`;
+    const { error } = mark
+      ? await supabase.from('cis_vaccine_marks').upsert({
+        id,
+        hedis_member_id: String(memberId),
+        antigen_key: antigenKey,
+        kind: mark.kind,
+        dose_number: dose ? Number(dose) : null,
+        mark_date: mark.date,
+        details: mark.details,
+        diseases: mark.diseases || [],
+        updated_by: get().currentUserProfile?.id || null,
+        updated_by_name: actor,
+        updated_at: now,
+      }, { onConflict: 'id' })
+      : await supabase.from('cis_vaccine_marks').delete().eq('id', id);
+    if (error) {
+      // Table not created yet: keep the mark for this session.
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[setCisVaccineMark] cis_vaccine_marks table missing: run supabase/cis_vaccine_marks_migration.sql');
+        return true;
+      }
+      console.warn('setCisVaccineMark:', error.message);
+      set(s => ({ cisVaccineMarks: { ...s.cisVaccineMarks, [memberId]: prev } }));
+      get().showToast?.('Could not save the vaccine status');
+      return false;
+    }
+    return true;
+  },
   // ── CIS-CMB10 tracker: per-dose notes (cis_dose_notes) + batch save ──
-  cisDoseNotes: {},          // { [memberId]: { 'dtap:1': { note, updatedByName, updatedAt } } }
+  cisDoseNotes: {},          // { [memberId]: { 'dtap:1': { note, location, updatedByName, updatedAt } } }
   cisDoseNotesTableMissing: false,
   fetchCisDoseNotes: async (memberId) => {
     if (!memberId) return;
@@ -1205,7 +1264,7 @@ export const useAppStore = create((set, get) => ({
     }
     const byKey = {};
     for (const r of data || []) {
-      byKey[`${r.antigen_key}:${r.dose_number}`] = { note: r.note || '', updatedByName: r.updated_by_name || '', updatedAt: r.updated_at };
+      byKey[`${r.antigen_key}:${r.dose_number}`] = { note: r.note || '', location: r.location || '', updatedByName: r.updated_by_name || '', updatedAt: r.updated_at };
     }
     set(s => ({ cisDoseNotes: { ...s.cisDoseNotes, [memberId]: byKey } }));
   },
@@ -1254,7 +1313,9 @@ export const useAppStore = create((set, get) => ({
         hedis_member_id: String(memberId),
         antigen_key: n.antigenKey,
         dose_number: n.doseNumber,
-        note: n.note,
+        // Only the field that changed: a location save must not wipe the note.
+        ...(n.note !== undefined && { note: n.note }),
+        ...(n.location !== undefined && { location: n.location }),
         updated_by: me?.id || null,
         updated_by_name: actor,
         updated_at: now,
@@ -1269,7 +1330,11 @@ export const useAppStore = create((set, get) => ({
       // Session copy either way, so notes survive until the table exists.
       set(s => {
         const next = { ...(s.cisDoseNotes[memberId] || {}) };
-        for (const n of notes) next[`${n.antigenKey}:${n.doseNumber}`] = { note: n.note, updatedByName: actor, updatedAt: now };
+        for (const n of notes) {
+          const key = `${n.antigenKey}:${n.doseNumber}`;
+          const prev = next[key] || {};
+          next[key] = { note: n.note ?? prev.note ?? '', location: n.location ?? prev.location ?? '', updatedByName: actor, updatedAt: now };
+        }
         return {
           cisDoseNotes: { ...s.cisDoseNotes, [memberId]: next },
           cisDoseNotesTableMissing: s.cisDoseNotesTableMissing || error?.code === '42P01' || error?.code === 'PGRST205',

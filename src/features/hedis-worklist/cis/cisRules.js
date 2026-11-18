@@ -19,27 +19,47 @@ import { parseLocalDate } from '../../../lib/localDate';
 
 export const CIS_CODE = 'CIS-CMB10';
 
+// Vaccine (antigen) status. The three final states come from the CIS-CMB10
+// status spec; a vaccine still in progress shows its most urgent dose status.
 export const CIS_ANTIGEN_STATUS = {
-  met: 'Met',
-  dueNow: 'Due Now',
+  seriesComplete: 'Series complete',
+  immune: 'Immune',
+  contraindicated: 'Contraindicated',
+  agedOut: 'Aged out',
   overdue: 'Overdue',
-  upcoming: 'Upcoming',
-  onTrack: 'On-Track',
-  cannotMeet: "Can't Meet",
-};
-
-export const CIS_DOSE_STATUS = {
-  completed: 'Completed',
-  // Counts for HEDIS, but was given after the dose's recommended window.
-  completedLate: 'Completed late',
-  notCounted: 'Does Not Count',
-  pending: 'Enter date',
   dueNow: 'Due now',
-  overdue: 'Overdue',
   upcoming: 'Upcoming',
   onTrack: 'On track',
-  cannotMeet: "Can't be met",
 };
+
+// Dose status, in the spec's order (the Status filter lists them this way).
+export const CIS_DOSE_STATUS = {
+  // Dated on or before the end of the recommended window.
+  completed: 'Completed',
+  // Dated after the recommended window, on or before the 2nd birthday.
+  completedLate: 'Completed late',
+  dueNow: 'Due now',
+  overdue: 'Overdue',
+  // Earliest Allowed has passed and the window opens within UPCOMING_DAYS.
+  upcoming: 'Upcoming',
+  // Not chased yet; locked while Earliest Allowed is still ahead.
+  onTrack: 'On track',
+  contraindicated: 'Contraindicated',
+  // Rotavirus dose still open when the child turns 8 months.
+  agedOut: 'Aged out',
+  immune: 'Immune',
+  // Draft: marked given in the tracker, date still to come.
+  pending: 'Enter date',
+};
+
+// Vaccines a care team can mark Immune (history of illness or a positive
+// blood test). MMR needs immunity to all three diseases.
+export const IMMUNE_ANTIGENS = ['hepa', 'hepb', 'mmr', 'vzv'];
+export const MMR_DISEASES = ['Measles', 'Mumps', 'Rubella'];
+// Whether a Contraindicated vaccine counts toward the numerator. The status
+// spec says no; NCQA lets some contraindications count, so confirm with the
+// measure owner before flipping this.
+export const CONTRAINDICATION_COUNTS = false;
 
 export const CIS_EVALUATION = {
   compliant: 'Compliant',
@@ -195,12 +215,11 @@ const isLaiv = (dose) => LAIV_CVX.includes(normCvx(dose.code)) || LAIV_RE.test(d
 
 const mdy = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
 
-// Why a recorded dose does not count for HEDIS, or null when it does. Each
-// reason names the date that decided it, e.g. "Given after the 2nd birthday
-// (03/31/2026)". A dose that does not count takes its slot in the series
-// (see evaluateAntigen), so the reason shows in place of a new dose row.
-function invalidReason(antigen, dose, dob, firstBirthday, secondBirthday) {
-  if (dose.date > secondBirthday) return { text: `Given after the 2nd birthday (${mdy(secondBirthday)})` };
+// Why a recorded dose is left off the calendar, or null when it fits. A
+// record before Earliest Allowed (e.g. from the EHR) does not fill a dose:
+// the dose stays open and the record is listed as not counted. Any later
+// date counts as administered (after the 2nd birthday: Completed late).
+function ignoredReason(antigen, dose, dob, firstBirthday, secondBirthday) {
   if (antigen.window && dose.date < firstBirthday) return { text: `Given before the 1st birthday (${mdy(firstBirthday)})` };
   const ageDays = daysBetween(dose.date, dob);
   if (ageDays < 0) return { text: `Dated before the date of birth (${mdy(dob)})` };
@@ -243,18 +262,15 @@ function recommendedShort(slot) {
  * @param {number} pending    – doses marked given with no date yet
  * @param {number} [seriesDoses] – care team's series length (Rotavirus 2 or 3)
  */
-function evaluateAntigen(antigen, doses, ctx, pending = 0, seriesDoses = null) {
+function evaluateAntigen(antigen, doses, ctx, pending = 0, seriesDoses = null, marks = { immune: null, contraindicated: [] }) {
   const { dob, today, firstBirthday, secondBirthday } = ctx;
   const valid = [];
-  const invalid = [];
-  const reasons = new Map();
+  const ignored = [];
   for (const dose of doses) {
-    const reason = invalidReason(antigen, dose, dob, firstBirthday, secondBirthday)
-      || (valid.some(v => sameDay(v.date, dose.date)) ? { text: `Same day as another dose (${mdy(dose.date)}), counted once` } : null);
-    if (reason) {
-      reasons.set(dose, reason);
-      invalid.push({ ...dose, reason: reason.text });
-    } else valid.push(dose);
+    const reason = ignoredReason(antigen, dose, dob, firstBirthday, secondBirthday)
+      || (valid.some(v => sameDay(v.date, dose.date)) ? { text: `Same date as another dose (${mdy(dose.date)})` } : null);
+    if (reason) ignored.push({ record: dose, reason: reason.text });
+    else valid.push(dose);
   }
   // Rotavirus: a recorded RotaTeq (non-Rotarix) dose always needs 3. Otherwise
   // the care team's pick (seriesDoses) wins, then the brand on record.
@@ -290,68 +306,90 @@ function evaluateAntigen(antigen, doses, ctx, pending = 0, seriesDoses = null) {
   };
 
   const rows = [];
-  let validSeen = 0;
-  let lateSlots = 0;
   let prevValid = null;
-  for (const dose of doses) {
-    const meta = slotMeta(validSeen + lateSlots, prevValid);
-    const reason = reasons.get(dose);
-    if (reason) {
-      rows.push({ kind: 'given', record: dose, counts: false, reason: reason.text, status: CIS_DOSE_STATUS.notCounted, ...meta });
-      // A dose that does not count still takes its slot: the list stays at
-      // the series length and shows why, instead of opening a repeat dose.
-      if (validSeen + lateSlots < required) lateSlots += 1;
-    } else {
-      const extra = validSeen >= required;
-      // Given after the routine window but by the 2nd birthday: still
-      // counts (catch-up), flagged so the team sees it was late.
-      const late = !extra && dose.date > meta.due;
-      rows.push({
-        kind: 'given', record: dose, counts: true, extra,
-        status: late ? CIS_DOSE_STATUS.completedLate : CIS_DOSE_STATUS.completed,
-        reason: late ? `Given after the recommended window (ended ${mdy(meta.due)})` : undefined,
-        ...meta,
-      });
-      validSeen += 1;
-      prevValid = dose.date;
-    }
+  for (const dose of valid) {
+    const meta = slotMeta(rows.length, prevValid);
+    const extra = rows.length >= required;
+    // Given after the routine window: still administered (catch-up),
+    // flagged so the team sees it was late. A date entered always counts
+    // as administered, even after the 2nd birthday.
+    const isLate = !extra && dose.date > meta.due;
+    const afterSecond = dose.date > secondBirthday;
+    rows.push({
+      kind: 'given', record: dose, counts: true, extra,
+      status: isLate ? CIS_DOSE_STATUS.completedLate : CIS_DOSE_STATUS.completed,
+      reason: !isLate ? undefined
+        : afterSecond ? `Given after the 2nd birthday (${mdy(secondBirthday)})`
+          : `Given after the recommended window (ended ${mdy(meta.due)})`,
+      ...meta,
+    });
+    prevValid = dose.date;
   }
-  let slotIdx = validSeen + lateSlots;
-  for (let i = 0; i < pending && slotIdx < required; i++, slotIdx++) {
-    rows.push({ kind: 'pending', counts: false, status: CIS_DOSE_STATUS.pending, ...slotMeta(slotIdx, prevValid) });
+  for (let i = 0; i < pending && rows.length < required; i++) {
+    rows.push({ kind: 'pending', counts: false, status: CIS_DOSE_STATUS.pending, ...slotMeta(rows.length, prevValid) });
   }
 
-  // Remaining doses: status comes from the recommended window only (opens at
-  // `start`, Overdue after `due`); the earliest allowed date does not move it.
+  // Immune counts when dated on or before the 2nd birthday (MMR: all three
+  // diseases). Otherwise the doses stay open and the vaccine says why.
+  const immuneMark = marks.immune && IMMUNE_ANTIGENS.includes(antigen.key) ? marks.immune : null;
+  let immuneNote = null;
+  if (immuneMark && (!immuneMark.on || immuneMark.on > secondBirthday)) immuneNote = "Doesn't count: after 2nd birthday";
+  else if (immuneMark && antigen.key === 'mmr' && !MMR_DISEASES.every(d => immuneMark.diseases?.includes(d))) immuneNote = "Doesn't count: needs measles, mumps and rubella";
+  const immune = !!immuneMark && !immuneNote;
+  // Contraindicated is per dose: only the dose that was marked.
+  const contraDoses = new Set(marks.contraindicated.map(m => m.doseNumber));
+
+  // Remaining doses: status comes from the recommended window (opens at
+  // `start`, Overdue after `due`); Earliest Allowed decides On track (lock)
+  // vs Upcoming.
   const rvLastDay = antigen.key === 'rv' ? addMonths(dob, RV_MAX_AGE_MONTHS) : null;
   let prev = prevValid;
   let completion = valid.length >= required ? valid[required - 1].date : null;
-  for (; slotIdx < required; slotIdx++) {
-    const meta = slotMeta(slotIdx, prev);
+  while (rows.length < required) {
+    const meta = slotMeta(rows.length, prev);
+    const number = rows.length + 1;
     const planned = maxDate(meta.start, today);
     let status;
-    if (planned > secondBirthday || (rvLastDay && planned > rvLastDay)) status = CIS_DOSE_STATUS.cannotMeet;
-    else if (today > meta.due) status = CIS_DOSE_STATUS.overdue;
-    else if (today >= meta.start) status = CIS_DOSE_STATUS.dueNow;
-    else if (daysBetween(meta.start, today) <= UPCOMING_DAYS) status = CIS_DOSE_STATUS.upcoming;
-    else status = CIS_DOSE_STATUS.onTrack;
-    rows.push({ kind: 'planned', counts: false, status, plannedDate: planned, nextDue: meta.start, ...meta });
+    let warning;
+    if (immune) status = CIS_DOSE_STATUS.immune;
+    else if (contraDoses.has(number)) status = CIS_DOSE_STATUS.contraindicated;
+    else if (rvLastDay && today >= rvLastDay) status = CIS_DOSE_STATUS.agedOut;
+    else {
+      if (today > meta.due) status = CIS_DOSE_STATUS.overdue;
+      else if (today >= meta.start) status = CIS_DOSE_STATUS.dueNow;
+      else if (today >= meta.earliest && daysBetween(meta.start, today) <= UPCOMING_DAYS) status = CIS_DOSE_STATUS.upcoming;
+      else status = CIS_DOSE_STATUS.onTrack;
+      // Early warning only: the status stays until the date actually passes.
+      if (meta.start > secondBirthday) warning = `Can't be given in time: the window opens after the 2nd birthday (${mdy(secondBirthday)})`;
+      else if (rvLastDay && meta.start >= rvLastDay) warning = `Can't be given in time: no Rotavirus dose after 8 months of age (${mdy(rvLastDay)})`;
+    }
+    rows.push({ kind: 'planned', counts: status === CIS_DOSE_STATUS.immune, status, warning, plannedDate: planned, nextDue: meta.start, ...meta });
     prev = meta.start;
     completion = planned;
   }
   rows.forEach((r, i) => { r.number = i + 1; });
 
-  const planned = rows.filter(r => r.kind === 'planned');
-  const has = (st) => planned.some(r => r.status === st);
+  const has = (st) => rows.some(r => r.status === st);
   let status;
-  if (valid.length >= required) status = CIS_ANTIGEN_STATUS.met;
-  // Short with nothing left to give (the open slots hold doses that do not
-  // count), or a remaining dose can't fit before the 2nd birthday.
-  else if (lateSlots > 0 || has(CIS_DOSE_STATUS.cannotMeet)) status = CIS_ANTIGEN_STATUS.cannotMeet;
+  if (valid.length >= required) status = CIS_ANTIGEN_STATUS.seriesComplete;
+  else if (immune) status = CIS_ANTIGEN_STATUS.immune;
+  else if (has(CIS_DOSE_STATUS.contraindicated)) status = CIS_ANTIGEN_STATUS.contraindicated;
+  else if (has(CIS_DOSE_STATUS.agedOut)) status = CIS_ANTIGEN_STATUS.agedOut;
   else if (has(CIS_DOSE_STATUS.overdue)) status = CIS_ANTIGEN_STATUS.overdue;
-  else if (has(CIS_DOSE_STATUS.dueNow) || rows.some(r => r.kind === 'pending')) status = CIS_ANTIGEN_STATUS.dueNow;
+  else if (has(CIS_DOSE_STATUS.dueNow) || has(CIS_DOSE_STATUS.pending)) status = CIS_ANTIGEN_STATUS.dueNow;
   else if (has(CIS_DOSE_STATUS.upcoming)) status = CIS_ANTIGEN_STATUS.upcoming;
   else status = CIS_ANTIGEN_STATUS.onTrack;
+  const counts = status === CIS_ANTIGEN_STATUS.seriesComplete || status === CIS_ANTIGEN_STATUS.immune
+    || (CONTRAINDICATION_COUNTS && status === CIS_ANTIGEN_STATUS.contraindicated);
+  const open = rows.filter(r => r.kind === 'planned' && OPEN_DOSE.includes(r.status));
+  // Most urgent dose still to give. A Contraindicated vaccine with earlier
+  // doses still open keeps this, so those doses stay in Action Needed.
+  const urgency = [
+    [CIS_DOSE_STATUS.overdue, CIS_ANTIGEN_STATUS.overdue],
+    [CIS_DOSE_STATUS.dueNow, CIS_ANTIGEN_STATUS.dueNow],
+    [CIS_DOSE_STATUS.upcoming, CIS_ANTIGEN_STATUS.upcoming],
+    [CIS_DOSE_STATUS.onTrack, CIS_ANTIGEN_STATUS.onTrack],
+  ].find(([dose]) => open.some(r => r.status === dose))?.[1] ?? null;
 
   return {
     key: antigen.key,
@@ -362,16 +400,24 @@ function evaluateAntigen(antigen, doses, ctx, pending = 0, seriesDoses = null) {
     requiredLabel: String(required),
     seriesChoice: antigen.key === 'rv' ? { value: required, picked: !rvNeedsThree && seriesDoses != null, locked: rvNeedsThree } : null,
     valid,
-    invalid,
+    ignored,
     rows,
     status,
-    nextDueDate: planned[0]?.nextDue ?? null,
+    urgency,
+    counts,
+    // Doses toward "Doses Complete": every dose of an Immune vaccine counts.
+    completedDoses: counts && status !== CIS_ANTIGEN_STATUS.seriesComplete ? required : Math.min(valid.length, required),
+    immuneMark,
+    contraindications: marks.contraindicated,
+    canMarkImmune: IMMUNE_ANTIGENS.includes(antigen.key),
+    immuneNote,
+    nextDueDate: open[0]?.nextDue ?? null,
     earliestCompletion: completion,
-    blocker: status === CIS_ANTIGEN_STATUS.cannotMeet && antigen.key === 'rv'
-      ? 'Rotavirus series cannot be finished by 8 months of age'
-      : null,
   };
 }
+
+// Doses still to give: the ones that drive reminders and the Next Action column.
+const OPEN_DOSE = [CIS_DOSE_STATUS.overdue, CIS_DOSE_STATUS.dueNow, CIS_DOSE_STATUS.upcoming, CIS_DOSE_STATUS.onTrack];
 
 /**
  * Evaluate a child's CIS Combination 10 status.
@@ -385,9 +431,11 @@ function evaluateAntigen(antigen, doses, ctx, pending = 0, seriesDoses = null) {
  *                                              dose marked given, date to come.
  * @param {number} [args.measurementYear]     – defaults to today's year
  * @param {object} [args.seriesDoses]       – { rv: 2 | 3 } series length picked per vaccine
+ * @param {object} [args.marks]             – cis_vaccine_marks: 'hepb' → { kind: 'immune', date, details, diseases },
+ *                                              'dtap:2' → { kind: 'contraindicated', doseNumber, date, details }
  * @param {Date}   [args.today]
  */
-export function evaluateCis({ dob, immunizations = [], measurementYear, today = new Date(), seriesDoses = {} }) {
+export function evaluateCis({ dob, immunizations = [], measurementYear, today = new Date(), seriesDoses = {}, marks = {} }) {
   const birth = parseLocalDate(dob);
   const now = toDay(today);
   const year = measurementYear || now.getFullYear();
@@ -417,22 +465,24 @@ export function evaluateCis({ dob, immunizations = [], measurementYear, today = 
     ctx,
     pendingByAntigen[a.key],
     seriesDoses?.[a.key] ?? null,
+    marksFor(a.key, marks),
   ));
 
   const allRows = antigens.flatMap(a => a.rows);
   const countOf = (st) => allRows.filter(r => r.status === st).length;
   const doses = {
     total: antigens.reduce((n, a) => n + a.required, 0),
-    completed: antigens.reduce((n, a) => n + Math.min(a.valid.length, a.required), 0),
+    completed: antigens.reduce((n, a) => n + a.completedDoses, 0),
     dueNow: countOf(CIS_DOSE_STATUS.dueNow) + countOf(CIS_DOSE_STATUS.pending),
     overdue: countOf(CIS_DOSE_STATUS.overdue),
     upcoming: countOf(CIS_DOSE_STATUS.upcoming),
     onTrack: countOf(CIS_DOSE_STATUS.onTrack),
-    cannotMeet: countOf(CIS_DOSE_STATUS.cannotMeet),
-    notCounted: countOf(CIS_DOSE_STATUS.notCounted),
+    agedOut: countOf(CIS_DOSE_STATUS.agedOut),
+    contraindicated: countOf(CIS_DOSE_STATUS.contraindicated),
+    immune: countOf(CIS_DOSE_STATUS.immune),
   };
 
-  const metCount = antigens.filter(a => a.status === CIS_ANTIGEN_STATUS.met).length;
+  const metCount = antigens.filter(a => a.counts).length;
   const daysLeft = daysBetween(secondBirthday, now);
   const reportingYear = secondBirthday.getFullYear();
   const base = {
@@ -454,17 +504,21 @@ export function evaluateCis({ dob, immunizations = [], measurementYear, today = 
   if (metCount === antigens.length) {
     return { ...base, evaluation: CIS_EVALUATION.compliant, reason: 'All 10 vaccines meet the Combination 10 requirements.' };
   }
-  const blocked = antigens.filter(a => a.status === CIS_ANTIGEN_STATUS.cannotMeet);
+  // Aged out and (per the spec) Contraindicated block completion.
+  const blocked = antigens.filter(a => !a.counts && [CIS_ANTIGEN_STATUS.agedOut, CIS_ANTIGEN_STATUS.contraindicated].includes(a.status));
   if (daysLeft < 0 || blocked.length) {
     const reason = daysLeft < 0
       ? 'The 2nd birthday has passed with vaccines outstanding. Later doses do not count for this measure.'
-      : `${blocked.map(a => a.label).join(', ')} cannot be completed before the 2nd birthday.`;
+      : `${blocked.map(a => `${a.label} (${a.status})`).join(', ')} can't count toward Combination 10.`;
     return { ...base, evaluation: CIS_EVALUATION.cannotMeet, reason };
   }
   const overdue = antigens.filter(a => a.status === CIS_ANTIGEN_STATUS.overdue);
   const outstanding = antigens.length - metCount;
-  if (overdue.length || daysLeft <= AT_RISK_DAYS) {
-    const reason = overdue.length
+  const warned = antigens.filter(a => a.rows.some(r => r.warning));
+  if (overdue.length || warned.length || daysLeft <= AT_RISK_DAYS) {
+    const reason = !overdue.length && warned.length
+      ? `${warned.map(a => a.label).join(', ')} can't be finished before the 2nd birthday.`
+      : overdue.length
       ? `${overdue.map(a => a.label).join(', ')} ${overdue.length === 1 ? 'is' : 'are'} behind schedule. ${outstanding} of ${antigens.length} vaccines still outstanding.`
       : `${daysLeft} days left before the 2nd birthday with ${outstanding} vaccine${outstanding === 1 ? '' : 's'} outstanding.`;
     return { ...base, evaluation: CIS_EVALUATION.atRisk, reason };
@@ -475,7 +529,8 @@ export function evaluateCis({ dob, immunizations = [], measurementYear, today = 
 /**
  * Worklist countdown for a CIS-CMB10 gap: "Overdue by Nd" from the most
  * overdue dose, else "Due in Nd" to the nearest deadline of a dose that is
- * due now or opens within UPCOMING_DAYS. Null when nothing is pending.
+ * due now. Only Due now and Overdue drive the due signal (Upcoming and On
+ * track are not chased yet). Null when nothing is due.
  */
 export function cisDueIndicator(result, today = new Date()) {
   const rows = (result?.antigens || []).flatMap(a => a.rows).filter(r => r.kind === 'planned');
@@ -484,8 +539,63 @@ export function cisDueIndicator(result, today = new Date()) {
     const days = Math.max(...overdue.map(r => daysBetween(today, r.due)));
     return { label: `Overdue by ${days}d`, tone: 'error' };
   }
-  const due = rows.filter(r => r.status === CIS_DOSE_STATUS.dueNow || r.status === CIS_DOSE_STATUS.upcoming);
+  const due = rows.filter(r => r.status === CIS_DOSE_STATUS.dueNow);
   if (!due.length) return null;
   const days = Math.min(...due.map(r => daysBetween(r.due, today)));
   return { label: days > 0 ? `Due in ${days}d` : 'Due today', tone: 'warning' };
+}
+
+// Marks keep their MM/DD/YYYY `date` for display; `on` is the Date the
+// engine compares.
+function normalizeMark(mark) {
+  if (!mark?.kind) return null;
+  const on = parseLocalDate(mark.date);
+  return { ...mark, on: on ? toDay(on) : null };
+}
+
+/** One vaccine's marks: Immune is keyed 'hepb', a Contraindicated dose 'hepb:2'. */
+function marksFor(antigenKey, marks = {}) {
+  const immune = marks?.[antigenKey]?.kind === 'immune' ? normalizeMark(marks[antigenKey]) : null;
+  const contraindicated = Object.entries(marks || {})
+    .filter(([k, m]) => k.startsWith(`${antigenKey}:`) && m?.kind === 'contraindicated')
+    .map(([k, m]) => ({ ...normalizeMark(m), key: k, doseNumber: Number(k.split(':')[1]) }))
+    .sort((x, y) => x.doseNumber - y.doseNumber);
+  return { immune, contraindicated };
+}
+
+/**
+ * Why a Date Administered can't be saved for this dose, or null when it can.
+ * Future dates, dates before Earliest Allowed and a date another dose of the
+ * same vaccine already has are blocked. A date after the 2nd birthday is
+ * allowed; the dose then shows as Completed late.
+ *
+ * @param {object} antigen – evaluateCis() antigen
+ * @param {object} row     – the dose row being dated
+ * @param {Date}   date
+ */
+export function doseDateError(antigen, row, date, today = new Date()) {
+  if (!date) return null;
+  const d = toDay(date);
+  if (d > toDay(today)) return "Date Administered can't be in the future.";
+  if (row.earliest && d < row.earliest) {
+    return `This dose won't count toward HEDIS if given before ${mdy(row.earliest)}. Add it in the note and schedule a repeat on or after ${mdy(row.earliest)}.`;
+  }
+  const clash = antigen.rows.find(r => r.number !== row.number && r.record && sameDay(r.record.date, d));
+  if (clash) return `Dose ${clash.number} already has this date`;
+  return null;
+}
+
+/**
+ * Why an Immune or Contraindicated mark can't be saved, or null. Both need a
+ * date (not in the future) and free text; Immune MMR needs all three diseases.
+ */
+export function markError({ kind, antigenKey, date, details, diseases = [] }, today = new Date()) {
+  const d = parseLocalDate(date);
+  if (!d) return 'Enter a date.';
+  if (toDay(d) > toDay(today)) return "The date can't be in the future.";
+  if (!String(details || '').trim()) return kind === 'immune' ? 'Enter the details.' : 'Enter the contraindication.';
+  if (kind === 'immune' && antigenKey === 'mmr' && !MMR_DISEASES.every(x => diseases.includes(x))) {
+    return 'MMR immunity needs measles, mumps and rubella.';
+  }
+  return null;
 }

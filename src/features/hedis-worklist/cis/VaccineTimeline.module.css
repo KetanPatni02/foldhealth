@@ -84,6 +84,11 @@
   font-weight: 500;
   color: var(--neutral-500);
 }
+.seriesMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
 .vaccineMeta {
   font-size: var(--font-xs);
   color: var(--neutral-300);
@@ -146,6 +151,7 @@
 .dose.toneError:hover, .dose.toneError:focus-visible { background: var(--status-error); }
 .dose.toneGrey:hover, .dose.toneGrey:focus-visible { background: var(--neutral-300); }
 .dose.toneWhite:hover, .dose.toneWhite:focus-visible { background: var(--neutral-200); }
+.dose.toneInfo:hover, .dose.toneInfo:focus-visible { background: var(--status-info); }
 .dose:hover, .dose:focus-visible,
 .dose:hover .bell, .dose:focus-visible .bell { color: var(--neutral-0); }
 /* The warning yellow takes dark text, not white (tokens.css). */
@@ -186,6 +192,7 @@
 .toneError { background: var(--status-error-light); border-color: var(--status-error); color: var(--status-error); }
 .toneGrey { background: var(--neutral-75); border-color: var(--neutral-150); color: var(--neutral-400); }
 .toneWhite { background: var(--neutral-0); border-color: var(--neutral-150); color: var(--neutral-400); }
+.toneInfo { background: var(--status-info-light); border-color: var(--status-info); color: var(--status-info); }
 
 .legend {
   display: flex;
@@ -216,6 +223,7 @@
 .swatch.toneError { background: var(--status-error); border-color: var(--status-error); }
 .swatch.toneGrey { background: var(--neutral-150); border-color: var(--neutral-200); }
 .swatch.toneWhite { background: var(--neutral-0); border-color: var(--neutral-300); }
+.swatch.toneInfo { background: var(--status-info); border-color: var(--status-info); }
 .swatchToday {
   background: var(--primary-50);
   border-color: var(--primary-300);

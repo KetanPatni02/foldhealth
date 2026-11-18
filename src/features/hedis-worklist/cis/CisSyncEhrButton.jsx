@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { toast } from '../../../components/Toast/sonnerToast';
 import { cisRecordEvidence } from './downloadCisSchedule';
 import { hasGivenDose } from './cisStatusConfig';
 
 /**
- * Sync to EHR: the immunization record PDF (Astrana branding) is synced to
+ * Sync with EHR: the immunization record PDF (Astrana branding) is synced to
  * the patient's EHR and kept in the care gap's Documents. A non-standard
- * note; nothing is billed. Disabled until a dose is on record. Saving to
- * Documents only lives in the ⋯ menu.
+ * note; nothing is billed. Always clickable: with no dose on record there is
+ * nothing to sync, so it shows an info toast instead.
  *
  * @param {object}   props
  * @param {object}   props.member
@@ -18,24 +19,29 @@ import { hasGivenDose } from './cisStatusConfig';
  */
 export function CisSyncEhrButton({ member, result, notes, onSaveEvidence, size = 'sm' }) {
   const [busy, setBusy] = useState(false);
-  const hasDoses = hasGivenDose(result);
   const sync = async () => {
+    if (busy) return;
+    if (!onSaveEvidence || !hasGivenDose(result)) {
+      toast.info('Nothing available to sync with the EHR yet');
+      return;
+    }
     setBusy(true);
     try {
       onSaveEvidence({ ...(await cisRecordEvidence({ member, result, notes })), sync: true });
+      toast.success('Immunization record synced with the EHR');
+    } catch {
+      toast.error('Could not sync with the EHR. Please try again.');
     } finally {
       setBusy(false);
     }
   };
-  const disabled = !onSaveEvidence || !hasDoses || busy;
   return (
     <ActionButton
       size={size}
       icon="solar:refresh-circle-linear"
-      tooltip={hasDoses ? 'Sync to EHR' : 'No doses on record yet'}
+      tooltip="Sync with EHR"
       tooltipLeft
-      disabled={disabled}
-      onClick={disabled ? undefined : sync}
+      onClick={sync}
     />
   );
 }
