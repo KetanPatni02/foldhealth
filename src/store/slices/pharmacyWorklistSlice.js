@@ -334,12 +334,13 @@ export function createPharmacyWorklistSlice(set, get) {
     },
 
     // A deadline alert's outcome (Accepted, Approved, Disapproved, Ignored),
-    // by alert key ("MAD|alert"). Pending clears it.
-    setPharmacyAlertOutcome: (id, key, outcome) => {
+    // by alert key ("MAD|alert"). Pending clears it. `daysLeft`: how close the
+    // gap was to failing then, for the Fold Impact report.
+    setPharmacyAlertOutcome: (id, key, outcome, { daysLeft = null } = {}) => {
       const by = get().currentUserProfile?.name || 'You';
       update(id, m => {
         const next = { ...(m.alertOutcomes || {}) };
-        if (outcome && outcome !== 'Pending') next[key] = { outcome, by, at: new Date().toISOString() };
+        if (outcome && outcome !== 'Pending') next[key] = { outcome, by, at: new Date().toISOString(), daysLeft };
         else delete next[key];
         return { ...m, alertOutcomes: next };
       }, ['alert_outcomes'], { t: 'note', title: `Alert ${key.replace('|', ' ')}: ${outcome}` });

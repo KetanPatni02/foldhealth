@@ -8,6 +8,8 @@ import { MEASURE_NAMES, MEASURE_ORDER } from '../../../pharmacy-worklist/pharmac
 import {
   OUTCOME_GROUP_LABELS, REPORT_PERIODS, dataQualityReport, outcomesReport, productivityReport, reportMembers,
 } from '../../../pharmacy-worklist/pharmacyReports';
+import { escalationSaves, savedGaps, starContribution } from '../../../pharmacy-worklist/pharmacyImpact';
+import { PharmacyImpactTab } from './PharmacyImpactTab';
 import s from '../../AnalyticsLayout.module.css';
 import local from './PharmacyReportsView.module.css';
 
@@ -16,6 +18,7 @@ const TABS = [
   { key: 'providers', label: 'Provider Groups' },
   { key: 'productivity', label: 'Productivity' },
   { key: 'quality', label: 'Data Quality' },
+  { key: 'impact', label: 'Fold Impact' },
 ];
 const GROUP_BY_OPTIONS = Object.values(OUTCOME_GROUP_LABELS);
 const GROUP_BY_KEY = Object.fromEntries(Object.entries(OUTCOME_GROUP_LABELS).map(([k, v]) => [v, k]));
@@ -218,6 +221,10 @@ export function PharmacyReportsView() {
   const providers = useMemo(() => outcomesReport(enriched, 'ipa'), [enriched]);
   const productivity = useMemo(() => productivityReport(filtered, period), [filtered, period]);
   const quality = useMemo(() => dataQualityReport(enriched), [enriched]);
+  const impact = useMemo(() => {
+    const saved = savedGaps(enriched);
+    return { saved, escalations: escalationSaves(enriched), stars: starContribution(enriched, saved) };
+  }, [enriched]);
 
   const cold = loading || (!didFetch && !members.length);
 
@@ -251,6 +258,7 @@ export function PharmacyReportsView() {
           {tab === 'providers' && <ProvidersTab report={providers} />}
           {tab === 'productivity' && <ProductivityTab report={productivity} period={period} />}
           {tab === 'quality' && <DataQualityTab report={quality} />}
+          {tab === 'impact' && <PharmacyImpactTab {...impact} />}
         </>
       )}
     </div>

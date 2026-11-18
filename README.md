@@ -37,6 +37,13 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Pharmacy Phase 6: Fold Impact report (Ajay).** Analytics → Pharmacy Adherence has a **Fold Impact** tab:
+  - **Patients and gaps saved:** a gap Closed or Met for Year with Fold's outreach on or before the fill, broken down by channel (call, assessment call, SMS, letter or email). Automated refill reminders join once their sends are logged.
+  - **Saved after an alert:** deadline alerts accepted or approved, by how late they came (days left, or days overdue), and whether the gap is now saved. The days left are saved with the alert's outcome.
+  - **Contribution to star rating:** each measure's adherence rate with and without Fold's saves, the lift in points, and the stars of each. The stars use sample cut points until Tahira and Monique confirm this year's.
+  - A Saved Gaps table lists each save with who reached the member and when.
+
+  No migration.
 - **Pharmacy Phase 5: automation around a fill (Ajay).** A bell in the Pharmacy worklist header opens **Deadline Alerts**:
   - Alerts: a savable gap close to failing alerts whoever last worked the member, and closer still goes to the manager (P1 only by default). The manager's table records each alert's outcome (Accepted, Approved, Disapproved, Ignored). Alerts addressed to you also land in your notifications.
   - Settings: the refill reminder days, alert and escalation days, the manager, high priority only, the holiday window and flu season, saved for the organization.

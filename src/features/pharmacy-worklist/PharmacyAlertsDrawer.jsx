@@ -57,7 +57,7 @@ function AlertsTable({ alerts, onOpenMember }) {
               <span className={styles.sub}>{a.role}</span>
             </span>
             <span className={styles.cell} role="cell">
-              <Select size="sm" portal options={OUTCOME_OPTIONS} value={a.outcome} onValueChange={v => setOutcome(a.memberId, a.key, v)} aria-label={`Outcome for ${a.member} ${a.code}`} />
+              <Select size="sm" portal options={OUTCOME_OPTIONS} value={a.outcome} onValueChange={v => setOutcome(a.memberId, a.key, v, { daysLeft: a.daysLeft })} aria-label={`Outcome for ${a.member} ${a.code}`} />
               {a.outcomeBy && <span className={styles.sub}>{a.outcomeBy}</span>}
             </span>
           </div>
