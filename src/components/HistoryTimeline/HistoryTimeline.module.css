@@ -371,3 +371,27 @@
   line-height: 1.5;
   margin-top: var(--space-1);
 }
+
+/* An entry being pointed at (e.g. opened from a summary): a tinted card
+   (primary-50, primary-300 hairline) behind the whole row, its rail avatar
+   included, 8px around on every side; drawn behind, so nothing moves. Its
+   top follows the body's top padding (where the avatar and text start),
+   which differs by position and rhythm. */
+.rowHighlight { position: relative; isolation: isolate; }
+.rowHighlight::before {
+  content: '';
+  position: absolute;
+  top: var(--space-2);
+  right: calc(var(--space-2) * -1);
+  bottom: calc(var(--space-1) * -1);
+  left: calc(var(--space-2) * -1);
+  z-index: -1;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-300);
+  border-radius: var(--space-2);
+}
+.rowHighlight:has(> .bodyFirst)::before { top: calc(var(--space-1) + var(--space-1) / 2 - var(--space-2)); }
+/* The relaxed rhythm has room for 8px under the text too. */
+.relaxed .rowHighlight::before { bottom: calc(var(--space-2) * -1); }
+.relaxed .rowHighlight:not(:has(> .bodyFirst))::before { top: var(--space-4); }
+.relaxed .rowHighlight:has(> .afterGroup:not(.bodyFirst))::before { top: var(--space-2); }

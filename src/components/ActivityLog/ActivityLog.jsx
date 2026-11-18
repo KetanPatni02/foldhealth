@@ -130,6 +130,10 @@ function markSupersededDrafts(list) {
  * actions); `toolbarAbove` renders above that row (e.g. filter chips). Both
  * stay visible when filtering leaves nothing to show.
  */
+/**
+ * An entry with `highlight: true` is tinted (primary-50, primary-300
+ * outline): the host sets it while pointing someone at that entry.
+ */
 export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote, toolbar, toolbarAbove, relaxed = false, continuous = false, flushTop = false }) {
   // `continuous` keeps the rail running past the first and last entries, for a
   // log rendered in slices (one per day) that should read as one line.
@@ -381,9 +385,9 @@ function ActivityLogEntry({ entry, isFirst, isLast, afterGroup = false, hideComm
       }
     })();
   return (
-    <div className={htStyles.row}>
+    <div className={entry.highlight ? `${htStyles.row} ${htStyles.rowHighlight}` : htStyles.row}>
       <Rail entry={entry} isFirst={isFirst} isLast={isLast} afterGroup={afterGroup} />
-      <div className={[htStyles.body, isFirst ? htStyles.bodyFirst : '', isLast ? htStyles.bodyLast : '', afterGroup ? htStyles.afterGroup : ''].join(' ')}>
+      <div className={[htStyles.body, isFirst ? htStyles.bodyFirst : '', isLast ? htStyles.bodyLast : '', afterGroup ? htStyles.afterGroup : '', ].join(' ')}>
         {entry.onOpen ? (
           // `onOpen`: an entry about a record the reader can open. Hovering
           // tints the entry and shows an open button centred at its right

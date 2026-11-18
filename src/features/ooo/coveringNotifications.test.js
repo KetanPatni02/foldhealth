@@ -16,9 +16,10 @@ describe('covering notifications', () => {
     expect(itemsPhrase([{ kind: 'task' }])).toBe('1 task');
   });
 
-  it('welcome back counts what happened', () => {
+  it('welcome back links to the summary', () => {
     const job = { id: 'j1', results: Array(18).fill({ outcome: 'reassigned' }) };
-    expect(welcomeBack({ record, job, completed: 12, autoReplies: 3 }).body)
-      .toBe('18 items reassigned, 12 completed by your covering providers, 3 auto-replies sent.');
+    const n = welcomeBack({ record, job });
+    expect(n.title).toBe("Welcome back. Here's what happened while you were out.");
+    expect(n.body).toBe('');
   });
 });

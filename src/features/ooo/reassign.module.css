@@ -214,14 +214,37 @@
 .flatRow [class*='itemMain'] > svg { margin-top: calc(var(--space-1) / 2); }
 .flatRow [class*='itemTitle'] { display: flex; align-items: center; min-height: var(--space-5); }
 
-/* While You Were Away: four counts in a row, then a patient row per thread. */
-.awayStats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
-.awayStat {
+/* What changed on an item while its owner was away, under its row. */
+.awayChanges {
   display: flex; flex-direction: column; gap: calc(var(--space-1) / 2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 0.5px solid var(--neutral-100);
+  background: var(--neutral-50);
+  font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-400);
+}
+/* A grey strip along the item's bottom, like "Moved to" in the reassignment summary. */
+.cardList .awayChanges { padding: var(--space-2); }
+/* While You Were Away: each tab's KPI cards, and the conversation-style
+   lists for Messages and Calls. */
+.awayKpis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-2); margin-bottom: var(--space-2); }
+.awayKpi {
+  display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); min-width: 0;
   padding: var(--space-2) var(--space-3);
   border: 0.5px solid var(--neutral-150); border-radius: 8px;
 }
-.awayStatValue { font-size: var(--font-lg); font-weight: 500; line-height: 1.2; color: var(--neutral-500); font-variant-numeric: tabular-nums; }
-.awayStatLabel { font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-300); }
-.awayThread { width: 100%; padding: 0; border: none; border-bottom: 0.5px solid var(--neutral-150); text-align: left; cursor: pointer; font: inherit; }
-.awayThread:hover { background: var(--primary-50); }
+.awayKpiValue { font-size: var(--font-lg); font-weight: 500; line-height: 1.2; color: var(--neutral-500); font-variant-numeric: tabular-nums; }
+.awayKpiLabel { font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-300); }
+.awayThreads { overflow: hidden; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
+/* The box draws the bottom edge; the last row's own divider would double it. */
+.awayThreads > :last-child { border-bottom: none; }
+/* Messages and Calls have no toggle under the cards, so the list sits 8px
+   below them (the summary's 16px gap, less 8px). */
+.awayKpis:last-child { margin-bottom: calc(var(--space-2) * -1); }
+/* The activity drawer's rail avatar, level with its headline (as in the appointment drawer). */
+.activityRailAvatar { position: relative; top: var(--space-4); display: inline-flex; z-index: 1; }
+/* Never wider than its card: the text wraps, the link keeps its place. */
+.awayNet { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-3); min-width: 0; }
+.awayNetText { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); line-height: 1.2; }
+.awayNetWhat { font-weight: 500; }
+.awayNetBy { color: var(--neutral-300); }
+.awayNetLink { display: inline-flex; align-items: center; gap: calc(var(--space-1) / 2); flex-shrink: 0; white-space: nowrap; }

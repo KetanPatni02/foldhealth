@@ -129,6 +129,7 @@
     "ProfileTable",
     "ReasonDialog",
     "RecipientInput",
+    "RuleGroupBuilder",
     "SectionCustomizer",
     "SectionPagination",
     "SectionTitleBar",

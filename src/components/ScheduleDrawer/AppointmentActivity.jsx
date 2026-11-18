@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityLog } from '../ActivityLog/ActivityLog';
 import { Avatar } from '../Avatar/Avatar';
 import { Tabs } from '../Tabs/Tabs';
@@ -81,25 +81,43 @@ export function AppointmentActivity({ appointmentId }) {
   const appointments = useAppStore(s => s.appointments);
   const [tab, setTab] = useState('activity');
   const [logs, setLogs] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     if (!appointmentId) return undefined;
     let live = true;
-    fetchAuditLogs?.('Appointment', appointmentId).then(rows => { if (live) setLogs(rows || []); });
+    fetchAuditLogs?.('Appointment', appointmentId).then(rows => { if (live) { setLogs(rows || []); setLoaded(true); } });
     return () => { live = false; };
   }, [appointmentId, appointments, fetchAuditLogs]);
+  // Opened "at its Activity" (store.focusActivity): scroll here once loaded.
+  const ref = useRef(null);
+  const focus = useAppStore(s => s.activityFocus);
+  const clearFocus = useAppStore(s => s.clearActivityFocus);
+  const focused = loaded && focus?.kind === 'appointment' && focus.id === String(appointmentId);
+  // The entries it points at stay highlighted for 3s, then fade back.
+  useEffect(() => {
+    if (!focused) return undefined;
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const t = setTimeout(clearFocus, 3000);
+    return () => clearTimeout(t);
+  }, [focused, clearFocus]);
 
   // Newest first, under a month header.
+  const sorted = [...logs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const pointed = (log, n) => focused && (focus.latest
+    ? n < focus.latest
+    : (!focus.from || new Date(log.createdAt) >= new Date(focus.from)) && (!focus.to || new Date(log.createdAt) <= new Date(focus.to)));
   const entries = [];
   let month = '';
-  [...logs].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach((log) => {
+  sorted.forEach((log, n) => {
     const d = new Date(log.createdAt);
     const label = Number.isNaN(d.getTime()) ? '' : `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
     if (label && label !== month) { entries.push({ t: 'group', label }); month = label; }
-    entries.push(...toEntries(log));
+    const highlight = pointed(log, n);
+    entries.push(...toEntries(log).map(e => (highlight ? { ...e, highlight } : e)));
   });
 
   return (
-    <div className={styles.section}>
+    <div ref={ref} className={styles.section}>
       <Tabs
         variant="pill"
         items={[{ key: 'activity', label: 'Activity' }, { key: 'automation', label: 'Automations' }]}

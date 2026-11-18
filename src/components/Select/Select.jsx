@@ -114,8 +114,8 @@ export const Select = forwardRef(function Select({
   badges = false,
   portal = false,
   defaultOpen = false,
-  // Single select: while something is picked (and the menu is closed), the
-  // chevron becomes an ✕ that clears it (onValueChange(null)).
+  // While something is picked (and the menu is closed), the chevron becomes
+  // an ✕ that clears it: onValueChange(null), or [] for a multi-select.
   clearable = false,
   ...rest
 }, ref) {
@@ -463,15 +463,15 @@ export const Select = forwardRef(function Select({
               : (selected ? (selected.triggerLabel ?? selected.label) : placeholder)}
           </span>
         )}
-        {clearable && !multiple && !disabled && !open && selected ? (
+        {clearable && !disabled && !open && (multiple ? selectedMulti.length > 0 : selected) ? (
           <span
             role="button"
             tabIndex={0}
             aria-label="Clear selection"
             title="Clear selection"
             className={styles.clear}
-            onClick={(e) => { e.stopPropagation(); onChange(null); }}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onChange(null); } }}
+            onClick={(e) => { e.stopPropagation(); onChange(multiple ? [] : null); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onChange(multiple ? [] : null); } }}
           >
             <CloseIcon size={14} />
           </span>

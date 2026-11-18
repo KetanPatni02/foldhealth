@@ -613,3 +613,136 @@
 .status_active { color: var(--status-success); background: var(--status-success-light); }
 .status_draft { color: var(--neutral-300); background: var(--neutral-25); }
 .status_inactive { color: var(--status-warning-dark); background: var(--status-warning-light); }
+
+/* Member matching conditions: search + toggles, live count, sections. */
+.matchRules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+/* Search + jump to section, then switch + count: full-width bands across
+   the drawer (cancelling the drawer body's 16px padding), each with its own
+   side padding and a bottom border. */
+.matchToolbar {
+  position: sticky;
+  /* Sticks to the drawer body's top edge, above its 16px padding. */
+  top: -16px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) 0;
+  background: var(--neutral-0);
+}
+.matchToolbar > * {
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.matchToolbarRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.matchSearchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.matchSearch { flex: 0 0 300px; width: 300px; }
+.matchCount {
+  flex-shrink: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.matchSample { color: var(--neutral-300); }
+.matchRows { display: flex; flex-direction: column; }
+
+/* Edit Condition as a drawer (NodeEditPanel). */
+.drawerBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+/* In the drawer the labels get a wider column (Line of Business (LOB), Medication adherence (PDC)). */
+.matchRows .panelRowLabel { width: 168px; padding-top: 0; font-size: var(--font-base); color: var(--neutral-300); }
+/* Labels sit level with their controls, however many lines those take. */
+/* Row dividers at 0.5px, matching the section card's border. */
+.matchRows .panelRow + .panelRow { border-top-width: 0.5px; }
+.matchRows .panelRow {
+  align-items: center;
+  /* A 32px control plus the row's padding, so "+ Add rule" rows match the rest. */
+  min-height: calc(32px + 2 * var(--space-2));
+}
+.ruleLabel { display: block; }
+.ruleLabelTail {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.ruleOpSelect { flex: 0 0 96px; width: 96px; }
+.ruleValueInput { flex: 1 1 auto; min-width: 0; }
+.addRuleLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.ruleStack {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Matching members drawer (MatchingMembersDrawer). */
+.membersMeta {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+}
+.membersList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.memberRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.memberText {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.memberName {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.memberSub {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.ruleBadges {
+  flex: 1 1 auto;
+  min-width: 0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.ruleBadges:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+.clearRulesLink { flex-shrink: 0; }
+/* Search sits left at a fixed width; Jump to takes the right end. */
+.jumpChip { margin-left: auto; flex-shrink: 0; }

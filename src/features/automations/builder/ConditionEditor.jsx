@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { Input } from '../../../components/Input/Input';
 import { Select } from '../../../components/Select/Select';
@@ -6,14 +6,14 @@ import { SegmentedControl } from '../../../components/SegmentedControl/Segmented
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { AddIconMinimalist } from '../../../components/Icon/AddIconMinimalist';
 import { useAppStore } from '../../../store/useAppStore';
-import { CARE_PROGRAM_CATALOG } from '../../patient/data/careProgramCatalog';
 import { CHANNELS } from '../lib/catalog';
-import { dynamicOptions, fieldsFor } from '../lib/conditionFields';
+import { fieldsFor } from '../lib/conditionFields';
 import { ANSWER_OPS, CONDITION_TYPES, EVENT_CATALOG, LAB_CATALOG, NUMERIC_OPS, SCORE_CATALOG } from '../lib/clinicalCriteria';
 import { PanelRow, PanelSection } from './EditPanel';
+import { MatchingRules } from './MatchingRules';
+import { RuleRow } from './RuleRow';
+import { useDynamicOptions } from './useDynamicOptions';
 import styles from './AutomationBuilder.module.css';
-
-const toOpts = (list) => list.map(o => (typeof o === 'string' ? { value: o, label: o } : o));
 
 /** The rows of one condition: field · operator · value, grouped as in the Figma. */
 export function ConditionEditor({ def, config, onChange }) {
@@ -43,65 +43,12 @@ export function ConditionEditor({ def, config, onChange }) {
 }
 
 function RuleRows({ def, rules, onChange }) {
-  const members = useAppStore(s => s.automationMembers);
-  const fetchAutomationMembers = useAppStore(s => s.fetchAutomationMembers);
-  useEffect(() => { fetchAutomationMembers(); }, [fetchAutomationMembers]);
-  const dyn = useMemo(() => dynamicOptions(members, CARE_PROGRAM_CATALOG.map(p => p.code)), [members]);
+  const dyn = useDynamicOptions();
   const groups = fieldsFor(def);
-
-  const set = (key, patch) => {
-    const cur = rules[key] || {};
-    onChange({ ...rules, [key]: { ...cur, ...patch } });
-  };
-
+  if (def.fields === 'all') return <MatchingRules groups={groups} rules={rules} onChange={onChange} dyn={dyn} />;
   return groups.map(g => (
     <PanelSection key={g.group} title={g.group}>
-      {g.fields.map(f => {
-        const r = rules[f.key] || {};
-        const options = f.options || dyn[f.optionsFrom] || [];
-        return (
-          <PanelRow key={f.key} label={f.label}>
-            <div className={styles.ruleControls}>
-              {f.ops.length > 1 ? (
-                <Select options={toOpts(f.ops)} value={r.op || f.ops[0]} onValueChange={v => set(f.key, { op: v })} className={styles.opSelect} />
-              ) : (
-                <span className={styles.opText}>{f.ops[0]}</span>
-              )}
-              {f.input === 'number' ? (
-                <>
-                  <Input
-                    type="number"
-                    value={r.value ?? ''}
-                    min={0}
-                    onChange={e => set(f.key, { value: e.target.value === '' ? '' : Number(e.target.value) })}
-                    placeholder="0"
-                    wrapperClassName={styles.numberInput}
-                    aria-label={`${f.label} value`}
-                  />
-                  <Select options={f.units} value={r.unit || f.units[0].value} onValueChange={v => set(f.key, { unit: v })} className={styles.unitSelect} />
-                  {f.suffix && <span className={styles.opText}>{f.suffix}</span>}
-                </>
-              ) : (
-                <Select
-                  options={options}
-                  value={f.input === 'multi' || f.input === 'channels' ? (r.value || []) : (r.value ?? '')}
-                  onValueChange={v => set(f.key, { value: v })}
-                  multiple={f.input === 'multi' || f.input === 'channels'}
-                  checkboxes={f.input === 'multi'}
-                  badges={f.input === 'multi'}
-                  searchable={options.length > 8}
-                  placeholder="Select"
-                  emptyText="No values on file"
-                  className={styles.valueSelect}
-                />
-              )}
-              {(r.value != null && r.value !== '' && !(Array.isArray(r.value) && !r.value.length)) && (
-                <ActionButton size="sm" icon="solar:close-circle-linear" tooltip="Clear" onClick={() => set(f.key, { value: f.input === 'multi' ? [] : '' })} />
-              )}
-            </div>
-          </PanelRow>
-        );
-      })}
+      {g.fields.map(f => <RuleRow key={f.key} field={f} rules={rules} onChange={onChange} dyn={dyn} />)}
     </PanelSection>
   ));
 }

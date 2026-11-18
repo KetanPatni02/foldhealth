@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
+import { Button } from '../../../components/Button/Button';
+import { Drawer } from '../../../components/Drawer/Drawer';
 import { Input } from '../../../components/Input/Input';
 import { Select } from '../../../components/Select/Select';
 import { DELAY_UNITS, FAMILY, nodeDef } from '../lib/catalog';
 import { nodeProblems, nodeSummary } from '../lib/graph';
+import { filledRules } from '../lib/conditionFields';
 import { ConditionEditor } from './ConditionEditor';
 import { ActionEditor } from './ActionEditor';
 import { EditPanel, PanelRow, PanelSection } from './EditPanel';
@@ -41,6 +44,29 @@ export function NodeEditPanel({ node, onSave, onClose, onEditTemplate, initialEr
   if (kind === 'condition') body = <ConditionEditor def={def} config={draft} onChange={patch} />;
   else if (kind === 'action') body = <ActionEditor type={node.type} config={draft} onChange={patch} errors={errors} onEditTemplate={onEditTemplate} />;
   else body = <LogicEditor type={node.type} config={draft} onChange={patch} errors={errors} />;
+
+  // Conditions open in the standard 700px drawer: the matching filters need
+  // the width, and the canvas stays visible behind it.
+  if (kind === 'condition') {
+    // Field-rule conditions get Reset, which empties every filter in the draft.
+    const hasRules = def?.fields === 'all' || Array.isArray(def?.fields);
+    return (
+      <Drawer
+        title={def?.nodeLabel || def?.label}
+        onClose={onClose}
+        primaryAction={<Button onClick={save}>Save</Button>}
+        secondaryAction={hasRules ? (
+          <Button variant="outline" disabled={!filledRules(draft.rules).length} onClick={() => patch({ rules: {} })}>
+            Reset
+          </Button>
+        ) : null}
+      >
+        <div className={styles.drawerBody}>
+          {body}
+        </div>
+      </Drawer>
+    );
+  }
 
   return (
     <EditPanel
